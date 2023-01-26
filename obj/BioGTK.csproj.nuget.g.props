@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <RestoreSuccess Condition=" '$(RestoreSuccess)' == '' ">True</RestoreSuccess>
+    <RestoreTool Condition=" '$(RestoreTool)' == '' ">NuGet</RestoreTool>
+    <ProjectAssetsFile Condition=" '$(ProjectAssetsFile)' == '' ">$(MSBuildThisFileDirectory)project.assets.json</ProjectAssetsFile>
+    <NuGetPackageRoot Condition=" '$(NuGetPackageRoot)' == '' ">$(UserProfile)\.nuget\packages\</NuGetPackageRoot>
+    <NuGetPackageFolders Condition=" '$(NuGetPackageFolders)' == '' ">C:\Users\Erikr\.nuget\packages\;C:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages;C:\Program Files\dotnet\sdk\NuGetFallbackFolder</NuGetPackageFolders>
+    <NuGetProjectStyle Condition=" '$(NuGetProjectStyle)' == '' ">PackageReference</NuGetProjectStyle>
+    <NuGetToolVersion Condition=" '$(NuGetToolVersion)' == '' ">6.4.0</NuGetToolVersion>
+  </PropertyGroup>
+  <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <SourceRoot Include="C:\Users\Erikr\.nuget\packages\" />
+    <SourceRoot Include="C:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages\" />
+    <SourceRoot Include="C:\Program Files\dotnet\sdk\NuGetFallbackFolder\" />
+  </ItemGroup>
+  <ImportGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Import Project="$(NuGetPackageRoot)ikvm.msbuild.tools.runtime.win7-x64\8.4.4\buildTransitive\netstandard2.0\IKVM.MSBuild.Tools.runtime.win7-x64.props" Condition="Exists('$(NuGetPackageRoot)ikvm.msbuild.tools.runtime.win7-x64\8.4.4\buildTransitive\netstandard2.0\IKVM.MSBuild.Tools.runtime.win7-x64.props')" />
+    <Import Project="$(NuGetPackageRoot)ikvm.msbuild.tools.runtime.linux-x64\8.4.4\buildTransitive\netstandard2.0\IKVM.MSBuild.Tools.runtime.linux-x64.props" Condition="Exists('$(NuGetPackageRoot)ikvm.msbuild.tools.runtime.linux-x64\8.4.4\buildTransitive\netstandard2.0\IKVM.MSBuild.Tools.runtime.linux-x64.props')" />
+    <Import Project="$(NuGetPackageRoot)ikvm.msbuild.tools.runtime.linux-arm64\8.4.4\buildTransitive\netstandard2.0\IKVM.MSBuild.Tools.runtime.linux-arm64.props" Condition="Exists('$(NuGetPackageRoot)ikvm.msbuild.tools.runtime.linux-arm64\8.4.4\buildTransitive\netstandard2.0\IKVM.MSBuild.Tools.runtime.linux-arm64.props')" />
+    <Import Project="$(NuGetPackageRoot)ikvm.msbuild.tools.runtime.linux-arm\8.4.4\buildTransitive\netstandard2.0\IKVM.MSBuild.Tools.runtime.linux-arm.props" Condition="Exists('$(NuGetPackageRoot)ikvm.msbuild.tools.runtime.linux-arm\8.4.4\buildTransitive\netstandard2.0\IKVM.MSBuild.Tools.runtime.linux-arm.props')" />
+    <Import Project="$(NuGetPackageRoot)ikvm.msbuild\8.4.4\buildTransitive\netstandard2.0\IKVM.MSBuild.props" Condition="Exists('$(NuGetPackageRoot)ikvm.msbuild\8.4.4\buildTransitive\netstandard2.0\IKVM.MSBuild.props')" />
+    <Import Project="$(NuGetPackageRoot)ikvm.image\8.4.4\buildTransitive\IKVM.Image.props" Condition="Exists('$(NuGetPackageRoot)ikvm.image\8.4.4\buildTransitive\IKVM.Image.props')" />
+    <Import Project="$(NuGetPackageRoot)ikvm\8.4.4\buildTransitive\netstandard2.0\IKVM.props" Condition="Exists('$(NuGetPackageRoot)ikvm\8.4.4\buildTransitive\netstandard2.0\IKVM.props')" />
+  </ImportGroup>
+  <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <PkgMicrosoft_CodeAnalysis_Analyzers Condition=" '$(PkgMicrosoft_CodeAnalysis_Analyzers)' == '' ">C:\Users\Erikr\.nuget\packages\microsoft.codeanalysis.analyzers\3.3.3</PkgMicrosoft_CodeAnalysis_Analyzers>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,214 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationIcon>Bio.ico</ApplicationIcon>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Glade\About.glade" />
+    <None Remove="Glade\ApplyFilter.glade" />
+    <None Remove="Glade\BioConsole.glade" />
+    <None Remove="Glade\ChannelsTool.glade" />
+    <None Remove="Glade\ColorTool.glade" />
+    <None Remove="Glade\Filters.glade" />
+    <None Remove="Glade\Histogram.glade" />
+    <None Remove="Glade\ImageView.glade" />
+    <None Remove="Glade\NodeView.glade" />
+    <None Remove="Glade\Recorder.glade" />
+    <None Remove="Glade\Resolutions.glade" />
+    <None Remove="Glade\ROIManager.glade" />
+    <None Remove="Glade\Scripting.glade" />
+    <None Remove="Glade\TabsView.glade" />
+    <None Remove="Glade\TextInput.glade" />
+    <None Remove="Glade\Tools.glade" />
+    <None Remove="icons\brush.png" />
+    <None Remove="icons\bucket.png" />
+    <None Remove="icons\circle.png" />
+    <None Remove="icons\crop.png" />
+    <None Remove="icons\del.png" />
+    <None Remove="icons\dropper.png" />
+    <None Remove="icons\eraser.png" />
+    <None Remove="icons\fill.png" />
+    <None Remove="icons\flipX.png" />
+    <None Remove="icons\flipY.png" />
+    <None Remove="icons\folder.png" />
+    <None Remove="icons\freeform.png" />
+    <None Remove="icons\gears.png" />
+    <None Remove="icons\hand.png" />
+    <None Remove="icons\image.png" />
+    <None Remove="icons\lasso.png" />
+    <None Remove="icons\line.png" />
+    <None Remove="icons\magic.png" />
+    <None Remove="icons\move.png" />
+    <None Remove="icons\pencil.png" />
+    <None Remove="icons\play.png" />
+    <None Remove="icons\point.png" />
+    <None Remove="icons\pointselect.png" />
+    <None Remove="icons\poly.png" />
+    <None Remove="icons\rect.png" />
+    <None Remove="icons\redo.png" />
+    <None Remove="icons\resize.png" />
+    <None Remove="icons\rotate.png" />
+    <None Remove="icons\save.png" />
+    <None Remove="icons\select.png" />
+    <None Remove="icons\switch.png" />
+    <None Remove="icons\text.png" />
+    <None Remove="icons\undo.png" />
+    <None Remove="icons\zoom_in.png" />
+    <None Remove="icons\zoom_out.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Bio.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Glade\About.glade" />
+    <EmbeddedResource Include="Glade\ApplyFilter.glade" />
+    <EmbeddedResource Include="Glade\BioConsole.glade" />
+    <EmbeddedResource Include="Glade\ChannelsTool.glade" />
+    <EmbeddedResource Include="Glade\ColorTool.glade" />
+    <EmbeddedResource Include="Glade\Filters.glade" />
+    <EmbeddedResource Include="Glade\Histogram.glade" />
+    <EmbeddedResource Include="Glade\ImageView.glade" />
+    <EmbeddedResource Include="Glade\NodeView.glade" />
+    <EmbeddedResource Include="Glade\Recorder.glade" />
+    <EmbeddedResource Include="Glade\Resolutions.glade" />
+    <EmbeddedResource Include="Glade\ROIManager.glade" />
+    <EmbeddedResource Include="Glade\Scripting.glade" />
+    <EmbeddedResource Include="Glade\TabsView.glade" />
+    <EmbeddedResource Include="Glade\TextInput.glade" />
+    <EmbeddedResource Include="Glade\Tools.glade" />
+    <Content Include="icons\brush.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\bucket.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\circle.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\crop.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\del.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\dropper.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\eraser.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\fill.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\flipX.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\flipY.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\folder.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\freeform.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\gears.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\hand.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\image.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\lasso.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\line.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\magic.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\move.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\pencil.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\play.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\point.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\pointselect.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\poly.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\rect.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\redo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\resize.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\rotate.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\save.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\select.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\switch.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\text.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\undo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\zoom_in.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="icons\zoom_out.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
+    <PackageReference Include="CS-Script" Version="4.6.2" />
+    <PackageReference Include="GtkSharp" Version="3.24.24.38" />
+    <PackageReference Include="IKVM" Version="8.4.4" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\AForgeBio\AForgeBio\AForgeBio\AForgeBio.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="bioformats_package">
+      <HintPath>D:\ikvm\IKVM-8.4.4\bioformats_package.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="banner.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with glade 3.40.0 -->
+<interface>
+  <requires lib="gtk+" version="3.20"/>
+  <object class="GtkWindow" id="chanTool">
+    <property name="can-focus">False</property>
+    <signal name="activate-default" handler="ChannelsTool_activate_default_cb" swapped="no"/>
+    <child>
+      <object class="GtkBox">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="GtkFixed" id="fixed1">
+            <property name="width-request">32</property>
+            <property name="height-request">32</property>
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <child>
+              <object class="GtkComboBox" id="channelsBox">
+                <property name="width-request">217</property>
+                <property name="height-request">0</property>
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+              </object>
+              <packing>
+                <property name="x">82</property>
+                <property name="y">4</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Channel</property>
+              </object>
+              <packing>
+                <property name="x">15</property>
+                <property name="y">12</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="sampleLabel">
+                <property name="width-request">100</property>
+                <property name="height-request">80</property>
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Sample</property>
+              </object>
+              <packing>
+                <property name="x">-11</property>
+                <property name="y">22</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkSpinButton" id="sampleBox">
+                <property name="width-request">217</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="numeric">True</property>
+              </object>
+              <packing>
+                <property name="x">82</property>
+                <property name="y">43</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkSpinButton" id="maxBox">
+                <property name="width-request">145</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="numeric">True</property>
+              </object>
+              <packing>
+                <property name="x">153</property>
+                <property name="y">140</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Min</property>
+              </object>
+              <packing>
+                <property name="x">11</property>
+                <property name="y">120</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkSpinButton" id="minBox">
+                <property name="width-request">143</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="numeric">True</property>
+              </object>
+              <packing>
+                <property name="x">8</property>
+                <property name="y">140</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Max</property>
+              </object>
+              <packing>
+                <property name="x">157</property>
+                <property name="y">119</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkComboBox" id="maxUintBox">
+                <property name="width-request">133</property>
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+              </object>
+              <packing>
+                <property name="x">165</property>
+                <property name="y">84</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="setMinAllBut">
+                <property name="label" translatable="yes">Set Min All</property>
+                <property name="width-request">143</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="x">8</property>
+                <property name="y">178</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="setMaxAllBut">
+                <property name="label" translatable="yes">Set Max All</property>
+                <property name="width-request">144</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="x">154</property>
+                <property name="y">177</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkEntry" id="fluorBox">
+                <property name="width-request">220</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+              </object>
+              <packing>
+                <property name="x">78</property>
+                <property name="y">215</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Fluor</property>
+              </object>
+              <packing>
+                <property name="x">12</property>
+                <property name="y">224</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Emission</property>
+              </object>
+              <packing>
+                <property name="x">11</property>
+                <property name="y">257</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkSpinButton" id="emissionBox">
+                <property name="width-request">143</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="numeric">True</property>
+              </object>
+              <packing>
+                <property name="x">8</property>
+                <property name="y">276</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Excitation</property>
+              </object>
+              <packing>
+                <property name="x">155</property>
+                <property name="y">257</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkSpinButton" id="excitationBox">
+                <property name="width-request">146</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="numeric">True</property>
+              </object>
+              <packing>
+                <property name="x">153</property>
+                <property name="y">276</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkSpinButton" id="binBox">
+                <property name="width-request">143</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="numeric">True</property>
+              </object>
+              <packing>
+                <property name="x">319</property>
+                <property name="y">21</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkComboBox" id="maxUintBox2">
+                <property name="width-request">143</property>
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+              </object>
+              <packing>
+                <property name="x">470</property>
+                <property name="y">21</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Bin</property>
+              </object>
+              <packing>
+                <property name="x">321</property>
+                <property name="y">3</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkSpinButton" id="graphMinBox">
+                <property name="width-request">143</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="numeric">True</property>
+              </object>
+              <packing>
+                <property name="x">319</property>
+                <property name="y">72</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Min</property>
+              </object>
+              <packing>
+                <property name="x">320</property>
+                <property name="y">55</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkSpinButton" id="graphMax">
+                <property name="width-request">143</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="numeric">True</property>
+              </object>
+              <packing>
+                <property name="x">470</property>
+                <property name="y">72</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="maxGraphBox">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Max</property>
+              </object>
+              <packing>
+                <property name="x">472</property>
+                <property name="y">58</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="meanStackBox">
+                <property name="label" translatable="yes">Mean Stack Histogram</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">False</property>
+                <property name="draw-indicator">True</property>
+              </object>
+              <packing>
+                <property name="x">306</property>
+                <property name="y">289</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Channel Value Range</property>
+                <attributes>
+                  <attribute name="style" value="normal"/>
+                  <attribute name="weight" value="bold"/>
+                </attributes>
+              </object>
+              <packing>
+                <property name="x">12</property>
+                <property name="y">92</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="applyBut">
+                <property name="label" translatable="yes">Apply</property>
+                <property name="width-request">74</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="x">534</property>
+                <property name="y">115</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="resetBut">
+                <property name="label" translatable="yes">Reset</property>
+                <property name="width-request">75</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="x">455</property>
+                <property name="y">115</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox" id="box">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="baseline-position">bottom</property>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

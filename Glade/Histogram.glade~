@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with glade 3.40.0 -->
+<interface>
+  <requires lib="gtk+" version="3.24"/>
+  <object class="GtkWindow" id="histogram">
+    <property name="width-request">600</property>
+    <property name="height-request">200</property>
+    <property name="can-focus">False</property>
+    <child>
+      <object class="GtkDrawingArea" id="view">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+      </object>
+    </child>
+  </object>
+  <object class="GtkMenu" id="menu">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <child>
+      <object class="GtkImageMenuItem" id="setMin">
+        <property name="label">Set Min</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="setMax">
+        <property name="label">Set Max</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="setMinAll">
+        <property name="label">Set Min All</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="setMaxAll">
+        <property name="label">Set Max All</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+  </object>
+</interface>
