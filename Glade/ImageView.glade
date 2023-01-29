@@ -6,7 +6,7 @@
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">BioGTK</property>
     <child>
-      <object class="GtkBox">
+      <object class="GtkBox" id="mainBox">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
         <property name="orientation">vertical</property>
@@ -16,7 +16,6 @@
             <property name="can-focus">False</property>
             <property name="halign">start</property>
             <property name="valign">center</property>
-            <property name="label" translatable="yes">label</property>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -28,6 +27,7 @@
           <object class="GtkStack" id="viewStack">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
+            <property name="transition-duration">0</property>
             <child>
               <object class="GtkDrawingArea" id="pictureBox">
                 <property name="visible">True</property>
@@ -42,11 +42,14 @@
             </child>
             <child>
               <!-- n-columns=2 n-rows=2 -->
-              <object class="GtkGrid">
+              <object class="GtkGrid" id="grid">
+                <property name="name">grid</property>
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <child>
                   <object class="GtkScrollbar" id="scrollV">
+                    <property name="width-request">20</property>
+                    <property name="height-request">-1</property>
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="vexpand">True</property>
@@ -59,6 +62,8 @@
                 </child>
                 <child>
                   <object class="GtkScrollbar" id="scrollH">
+                    <property name="width-request">-1</property>
+                    <property name="height-request">20</property>
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="hexpand">True</property>
@@ -70,15 +75,12 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkImage" id="imageBox">
+                  <object class="GtkDrawingArea" id="imageBox">
                     <property name="name">imageBox</property>
                     <property name="width-request">420</property>
-                    <property name="height-request">0</property>
+                    <property name="height-request">112</property>
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="hexpand">True</property>
-                    <property name="vexpand">True</property>
-                    <property name="stock">gtk-add</property>
                   </object>
                   <packing>
                     <property name="left-attach">0</property>
@@ -141,6 +143,7 @@
                 <property name="can-focus">False</property>
                 <child>
                   <object class="GtkScale" id="cBar">
+                    <property name="name">cBar</property>
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <property name="round-digits">1</property>
@@ -153,7 +156,8 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkBox">
+                  <object class="GtkBox" id="rgbBox">
+                    <property name="name">rgbBox</property>
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <child>

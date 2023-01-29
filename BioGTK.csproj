@@ -2,12 +2,11 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <ApplicationIcon>Bio.ico</ApplicationIcon>
-    <PlatformTarget>x64</PlatformTarget>
+    <OutputType>Library</OutputType>
+    <RuntimeIdentifiers>osx-x64</RuntimeIdentifiers>
+    <AssemblyVersion>1.1</AssemblyVersion>
+    <FileVersion>1.1</FileVersion>
   </PropertyGroup>
-
   <ItemGroup>
     <None Remove="Glade\About.glade" />
     <None Remove="Glade\ApplyFilter.glade" />
@@ -189,9 +188,14 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="F:\Shared\Bio\BioGTK\BioGTK\.editorconfig" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
     <PackageReference Include="CS-Script" Version="4.6.2" />
+    <PackageReference Include="Dotnet.Bundle" Version="0.9.13" />
     <PackageReference Include="GtkSharp" Version="3.24.24.38" />
     <PackageReference Include="IKVM" Version="8.4.4" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
@@ -199,16 +203,21 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\AForgeBio\AForgeBio\AForgeBio\AForgeBio.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <Reference Include="bioformats_package">
-      <HintPath>D:\ikvm\IKVM-8.4.4\bioformats_package.dll</HintPath>
-    </Reference>
-  </ItemGroup>
 
   <ItemGroup>
     <None Update="banner.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EditorConfigFiles Remove="F:\Shared\Bio\BioGTK\BioGTK\.editorconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="bioformats_package">
+      <HintPath>bioformats_package.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

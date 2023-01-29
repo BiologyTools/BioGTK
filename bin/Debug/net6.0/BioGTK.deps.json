@@ -11,6 +11,7 @@
           "AForgeBio": "1.0.0",
           "BitMiracle.LibTiff.NET": "2.4.649",
           "CS-Script": "4.6.2",
+          "DotNet.Bundle": "0.9.13",
           "GtkSharp": "3.24.24.38",
           "IKVM": "8.4.4",
           "Newtonsoft.Json": "13.0.2",
@@ -61,6 +62,7 @@
           }
         }
       },
+      "DotNet.Bundle/0.9.13": {},
       "GdkSharp/3.24.24.38": {
         "dependencies": {
           "CairoSharp": "3.24.24.38",
@@ -957,6 +959,7 @@
       },
       "AForgeBio/1.0.0": {
         "dependencies": {
+          "GtkSharp": "3.24.24.38",
           "System.Drawing.Primitives": "4.3.0"
         },
         "runtime": {
@@ -1006,6 +1009,13 @@
       "sha512": "sha512-sn4S4g0Fxf36RhUe7nZfrjlYVXwZ0MAMhkgkilIvXpJ7yssgOklsxhSaM0e16AefVEbjkc+otFS+ekuUThDSVA==",
       "path": "cs-script/4.6.2",
       "hashPath": "cs-script.4.6.2.nupkg.sha512"
+    },
+    "DotNet.Bundle/0.9.13": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ap71k9yjYyvi2kZNkrH7mP/IZ68apMoU84AqL8FDHlEa7f3YwEcck4UU4uweS2zfx1x0C33JcYCeCp4wewag8w==",
+      "path": "dotnet.bundle/0.9.13",
+      "hashPath": "dotnet.bundle.0.9.13.nupkg.sha512"
     },
     "GdkSharp/3.24.24.38": {
       "type": "package",
