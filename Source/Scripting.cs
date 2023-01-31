@@ -488,6 +488,13 @@ namespace BioGTK
             }
         }
         */
+        /// Runs a script file by name
+        /// 
+        /// @param file The filename of the script you want to run.
+        public static void RunByName(string name)
+        {
+            Scripts[name].Run();
+        }
         /// It runs a script file
         /// 
         /// @param file The file path of the script you want to run.
