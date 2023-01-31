@@ -1955,9 +1955,9 @@ namespace BioGTK
                 max = b.Channels[0].RangeR.Max;
                 return this;
             }
-            /// It returns a string that contains the values of all the variables in the image
+            /// It returns a string that contains the values of all the variables in the imagej image
             /// 
-            /// @return A string.
+            /// @return A string representation of the imagej image data.
             public string GetString()
             {
                 string s = "";
