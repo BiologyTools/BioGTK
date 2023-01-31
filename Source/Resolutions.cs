@@ -9,17 +9,17 @@ using System.Runtime.CompilerServices;
 
 namespace BioGTK
 {
-    /// <summary> Example Test Form for GTKSharp and Glade. </summary>
+    
     public class Resolutions : Gtk.Window
     {
         #region Properties
 
-        /// <summary> Used to load in the glade file resource as a window. </summary>
+        
         private Builder _builder;
         internal int resolution;
 #pragma warning disable 649
 
-        /// <summary> Connects to the SendButton on the Glade Window. </summary>
+        
         [Builder.Object]
         private Gtk.Button okBut;
         [Builder.Object]
@@ -31,14 +31,19 @@ namespace BioGTK
 
         #endregion
 
+        /* A property. */
         public int Resolution
         {
             get { return resolution; }
         }
 
         #region Constructors / Destructors
-        /// <summary> Default Shared Constructor. </summary>
-        /// <returns> A TestForm1. </returns>
+        
+        /// Create a new Resolutions object, and return it
+        /// 
+        /// @param ress The array of resolutions to be displayed.
+        /// 
+        /// @return A new instance of the Resolutions class.
         public static Resolutions Create(Resolution[] ress)
         {
             Builder builder = new Builder(null, "BioGTK.Glade.Resolutions.glade", null);
@@ -47,9 +52,7 @@ namespace BioGTK
             return res;
         }
 
-        /// <summary> Specialised constructor for use only by derived class. </summary>
-        /// <param name="builder"> The builder. </param>
-        /// <param name="handle">  The handle. </param>
+        /* A constructor. */
         protected Resolutions(Builder builder, IntPtr handle) : base(handle)
         {
             _builder = builder;
@@ -62,7 +65,7 @@ namespace BioGTK
 
         #region Handlers
 
-        /// <summary> Sets up the handlers. </summary>
+        /// It sets up the event handlers for the delete event and the ok and cancel buttons.
         protected void SetupHandlers()
         {
             DeleteEvent += OnLocalDeleteEvent;
@@ -80,9 +83,10 @@ namespace BioGTK
             
         }
 
-        /// <summary> Handle Close of Form, Quit Application. </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="a">      Event information to send to registered event handlers. </param>
+        /// When the user clicks the close button on the window, the application will quit.
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param DeleteEventArgs This is the event arguments that are passed to the event handler.
         protected void OnLocalDeleteEvent(object sender, DeleteEventArgs a)
         {
             Application.Quit();

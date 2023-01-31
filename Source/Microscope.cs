@@ -15,6 +15,7 @@ namespace BioGTK
 {
     public class Stage
     {
+        /* Defining the stage and axis types. */
         public static Type stageType;
         public static Type axisType;
         public static object xAxis;
@@ -23,6 +24,7 @@ namespace BioGTK
         public static double maxX;
         public static double minY;
         public static double maxY;
+        /* The constructor of the class Stage. */
         public Stage()
         {
             PointD d = GetPosition();
@@ -109,7 +111,6 @@ namespace BioGTK
         {
         }
     }
-
     public class Focus
     {
         public static Type focusType;
@@ -139,6 +140,7 @@ namespace BioGTK
         }
     }
 
+    /* The class is a wrapper for a list of objectives. */
     public class Objectives
     {
         public List<Objective> List = new List<Objective>();
@@ -213,6 +215,32 @@ namespace BioGTK
         }
     }
 
+
+    /* The class is a wrapper for the TLShutter class in the 
+
+    The class is used to control the shutter. 
+
+    The class is used in the following way: 
+
+    1. Create an instance of the class. 
+    2. Call the GetPosition() method to get the current position of the shutter. 
+    3. Call the SetPosition() method to set the position of the shutter. 
+
+    The GetPosition() method returns a short. 
+
+    The SetPosition() method takes an int as an argument. 
+
+    The SetPosition() method sets the position of the shutter. 
+
+    The position of the shutter is an int. 
+
+    The position of the shutter is set to 0 when the shutter is closed. 
+
+    The position of the shutter is set to 1 when the shutter is open. 
+
+    The position of the shutter is */
+
+    /* The class is a wrapper for the TLShutter class in the Thorlabs.MotionControl.DeviceManager.dll */
     public class TLShutter
     {
         public static Type tlType;
@@ -232,6 +260,7 @@ namespace BioGTK
         }
     }
 
+    /* It's a class that has a static variable that holds the position of the shutter. */
     public class RLShutter
     {
         public static Type rlType;
@@ -252,6 +281,7 @@ namespace BioGTK
 
     public static class Microscope
     {
+        /* Defining an enum. */
         public enum Actions
         {
             StageUp,
@@ -283,6 +313,10 @@ namespace BioGTK
         public static Assembly dll = null;
         public static Dictionary<string, Type> Types = new Dictionary<string, Type>();
         public static object root = null;
+        /// It sets the limits of the stage and focus, and then creates new instances of the stage,
+        /// focus, objectives, and shutters
+        /// 
+        /// @return The return value is the value of the last expression evaluated in the function.
         public static void Initialize()
         {
             if (initialized)
@@ -296,6 +330,10 @@ namespace BioGTK
             RLShutter = new RLShutter();
             initialized = true;
         }
+        /// Get the current position of the stage and the current focus position, and return a Point3D
+        /// object containing the X, Y, and Z coordinates
+        /// 
+        /// @return A Point3D object.
         public static Point3D GetPosition()
         {
             if (Stage == null)
@@ -305,6 +343,9 @@ namespace BioGTK
             return new Point3D(p.X, p.Y, f);
         }
 
+        /// It sets the position of the stage and focus to the values in the Point3D object
+        /// 
+        /// @param Point3D a class that contains 3 doubles, X, Y, and Z.
         public static void SetPosition(Point3D p)
         {
             Stage.SetPosition(p.X,p.Y);
@@ -312,11 +353,16 @@ namespace BioGTK
             Microscope.redraw = true;
         }
 
+        /// The function SetPosition() takes a PointD object as an argument and sets the position of the
+        /// stage to the X and Y coordinates of the PointD object
+        /// 
+        /// @param PointD 
         public static void SetPosition(PointD p)
         {
             Stage.SetPosition(p.X, p.Y);
             Microscope.redraw = true;
         }
+        /// If the shutter is closed, open it
         public static void OpenRL()
         {
             //If shutter is closed we open it.
@@ -324,6 +370,7 @@ namespace BioGTK
                 RLShutter.SetPosition(1);
         }
 
+        /// If the shutter is closed, open it
         public static void OpenTL()
         {
             //If shutter is closed we open it.
@@ -331,6 +378,7 @@ namespace BioGTK
                 TLShutter.SetPosition(1);
         }
 
+        /// If the shutter is open, then we close it
         public static void CloseRL()
         {
             //If shutter is open then we close it.
@@ -338,6 +386,7 @@ namespace BioGTK
                 RLShutter.SetPosition(1);
         }
 
+        /// If the shutter is open, then we close it
         public static void CloseTL()
         {
             //If shutter is open then we close it.
@@ -345,70 +394,105 @@ namespace BioGTK
                 TLShutter.SetPosition(1);
         }
 
+       /// Set the position of the shutter to the value of the variable tl
+       /// 
+       /// @param tl The position of the shutter.
         public static void SetTL(uint tl)
         {
             TLShutter.SetPosition((short)tl);
         }
 
+        /// The function takes a uint (unsigned integer) as an argument and sets the position of the
+        /// RLShutter to the value of the argument
+        /// 
+        /// @param tr the position of the shutter
         public static void SetRL(uint tr)
         {
             RLShutter.SetPosition((short)tr);
         }
 
+        /// GetTL() returns the position of the TLShutter object.
+        /// 
+        /// @return The position of the shutter.
         public static int GetTL()
         {
             return TLShutter.GetPosition();
         }
 
+        /// It returns the position of the RLShutter object
+        /// 
+        /// @return The position of the RLShutter.
         public static int GetRL()
         {
             return RLShutter.GetPosition();
         }
 
+        /// Move the stage up by a distance d
+        /// 
+        /// @param d The distance to move the stage up.
         public static void MoveUp(double d)
         {
             Stage.MoveUp(d);
         }
 
+        /// MoveRight(double d) moves the stage right by d
+        /// 
+        /// @param d The distance to move the stage in millimeters.
         public static void MoveRight(double d)
         {
             Stage.MoveRight(d);
         }
 
+       /// Move the stage down by the specified distance
+       /// 
+       /// @param d The distance to move down.
         public static void MoveDown(double d)
         {
             Stage.MoveDown(d);
         }
 
+        /// Move the stage left by the specified distance
+        /// 
+        /// @param d The distance to move the stage in mm.
         public static void MoveLeft(double d)
         {
             Stage.MoveLeft(d);
         }
+       /// Move the field up by the height of the current objective
         public static void MoveFieldUp()
         {
             Stage.MoveUp(Objectives.GetObjective().ViewHeight);
         }
 
+       /// Move the field right by the width of the view
         public static void MoveFieldRight()
         {
             Stage.MoveRight(Objectives.GetObjective().ViewWidth);
         }
 
+       /// Move the field down by the height of the objective
         public static void MoveFieldDown()
         {
             Stage.MoveDown(Objectives.GetObjective().ViewHeight);
         }
 
+       /// Move the field left by the width of the view
         public static void MoveFieldLeft()
         {
             Stage.MoveLeft(Objectives.GetObjective().ViewWidth);
         }
 
+       /// It sets the focus of the camera to the distance specified by the parameter
+       /// 
+       /// @param d The control to focus on.
         public static void SetFocus(double d)
         {
             Focus.SetFocus(d);
         }
 
+        /// It returns the current focus of the camera
+        /// 
+        /// @return The focus of the camera.
         public static double GetFocus()
         {
             return Focus.GetFocus();

@@ -9,12 +9,11 @@ using System.Threading.Tasks;
 
 namespace BioGTK
 {
-    /// <summary> Example Test Form for GTKSharp and Glade. </summary>
+    
     public class TabsView : Window
     {
         #region Properties
 
-        /// <summary> Used to load in the glade file resource as a window. </summary>
         private Builder _builder;
         public List<ImageView> viewers = new List<ImageView>();
         public static ImageView SelectedViewer
@@ -120,17 +119,18 @@ namespace BioGTK
         #endregion
 
         #region Constructors / Destructors
-        /// <summary> Default Shared Constructor. </summary>
-        /// <returns> A TestForm1. </returns>
+        
+       /// It creates a new instance of the TabsView class, which is a class that inherits from
+       /// Gtk.Window
+       /// 
+       /// @return A new instance of the TabsView class.
         public static TabsView Create()
         {
             Builder builder = new Builder(null, "BioGTK.Glade.TabsView.glade", null);
             return new TabsView(builder, builder.GetObject("TabsView").Handle);
         }
 
-        /// <summary> Specialised constructor for use only by derived class. </summary>
-        /// <param name="builder"> The builder. </param>
-        /// <param name="handle">  The handle. </param>
+        /* Setting up the UI. */
         protected TabsView(Builder builder, IntPtr handle) : base(handle)
         {
             _builder = builder;
@@ -143,7 +143,7 @@ namespace BioGTK
 
         #region Handlers
 
-        /// <summary> Sets up the handlers. </summary>
+        /// This function sets up the event handlers for the menu items
         protected void SetupHandlers()
         {
             openImagesMenu.ButtonPressEvent += openImagesMenuClick;
@@ -204,6 +204,12 @@ namespace BioGTK
             this.WindowStateEvent += TabsView_WindowStateEvent;
         }
 
+        /// If the window is minimized, hide all the image viewers. If the window is restored, show all
+        /// the image viewers
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param WindowStateEventArgs
+        /// https://developer.gnome.org/gtkmm/stable/classGtk_1_1WindowStateEvent.html
         private void TabsView_WindowStateEvent(object o, WindowStateEventArgs args)
         {
             if ((args.Event.ChangedMask & Gdk.WindowState.Iconified) != 0)
@@ -225,11 +231,19 @@ namespace BioGTK
             
         }
 
+        /// When the user switches to a new tab, the viewer for that tab is presented
+        /// 
+        /// @param o The object that called the event.
+        /// @param SwitchPageArgs 
         private void TabsView_SwitchPage(object o, SwitchPageArgs args)
         {
             viewers[(int)args.PageNum].Present();
         }
 
+        /// If the emission menu is active, then deactivate it. Otherwise, activate it
+        /// 
+        /// @param o The object that the event is being called on.
+        /// @param ButtonPressEventArgs The event that is triggered when a button is pressed.
         private void EmissionMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             if (emissionMenu.Active)
@@ -240,6 +254,11 @@ namespace BioGTK
             rawMenu.Active = false;
             rgbMenu.Active = false;
         }
+        /// If the rawMenu is active, then set it to inactive. Otherwise, set it to active
+        /// 
+        /// @param o the object that the event is being called on
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-events-button.html.en
         private void RawMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             if (rawMenu.Active)
@@ -250,6 +269,12 @@ namespace BioGTK
             rgbMenu.Active = false;
             emissionMenu.Active = false;
         }
+        /// If the filtered menu is active, then deactivate it. Otherwise, activate it. Deactivate all
+        /// other menus
+        /// 
+        /// @param o the object that the event is being called on
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk3/stable/GtkWidget.html#GtkWidget-button-press-event
         private void FilteredMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             if (filteredMenu.Active)
@@ -260,6 +285,11 @@ namespace BioGTK
             rawMenu.Active = false;
             emissionMenu.Active = false;
         }
+        /// If the rgbMenu is active, then set it to inactive. Otherwise, set it to active
+        /// 
+        /// @param o the object that the event is being called on
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk3/stable/GtkWidget.html#GtkWidget-button-press-event
         private void RgbMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             if (rgbMenu.Active)
@@ -271,16 +301,30 @@ namespace BioGTK
             emissionMenu.Active = false;
         }
 
+        /// It adds a new tab to the tab control
+        /// 
+        /// @param BioImage This is the image that you want to display.
         public void AddTab(BioImage im)
         {
             tabsView.Add(ImageView.Create(im));
         }
 
+       /// When the TabsView is focused, set the tabsView variable in the App class to the TabsView
+       /// 
+       /// @param o The object that is being focused
+       /// @param FocusedArgs This is a class that contains the following properties:
         private void TabsView_Focused(object o, FocusedArgs args)
         {
             App.tabsView = this;
         }
 
+       /// It opens a file chooser dialog, and when the user selects a file, it creates a new BioImage
+       /// object, creates a new ImageView object, and adds the ImageView object to the list of viewers
+       /// 
+       /// @param sender The object that raised the event.
+       /// @param EventArgs The event arguments.
+       /// 
+       /// @return The response type of the dialog.
         protected void openImagesMenuClick(object sender, EventArgs a)
         {
             Gtk.FileChooserDialog filechooser =
@@ -305,6 +349,13 @@ namespace BioGTK
             this.ShowAll();
             filechooser.Destroy();
         }
+        /// It opens a file chooser dialog, and when the user selects a file, it opens the file and adds
+        /// it to the list of open images
+        /// 
+        /// @param sender The object that sent the event.
+        /// @param EventArgs The event arguments.
+        /// 
+        /// @return The response type of the dialog.
         protected void openOMEImagesMenuClick(object sender, EventArgs a)
         {
             Gtk.FileChooserDialog filechooser =
@@ -329,6 +380,13 @@ namespace BioGTK
             this.ShowAll();
             filechooser.Destroy();
         }
+        /// It opens a file chooser dialog, and when the user selects a file, it opens the file as a
+        /// BioImage, creates an ImageView for it, and adds the ImageView to the notebook
+        /// 
+        /// @param sender The object that sent the event.
+        /// @param EventArgs The event arguments.
+        /// 
+        /// @return A list of file names.
         protected void openOMESeriesMenuClick(object sender, EventArgs a)
         {
             Gtk.FileChooserDialog filechooser =
@@ -354,6 +412,13 @@ namespace BioGTK
             tabsView.ShowAll();
             filechooser.Destroy();
         }
+        /// It opens a file chooser dialog, and when the user selects a file, it opens the file as a
+        /// series of images, and adds each image to the notebook
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
+        /// 
+        /// @return The response type of the dialog.
         protected void openSeriesMenuClick(object sender, EventArgs a)
         {
             Gtk.FileChooserDialog filechooser =
@@ -380,6 +445,13 @@ namespace BioGTK
             filechooser.Destroy();
         }
 
+        /// It opens a file chooser dialog, and then adds the selected images to the currently selected
+        /// viewer
+        /// 
+        /// @param sender The object that sent the event.
+        /// @param EventArgs The event arguments.
+        /// 
+        /// @return The response type of the filechooser dialog.
         protected void addImagesToTabMenuClick(object sender, EventArgs a)
         {
             Gtk.FileChooserDialog filechooser =
@@ -399,6 +471,13 @@ namespace BioGTK
             this.ShowAll();
             filechooser.Destroy();
         }
+        /// It opens a file chooser dialog, and when the user selects a file, it opens the file as an
+        /// OME image, and adds it to the currently selected viewer
+        /// 
+        /// @param sender The object that sent the event.
+        /// @param EventArgs The event arguments.
+        /// 
+        /// @return The response type of the filechooser dialog.
         protected void addOMEImagesToTabClick(object sender, EventArgs a)
         {
             Gtk.FileChooserDialog filechooser =
@@ -419,6 +498,13 @@ namespace BioGTK
             filechooser.Destroy();
         }
 
+        /// It creates a file chooser dialog, and if the user selects a file, it saves the selected
+        /// image to that file
+        /// 
+        /// @param sender The object that triggered the event.
+        /// @param EventArgs This is the event that is being passed to the method.
+        /// 
+        /// @return The response type of the dialog.
         protected void saveSelectedTiffClick(object sender, EventArgs a)
         {
             Gtk.FileChooserDialog filechooser =
@@ -432,6 +518,12 @@ namespace BioGTK
             BioImage.Save(filechooser.Filename,ImageView.SelectedImage.ID);
             filechooser.Destroy();
         }
+        /// This function saves the selected image in the OME-TIFF format
+        /// 
+        /// @param sender The object that triggered the event.
+        /// @param EventArgs This is the event that is being called.
+        /// 
+        /// @return The response type of the filechooser dialog.
         protected void saveSelectedOMEClick(object sender, EventArgs a)
         {
             Gtk.FileChooserDialog filechooser =
@@ -445,6 +537,12 @@ namespace BioGTK
             BioImage.SaveOME(filechooser.Filename, ImageView.SelectedImage.ID);
             filechooser.Destroy();
         }
+        /// This function saves the current series of images to an OME-TIFF file
+        /// 
+        /// @param sender The object that triggered the event.
+        /// @param EventArgs The event arguments.
+        /// 
+        /// @return The response from the filechooser dialog.
         protected void saveTabOMEClick(object sender, EventArgs a)
         {
             Gtk.FileChooserDialog filechooser =
@@ -463,6 +561,12 @@ namespace BioGTK
             BioImage.SaveOMESeries(list.ToArray(), filechooser.Filename, true);
             filechooser.Destroy();
         }
+        /// It saves the current tab as a tiff file
+        /// 
+        /// @param sender The object that sent the event.
+        /// @param EventArgs 
+        /// 
+        /// @return The response type of the filechooser dialog.
         protected void saveTabTiffMenuClick(object sender, EventArgs a)
         {
             Gtk.FileChooserDialog filechooser =
@@ -481,133 +585,254 @@ namespace BioGTK
             BioImage.SaveSeries(list.ToArray(), filechooser.Filename);
             filechooser.Destroy();
         }
+        /// This function is called when the user clicks the "Save Series" menu item
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         protected void saveSeriesMenuClick(object sender, EventArgs a)
         {
 
         }
+        /// This function is called when the user clicks the "Images to Stack" button
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes that contain event data.
         protected void imagesToStackClick(object sender, EventArgs a)
         {
 
         }
+        /// When the user clicks on the RGB menu item, the viewer's mode is set to RGB
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         protected void rgbMenuClick(object sender, EventArgs a)
         {
             App.viewer.Mode = ImageView.ViewMode.RGBImage;
         }
+        /// When the user clicks on the "Filtered" menu item, the viewer's mode is set to "Filtered"
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         protected void filteredMenuClick(object sender, EventArgs a)
         {
             App.viewer.Mode = ImageView.ViewMode.Filtered;
         }
+        /// When the user clicks on the "Raw" menu item, the viewer's mode is set to "Raw"
+        /// 
+        /// @param sender The object that triggered the event.
+        /// @param EventArgs This is the event arguments that are passed to the event handler.
         protected void rawMenuClick(object sender, EventArgs a)
         {
             App.viewer.Mode = ImageView.ViewMode.Raw;
         }
+        /// When the user clicks on the emission menu item, the viewer's mode is set to emission
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         protected void emissionMenuClick(object sender, EventArgs a)
         {
             App.viewer.Mode = ImageView.ViewMode.Emission;
         }
+        /// This function is called when the user clicks on the XML menu item
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs This is the event arguments that are passed to the event handler.
         protected void xmlMenuClick(object sender, EventArgs a)
         {
 
         }
 
+        /// If the tools window is not open, open it
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         protected void toolsMenuClick(object sender, EventArgs a)
         {
             if(App.tools == null)
             App.tools = Tools.Create();
             App.tools.Show();
         }
+        /// This function is called when the user clicks on the "Tools" menu item
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs This is the event arguments that are passed to the event handler.
         protected void setToolMenuClick(object sender, EventArgs a)
         {
 
         }
 
+        /// This function is called when the user clicks on the ROI Manager menu item
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs This is the class that contains the event data.
         protected void roiManagerMenuClick(object sender, EventArgs a)
         {
             App.roiManager.Show();
         }
+        /// This function is called when a menu item is clicked
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         protected void MenuClick(object sender, EventArgs a)
         {
 
         }
+        /// This function is called when the user clicks on the "Export ROIs to CSV" menu item
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         protected void exportROIsToCSVMenuClick(object sender, EventArgs a)
         {
 
         }
+        /// This function is called when the user clicks on the "Import ROIs from CSV" menu item
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         protected void importROIsFromCSVMenuClick(object sender, EventArgs a)
         {
 
         }
+        /// This function is called when the user clicks on the "Export ROIs of Folder of Images" menu
+        /// item
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs 
         protected void exportROIsOfFolderOfImagesMenuClick(object sender, EventArgs a)
         {
 
         }
 
+        /// This function is called when the user clicks on the "Auto Threshold All" menu item.
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         protected void autoThresholdAllMenuClick(object sender, EventArgs a)
         {
 
         }
+        /// It creates a new instance of the ChannelsTool class, and then shows it
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         protected void channelsToolMenuClick(object sender, EventArgs a)
         {
             App.channelsTool = ChannelsTool.Create();
             App.channelsTool.Show();
         }
+        /// This function is called when the user clicks on the "Switch Red and Blue" menu item
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes that contain event data.
         protected void switchRedBlueMenuClick(object sender, EventArgs a)
         {
 
         }
 
+        /// This function is called when the user clicks on the "Rotate/Flip" menu item
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         protected void rotateFlipMenuClick(object sender, EventArgs a)
         {
 
         }
+        /// This function is called when the user clicks on the stack tool menu item
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         protected void stackToolMenuClick(object sender, EventArgs a)
         {
 
         }
 
+        /// The function is called when the user clicks on the "To 8-bit" menu item
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs This is the event arguments that are passed to the event handler.
         protected void to8BitMenuClick(object sender, EventArgs a)
         {
             ImageView.SelectedImage.To8Bit();
         }
+        /// This function converts the selected image to 16 bit
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs This is the event arguments that are passed to the event handler.
         protected void to16BitMenuClick(object sender, EventArgs a)
         {
             ImageView.SelectedImage.To16Bit();
         }
+        /// This function converts the selected image to 24 bit
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs This is the event arguments that are passed to the event handler.
         protected void to24BitMenuClick(object sender, EventArgs a)
         {
             ImageView.SelectedImage.To24Bit();
         }
+        /// It converts the selected image to 32 bit
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs This is the event arguments that are passed to the event handler.
         protected void to32BitMenuClick(object sender, EventArgs a)
         {
             ImageView.SelectedImage.To32Bit();
         }
+        /// This function converts the selected image to 48 bit
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs This is the event arguments that are passed to the event handler.
         protected void to48BitMenuClick(object sender, EventArgs a)
         {
             ImageView.SelectedImage.To48Bit();
         }
 
+        /// It shows the filters menu.
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes that contain event data.
         protected void filtersMenuClick(object sender, EventArgs a)
         {
             App.filters.Show();
         }
 
+        /// This function is called when the user clicks on the "Run" menu item
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs This is the event arguments that are passed to the event handler.
         protected void runMenuClick(object sender, EventArgs a)
         {
 
         }
+        /// This function is called when the user clicks on the functions tool menu item
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         protected void functionsToolMenuClick(object sender, EventArgs a)
         {
 
         }
+        /// This function is called when the user clicks on the console menu button
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs This is the event arguments that are passed to the event handler.
         protected void consoleMenuClick(object sender, EventArgs a)
         {
 
         }
+        /// It's a function that runs when the user clicks on the "Script Runner" menu item
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs This is the event arguments.
         protected void scriptRunnerMenuClick(object sender, EventArgs a)
         {
             App.scripting.Show();
         }
 
+        /// It creates a new instance of the About class, and then shows it
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         protected void AboutClick(object sender, EventArgs a)
         {
             About ab = About.Create();

@@ -53,12 +53,17 @@ namespace BioGTK
         #endregion
 
         #region Constructors / Destructors
+        /// It creates a new instance of the Scripting class, which is a class that inherits from the
+        /// Gtk.Window class
+        /// 
+        /// @return A new instance of the Scripting class.
         public static Scripting Create()
         {
             Builder builder = new Builder(null, "BioGTK.Glade.Scripting.glade", null);
             return new Scripting(builder, builder.GetObject("scripting").Handle);
         }
        
+        /* Creating a new instance of the Scripting class. */
         protected Scripting(Builder builder, IntPtr handle) : base(handle)
         {
             _builder = builder;
@@ -74,6 +79,11 @@ namespace BioGTK
             scriptLabel.Text = "NewScript.cs";
         }
 
+        /// If the user presses the "s" key while holding down the control key, then call the Save()
+        /// function
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param KeyPressEventArgs This is the event that is triggered when a key is pressed.
         private void Scripting_KeyPressEvent(object o, KeyPressEventArgs args)
         {
             if (args.Event.Key == Gdk.Key.s && args.Event.State == Gdk.ModifierType.ControlMask)
@@ -82,6 +92,12 @@ namespace BioGTK
             }
         }
 
+       /// When a row is activated, the first argument is the name of the script, and if the script
+       /// exists, it is set as the selected item.
+       /// 
+       /// @param o The object that called the event
+       /// @param RowActivatedArgs This is a class that contains the arguments that are passed to the
+       /// event handler.
         private void ScriptView_RowActivated(object o, RowActivatedArgs args)
         {
             string s = (string)args.Args[0];
@@ -90,7 +106,9 @@ namespace BioGTK
         }
         #endregion
 
+        /* Creating a static class called Window, and a static string called log. */
         public static Window window;
+        /* Declaring a static variable called log. */
         public static string log;
         public static string ImageJPath = ImageJ.ImageJPath;
         public static Dictionary<string,Script> scripts = new Dictionary<string,Script>();
@@ -112,6 +130,7 @@ namespace BioGTK
             public Exception ex = null;
             public Thread thread;
             public ScriptType type = ScriptType.script;
+            /* Creating a new script object. */
             public Script(string file, string scriptStr)
             {
                 name = System.IO.Path.GetFileName(file);
@@ -119,6 +138,8 @@ namespace BioGTK
                 if (file.EndsWith(".txt") || file.EndsWith(".ijm"))
                     type = ScriptType.imagej;
             }
+            /* Reading the file and storing the file name, file path, and file contents in the
+            variables name, file, and scriptString. */
             public Script(string file)
             {
                 name = System.IO.Path.GetFileName(file);
@@ -127,6 +148,32 @@ namespace BioGTK
                 if (file.EndsWith(".txt") || file.EndsWith(".ijm"))
                     type = ScriptType.imagej;
             }
+            /// It creates a new thread and starts it. 
+            /// 
+            /// The thread is started by calling the RunScript function. 
+            /// 
+            /// The RunScript function is defined below: 
+            /// 
+            /// /*
+            /// C#
+            /// */
+            /// public static void RunScript()
+            ///             {
+            ///                 try
+            ///                 {
+            ///                     // Get the script
+            ///                     Script script = Script.GetScript(scriptName);
+            ///                     // Run the script
+            ///                     script.Run();
+            ///                 }
+            ///                 catch (Exception ex)
+            ///                 {
+            ///                     // Log the error
+            ///                     Logger.LogError(ex);
+            ///                 }
+            ///             }
+            /// 
+            /// @param Script The script you want to run.
             public static void Run(Script rn)
             {
                 scriptName = rn.name;
@@ -135,6 +182,7 @@ namespace BioGTK
             }
             private static string scriptName = "";
             private static string str = "";
+            /// It runs a script in a separate thread
             private static void RunScript()
             {
                 Script rn = Scripts[scriptName];
@@ -168,6 +216,12 @@ namespace BioGTK
                     }
                 }
             }
+            /// It takes a string, adds a bunch of using statements, wraps it in a class, and then runs
+            /// it
+            /// 
+            /// @param st The string to be executed
+            /// 
+            /// @return The return value of the last statement in the script.
             public static object RunString(string st)
             {
                 try
@@ -204,6 +258,7 @@ namespace BioGTK
                     return e;
                 }
             }
+            /// It creates a new thread and starts it
             public void Run()
             {
                 if (!Scripts.ContainsKey(name))
@@ -212,11 +267,16 @@ namespace BioGTK
                 thread = new Thread(new ThreadStart(RunScript));
                 thread.Start();
             }
+            /// It stops the thread
             public void Stop()
             {
                 if(thread!=null)
                 thread.Abort();
             }
+            /// If the thread is not null, return the name and the thread state. Otherwise, return the
+            /// name
+            /// 
+            /// @return The name of the thread and the state of the thread.
             public override string ToString()
             {
                 if (thread != null)
@@ -227,9 +287,17 @@ namespace BioGTK
                     return name.ToString();
             }
         }
+        /* It's a class that represents a mouse event */
         public class State
         {
             public Event type;
+            /// > This function returns a new State object with the type set to Event.Up, the point set
+            /// to the point passed in, and the buttons set to the buttons passed in
+            /// 
+            /// @param PointD A point with double precision.
+            /// @param mb Mouse button
+            /// 
+            /// @return A new state object is being returned.
             public static State GetUp(PointD pf,uint mb)
             {
                 
@@ -239,14 +307,13 @@ namespace BioGTK
                 st.buts = mb;
                 return st;
             }
-            public static State GetDown(PointD pf, uint mb)
-            {
-                State st = new State();
-                st.type = Event.Down;
-                st.p = pf;
-                st.buts = mb;
-                return st;
-            }
+            /// > This function returns a new state object with the type set to Event.Move, the point
+            /// set to the point passed in, and the mouse buttons set to the mouse buttons passed in
+            /// 
+            /// @param PointD A point with double precision.
+            /// @param mb Mouse button
+            /// 
+            /// @return A new state object with the type of event, the point, and the mouse button.
             public static State GetMove(PointD pf, uint mb)
             {
                 State st = new State();
@@ -255,6 +322,10 @@ namespace BioGTK
                 st.buts = mb;
                 return st;
             }
+            /// It returns a new State object with the type set to None, the point set to a new PointD
+            /// object, and the buttons set to 0
+            /// 
+            /// @return A new State object is being returned.
             public static State GetNone()
             {
                 State st = new State();
@@ -273,6 +344,7 @@ namespace BioGTK
             }
 
         }
+        /* Defining an enum. */
         public enum Event
         {
             Down,
@@ -280,6 +352,7 @@ namespace BioGTK
             Move,
             None
         }
+        /* Defining an enum. */
         public enum ScriptType
         {
             tool,
@@ -295,10 +368,20 @@ namespace BioGTK
             }
         }
         private static State state;
+        /// It returns the state of the game.
+        /// 
+        /// @return The state of the game.
         public static State GetState()
         {
             return state;
         }
+        /// If the state is null, return. If the state is not null, set the state to the new state. If
+        /// the state is not null and the new state is the same as the old state, set the processed flag
+        /// to true
+        /// 
+        /// @param State The state of the game.
+        /// 
+        /// @return The state of the current object.
         public static void UpdateState(State s)
         {
             if (s == null)
@@ -312,6 +395,7 @@ namespace BioGTK
             else
             state = s;
         }
+        /// It loads all the scripts in the Scripts and Tools folders into the TreeView
         public void InitItems()
         {
             Gtk.TreeViewColumn typeCol = new Gtk.TreeViewColumn();
@@ -355,6 +439,7 @@ namespace BioGTK
             }
         }
 
+        /// It takes the list of scripts and puts them into a tree view
         public void RefreshItems()
         {
             Gtk.TreeStore store = new Gtk.TreeStore(typeof(string), typeof(string));
@@ -403,6 +488,9 @@ namespace BioGTK
             }
         }
         */
+        /// It runs a script file
+        /// 
+        /// @param file The file path of the script you want to run.
         public void RunScriptFile(string file)
         {
             Script sc = new Script(file);
@@ -410,16 +498,25 @@ namespace BioGTK
             RefreshItems();
             RunByName(sc.name);
         }
+        /// It creates a new script object, adds it to the dictionary, and then runs it
+        /// 
+        /// @param file The file path to the script.
         public static void RunScript(string file)
         {
             Script sc = new Script(file);
             Scripts.Add(sc.name, sc);
             RunByName(sc.name);
         }
+        /// It runs a string as a Lua script
+        /// 
+        /// @param st The string to run.
         public static void RunString(string st)
         {
             Script.RunString(st);
         }
+        /// It runs the script that is currently selected in the list
+        /// 
+        /// @return The output of the script is being returned.
         public void Run()
         {
             log = "";
@@ -436,6 +533,9 @@ namespace BioGTK
             logBox.Buffer.Text = log;
             
         }
+        /// We stop the script.
+        /// 
+        /// @return The SelectedItem is being returned.
         public void Stop()
         {
             if (SelectedItem == null)
@@ -443,22 +543,34 @@ namespace BioGTK
             //We stop this script
             SelectedItem.Stop();
         }
-        public static void RunByName(string name)
-        {
-            Scripts[name].Run();
-        }
-
+        /// It runs the program.
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
+        
         private void runToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Run();
         }
+        /// It opens the folder where the scripts are stored.
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
 
         private void openScriptFolderToolStripMenuItem_Click(object sender, EventArgs e)
         {
             string path = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "\\Scripts";
             System.Diagnostics.Process.Start("explorer.exe", path);
         }
+        /// It refreshes the items in the list view.
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
 
+        /// RefreshItems() is a function that refreshes the list of items in the listbox
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void refreshToolStripMenuItem_Click(object sender, EventArgs e)
         {
             RefreshItems();
@@ -474,6 +586,10 @@ namespace BioGTK
             scriptLabel.Text = s.name;
         }
         */
+        /// If the script ends with .ijm, then run it in ImageJ, otherwise run it in C#
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void runButton_Click(object sender, EventArgs e)
         {
             if (scriptLabel.Text.EndsWith(".ijm"))
@@ -484,6 +600,12 @@ namespace BioGTK
                 Run();
         }
 
+        /// It opens a file dialog, reads the file, and adds it to a dictionary
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
+        /// 
+        /// @return The file name of the file that was selected.
         private void scriptLoadBut_Click(object sender, EventArgs e)
         {
             Gtk.FileChooserDialog filechooser =
@@ -505,6 +627,11 @@ namespace BioGTK
             RefreshItems();
         }
 
+        /// It creates a file chooser dialog, sets the current folder to the directory of the current
+        /// process, and if the user clicks the save button, it writes the contents of the text view to
+        /// the file
+        /// 
+        /// @return The file name of the file that was selected.
         private void Save()
         {
             Gtk.FileChooserDialog filechooser =
@@ -520,6 +647,10 @@ namespace BioGTK
             File.WriteAllText(filechooser.Filename, view.Buffer.Text);
         }
 
+        /// It stops the timer and resets the timer to 0
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         private void stopBut_Click(object sender, EventArgs e)
         {
             Stop();

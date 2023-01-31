@@ -31,17 +31,17 @@ namespace BioGTK
         #endregion
 
         #region Constructors / Destructors
-        /// <summary> Default Shared Constructor. </summary>
-        /// <returns> A TestForm1. </returns>
+        
+       /// It creates a new TextInput object, which is a Gtk.Window, and returns it
+       /// 
+       /// @return A new instance of the TextInput class.
         public static TextInput Create()
         {
             Builder builder = new Builder(null, "BioGTK.Glade.TextInput.glade", null);
             return new TextInput(builder, builder.GetObject("textInput").Handle);
         }
 
-        /// <summary> Specialised constructor for use only by derived class. </summary>
-        /// <param name="builder"> The builder. </param>
-        /// <param name="handle">  The handle. </param>
+        /* The constructor for the TextInput class. */
         protected TextInput(Builder builder, IntPtr handle) : base(handle)
         {
             _builder = builder;
@@ -50,12 +50,23 @@ namespace BioGTK
             cancelBut.ButtonPressEvent += CancelBut_ButtonPressEvent;
         }
 
+        /// When the Cancel button is pressed, the dialog box is closed
+        /// 
+        /// @param o The object that the event is being called on.
+        /// @param ButtonPressEventArgs 
         private void CancelBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Respond(ResponseType.Cancel);
             Hide();
         }
 
+        /// The function is called when the user clicks the OK button. It sets the text of the selected
+        /// ROI to the text entered by the user in the text box. It also sets the font family and font
+        /// size of the selected ROI to the font family and font size selected by the user. Finally, it
+        /// adds the selected ROI to the image
+        /// 
+        /// @param o the object that the event is attached to
+        /// @param ButtonPressEventArgs 
         private void OkBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Tools.selectedROI.Text = textinputBox.Text;
@@ -70,11 +81,13 @@ namespace BioGTK
             Hide();
         }
 
+        /* A property that returns the RGBA value of the color button. */
         public Gdk.RGBA RGBA
         {
             get { return colorBut.Rgba; }
         }
 
+        /* Returning the font family of the font button. */
         public string FontFamily
         {
             get

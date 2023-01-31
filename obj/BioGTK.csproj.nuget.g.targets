@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
 <Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Import Project="$(NuGetPackageRoot)nuget.build.tasks.pack\6.4.0\build\NuGet.Build.Tasks.Pack.targets" Condition="Exists('$(NuGetPackageRoot)nuget.build.tasks.pack\6.4.0\build\NuGet.Build.Tasks.Pack.targets')" />
     <Import Project="$(NuGetPackageRoot)ikvm.msbuild.tools\8.4.4\buildTransitive\netstandard2.0\IKVM.MSBuild.Tools.targets" Condition="Exists('$(NuGetPackageRoot)ikvm.msbuild.tools\8.4.4\buildTransitive\netstandard2.0\IKVM.MSBuild.Tools.targets')" />
     <Import Project="$(NuGetPackageRoot)ikvm.msbuild\8.4.4\buildTransitive\netstandard2.0\IKVM.MSBuild.targets" Condition="Exists('$(NuGetPackageRoot)ikvm.msbuild\8.4.4\buildTransitive\netstandard2.0\IKVM.MSBuild.targets')" />
     <Import Project="$(NuGetPackageRoot)ikvm.image\8.4.4\buildTransitive\IKVM.Image.targets" Condition="Exists('$(NuGetPackageRoot)ikvm.image\8.4.4\buildTransitive\IKVM.Image.targets')" />

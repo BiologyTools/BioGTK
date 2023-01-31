@@ -700,6 +700,15 @@
           }
         }
       },
+      "NuGet.Build.Tasks.Pack/6.4.0": {
+        "type": "package",
+        "build": {
+          "build/NuGet.Build.Tasks.Pack.targets": {}
+        },
+        "buildMultiTargeting": {
+          "buildCrossTargeting/NuGet.Build.Tasks.Pack.targets": {}
+        }
+      },
       "PangoSharp/3.24.24.38": {
         "type": "package",
         "dependencies": {
@@ -2048,6 +2057,15 @@
           "lib/net6.0/Newtonsoft.Json.dll": {
             "related": ".xml"
           }
+        }
+      },
+      "NuGet.Build.Tasks.Pack/6.4.0": {
+        "type": "package",
+        "build": {
+          "build/NuGet.Build.Tasks.Pack.targets": {}
+        },
+        "buildMultiTargeting": {
+          "buildCrossTargeting/NuGet.Build.Tasks.Pack.targets": {}
         }
       },
       "PangoSharp/3.24.24.38": {
@@ -8343,6 +8361,49 @@
         "packageIcon.png"
       ]
     },
+    "NuGet.Build.Tasks.Pack/6.4.0": {
+      "sha512": "OVyoerTSmuh6On0Y90GzptNrckYSvm76Z3DzJSMFUJFy6YqHUpq+1YWt+hbwynTN23gfYdjrF/vpLLUh32Ctng==",
+      "type": "package",
+      "path": "nuget.build.tasks.pack/6.4.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "CoreCLR/NuGet.Build.Tasks.Pack.dll",
+        "CoreCLR/cs/NuGet.Build.Tasks.Pack.resources.dll",
+        "CoreCLR/de/NuGet.Build.Tasks.Pack.resources.dll",
+        "CoreCLR/es/NuGet.Build.Tasks.Pack.resources.dll",
+        "CoreCLR/fr/NuGet.Build.Tasks.Pack.resources.dll",
+        "CoreCLR/it/NuGet.Build.Tasks.Pack.resources.dll",
+        "CoreCLR/ja/NuGet.Build.Tasks.Pack.resources.dll",
+        "CoreCLR/ko/NuGet.Build.Tasks.Pack.resources.dll",
+        "CoreCLR/pl/NuGet.Build.Tasks.Pack.resources.dll",
+        "CoreCLR/pt-BR/NuGet.Build.Tasks.Pack.resources.dll",
+        "CoreCLR/ru/NuGet.Build.Tasks.Pack.resources.dll",
+        "CoreCLR/tr/NuGet.Build.Tasks.Pack.resources.dll",
+        "CoreCLR/zh-Hans/NuGet.Build.Tasks.Pack.resources.dll",
+        "CoreCLR/zh-Hant/NuGet.Build.Tasks.Pack.resources.dll",
+        "Desktop/NuGet.Build.Tasks.Pack.dll",
+        "Desktop/cs/NuGet.Build.Tasks.Pack.resources.dll",
+        "Desktop/de/NuGet.Build.Tasks.Pack.resources.dll",
+        "Desktop/es/NuGet.Build.Tasks.Pack.resources.dll",
+        "Desktop/fr/NuGet.Build.Tasks.Pack.resources.dll",
+        "Desktop/it/NuGet.Build.Tasks.Pack.resources.dll",
+        "Desktop/ja/NuGet.Build.Tasks.Pack.resources.dll",
+        "Desktop/ko/NuGet.Build.Tasks.Pack.resources.dll",
+        "Desktop/pl/NuGet.Build.Tasks.Pack.resources.dll",
+        "Desktop/pt-BR/NuGet.Build.Tasks.Pack.resources.dll",
+        "Desktop/ru/NuGet.Build.Tasks.Pack.resources.dll",
+        "Desktop/tr/NuGet.Build.Tasks.Pack.resources.dll",
+        "Desktop/zh-Hans/NuGet.Build.Tasks.Pack.resources.dll",
+        "Desktop/zh-Hant/NuGet.Build.Tasks.Pack.resources.dll",
+        "README.md",
+        "build/NuGet.Build.Tasks.Pack.targets",
+        "buildCrossTargeting/NuGet.Build.Tasks.Pack.targets",
+        "icon.png",
+        "nuget.build.tasks.pack.6.4.0.nupkg.sha512",
+        "nuget.build.tasks.pack.nuspec"
+      ]
+    },
     "PangoSharp/3.24.24.38": {
       "sha512": "NpTRGMOJvxJwRIEXV0hyAnFt26mLYwGu70TLCZecXwWgdQx87HWsAUWgzjL8atdExquebSBumKP6cZjkEAQuaA==",
       "type": "package",
@@ -10752,7 +10813,8 @@
       "Dotnet.Bundle >= 0.9.13",
       "GtkSharp >= 3.24.24.38",
       "IKVM >= 8.4.4",
-      "Newtonsoft.Json >= 13.0.2"
+      "Newtonsoft.Json >= 13.0.2",
+      "NuGet.Build.Tasks.Pack >= 6.4.0"
     ]
   },
   "packageFolders": {
@@ -10761,7 +10823,7 @@
     "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder": {}
   },
   "project": {
-    "version": "1.0.0",
+    "version": "1.1.0",
     "restore": {
       "projectUniqueName": "F:\\Shared\\Bio\\BioGTK\\BioGTK\\BioGTK.csproj",
       "projectName": "BioGTK",
@@ -10830,6 +10892,12 @@
           "Newtonsoft.Json": {
             "target": "Package",
             "version": "[13.0.2, )"
+          },
+          "NuGet.Build.Tasks.Pack": {
+            "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+            "suppressParent": "All",
+            "target": "Package",
+            "version": "[6.4.0, )"
           }
         },
         "imports": [

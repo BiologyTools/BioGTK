@@ -51,6 +51,12 @@
               "target": "Package",
               "version": "[3.24.24.38, )"
             },
+            "NuGet.Build.Tasks.Pack": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[6.4.0, )"
+            },
             "System.Drawing.Primitives": {
               "target": "Package",
               "version": "[4.3.0, )"
@@ -77,7 +83,7 @@
       }
     },
     "F:\\Shared\\Bio\\BioGTK\\BioGTK\\BioGTK.csproj": {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "restore": {
         "projectUniqueName": "F:\\Shared\\Bio\\BioGTK\\BioGTK\\BioGTK.csproj",
         "projectName": "BioGTK",
@@ -146,6 +152,12 @@
             "Newtonsoft.Json": {
               "target": "Package",
               "version": "[13.0.2, )"
+            },
+            "NuGet.Build.Tasks.Pack": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[6.4.0, )"
             }
           },
           "imports": [

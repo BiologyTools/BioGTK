@@ -13,6 +13,12 @@ namespace BioGTK
         public static string ImageJPath;
         public static List<Process> processes = new List<Process>();
         private static Random rng = new Random();
+        /// It runs a macro in ImageJ
+        /// 
+        /// @param file the path to the macro file
+        /// @param param The parameter to pass to the macro.
+        /// 
+        /// @return The macro is being returned.
         public static void RunMacro(string file, string param)
         {
             if(ImageJPath == "")
@@ -28,6 +34,13 @@ namespace BioGTK
             processes.Add(pr);
             Recorder.AddLine("ImageJ.RunMacro(" + file + "," + '"' + param + '"' + ");");
         }
+        /// It runs a macro in ImageJ
+        /// 
+        /// @param con The macro code
+        /// @param param The parameters to pass to the macro.
+        /// @param headless Whether or not to run ImageJ in headless mode.
+        /// 
+        /// @return Nothing.
         public static void RunString(string con, string param, bool headless)
         {
 
@@ -70,6 +83,17 @@ namespace BioGTK
             } while (!pr.HasExited);
             File.Delete(p);
         }
+        /// It runs a macro on the current image, saves the result as a new image, and then opens the
+        /// new image in a new tab
+        /// 
+        /// @param con The ImageJ macro to run on the image.
+        /// @param headless Whether to run ImageJ in headless mode.
+        /// @param onTab If true, the image will be opened in a new tab. If false, the image will be
+        /// opened in the current tab.
+        /// @param bioformats If true, the image is opened using the bioformats plugin. If false, the
+        /// image is opened using the default imagej open command.
+        /// 
+        /// @return The image is being returned as a new tab.
         public static void RunOnImage(string con, bool headless, bool onTab, bool bioformats)
         {
             if (ImageJPath == "")
@@ -116,6 +140,9 @@ namespace BioGTK
             
             Recorder.AddLine("RunOnImage(\"" + con + "\"," + headless + "," + onTab + ");");
         }
+        /// This function is used to initialize the path of the ImageJ.exe file
+        /// 
+        /// @param path The path to the ImageJ executable.
         public static void Initialize(string path)
         {
             ImageJPath = path;

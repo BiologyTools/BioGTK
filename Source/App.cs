@@ -21,6 +21,7 @@ namespace BioGTK
         public static ROIManager roiManager = null;
         public static Scripting scripting = null;
 
+        /// Initialize() is a function that initializes the BioImage Suite Web
         public static void Initialize()
         {
             BioImage.Initialize();
@@ -33,6 +34,10 @@ namespace BioGTK
             ImageJ.ImageJPath = Settings.GetSettings("ImageJPath");
         }
 
+        /// This function creates a file chooser dialog that allows the user to select the location of
+        /// the ImageJ executable
+        /// 
+        /// @return A boolean value.
         public static bool SetImageJPath()
         {
             Gtk.FileChooserDialog filechooser =

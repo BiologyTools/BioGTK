@@ -10,19 +10,20 @@ namespace Bio.Graphics
         int size;
         int head;
 
-        /// <summary>
-        /// Returns the number of items currently in the queue.
-        /// </summary>
+        
+        /* A property that returns the size of the queue. */
         public int Count
         {
             get { return size; }
         }
 
-		public FloodFillRangeQueue():this(10000)
+		/* A constructor that calls another constructor. */
+        public FloodFillRangeQueue():this(10000)
 		{
 
 		}
 
+        /* A constructor that takes an integer as an argument. */
         public FloodFillRangeQueue(int initialSize)
         {
             array = new FloodFillRange[initialSize];
@@ -30,13 +31,15 @@ namespace Bio.Graphics
             size = 0;
         }
 
-        /// <summary>Gets the <see cref="FloodFillRange"/> at the beginning of the queue.</summary>
+        /* Returning the first item in the queue. */
         public FloodFillRange First 
 		{
 			get { return array[head]; }
 		}
 
-        /// <summary>Adds a <see cref="FloodFillRange"/> to the end of the queue.</summary>
+        /// The queue is full if the head is at the end of the array
+        /// 
+        /// @param FloodFillRange A struct that contains the start and end of a range.
         public void Enqueue(ref FloodFillRange r) 
 		{
 			if (size+head == array.Length) 
@@ -49,7 +52,9 @@ namespace Bio.Graphics
             array[head+(size++)] = r;
 		}
 
-        /// <summary>Removes and returns the <see cref="FloodFillRange"/> at the beginning of the queue.</summary>
+        /// The function dequeues the first item in the queue and returns it
+        /// 
+        /// @return FloodFillRange
         public FloodFillRange Dequeue() 
 		{
             FloodFillRange range = new FloodFillRange();
@@ -63,7 +68,6 @@ namespace Bio.Graphics
             return range;
 		}
 
-        /// <summary>Remove all FloodFillRanges from the queue.</summary>
 		/*public void Clear() 
 		{
 			if (size > 0)

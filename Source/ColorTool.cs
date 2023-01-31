@@ -38,17 +38,21 @@ namespace BioGTK
         #endregion
 
         #region Constructors / Destructors
-        /// <summary> Default Shared Constructor. </summary>
-        /// <returns> A TestForm1. </returns>
+
+        /// It creates a new instance of the ColorTool class, which is a GTK# widget that allows the
+        /// user to select a color
+        /// 
+        /// @param ColorS The color to be displayed in the color tool.
+        /// 
+        /// @return A new instance of the ColorTool class.
         public static ColorTool Create(ColorS color)
         {
             Builder builder = new Builder(null, "BioGTK.Glade.ColorTool.glade", null);
             return new ColorTool(builder, builder.GetObject("colorTool").Handle, color);
         }
 
-        /// <summary> Specialised constructor for use only by derived class. </summary>
-        /// <param name="builder"> The builder. </param>
-        /// <param name="handle">  The handle. </param>
+       
+        /* The constructor for the class. */
         protected ColorTool(Builder builder, IntPtr handle, ColorS color) : base(handle)
         {
             _builder = builder;
@@ -75,8 +79,7 @@ namespace BioGTK
         #endregion
 
         #region Handlers
-
-        /// <summary> Sets up the handlers. </summary>
+        /// It sets up the event handlers for the sliders and text boxes
         protected void SetupHandlers()
         {
             rBar.ChangeValue += ChangeValue;
@@ -88,6 +91,11 @@ namespace BioGTK
             image.Drawn += Image_Drawn;
         }
 
+        /// The function takes the image and draws a rectangle on it with the color specified by the
+        /// RGBA struct
+        /// 
+        /// @param o The object that is being drawn.
+        /// @param DrawnArgs This is the event arguments that are passed to the event handler.
         private void Image_Drawn(object o, DrawnArgs args)
         {
             args.Cr.SetSourceRGBA(RGBA.Red, RGBA.Green, RGBA.Blue,RGBA.Alpha);
@@ -98,6 +106,11 @@ namespace BioGTK
             args.Cr.Paint();
         }
 
+        /// It changes the color of the color picker
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ChangeValueArgs
+        /// https://developer.gnome.org/gtkmm/stable/classGtk_1_1Scale_1_1ChangeValueArgs.html
         private void Box_ChangeValue(object o, ChangeValueArgs args)
         {
             Gdk.RGBA col = new Gdk.RGBA();
@@ -114,6 +127,10 @@ namespace BioGTK
 
         }
 
+        /// It changes the value of the textbox to the value of the slider
+        /// 
+        /// @param o The object that called the event
+        /// @param ChangeValueArgs 
         private void ChangeValue(object o, ChangeValueArgs args)
         {
             rBox.Value = rBar.Value;
@@ -125,10 +142,12 @@ namespace BioGTK
                 Tools.EraseColor = ColorS;
         }
 
+        /* Returning a new ColorS object with the values of the spin buttons. */
         public ColorS ColorS
         {
             get { return new ColorS((ushort)rBox.Value, (ushort)gBox.Value, (ushort)bBox.Value); }
         }
+        /* Returning a new RGBA object with the values of the spin buttons. */
         public RGBA RGBA
         {
             get {

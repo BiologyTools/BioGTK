@@ -25,6 +25,7 @@ using Gtk;
 
 namespace BioGTK
 {
+    /* A class declaration. */
     public static class Images
     {
         public static List<BioImage> images = new List<BioImage>();
@@ -129,6 +130,7 @@ namespace BioGTK
             Recorder.AddLine("Bio.Table.RemoveImage(" + '"' + id + '"' + ");");
         }
     }
+    /* A struct that is used to store the resolution of an image. */
     public struct Resolution
     {
         int x;
@@ -214,6 +216,7 @@ namespace BioGTK
             return "(" + x + ", " + y + ") " + format.ToString() + " " + (SizeInBytes / 1000) + " KB";
         }
     }
+    /* Declaring a struct named RectangleD. */
     public struct RectangleD
     {
         private double x;
@@ -288,6 +291,8 @@ namespace BioGTK
         }
 
     }
+
+/* The ROI class is a class that contains a list of points, a bounding box, and a type */
     public class ROI
     {
         /* Defining an enum. */
@@ -823,8 +828,11 @@ namespace BioGTK
             return type.ToString() + ", " + Text + " (" + W + ", " + H + "); " + " (" + Point.X + ", " + Point.Y + ") " + coord.ToString();
         }
     }
+    
+    /* It's a class that holds a string, an IFilter, and a Type */
     public class Filt
     {
+        /* Defining an enum. */
         public enum Type
         {
             Base = 0,
@@ -850,10 +858,22 @@ namespace BioGTK
     public static class Filters
     {
         public static int[,] indexs;
+        /// It takes a string as an argument and returns a filter object
+        /// 
+        /// @param name The name of the filter.
+        /// 
+        /// @return The value of the key "name" in the dictionary "filters"
         public static Filt GetFilter(string name)
         {
             return filters[name];
         }
+        /// It returns a filter from the filters dictionary, using the indexs array to find the index of
+        /// the filter in the dictionary
+        /// 
+        /// @param type The type of filter you want to get.
+        /// @param index The index of the filter in the list of filters.
+        /// 
+        /// @return The value of the filter at the index of the type and index.
         public static Filt GetFilter(int type, int index)
         {
             Filt[] Values = new Filt[filters.Values.Count];
@@ -1174,6 +1194,14 @@ namespace BioGTK
             }
             return img;
         }
+        /// It takes an image, applies a filter to it, and returns the filtered image
+        /// 
+        /// @param id the id of the image to be filtered
+        /// @param name The name of the filter to apply
+        /// @param inPlace If true, the image will be modified in place. If false, a copy of the image
+        /// will be created and the copy will be modified.
+        /// 
+        /// @return The image that was copied.
         public static BioImage Copy(string id, string name, bool inPlace)
         {
             BioImage img = Images.GetImage(id);

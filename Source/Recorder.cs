@@ -9,17 +9,14 @@ using System.Runtime.CompilerServices;
 
 namespace BioGTK
 {
-    /// <summary> Example Test Form for GTKSharp and Glade. </summary>
+    
     public class Recorder : Gtk.Window
     {
         #region Properties
-
-        /// <summary> Used to load in the glade file resource as a window. </summary>
         private Builder _builder;
         public static string log = "";
 #pragma warning disable 649
 
-        /// <summary> Connects to the SendButton on the Glade Window. </summary>
         [Builder.Object]
         private Gtk.Button clearBut;
         [Builder.Object]
@@ -30,21 +27,24 @@ namespace BioGTK
         #endregion
 
         #region Constructors / Destructors
-        /// <summary> Default Shared Constructor. </summary>
-        /// <returns> A TestForm1. </returns>
+
+        /// > Create a new instance of the Recorder class
+        /// 
+        /// @return A new instance of the Recorder class.
         public static Recorder Create()
         {
             Builder builder = new Builder(null, "BioGTK.Glade.Recorder.glade", null);
             return new Recorder(builder, builder.GetObject("recorderWindow").Handle);
         }
 
+       /// It adds a line to the log
+       /// 
+       /// @param s The string to add to the log.
         public static void AddLine(string s)
         {
             log += s + Environment.NewLine;
         }
-        /// <summary> Specialised constructor for use only by derived class. </summary>
-        /// <param name="builder"> The builder. </param>
-        /// <param name="handle">  The handle. </param>
+        /* The constructor for the class. */
         protected Recorder(Builder builder, IntPtr handle) : base(handle)
         {
             _builder = builder;
@@ -57,21 +57,26 @@ namespace BioGTK
 
         #region Handlers
 
-        /// <summary> Sets up the handlers. </summary>
+        /// It sets up the event handlers for the delete event and the clear button.
         protected void SetupHandlers()
         {
             DeleteEvent += OnLocalDeleteEvent;
             clearBut.Clicked += ClearBut_Clicked;
         }
 
+        /// This function clears the textbox when the clear button is clicked
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         private void ClearBut_Clicked(object? sender, EventArgs e)
         {
             textBox.Text = "";
         }
 
-        /// <summary> Handle Close of Form, Quit Application. </summary>
-        /// <param name="sender"> Source of the event. </param>
-        /// <param name="a">      Event information to send to registered event handlers. </param>
+        /// When the user clicks the X button on the window, the application will quit.
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param DeleteEventArgs This is the event arguments that are passed to the event handler.
         protected void OnLocalDeleteEvent(object sender, DeleteEventArgs a)
         {
             Application.Quit();

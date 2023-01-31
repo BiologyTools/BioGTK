@@ -85,6 +85,7 @@ namespace Bio
             Builder builder = new Builder(null, "BioGTK.Glade.ROIManager.glade", null);
             return new ROIManager(builder, builder.GetObject("roiManager").Handle);
         }
+        /* The above code is initializing the ROIManager class. */
         protected ROIManager(Builder builder, IntPtr handle) : base(handle)
         {
             _builder = builder;
@@ -162,6 +163,10 @@ namespace Bio
             pointYBox.Adjustment.PageIncrement = 0.1;
             InitItems();
         }
+        /// When the ROIManager gets focus, update the annotation list.
+        /// 
+        /// @param o The object that raised the event.
+        /// @param FocusInEventArgs
 
         private void ROIManager_FocusInEvent(object o, FocusInEventArgs args)
         {
@@ -173,6 +178,14 @@ namespace Bio
 
         public ROI anno = new ROI();
 
+        /// When a row is activated in the ROI view, the corresponding ROI is selected and its
+        /// properties are displayed in the property view
+        /// 
+        /// @param o the object that the event is being called from
+        /// @param RowActivatedArgs
+        /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-treeview-signals.html.en
+        /// 
+        /// @return The ROI object.
         private void RoiView_RowActivated(object o, RowActivatedArgs args)
         {
             TreeIter iter;
@@ -241,6 +254,8 @@ namespace Bio
             else
                 return;
         }
+        /// It creates a treeview with 4 columns, and then populates the treeview with the data from the
+        /// Images class
         public void InitItems()
         {
             Gtk.TreeViewColumn typeCol = new Gtk.TreeViewColumn();
@@ -287,6 +302,9 @@ namespace Bio
             roiView.Model = store;
 
         }
+        /// It takes a list of images, and for each image, it takes a list of annotations, and for each
+        /// annotation, it adds the annotation to a dictionary, and then adds the annotation to a
+        /// treeview
         public void UpdateAnnotationList()
         {
             rois.Clear();
@@ -303,10 +321,17 @@ namespace Bio
             roiView.Model = store;
         }
 
+        /// > UpdateView() is a function that updates the view of the viewer
         private void UpdateView()
         {
             App.viewer.UpdateView();
         }
+        /// > Update the ROI at the specified index with the specified ROI
+        /// 
+        /// @param index the index of the annotation to be updated
+        /// @param ROI The ROI object to be updated
+        /// 
+        /// @return The ROI object is being returned.
         public void updateROI(int index, ROI an)
         {
             if (ImageView.SelectedImage == null)
@@ -314,6 +339,12 @@ namespace Bio
             ImageView.SelectedImage.Annotations[index] = an;
             UpdateView();
         }
+        /// When the value of the X text box changes, the X value of the annotation is updated
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
+        /// 
+        /// @return The value of the X property of the annotation.
         private void xBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
@@ -322,6 +353,13 @@ namespace Bio
             UpdateAnnotationList();
             UpdateView();
         }
+        /// When the value of the yBox is changed, the value of the yBox is assigned to the Y property
+        /// of the annotation
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs 
+        /// 
+        /// @return The value of the Y coordinate of the annotation.
         private void yBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
@@ -330,6 +368,12 @@ namespace Bio
             UpdateView();
             UpdateAnnotationList();
         }
+        /// When the value of the width box changes, the width of the annotation is updated
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs 
+        /// 
+        /// @return The value of the width of the annotation.
         private void wBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
@@ -339,6 +383,12 @@ namespace Bio
             UpdateView();
             UpdateAnnotationList();
         }
+        /// This function is called when the value of the hBox is changed
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs 
+        /// 
+        /// @return The value of the hBox.Value property.
         private void hBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
@@ -348,6 +398,12 @@ namespace Bio
             UpdateAnnotationList();
             UpdateView();
         }
+        /// This function is called when the value of the checkbox is changed
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs e
+        /// 
+        /// @return The value of the selected item in the listbox.
         private void sBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
@@ -355,6 +411,13 @@ namespace Bio
             UpdateAnnotationList();
             UpdateView();
         }
+        /// When the value of the Z coordinate changes, update the annotation's Z coordinate and update
+        /// the view
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
+        /// 
+        /// @return The value of the Z coordinate of the annotation.
         private void zBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
@@ -362,6 +425,13 @@ namespace Bio
             anno.coord.Z = (int)zBox.Value;
             UpdateView();
         }
+        /// When the value of the C coordinate changes, update the annotation's C coordinate and update
+        /// the view
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs 
+        /// 
+        /// @return The value of the C coordinate of the annotation.
         private void cBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
@@ -369,6 +439,13 @@ namespace Bio
             anno.coord.C = (int)cBox.Value;
             UpdateView();
         }
+       /// When the user changes the value of the time slider, the annotation's time coordinate is
+       /// updated and the view is updated
+       /// 
+       /// @param sender The object that raised the event.
+       /// @param EventArgs 
+       /// 
+       /// @return The value of the annotation.
         private void tBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
@@ -376,6 +453,13 @@ namespace Bio
             anno.coord.T = (int)cBox.Value;
             UpdateView();
         }
+       /// When the value of the red color box changes, the red color value of the annotation is changed
+       /// to the value of the red color box
+       /// 
+       /// @param sender The object that raised the event.
+       /// @param EventArgs The event arguments.
+       /// 
+       /// @return The color of the annotation.
         private void rBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
@@ -383,6 +467,13 @@ namespace Bio
             anno.strokeColor = Color.FromArgb((byte)rBox.Value, anno.strokeColor.G, anno.strokeColor.B);
             UpdateView();
         }
+        /// When the value of the green trackbar changes, the green value of the annotation's stroke
+        /// color is updated to the new value
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
+        /// 
+        /// @return The value of the slider.
         private void gBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
@@ -390,6 +481,13 @@ namespace Bio
             anno.strokeColor = Color.FromArgb(anno.strokeColor.R, (byte)gBox.Value, anno.strokeColor.B);
             UpdateView();
         }
+       /// When the value of the blue color slider changes, the blue color value of the annotation is
+       /// updated
+       /// 
+       /// @param sender The object that raised the event.
+       /// @param EventArgs The event arguments.
+       /// 
+       /// @return The value of the slider is being returned.
         private void bBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
@@ -397,6 +495,13 @@ namespace Bio
             anno.strokeColor = Color.FromArgb(anno.strokeColor.R, anno.strokeColor.G, (byte)bBox.Value);
             UpdateView();
         }
+        /// When the text in the textbox changes, the text in the annotation changes, and the view is
+        /// updated
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
+        /// 
+        /// @return The textbox is being returned.
         private void textBox_TextChanged(object sender, EventArgs e)
         {
             if (anno == null)
@@ -405,6 +510,13 @@ namespace Bio
             UpdateView();
             UpdateAnnotationList();
         }
+        /// When the text in the idBox changes, the id of the annotation is set to the text in the idBox
+        /// 
+        /// @param sender The control that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes that contain event data,
+        /// and provides a value to use with events that do not include event data.
+        /// 
+        /// @return The idBox.Text is being returned.
         private void idBox_TextChanged(object sender, EventArgs e)
         {
             if (anno == null)
@@ -413,6 +525,13 @@ namespace Bio
             UpdateView();
             UpdateAnnotationList();
         }
+        /// When the ROI Manager is activated, if the selected image is not null, the name of the image
+        /// is displayed in the imageNameLabel
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs 
+        /// 
+        /// @return The image name.
         private void ROIManager_Activated(object sender, EventArgs e)
         {
             if (ImageView.SelectedImage == null)
@@ -423,6 +542,10 @@ namespace Bio
             UpdateAnnotationList();
         }
 
+        /// The function adds the annotation to the image and updates the view
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void addButton_Click(object sender, EventArgs e)
         {
             ImageView.SelectedImage.Annotations.Add(anno);
@@ -433,16 +556,32 @@ namespace Bio
         public static bool showR;
         public static bool showG;
         public static bool showB;
+        /// When the checkbox is clicked, the showBounds variable is set to the value of the checkbox
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs This is a class that contains the event data.
         private void showBoundsBox_ActiveChanged(object sender, EventArgs e)
         {
             showBounds = boundsBox.Active;
             UpdateView();
         }
+        /// When the checkbox is clicked, the value of the checkbox is stored in the variable showText
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes that contain event data.
         private void showTextBox_ActiveChanged(object sender, EventArgs e)
         {
             showText = showTextBox.Active;
             UpdateView();
         }
+        /// When the user changes the value of the pointXBox, the function checks if the annotation is a
+        /// rectangle or ellipse. If it is, the function returns. If it is not, the function updates the
+        /// point of the annotation and updates the view
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs 
+        /// 
+        /// @return The value of the pointXBox.Value is being returned.
         private void pointXBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
@@ -452,6 +591,13 @@ namespace Bio
             anno.UpdatePoint(new PointD((double)pointXBox.Value, (double)pointYBox.Value),(int)pointBox.Value);
             UpdateView();
         }
+        /// When the user changes the value of the pointYBox, the function updates the pointYBox value
+        /// to the new value
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs 
+        /// 
+        /// @return The value of the pointXBox.Value and pointYBox.Value
         private void pointYBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
@@ -462,6 +608,9 @@ namespace Bio
             UpdateView();
         }
         public bool autoUpdate = true;
+        /// This function updates the point box with the current point
+        /// 
+        /// @return The point of the annotation.
         public void UpdatePointBox()
         {
             if (anno == null)
@@ -470,10 +619,21 @@ namespace Bio
             pointXBox.Value = (int)d.X;
             pointYBox.Value = (int)d.Y;
         }
+        /// When the value of the pointBox changes, update the pointBox
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void pointBox_ValueChanged(object sender, EventArgs e)
         {
             UpdatePointBox();
         }
+        /// When the stroke width is changed, the stroke width of the annotation is changed to the value
+        /// of the stroke width box
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
+        /// 
+        /// @return The value of the stroke width.
         private void strokeWBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
@@ -481,11 +641,22 @@ namespace Bio
             anno.strokeWidth = (int)widthBox.Value;
             UpdateView();
         }
+        /// When the value of the numeric up down box changes, the value of the numeric up down box is
+        /// assigned to the variable selectBoxSize
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments that are passed to the event handler.
         private void selectBoxSize_ValueChanged(object sender, EventArgs e)
         {
             ROI.selectBoxSize = (int)widthBox.Value;
             UpdateView();
         }
+        /// If the checkbox is checked, then the viewer will show the RROIs
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs 
+        /// 
+        /// @return The value of the checkbox.
         private void showRBox_ActiveChanged(object sender, EventArgs e)
         {
             if (App.viewer == null)
@@ -493,6 +664,12 @@ namespace Bio
             App.viewer.showRROIs = showRBox.Active;
             UpdateView();
         }
+        /// If the checkbox is checked, then the viewer will show the GROIs
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs 
+        /// 
+        /// @return The value of the checkbox.
         private void showGBox_ActiveChanged(object sender, EventArgs e)
         {
             if (App.viewer == null)
@@ -500,6 +677,13 @@ namespace Bio
             App.viewer.showGROIs = showGBox.Active;
             UpdateView();
         }
+        /// If the viewer is not null, set the viewer's showBROIs to the value of the checkbox, and
+        /// update the view
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
+        /// 
+        /// @return The value of the property.
         private void showBBox_ActiveChanged(object sender, EventArgs e)
         {
             if (App.viewer == null)
@@ -525,6 +709,10 @@ namespace Bio
             Clipboard.(BioImage.ROIToString(an));
         }
         */
+        /// This function saves the current file
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         private void saveToolStripMenuItem_Click(object sender, EventArgs e)
         {
 

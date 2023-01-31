@@ -43,16 +43,23 @@ namespace Bio
 
         #region Constructors / Destructors
         static Filt filt;
-        /// <summary> Default Shared Constructor. </summary>
+        
+        /// This function creates a new instance of the ApplyFilter class, which is a class that
+        /// inherits from the Gtk.Window class
+        /// 
+        /// @param Filt The filter that is being applied.
+        /// @param two a boolean that determines whether the user is applying a filter to a single image
+        /// or a set of images.
+        /// 
+        /// @return The ApplyFilter class is being returned.
         public static ApplyFilter Create(Filt filter,bool two)
         {
             Builder builder = new Builder(null, "BioGTK.Glade.ApplyFilter.glade", null);
             filt = filter;
             return new ApplyFilter(builder, builder.GetObject("applyFilter").Handle, two);
         }
-        /// <summary> Specialised constructor for use only by derived class. </summary>
-        /// <param name="builder"> The builder. </param>
-        /// <param name="handle">  The handle. </param>
+        
+        /* This is the constructor for the ApplyFilter class. */
         protected ApplyFilter(Builder builder, IntPtr handle, bool two) : base(handle)
         {
             _builder = builder;
@@ -74,21 +81,40 @@ namespace Bio
                 stackABox.Active = 0;
         }
 
+        /// If the user clicks the "In Place" button, then apply the changes to the current file
+        /// 
+        /// @param o The object that the event is being called on.
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void InPlaceBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Apply(true);
         }
 
+        /// The ApplyBut_ButtonPressEvent function is called when the Apply button is pressed
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-events-button.html.en
         private void ApplyBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Apply(false);
         }
 
+        /// > When the user clicks on the Apply Filter button, the function UpdateStacks() is called
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs 
         private void ApplyFilter_FocusActivated(object? sender, EventArgs e)
         {
             UpdateStacks();
         }
 
+        /// If the user selects the same image for both A and B, then the B selection is reset to
+        /// nothing
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void StackBBox_Changed(object? sender, EventArgs e)
         {
             if (stackABox.Active == stackBBox.Active)
@@ -98,6 +124,13 @@ namespace Bio
             }
         }
 
+        /// When the user selects an image from the dropdown menu, the function populates the second
+        /// dropdown menu with the ROIs from the selected image
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs System.EventArgs
+        /// 
+        /// @return The ROI object is being returned.
         private void StackABox_Changed(object? sender, EventArgs e)
         {
             if (stackABox.Active == -1)
@@ -119,6 +152,7 @@ namespace Bio
             roiBox.AddAttribute(renderer, "text", 0);
         }
         #endregion
+        /// It takes the list of images and updates the dropdown boxes with the filenames of the images
         public void UpdateStacks()
         {
             ListStore store = new ListStore(typeof(string));
@@ -143,14 +177,17 @@ namespace Bio
             stackBBox.PackStart(renderer2, false);
             stackBBox.AddAttribute(renderer2, "text", 0);
         }
+        /* Returning the image that is selected in the dropdown menu. */
         public BioImage ImageA
         {
             get { return Images.images[stackABox.Active]; }
         }
+        /* Returning the image that is selected in the dropdown menu. */
         public BioImage ImageB
         {
             get { return Images.images[stackBBox.Active]; }
         }
+        /* Returning the rectangle that is selected in the dropdown menu. */
         public RectangleD Rectangle
         {
             get
@@ -161,6 +198,7 @@ namespace Bio
                     return new RectangleD((double)xBox.Value, (double)yBox.Value, (double)wBox.Value, (double)hBox.Value);
             }
         }
+        /* Returning the angle of the image. */
         public int Angle
         {
             get
@@ -168,6 +206,7 @@ namespace Bio
                 return (int)angleBox.Value;
             }
         }
+        /* Returning the color of the image. */
         public Color Color
         {
             get
@@ -175,6 +214,7 @@ namespace Bio
                return System.Drawing.Color.FromArgb(fillColor.Color.Red, fillColor.Color.Green, fillColor.Color.Blue);
             }
         }
+        /* Returning the value of the wBox. */
         public int W
         {
             get
@@ -182,6 +222,7 @@ namespace Bio
                 return (int)wBox.Value;
             }
         }
+        /* Returning the value of the hBox. */
         public int H
         {
             get
@@ -189,10 +230,19 @@ namespace Bio
                 return (int)hBox.Value;
             }
         }
+        /// This function closes the form when the cancel button is clicked
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         private void cancelBut_Click(object sender, EventArgs e)
         {
             this.Close();
         }
+        /// The function takes the image ID and the name of the filter and applies the filter to the
+        /// image
+        /// 
+        /// @param inPlace If true, the filter will be applied to the current image. If false, the
+        /// filter will be applied to a new image.
         private void Apply(bool inPlace)
         {
             if (filt.type == Filt.Type.Base)

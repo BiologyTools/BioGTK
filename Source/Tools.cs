@@ -72,8 +72,10 @@ namespace BioGTK
         #endregion
 
         #region Constructors / Destructors
-        /// <summary> Default Shared Constructor. </summary>
-        /// <returns> A TestForm1. </returns>
+        /// It creates a new instance of the Tools class, which is a class that inherits from the
+        /// Gtk.Window class
+        /// 
+        /// @return A new instance of the Tools class.
         public static Tools Create()
         {
             try
@@ -88,6 +90,7 @@ namespace BioGTK
             return null;
         }
 
+        /* Initializing the tools. */
         protected Tools(Builder builder, IntPtr handle) : base(handle)
         {
             selectColor.Red = 0;
@@ -125,6 +128,7 @@ namespace BioGTK
         private AbstractFloodFiller floodFiller = null;
         public class Tool
         {
+            /* Defining an enum. */
             public enum ToolType
             {
                 color,
@@ -156,6 +160,7 @@ namespace BioGTK
                 dropper
             }
 
+            /// It adds all the tools to the tools list
             public static void Init()
             {
                 if (tools.Count == 0)
@@ -213,6 +218,7 @@ namespace BioGTK
             }
         }
         public static Tool currentTool;
+        /* Setting the color of the drawing tool. */
         public static ColorS DrawColor
         {
             get
@@ -231,6 +237,7 @@ namespace BioGTK
                 App.tools.color1.QueueDraw();
             }
         }
+        /* Setting the color of the eraser. */
         public static ColorS EraseColor
         {
             get
@@ -250,6 +257,7 @@ namespace BioGTK
             }
         }
 
+        /* A property that is used to set the width of the stroke. */
         public static int StrokeWidth
         {
             get
@@ -266,6 +274,12 @@ namespace BioGTK
         public static RectangleD selectionRect;
         public static TextInput ti = null;
 
+        /// If the tools dictionary contains the name of the tool, return the tool, otherwise return the
+        /// move tool
+        /// 
+        /// @param name The name of the tool to get.
+        /// 
+        /// @return The tool that is being returned is the tool that is being used.
         public static Tool GetTool(string name)
         {
             if (tools.ContainsKey(name))
@@ -273,14 +287,21 @@ namespace BioGTK
             else
                 return GetTool(Tool.Type.move);
         }
+        /// It returns a Tool object from the tools dictionary, using the Tool.Type enum as the key
+        /// 
+        /// @param typ The type of tool to get.
+        /// 
+        /// @return The tool object.
         public static Tool GetTool(Tool.Type typ)
         {
             return (Tool)tools[typ.ToString()];
         }
+        /// > UpdateView() is a function that updates the view of the viewer
         public void UpdateView()
         {
             App.viewer.UpdateView();
         }
+        /// It converts the color from the color picker to a color that can be used by the image
         private void UpdateGUI()
         {
             if (ImageView.SelectedImage != null)
@@ -303,7 +324,34 @@ namespace BioGTK
             }
         }
 
+        /* Creating a new ROI object called selectedROI. */
         public static ROI selectedROI = new ROI();
+        /// The function is called when the user clicks the mouse button. 
+        /// 
+        /// The function checks the current tool and if it's a line, polygon, freeform, rectangle,
+        /// ellipse, delete, or text tool, it does something. 
+        /// 
+        /// If the tool is a line tool, it creates a new ROI object and adds it to the list of
+        /// annotations. 
+        /// 
+        /// If the tool is a polygon tool, it creates a new ROI object and adds it to the list of
+        /// annotations. 
+        /// 
+        /// If the tool is a freeform tool, it creates a new ROI object and adds it to the list of
+        /// annotations. 
+        /// 
+        /// If the tool is a rectangle tool, it creates a new ROI object and adds it to the list of
+        /// annotations. 
+        /// 
+        /// If the tool is an ellipse tool, it creates a new ROI object and adds it to the list of
+        /// annotations. 
+        /// 
+        /// If the tool is a
+        /// 
+        /// @param PointD A point with double precision
+        /// @param ButtonPressEventArgs 
+        /// 
+        /// @return The return type is void.
         public void ToolDown(PointD e, ButtonPressEventArgs buts)
         {
             if (App.viewer == null || currentTool == null || ImageView.SelectedImage == null)
@@ -432,6 +480,12 @@ namespace BioGTK
                 currentTool = GetTool(Tool.Type.pan);
             }
         }
+        /// The function is called when the mouse button is released
+        /// 
+        /// @param PointD A point with double precision
+        /// @param ButtonReleaseEventArgs 
+        /// 
+        /// @return The return type is void.
         public void ToolUp(PointD e, ButtonReleaseEventArgs buts)
         {
             PointF p = new PointF((float)e.X, (float)e.Y);
@@ -588,6 +642,14 @@ namespace BioGTK
             }
             UpdateView();
         }
+        /// This function is called when the mouse is moved. It is used to update the view when the user
+        /// is panning, drawing a line, drawing a freeform, drawing a rectangle, drawing an ellipse,
+        /// selecting a rectangle, deleting an annotation, drawing a magic wand selection, and erasing
+        /// 
+        /// @param PointD A point in the image space
+        /// @param MotionNotifyEventArgs 
+        /// 
+        /// @return The return type is void.
         public void ToolMove(PointD e, MotionNotifyEventArgs buts)
         {
             if (App.viewer == null)
@@ -725,6 +787,7 @@ namespace BioGTK
         #region Handlers
 
         /// <summary> Sets up the handlers. </summary>
+        /// It sets up the handlers for the buttons
         protected void SetupHandlers()
         {
             selectRect.File = "icons/select.png";
@@ -751,6 +814,11 @@ namespace BioGTK
             //Tools.ti.Response += Ti_Response;
         }
 
+        /// The function is called when the color2 widget is drawn. It sets the color of the widget to
+        /// the color of the EraseColor variable
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param DrawnArgs This is a class that contains the Cairo Context and the Cairo Rectangle.
         private void Color2_Drawn(object o, DrawnArgs args)
         {
             RGBA r = new RGBA();
@@ -766,6 +834,11 @@ namespace BioGTK
             color2.OverrideBackgroundColor(StateFlags.Normal, r);
         }
 
+        /// It takes the color from the color picker and sets the background color of the color picker
+        /// to the color that was selected
+        /// 
+        /// @param o The object that is being drawn.
+        /// @param DrawnArgs This is the event arguments that are passed to the event handler.
         private void Color1_Drawn(object o, DrawnArgs args)
         {
             RGBA r = new RGBA();
@@ -781,6 +854,11 @@ namespace BioGTK
             color1.OverrideBackgroundColor(StateFlags.Normal, r);
         }
 
+        /// It checks if the mouse click is within the bounds of a button, and if it is, it sets the
+        /// current tool to the tool that the button represents
+        /// 
+        /// @param o The object that the event is being called from
+        /// @param ButtonPressEventArgs The event that is triggered when a button is pressed.
         private void Tools_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Gdk.Rectangle r = new Gdk.Rectangle((int)args.Event.X, (int)args.Event.Y, 1, 1);
@@ -874,6 +952,9 @@ namespace BioGTK
                 Color2Click();
         }
         public static bool colorOne = true;
+        /// If the color tool is not visible, create it and show it
+        /// 
+        /// @return The color of the button.
         private void Color2Click()
         {
             if (App.color != null)
@@ -884,6 +965,9 @@ namespace BioGTK
             color2.QueueDraw();
             colorOne = false;
         }
+        /// If the color tool is not visible, create it and show it
+        /// 
+        /// @return The color that was selected in the color tool.
         private void Color1Click()
         {
             if(App.color!=null)
@@ -894,6 +978,7 @@ namespace BioGTK
             color1.QueueDraw();
             colorOne= true;
         }
+        /// It switches the color of the pen and the color of the eraser
         private void SwitchClick()
         {
             ColorS s = DrawColor;
@@ -901,6 +986,7 @@ namespace BioGTK
             EraseColor = s;
         }
 
+        /// Reset the background color of all the buttons to white
         private void ResetColor()
         {
             selectRect.OverrideBackgroundColor(StateFlags.Normal, white);

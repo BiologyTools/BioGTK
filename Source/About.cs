@@ -7,12 +7,12 @@ using System.Threading.Tasks;
 
 namespace BioGTK
 {
-    /// <summary> Example Test Form for GTKSharp and Glade. </summary>
+   
+    /* It's a window that displays the version of the program and the author */
     public class About : Window
     {
         #region Properties
 
-        /// <summary> Used to load in the glade file resource as a window. </summary>
         private Builder _builder;
 #pragma warning disable 649
 
@@ -24,17 +24,18 @@ namespace BioGTK
         #endregion
 
         #region Constructors / Destructors
-        /// <summary> Default Shared Constructor. </summary>
-        /// <returns> A TestForm1. </returns>
+        
+        /// It creates a new instance of the About class.
+        /// 
+        /// @return A new instance of the About class.
         public static About Create()
         {
             Builder builder = new Builder(null, "BioGTK.Glade.About.glade", null);
             return new About(builder, builder.GetObject("about").Handle);
         }
 
-        /// <summary> Specialised constructor for use only by derived class. </summary>
-        /// <param name="builder"> The builder. </param>
-        /// <param name="handle">  The handle. </param>
+        
+        /* It's the constructor of the class. */
         protected About(Builder builder, IntPtr handle) : base(handle)
         {
             _builder = builder;

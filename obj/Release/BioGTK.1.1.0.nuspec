@@ -1,0 +1,144 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>BioGTK</id>
+    <version>1.1.0</version>
+    <title>BioGTK Beta</title>
+    <authors>BioGTK</authors>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <license type="expression">GPL-3.0-only</license>
+    <licenseUrl>https://licenses.nuget.org/GPL-3.0-only</licenseUrl>
+    <icon>banner.jpg</icon>
+    <readme>README.md</readme>
+    <projectUrl>https://github.com/BiologyTools/BioGTK</projectUrl>
+    <description>A .NET application &amp; library for editing &amp; annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters &amp; macro functions. Supports Windows, Linux and Mac. Currently in Beta stage.</description>
+    <tags>Biology GTK ImageJ Bio-Formats Image-Stacks Microscopy</tags>
+    <repository url="https://github.com/BiologyTools/BioGTK" />
+    <dependencies>
+      <group targetFramework="net6.0">
+        <dependency id="AForgeBio" version="1.1.0" exclude="Build,Analyzers" />
+        <dependency id="BitMiracle.LibTiff.NET" version="2.4.649" exclude="Build,Analyzers" />
+        <dependency id="CS-Script" version="4.6.2" exclude="Build,Analyzers" />
+        <dependency id="Dotnet.Bundle" version="0.9.13" exclude="Build,Analyzers" />
+        <dependency id="GtkSharp" version="3.24.24.38" exclude="Build,Analyzers" />
+        <dependency id="IKVM" version="8.4.4" exclude="Build,Analyzers" />
+        <dependency id="Newtonsoft.Json" version="13.0.2" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+    <contentFiles>
+      <files include="any/net6.0/Bio.ico" buildAction="Content" />
+      <files include="any/net6.0/icons/brush.png" buildAction="Content" />
+      <files include="any/net6.0/icons/bucket.png" buildAction="Content" />
+      <files include="any/net6.0/icons/circle.png" buildAction="Content" />
+      <files include="any/net6.0/icons/crop.png" buildAction="Content" />
+      <files include="any/net6.0/icons/del.png" buildAction="Content" />
+      <files include="any/net6.0/icons/dropper.png" buildAction="Content" />
+      <files include="any/net6.0/icons/eraser.png" buildAction="Content" />
+      <files include="any/net6.0/icons/fill.png" buildAction="Content" />
+      <files include="any/net6.0/icons/flipX.png" buildAction="Content" />
+      <files include="any/net6.0/icons/flipY.png" buildAction="Content" />
+      <files include="any/net6.0/icons/folder.png" buildAction="Content" />
+      <files include="any/net6.0/icons/freeform.png" buildAction="Content" />
+      <files include="any/net6.0/icons/gears.png" buildAction="Content" />
+      <files include="any/net6.0/icons/hand.png" buildAction="Content" />
+      <files include="any/net6.0/icons/image.png" buildAction="Content" />
+      <files include="any/net6.0/icons/lasso.png" buildAction="Content" />
+      <files include="any/net6.0/icons/line.png" buildAction="Content" />
+      <files include="any/net6.0/icons/magic.png" buildAction="Content" />
+      <files include="any/net6.0/icons/move.png" buildAction="Content" />
+      <files include="any/net6.0/icons/pencil.png" buildAction="Content" />
+      <files include="any/net6.0/icons/play.png" buildAction="Content" />
+      <files include="any/net6.0/icons/point.png" buildAction="Content" />
+      <files include="any/net6.0/icons/pointselect.png" buildAction="Content" />
+      <files include="any/net6.0/icons/poly.png" buildAction="Content" />
+      <files include="any/net6.0/icons/rect.png" buildAction="Content" />
+      <files include="any/net6.0/icons/redo.png" buildAction="Content" />
+      <files include="any/net6.0/icons/resize.png" buildAction="Content" />
+      <files include="any/net6.0/icons/rotate.png" buildAction="Content" />
+      <files include="any/net6.0/icons/save.png" buildAction="Content" />
+      <files include="any/net6.0/icons/select.png" buildAction="Content" />
+      <files include="any/net6.0/icons/switch.png" buildAction="Content" />
+      <files include="any/net6.0/icons/text.png" buildAction="Content" />
+      <files include="any/net6.0/icons/undo.png" buildAction="Content" />
+      <files include="any/net6.0/icons/zoom_in.png" buildAction="Content" />
+      <files include="any/net6.0/icons/zoom_out.png" buildAction="Content" />
+    </contentFiles>
+  </metadata>
+  <files>
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\bin\Release\net6.0\BioGTK.dll" target="lib\net6.0\BioGTK.dll" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\Bio.ico" target="content\Bio.ico" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\Bio.ico" target="contentFiles\any\net6.0\Bio.ico" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\brush.png" target="content\icons\brush.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\brush.png" target="contentFiles\any\net6.0\icons\brush.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\bucket.png" target="content\icons\bucket.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\bucket.png" target="contentFiles\any\net6.0\icons\bucket.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\circle.png" target="content\icons\circle.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\circle.png" target="contentFiles\any\net6.0\icons\circle.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\crop.png" target="content\icons\crop.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\crop.png" target="contentFiles\any\net6.0\icons\crop.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\del.png" target="content\icons\del.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\del.png" target="contentFiles\any\net6.0\icons\del.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\dropper.png" target="content\icons\dropper.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\dropper.png" target="contentFiles\any\net6.0\icons\dropper.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\eraser.png" target="content\icons\eraser.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\eraser.png" target="contentFiles\any\net6.0\icons\eraser.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\fill.png" target="content\icons\fill.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\fill.png" target="contentFiles\any\net6.0\icons\fill.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\flipX.png" target="content\icons\flipX.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\flipX.png" target="contentFiles\any\net6.0\icons\flipX.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\flipY.png" target="content\icons\flipY.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\flipY.png" target="contentFiles\any\net6.0\icons\flipY.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\folder.png" target="content\icons\folder.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\folder.png" target="contentFiles\any\net6.0\icons\folder.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\freeform.png" target="content\icons\freeform.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\freeform.png" target="contentFiles\any\net6.0\icons\freeform.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\gears.png" target="content\icons\gears.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\gears.png" target="contentFiles\any\net6.0\icons\gears.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\hand.png" target="content\icons\hand.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\hand.png" target="contentFiles\any\net6.0\icons\hand.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\image.png" target="content\icons\image.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\image.png" target="contentFiles\any\net6.0\icons\image.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\lasso.png" target="content\icons\lasso.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\lasso.png" target="contentFiles\any\net6.0\icons\lasso.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\line.png" target="content\icons\line.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\line.png" target="contentFiles\any\net6.0\icons\line.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\magic.png" target="content\icons\magic.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\magic.png" target="contentFiles\any\net6.0\icons\magic.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\move.png" target="content\icons\move.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\move.png" target="contentFiles\any\net6.0\icons\move.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\pencil.png" target="content\icons\pencil.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\pencil.png" target="contentFiles\any\net6.0\icons\pencil.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\play.png" target="content\icons\play.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\play.png" target="contentFiles\any\net6.0\icons\play.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\point.png" target="content\icons\point.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\point.png" target="contentFiles\any\net6.0\icons\point.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\pointselect.png" target="content\icons\pointselect.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\pointselect.png" target="contentFiles\any\net6.0\icons\pointselect.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\poly.png" target="content\icons\poly.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\poly.png" target="contentFiles\any\net6.0\icons\poly.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\rect.png" target="content\icons\rect.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\rect.png" target="contentFiles\any\net6.0\icons\rect.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\redo.png" target="content\icons\redo.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\redo.png" target="contentFiles\any\net6.0\icons\redo.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\resize.png" target="content\icons\resize.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\resize.png" target="contentFiles\any\net6.0\icons\resize.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\rotate.png" target="content\icons\rotate.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\rotate.png" target="contentFiles\any\net6.0\icons\rotate.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\save.png" target="content\icons\save.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\save.png" target="contentFiles\any\net6.0\icons\save.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\select.png" target="content\icons\select.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\select.png" target="contentFiles\any\net6.0\icons\select.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\switch.png" target="content\icons\switch.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\switch.png" target="contentFiles\any\net6.0\icons\switch.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\text.png" target="content\icons\text.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\text.png" target="contentFiles\any\net6.0\icons\text.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\undo.png" target="content\icons\undo.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\undo.png" target="contentFiles\any\net6.0\icons\undo.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\zoom_in.png" target="content\icons\zoom_in.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\zoom_in.png" target="contentFiles\any\net6.0\icons\zoom_in.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\zoom_out.png" target="content\icons\zoom_out.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\icons\zoom_out.png" target="contentFiles\any\net6.0\icons\zoom_out.png" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\banner.jpg" target="\banner.jpg" />
+    <file src="F:\Shared\Bio\BioGTK\BioGTK\README.md" target="\README.md" />
+  </files>
+</package>

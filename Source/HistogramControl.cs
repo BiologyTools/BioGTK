@@ -82,6 +82,11 @@ namespace BioGTK
                 | EventMask.PointerMotionMask | EventMask.ScrollMask));
         }
 
+        /// If the scroll direction is up, increase the graphMax by 50. If the scroll direction is down,
+        /// decrease the graphMax by 50
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ScrollEventArgs 
         private void HistogramControl_ScrollEvent(object o, ScrollEventArgs args)
         {
             if(args.Event.Direction == Gdk.ScrollDirection.Up)
@@ -95,6 +100,11 @@ namespace BioGTK
             UpdateView();
         }
 
+        /// This function sets the maximum value of the selected channel to the current mouse position
+        /// 
+        /// @param o The object that the event is being called on.
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-events-button.html.en
         private void SetMaxAll_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             foreach (Channel c in ImageView.SelectedImage.Channels)
@@ -108,6 +118,11 @@ namespace BioGTK
             App.viewer.UpdateImage();
         }
 
+        /// This function sets the minimum value of all channels to the current mouse position
+        /// 
+        /// @param o The object that the event is being called on.
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-events-button.html.en
         private void SetMinAll_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             foreach (Channel c in ImageView.SelectedImage.Channels)
@@ -121,6 +136,12 @@ namespace BioGTK
             App.viewer.UpdateImage();
         }
 
+        /// When the user clicks on the graph, the function gets the x-value of the mouse click and sets
+        /// the maximum value of the selected sample to that value
+        /// 
+        /// @param o The object that the event is attached to.
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-events-button.html.en
         private void SetMax_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             App.channelsTool.SelectedChannel.range[App.channelsTool.SelectedSample].Max = (int)MouseValX;
@@ -128,6 +149,12 @@ namespace BioGTK
             App.viewer.UpdateImage();
         }
 
+        /// When the user clicks on the graph, the function sets the minimum value of the selected
+        /// sample to the x-coordinate of the mouse
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-events-button.html.en
         private void SetMin_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             App.channelsTool.SelectedChannel.range[App.channelsTool.SelectedSample].Min = (int)MouseValX;
@@ -135,6 +162,10 @@ namespace BioGTK
             App.viewer.UpdateImage();
         }
 
+        /// This function is called when the user presses a button on the mouse
+        /// 
+        /// @param o The object that the event is being called on.
+        /// @param ButtonPressEventArgs 
         public void HistogramControl_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             mouseX = (int)args.Event.X;
@@ -144,12 +175,21 @@ namespace BioGTK
             menu.Popup();
         }
 
+       /// The function takes the mouse position and divides it by the scaling factor to get the actual
+       /// value of the mouse position
+       /// 
+       /// @param o The object that the event is being called from.
+       /// @param MotionNotifyEventArgs This is the event that is triggered when the mouse is moved.
         public void HistogramControl_MotionNotifyEvent(object o, MotionNotifyEventArgs args)
         {
             mouseValX = (float)args.Event.X / fx;
             mouseValY = (float)args.Event.Y / fy;
         }
 
+        /// It draws the histogram
+        /// 
+        /// @param o The object that is being drawn.
+        /// @param DrawnArgs This is the Cairo.Context object that you can draw on.
         private void HistogramControl_Drawn(object o, DrawnArgs args)
         {
             Cairo.Context g = args.Cr;
@@ -473,15 +513,26 @@ namespace BioGTK
         private float fy = 0;
         private AForge.Bitmap bm;
 
+        /// This function updates the channel variable with the channel that is passed in
+        /// 
+        /// @param Channel The channel object that contains the channel information.
         public void UpdateChannel(Channel c)
         {
             channel = c;
         }
+        /// > The function UpdateView() is called when the user clicks the button. It calls the function
+        /// QueueDraw() which is a function of the Gtk.DrawingArea widget. This function tells the
+        /// widget to redraw itself
         public void UpdateView()
         {
             view.QueueDraw();
         }
 
+        /// > The function takes a wavelength in nanometers and returns a color in RGB
+        /// 
+        /// @param l wavelength in nanometers
+        /// 
+        /// @return A color.
         System.Drawing.Color SpectralColor(double l) // RGB <0,1> <- lambda l <400,700> [nm]
         {
             double t;

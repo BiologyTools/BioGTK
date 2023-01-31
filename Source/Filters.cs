@@ -44,6 +44,11 @@ namespace BioGTK
             tree.RowActivated += Tree_RowActivated;
         }
 
+        /// It creates a new instance of the ApplyFilter class, passing in the filter that was selected
+        /// in the treeview, and then shows the ApplyFilter window
+        /// 
+        /// @param o The object that the event was fired from.
+        /// @param RowActivatedArgs 
         private void Tree_RowActivated(object o, RowActivatedArgs args)
         {
             Filt f = Filters.GetFilter(args.Path.Indices[0], args.Path.Indices[1]);
@@ -93,6 +98,8 @@ namespace BioGTK
             App.applyFilter.Show();
         }
         
+        /// It creates a treeview with two columns, the first column is the filter type, the second
+        /// column is the filter name
         public void InitItems()
         {
             tree.ActivateOnSingleClick = false;
@@ -118,6 +125,7 @@ namespace BioGTK
             }
             tree.Model = store;
         }
+        /// It takes a list of filters and creates a treeview with the filters grouped by type
         public void UpdateItems()
         {
             Gtk.TreeStore store = new Gtk.TreeStore(typeof(string));
