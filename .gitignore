@@ -1,6 +1,10 @@
 *.suo
 *.user
 bin/ 	# ignore bin directory 
+bin/Debug/
+bin/Release/
+obj/Debug/
+obj/Release/
 obj/ 	# ignore bin directory 
 *.obj 	# ignore any files with .obj postfix 
 packages
