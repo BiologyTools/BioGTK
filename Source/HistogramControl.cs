@@ -10,10 +10,11 @@ using AForge;
 using System.Drawing;
 using Cairo;
 using Color = System.Drawing.Color;
+using Gdk;
 
 namespace BioGTK
 {
-    public class HistogramControl : Widget
+    public class HistogramControl : Gtk.Window
     {
 
         #region Properties
@@ -52,6 +53,7 @@ namespace BioGTK
             Init();
         }
         #endregion
+
         public Channel channel = null;
         public void Init()
         {
@@ -68,10 +70,29 @@ namespace BioGTK
             this.Drawn += HistogramControl_Drawn;
             this.MotionNotifyEvent += HistogramControl_MotionNotifyEvent;
             this.ButtonPressEvent += HistogramControl_ButtonPressEvent;
+            this.ScrollEvent += HistogramControl_ScrollEvent;
             setMin.ButtonPressEvent += SetMin_ButtonPressEvent;
             setMax.ButtonPressEvent += SetMax_ButtonPressEvent;
             setMinAll.ButtonPressEvent += SetMinAll_ButtonPressEvent;
             setMaxAll.ButtonPressEvent += SetMaxAll_ButtonPressEvent;
+            this.AddEvents((int)
+                (EventMask.ButtonPressMask
+                | EventMask.ButtonReleaseMask
+                | EventMask.KeyPressMask
+                | EventMask.PointerMotionMask | EventMask.ScrollMask));
+        }
+
+        private void HistogramControl_ScrollEvent(object o, ScrollEventArgs args)
+        {
+            if(args.Event.Direction == Gdk.ScrollDirection.Up)
+            {
+                graphMax += 50;
+            }
+            else if (args.Event.Direction == Gdk.ScrollDirection.Down)
+            {
+                graphMax -= 50;
+            }
+            UpdateView();
         }
 
         private void SetMaxAll_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -137,6 +158,7 @@ namespace BioGTK
             g.SetSourceColor(ImageView.FromColor(System.Drawing.Color.LightGray));
             g.Restore();
             g.Translate(-graphMin, 0);
+            g.LineWidth = 1;
             string st = "";
             fx = ((float)this.AllocatedWidth) / ((float)graphMax);
             float maxmedian = 0;
@@ -171,9 +193,23 @@ namespace BioGTK
                     Cairo.Color pend = new Cairo.Color();
                     int dark = 200;
                     int light = 50;
+                    
+                    //We draw the mouse line
+                    g.SetSourceColor(ImageView.FromColor(System.Drawing.Color.Black));
+                    g.MoveTo(mouseX, 0);
+                    g.LineTo(mouseX, this.AllocatedHeight);
+                    g.StrokePreserve();
+                    int gmax = graphMax;
+                    if (ImageView.SelectedImage.bitsPerPixel <= 8)
+                        gmax = 255;
+
                     if (channel.Emission != 0)
                     {
-                        pen = ImageView.FromColor(SpectralColor(channel.Emission));
+                        Cairo.Color cc = ImageView.FromColor(SpectralColor(channel.Emission));
+                        cc.A = 0.2;
+                        pen = cc;
+                        cc.A = 0.6;
+                        pend = cc;
                     }
                     else
                     {
@@ -193,15 +229,6 @@ namespace BioGTK
                             pend = ImageView.FromColor(System.Drawing.Color.FromArgb(dark, 0, 0, 255));
                         }
                     }
-                    //We draw the mouse line
-                    g.SetSourceColor(ImageView.FromColor(System.Drawing.Color.Black));
-                    g.MoveTo(mouseX, 0);
-                    g.LineTo(mouseX, this.AllocatedHeight);
-                    g.StrokePreserve();
-                    int gmax = graphMax;
-                    if (ImageView.SelectedImage.bitsPerPixel <= 8)
-                        gmax = 255;
-
 
                     float sumbins = 0;
                     float sumbin = 0;
@@ -210,6 +237,7 @@ namespace BioGTK
                     PointF? prevs = null;
                     PointF? prev = null;
                     float f = gmax / this.AllocatedWidth;
+                    g.SetSourceColor(pen);
                     for (float x = 0; x < gmax; x+=f)
                     {
                         if (StackHistogram && c == ImageView.SelectedImage.Channels.Count - 1)
@@ -242,13 +270,12 @@ namespace BioGTK
                         sumbins += rv;
                         if (bininds == bin)
                         {
-                            g.SetSourceColor(pen);
+                            g.SetSourceColor(pend);
                             g.MoveTo(fx * x, this.AllocatedHeight);
                             g.LineTo(fx * x, this.AllocatedHeight - (fy * (sumbins / bininds)));
                             g.StrokePreserve();
                             if (prev != null)
                             {
-                                g.SetSourceColor(pend);
                                 g.MoveTo(prev.Value.X,prev.Value.Y);
                                 g.LineTo(fx * x, this.AllocatedHeight - (fy * (sumbins / bininds)));
                                 g.StrokePreserve();
@@ -261,7 +288,7 @@ namespace BioGTK
                         bininds++;
 
                     }
-                    g.SetSourceColor(pend);
+                    g.SetSourceColor(ImageView.FromColor(SpectralColor(channel.Emission)));
                     g.MoveTo((fx * channel.range[i].Max), 0);
                     g.LineTo((fx * channel.range[i].Max), this.AllocatedHeight);
                     g.StrokePreserve();

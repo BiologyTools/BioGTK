@@ -21,15 +21,15 @@ using System.Text;
 using System.Drawing;
 using Bitmap = AForge.Bitmap;
 using loci.formats.@in;
-using sun.tools.tree;
 using Gtk;
-using java.util;
 
 namespace BioGTK
 {
     public static class Images
     {
         public static List<BioImage> images = new List<BioImage>();
+        /// 
+        /// @param ids The id of the image you want to get.
         public static BioImage GetImage(string ids)
         {
             for (int i = 0; i < images.Count; i++)
@@ -39,6 +39,10 @@ namespace BioGTK
             }
             return null;
         }
+        /// It adds an image to the list of images
+        /// 
+        /// @param BioImage A class that contains the image data and other information.
+        
         public static void AddImage(BioImage im)
         {
             im.Filename = GetImageName(im.ID);
@@ -49,6 +53,13 @@ namespace BioGTK
             //App.Image = im;
             //NodeView.viewer.AddTab(im);
         }
+
+        /// It takes a string as an argument, and returns the number of times that string appears in the
+        /// list of images
+        /// 
+        /// @param s The name of the image
+        /// 
+        /// @return The number of images that contain the name of the image.
         public static int GetImageCountByName(string s)
         {
             int i = 0;
@@ -60,6 +71,11 @@ namespace BioGTK
             }
             return i;
         }
+        /// It takes a string, and returns a string
+        /// 
+        /// @param s The path to the image.
+        /// 
+        /// @return The name of the image.
         public static string GetImageName(string s)
         {
             //Here we create a unique ID for an image.
@@ -89,10 +105,18 @@ namespace BioGTK
             }
             //
         }
+        /// This function removes an image from the database
+        /// 
+        /// @param BioImage This is the image that you want to remove.
         public static void RemoveImage(BioImage im)
         {
             RemoveImage(im.ID);
         }
+        /// It removes an image from the table
+        /// 
+        /// @param id The id of the image to remove.
+        /// 
+        /// @return The image is being returned.
         public static void RemoveImage(string id)
         {
             BioImage im = GetImage(id);
@@ -121,6 +145,30 @@ namespace BioGTK
         {
             get { return y; }
             set { y = value; }
+        }
+        public double PhysicalX
+        {
+            get { return px; }
+            set { px = value; }
+        }
+        public double PhysicalY
+        {
+            get { return py; }
+            set { py = value; }
+        }
+        public double VolumeWidth
+        {
+            get
+            {
+                return PhysicalX * SizeX;
+            }
+        }
+        public double VolumeHeight
+        {
+            get
+            {
+                return PhysicalY * SizeY;
+            }
         }
         public PixelFormat PixelFormat
         {
@@ -160,6 +208,7 @@ namespace BioGTK
             px = physX;
             py = physY;
         }
+        
         public override string ToString()
         {
             return "(" + x + ", " + y + ") " + format.ToString() + " " + (SizeInBytes / 1000) + " KB";
@@ -187,6 +236,12 @@ namespace BioGTK
         {
             return new System.Drawing.Rectangle((int)X, (int)Y, (int)W, (int)H);
         }
+        /// If any of the four corners of the rectangle are inside the polygon, then the rectangle
+        /// intersects with the polygon
+        /// 
+        /// @param RectangleD The rectangle that is being checked for intersection.
+        /// 
+        /// @return a boolean value.
         public bool IntersectsWith(RectangleD p)
         {
             if (IntersectsWith(p.X, p.Y) || IntersectsWith(p.X + p.W, p.Y) || IntersectsWith(p.X, p.Y + p.H) || IntersectsWith(p.X + p.W, p.Y + p.H))
@@ -194,10 +249,21 @@ namespace BioGTK
             else
                 return false;
         }
+        /// > Returns true if the point is inside the rectangle
+        /// 
+        /// @param PointD 
+        /// 
+        /// @return The return value is a boolean value.
         public bool IntersectsWith(PointD p)
         {
             return IntersectsWith(p.X, p.Y);
         }
+        /// If the point is within the rectangle, return true. Otherwise, return false
+        /// 
+        /// @param x The x coordinate of the point to check
+        /// @param y The y coordinate of the point to test.
+        /// 
+        /// @return A boolean value.
         public bool IntersectsWith(double x, double y)
         {
             if (X <= x && (X + W) >= x && Y <= y && (Y + H) >= y)
@@ -205,10 +271,17 @@ namespace BioGTK
             else
                 return false;
         }
+        /// It converts a RectangleD to a RectangleF
+        /// 
+        /// @return A RectangleF object.
         public RectangleF ToRectangleF()
         {
             return new RectangleF((float)X, (float)Y, (float)W, (float)H);
         }
+        /// This function returns a string that contains the values of the X, Y, W, and H properties of
+        /// the object
+        /// 
+        /// @return The X, Y, W, and H values of the rectangle.
         public override string ToString()
         {
             return X.ToString() + ", " + Y.ToString() + ", " + W.ToString() + ", " + H.ToString();
@@ -217,6 +290,7 @@ namespace BioGTK
     }
     public class ROI
     {
+        /* Defining an enum. */
         public enum Type
         {
             Rectangle,
@@ -228,6 +302,7 @@ namespace BioGTK
             Ellipse,
             Label
         }
+        /* A property of a class. */
         public PointD Point
         {
             get
@@ -341,6 +416,11 @@ namespace BioGTK
                 Recorder.AddLine("App.AddROI(" + BioImage.ROIToString(this) + ");");
             }
         }
+        public int Resolution
+        {
+            get { return resolution; }
+            set { resolution = value; }
+        }
 
         public Type type;
         public static float selectBoxSize = 8f;
@@ -368,7 +448,7 @@ namespace BioGTK
         public string roiName = "";
         public int serie = 0;
         private string text = "";
-
+        private int resolution = 0;
         public double strokeWidth = 1;
         public int shapeIndex = 0;
         public bool closed = false;
@@ -447,11 +527,18 @@ namespace BioGTK
                 }
             }
         }
+        /// > This function returns a rectangle that is the bounding box of the object, but with a
+        /// border of half the scale
+        /// 
+        /// @param scale the scale of the image
+        /// 
+        /// @return A rectangle with the following properties:
         public RectangleD GetSelectBound(double scale)
         {
             double f = scale / 2;
             return new RectangleD(BoundingBox.X - f, BoundingBox.Y - f, BoundingBox.W + scale, BoundingBox.H + scale);
         }
+/* Creating a new ROI object. */
         public ROI()
         {
             coord = new ZCT(0, 0, 0);
@@ -459,6 +546,12 @@ namespace BioGTK
             BoundingBox = new RectangleD(0, 0, 1, 1);
         }
 
+        /// It returns an array of RectangleF objects that are used to draw the selection boxes around
+        /// the points of the polygon
+        /// 
+        /// @param s the size of the select box
+        /// 
+        /// @return A list of RectangleF objects.
         public RectangleF[] GetSelectBoxes(double s)
         {
             double f = s / 2;
@@ -469,6 +562,13 @@ namespace BioGTK
             }
             return selectBoxs.ToArray();
         }
+        /// Create a new ROI object, add a point to it, and return it
+        /// 
+        /// @param ZCT a class that contains the Z, C, and T coordinates of the image.
+        /// @param x x coordinate of the point
+        /// @param y The y coordinate of the point
+        /// 
+        /// @return A new ROI object
         public static ROI CreatePoint(ZCT coord, double x, double y)
         {
             ROI an = new ROI();
@@ -478,10 +578,14 @@ namespace BioGTK
             Recorder.AddLine("ROI.CreatePoint(new ZCT(" + coord.Z + "," + coord.C + "," + coord.T + "), " + x + "," + y + ");");
             return an;
         }
-        public static ROI CreatePoint(int s, int z, int c, int t, double x, double y)
-        {
-            return CreatePoint(new ZCT(z, c, t), x, y);
-        }
+        /// Create a new ROI object, set its type to Line, add two points to it, and return it
+        /// 
+        /// @param ZCT Z is the Z-axis, C is the color channel, and T is the time frame.
+        /// @param PointD X,Y
+        /// @param PointD X,Y
+        /// 
+        /// @return A new ROI object.
+        
         public static ROI CreateLine(ZCT coord, PointD x1, PointD x2)
         {
             ROI an = new ROI();
@@ -492,6 +596,15 @@ namespace BioGTK
             Recorder.AddLine("ROI.CreateLine(new ZCT(" + coord.Z + "," + coord.C + "," + coord.T + "), new PointD(" + x1.X + "," + x1.Y + "), new PointD(" + x2.X + "," + x2.Y + "));");
             return an;
         }
+        /// Create a new ROI object with a rectangle shape, and add a line to the recorder
+        /// 
+        /// @param ZCT The ZCT coordinates of the image you want to create the ROI on.
+        /// @param x x coordinate of the top left corner of the rectangle
+        /// @param y y-coordinate of the top-left corner of the rectangle
+        /// @param w width
+        /// @param h height
+        /// 
+        /// @return A new ROI object.
         public static ROI CreateRectangle(ZCT coord, double x, double y, double w, double h)
         {
             ROI an = new ROI();
@@ -501,6 +614,15 @@ namespace BioGTK
             Recorder.AddLine("ROI.CreateRectangle(new ZCT(" + coord.Z + "," + coord.C + "," + coord.T + "), new RectangleD(" + x + "," + y + "," + w + "," + h + ");");
             return an;
         }
+        /// Create an ellipse ROI at the specified ZCT coordinate with the specified width and height
+        /// 
+        /// @param ZCT The ZCT coordinates of the image you want to create the ROI on.
+        /// @param x x-coordinate of the top-left corner of the rectangle
+        /// @param y The y-coordinate of the upper-left corner of the rectangle to create.
+        /// @param w width
+        /// @param h height
+        /// 
+        /// @return A new ROI object.
         public static ROI CreateEllipse(ZCT coord, double x, double y, double w, double h)
         {
             ROI an = new ROI();
@@ -510,6 +632,12 @@ namespace BioGTK
             Recorder.AddLine("ROI.CreateEllipse(new ZCT(" + coord.Z + "," + coord.C + "," + coord.T + "), new RectangleD(" + x + "," + y + "," + w + "," + h + ");");
             return an;
         }
+        /// > Create a new ROI object of type Polygon, with the given coordinate system and points
+        /// 
+        /// @param ZCT The ZCT coordinate of the ROI.
+        /// @param pts an array of PointD objects, which are just a pair of doubles (x,y)
+        /// 
+        /// @return A ROI object
         public static ROI CreatePolygon(ZCT coord, PointD[] pts)
         {
             ROI an = new ROI();
@@ -519,6 +647,12 @@ namespace BioGTK
             an.closed = true;
             return an;
         }
+        /// > Create a new ROI object of type Freeform, with the specified ZCT coordinate and points
+        /// 
+        /// @param ZCT A class that contains the Z, C, and T coordinates of the ROI.
+        /// @param pts an array of PointD objects, which are just a pair of doubles (x,y)
+        /// 
+        /// @return A new ROI object.
         public static ROI CreateFreeform(ZCT coord, PointD[] pts)
         {
             ROI an = new ROI();
@@ -529,6 +663,10 @@ namespace BioGTK
             return an;
         }
 
+        /// This function updates the point at the specified index
+        /// 
+        /// @param PointD A class that contains an X and Y coordinate.
+        /// @param i The index of the point to update
         public void UpdatePoint(PointD p, int i)
         {
             if (i < Points.Count)
@@ -537,14 +675,25 @@ namespace BioGTK
             }
             UpdateBoundingBox();
         }
+        /// This function returns the point at the specified index
+        /// 
+        /// @param i The index of the point to get.
+        /// 
+        /// @return The point at index i in the Points array.
         public PointD GetPoint(int i)
         {
             return Points[i];
         }
+        /// It returns an array of PointD objects
+        /// 
+        /// @return An array of PointD objects.
         public PointD[] GetPoints()
         {
             return Points.ToArray();
         }
+        /// It converts a list of points to an array of points
+        /// 
+        /// @return A PointF array.
         public PointF[] GetPointsF()
         {
             PointF[] pfs = new PointF[Points.Count];
@@ -555,16 +704,25 @@ namespace BioGTK
             }
             return pfs;
         }
+        /// > Adds a point to the list of points and updates the bounding box
+        /// 
+        /// @param PointD 
         public void AddPoint(PointD p)
         {
             Points.Add(p);
             UpdateBoundingBox();
         }
+        /// > Adds a range of points to the Points collection and updates the bounding box
+        /// 
+        /// @param p The points to add to the polygon
         public void AddPoints(PointD[] p)
         {
             Points.AddRange(p);
             UpdateBoundingBox();
         }
+        /// It removes points from a list of points based on an array of indexes
+        /// 
+        /// @param indexs an array of integers that represent the indexes of the points to be removed
         public void RemovePoints(int[] indexs)
         {
             List<PointD> inds = new List<PointD>();
@@ -582,10 +740,19 @@ namespace BioGTK
             Points = inds;
             UpdateBoundingBox();
         }
+
+        /// This function returns the number of points in the polygon
+        /// 
+        /// @return The number of points in the list.
         public int GetPointCount()
         {
             return Points.Count;
         }
+        /// It takes a string of points and returns an array of points
+        /// 
+        /// @param s The string to convert to points.
+        /// 
+        /// @return A list of points.
         public PointD[] stringToPoints(string s)
         {
             List<PointD> pts = new List<PointD>();
@@ -603,6 +770,12 @@ namespace BioGTK
             }
             return pts.ToArray();
         }
+        
+        /// This function takes a BioImage object and returns a string of the points in the image space
+        /// 
+        /// @param BioImage The image that the ROI is on
+        /// 
+        /// @return The points of the polygon in the image space.
         public string PointsToString(BioImage b)
         {
             string pts = "";
@@ -616,6 +789,8 @@ namespace BioGTK
             }
             return pts;
         }
+        /// It takes a list of points and returns a rectangle that contains all of the points
+        /// 
         public void UpdateBoundingBox()
         {
             PointD min = new PointD(double.MaxValue, double.MaxValue);
@@ -686,6 +861,14 @@ namespace BioGTK
             return Values[indexs[type,index]];
         }
         public static Dictionary<string, Filt> filters = new Dictionary<string, Filt>();
+        /// It takes an image, applies a filter to it, and returns the filtered image
+        /// 
+        /// @param id The id of the image to apply the filter to.
+        /// @param name The name of the filter.
+        /// @param inPlace If true, the image will be modified in place. If false, a new image will be
+        /// created.
+        /// 
+        /// @return The image that was filtered.
         public static BioImage Base(string id, string name, bool inPlace)
         {
             BioImage img = Images.GetImage(id);
@@ -715,6 +898,16 @@ namespace BioGTK
             }
             return img;
         }
+        /// It takes two images, applies a filter to the first image, and then applies the second image
+        /// to the first image
+        /// 
+        /// @param id the image id
+        /// @param id2 The image to be filtered
+        /// @param name The name of the filter.
+        /// @param inPlace If true, the image will be modified in place. If false, a new image will be
+        /// created.
+        /// 
+        /// @return The image that was filtered.
         public static BioImage Base2(string id, string id2, string name, bool inPlace)
         {
             BioImage c2 = Images.GetImage(id);
@@ -746,6 +939,14 @@ namespace BioGTK
             }
             return img;
         }
+        /// It takes an image, applies a filter to it, and returns the image
+        /// 
+        /// @param id The id of the image to apply the filter to.
+        /// @param name The name of the filter
+        /// @param inPlace If true, the image will be modified in place. If false, a copy of the image
+        /// will be created and modified.
+        /// 
+        /// @return The image that was passed in.
         public static BioImage InPlace(string id, string name, bool inPlace)
         {
             BioImage img = Images.GetImage(id);
@@ -775,6 +976,14 @@ namespace BioGTK
             }
             return img;
         }
+        /// This function takes an image, applies a filter to it, and returns the filtered image
+        /// 
+        /// @param id the image id
+        /// @param id2 the image to be filtered
+        /// @param name The name of the filter
+        /// @param inPlace true or false
+        /// 
+        /// @return The image that was passed in.
         public static BioImage InPlace2(string id, string id2, string name, bool inPlace)
         {
             BioImage c2 = Images.GetImage(id);
@@ -806,6 +1015,14 @@ namespace BioGTK
             }
             return img;
         }
+        /// It takes an image, applies a filter to it, and returns the filtered image
+        /// 
+        /// @param id the id of the image to be filtered
+        /// @param name The name of the filter
+        /// @param inPlace If true, the image is modified in place. If false, a copy of the image is
+        /// created and modified.
+        /// 
+        /// @return The image that was passed in.
         public static BioImage InPlacePartial(string id, string name, bool inPlace)
         {
             BioImage img = Images.GetImage(id);
@@ -835,6 +1052,16 @@ namespace BioGTK
             }
             return img;
         }
+        /// This function takes an image, resizes it, and returns the resized image
+        /// 
+        /// @param id the id of the image to be resized
+        /// @param name The name of the filter to use.
+        /// @param inPlace If true, the image will be modified in place. If false, a new image will be
+        /// created.
+        /// @param w width
+        /// @param h height
+        /// 
+        /// @return The image that was resized.
         public static BioImage Resize(string id, string name, bool inPlace, int w, int h)
         {
             BioImage img = Images.GetImage(id);
@@ -865,6 +1092,18 @@ namespace BioGTK
             }
             return img;
         }
+        /// It takes an image, rotates it, and returns the rotated image
+        /// 
+        /// @param id the id of the image to be rotated
+        /// @param name The name of the filter
+        /// @param inPlace whether to apply the filter to the original image or to a copy of it
+        /// @param angle the angle to rotate the image
+        /// @param a alpha
+        /// @param r red
+        /// @param g the image to be rotated
+        /// @param b blue
+        /// 
+        /// @return The image that was rotated.
         public static BioImage Rotate(string id, string name, bool inPlace, float angle, int a, int r, int g, int b)
         {
             BioImage img = Images.GetImage(id);
@@ -897,6 +1136,16 @@ namespace BioGTK
             return img;
 
         }
+        /// This function takes an image, applies a transformation filter to it, and returns the
+        /// transformed image
+        /// 
+        /// @param id the id of the image to be transformed
+        /// @param name The name of the filter.
+        /// @param inPlace If true, the image will be modified in place. If false, a new image will be
+        /// created.
+        /// @param angle the angle of rotation
+        /// 
+        /// @return The image that was transformed.
         public static BioImage Transformation(string id, string name, bool inPlace, float angle)
         {
             BioImage img = Images.GetImage(id);
@@ -953,6 +1202,15 @@ namespace BioGTK
             }
             return img;
         }
+        /// It takes an image, crops it, and returns the cropped image
+        /// 
+        /// @param id the id of the image to crop
+        /// @param x x coordinate of the top left corner of the rectangle
+        /// @param y y-coordinate of the top-left corner of the rectangle
+        /// @param w width
+        /// @param h height
+        /// 
+        /// @return The cropped image.
         public static BioImage Crop(string id, double x, double y, double w, double h)
         {
             BioImage c = Images.GetImage(id);
@@ -968,10 +1226,18 @@ namespace BioGTK
             App.tabsView.AddTab(img);
             return img;
         }
+        /// > This function takes a string and a rectangle and returns a BioImage
+        /// 
+        /// @param id the id of the image to crop
+        /// @param RectangleD 
+        /// 
+        /// @return A BioImage object.
         public static BioImage Crop(string id, RectangleD r)
         {
             return Crop(id, r.X, r.Y, r.W, r.H);
         }
+        
+        /// It creates a dictionary of filters and their names
         public static void Init()
         {
             //Base Filters
@@ -1326,6 +1592,9 @@ namespace BioGTK
             set { series = value; }
         }
 
+        /// Copy() is a function that copies the values of the ImageInfo class to a new ImageInfo class
+        /// 
+        /// @return A copy of the ImageInfo object.
         public ImageInfo Copy()
         {
             ImageInfo inf = new ImageInfo();
@@ -1366,6 +1635,11 @@ namespace BioGTK
         public List<Channel> Channels = new List<Channel>();
         public List<Resolution> Resolutions = new List<Resolution>();
         public List<AForge.Bitmap> Buffers = new List<AForge.Bitmap>();
+        public int Resolution
+        {
+            get { return resolution; } 
+            set { resolution = value; } 
+        }
         public VolumeD Volume;
         public List<ROI> Annotations = new List<ROI>();
         public string filename = "";
@@ -1412,8 +1686,12 @@ namespace BioGTK
         }
         private int sizeZ, sizeC, sizeT;
         private Statistics statistics;
-
+        private int resolution = 0;
         ImageInfo imageInfo = new ImageInfo();
+        /// It copies the BioImage b and returns a new BioImage object.
+        /// 
+        /// @param BioImage The BioImage object to copy
+        /// @param rois If true, the ROIs will be copied. If false, the ROIs will be ignored.
         public static BioImage Copy(BioImage b, bool rois)
         {
             BioImage bi = new BioImage(b.ID);
@@ -1448,18 +1726,38 @@ namespace BioGTK
             bi.statistics = b.statistics;
             return bi;
         }
+        /// Copy a BioImage object.
+        /// 
+        /// @param BioImage The image to copy
+        /// 
+        /// @return A copy of the BioImage object.
         public static BioImage Copy(BioImage b)
         {
             return Copy(b, true);
         }
+       /// Copy the image and optionally the ROIs
+       /// 
+       /// @param rois Boolean value indicating whether to copy the ROIs or not.
+       /// 
+       /// @return A copy of the BioImage object.
         public BioImage Copy(bool rois)
         {
             return BioImage.Copy(this, rois);
         }
+        /// > This function copies the current BioImage object and returns a new BioImage object
+        /// 
+        /// @return A copy of the BioImage object.
         public BioImage Copy()
         {
             return BioImage.Copy(this, true);
         }
+        /// CopyInfo() copies the information from one BioImage to another
+        /// 
+        /// @param BioImage the image to copy
+        /// @param copyAnnotations true
+        /// @param copyChannels true
+        /// 
+        /// @return A new BioImage object.
         public static BioImage CopyInfo(BioImage b, bool copyAnnotations, bool copyChannels)
         {
             BioImage bi = new BioImage(b.ID);
@@ -1580,6 +1878,7 @@ namespace BioGTK
                     return Channels[0];
             }
         }
+
         public class ImageJDesc
         {
             public string ImageJ;
@@ -1628,6 +1927,9 @@ namespace BioGTK
                 max = b.Channels[0].RangeR.Max;
                 return this;
             }
+            /// It returns a string that contains the values of all the variables in the image
+            /// 
+            /// @return A string.
             public string GetString()
             {
                 string s = "";
@@ -1646,6 +1948,9 @@ namespace BioGTK
                 s += "max=" + max.ToString() + "\n";
                 return s;
             }
+            /// It sets the string to the value of the parameter.
+            /// 
+            /// @param desc The description of the string.
             public void SetString(string desc)
             {
                 string[] lines = desc.Split(new string[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
@@ -1799,6 +2104,8 @@ namespace BioGTK
                 return initialized;
             }
         }
+        /// Converts a 16-bit image to an 8-bit image
+        /// 
         public void To8Bit()
         {
             if (Buffers[0].RGBChannelsCount == 4)
@@ -1894,6 +2201,9 @@ namespace BioGTK
             bitsPerPixel = 8;
             Recorder.AddLine("Bio.Table.GetImage(" + '"' + ID + '"' + ")" + "." + "To8Bit();");
         }
+        /// Converts a 16-bit image to an 8-bit image
+        /// 
+        /// Converts the image to 16 bit.
         public void To16Bit()
         {
             if (Buffers[0].RGBChannelsCount == 4)
@@ -2001,6 +2311,7 @@ namespace BioGTK
             StackThreshold(true);
             Recorder.AddLine("Bio.Table.GetImage(" + '"' + ID + '"' + ")" + "." + "To16Bit();");
         }
+        /// Converts the image to 24 bit.
         public void To24Bit()
         {
             if (Buffers[0].PixelFormat == PixelFormat.Format24bppRgb)
@@ -2123,6 +2434,7 @@ namespace BioGTK
             //StackThreshold(false);
             Recorder.AddLine("Bio.Table.GetImage(" + '"' + ID + '"' + ")" + "." + "To24Bit();");
         }
+        /// Converts the image to 32 bit.
         public void To32Bit()
         {
             if (Buffers[0].PixelFormat == PixelFormat.Format32bppArgb)
@@ -2149,6 +2461,9 @@ namespace BioGTK
             AutoThreshold(this, false);
             Recorder.AddLine("Bio.Table.GetImage(" + '"' + ID + '"' + ")" + "." + "To32Bit();");
         }
+        /// It converts a 16 bit image to a 48 bit image
+        /// 
+        /// @return A list of Bitmaps.
         public void To48Bit()
         {
             if (Buffers[0].RGBChannelsCount == 4)
@@ -2255,6 +2570,9 @@ namespace BioGTK
             AutoThreshold(this, false);
             Recorder.AddLine("Bio.Table.GetImage(" + '"' + ID + '"' + ")" + "." + "To48Bit();");
         }
+        /// It rotates the image by 90 degrees
+        /// 
+        /// @param rot The type of rotation to perform.
         public void RotateFlip(AForge.RotateFlipType rot)
         {
             for (int i = 0; i < Buffers.Count; i++)
@@ -2262,10 +2580,24 @@ namespace BioGTK
                 Buffers[i].RotateFlip(rot);
             }
         }
+        /// Bake(int rmin, int rmax, int gmin, int gmax, int bmin, int bmax)
+        /// 
+        /// @param rmin The minimum value of the red channel.
+        /// @param rmax The maximum value of the red channel.
+        /// @param gmin The minimum value of the green channel.
+        /// @param gmax The maximum value of the green channel.
+        /// @param bmin The minimum value of the blue channel.
+        /// @param bmax The maximum value of the blue channel.
         public void Bake(int rmin, int rmax, int gmin, int gmax, int bmin, int bmax)
         {
             Bake(new IntRange(rmin, rmax), new IntRange(gmin, gmax), new IntRange(bmin, bmax));
         }
+        /// It takes a range of values for each channel, and creates a new image with the filtered
+        /// values
+        /// 
+        /// @param IntRange 
+        /// @param IntRange 
+        /// @param IntRange 
         public void Bake(IntRange rf, IntRange gf, IntRange bf)
         {
             BioImage bm = new BioImage(Images.GetImageName(ID));
@@ -2301,6 +2633,7 @@ namespace BioGTK
             App.tabsView.AddTab(bm);
             Recorder.AddLine("ImageView.SelectedImage.Bake(" + rf.Min + "," + rf.Max + "," + gf.Min + "," + gf.Max + "," + bf.Min + "," + bf.Max + ");");
         }
+        /// It takes a list of images and assigns them to a 3D array of coordinates
         public void UpdateCoords()
         {
             int z = 0;
@@ -2330,6 +2663,12 @@ namespace BioGTK
                 }
             }
         }
+        /// It takes the number of Z, C, and T planes in the image and then assigns each image buffer a
+        /// coordinate in the ZCT space
+        /// 
+        /// @param sz size of the Z dimension
+        /// @param sc number of channels
+        /// @param st number of time points
         public void UpdateCoords(int sz, int sc, int st)
         {
             int z = 0;
@@ -2362,6 +2701,12 @@ namespace BioGTK
                 }
             }
         }
+        /// It takes a list of images and assigns them to a 3D array of coordinates
+        /// 
+        /// @param sz size of the Z dimension
+        /// @param sc number of channels
+        /// @param st number of time points
+        /// @param order XYCZT or XYZCT
         public void UpdateCoords(int sz, int sc, int st, string order)
         {
             int z = 0;
@@ -2423,22 +2768,48 @@ namespace BioGTK
             }
         }
 
+        /// Convert a physical size to an image size
+        /// 
+        /// @param d the distance in millimeters
+        /// 
+        /// @return The value of d divided by the physicalSizeX.
         public double ToImageSizeX(double d)
         {
             return d / physicalSizeX;
         }
+        /// Convert a physical size in Y direction to an image size in Y direction
+        /// 
+        /// @param d the distance in millimeters
+        /// 
+        /// @return The return value is the value of the parameter d divided by the value of the
+        /// physicalSizeY field.
         public double ToImageSizeY(double d)
         {
             return d / physicalSizeY;
         }
+        /// > Convert a stage coordinate to an image coordinate
+        /// 
+        /// @param x the x coordinate of the point in the image
+        /// 
+        /// @return The return value is a double.
         public double ToImageSpaceX(double x)
         {
             return (float)((x - stageSizeX) / physicalSizeX);
         }
+        /// > Convert a Y coordinate from stage space to image space
+        /// 
+        /// @param y the y coordinate of the point in the image
+        /// 
+        /// @return The return value is the y-coordinate of the image.
         public double ToImageSpaceY(double y)
         {
             return (float)((y - stageSizeY) / physicalSizeY);
         }
+        /// Convert a point in the stage coordinate system to a point in the image coordinate system
+        /// 
+        /// @param PointD 
+        /// 
+        /// @return A PointF object.
         public PointF ToImageSpace(PointD p)
         {
             System.Drawing.PointF pp = new System.Drawing.Point();
@@ -2446,6 +2817,11 @@ namespace BioGTK
             pp.Y = (float)((p.Y - stageSizeY) / physicalSizeY);
             return pp;
         }
+        /// Convert a list of points from stage space to image space
+        /// 
+        /// @param p List of points in stage space
+        /// 
+        /// @return A PointD array.
         public PointD[] ToImageSpace(List<PointD> p)
         {
             PointD[] ps = new PointD[p.Count];
@@ -2458,6 +2834,12 @@ namespace BioGTK
             }
             return ps;
         }
+        /// > The function takes a list of points in the stage coordinate system and returns a list of
+        /// points in the image coordinate system
+        /// 
+        /// @param p the points to be converted
+        /// 
+        /// @return A PointF[]
         public PointF[] ToImageSpace(PointF[] p)
         {
             PointF[] ps = new PointF[p.Length];
@@ -2470,6 +2852,11 @@ namespace BioGTK
             }
             return ps;
         }
+        /// > Convert a rectangle in physical space to a rectangle in image space
+        /// 
+        /// @param RectangleD 
+        /// 
+        /// @return A RectangleF object.
         public RectangleF ToImageSpace(RectangleD p)
         {
             System.Drawing.RectangleF r = new RectangleF();
@@ -2480,13 +2867,41 @@ namespace BioGTK
             r.Height = (int)(p.H / physicalSizeY);
             return r;
         }
+        /// > This function converts a point in the image space to a point in the stage space
+        /// 
+        /// @param PointD A class that contains an X and Y coordinate.
+        /// 
+        /// @return A PointD object.
         public PointD ToStageSpace(PointD p)
         {
             PointD pp = new PointD();
-            pp.X = ((p.X * physicalSizeX) + Volume.Location.X);
-            pp.Y = ((p.Y * physicalSizeY) + Volume.Location.Y);
+            pp.X = ((p.X * Resolutions[resolution].PhysicalX) + Volume.Location.X);
+            pp.Y = ((p.Y * Resolutions[resolution].PhysicalY) + Volume.Location.Y);
             return pp;
         }
+        /// Convert a point in the image space to a point in the stage space
+        /// 
+        /// @param PointD A point in the image space
+        /// @param resolution the resolution of the image (0, 1, 2, 3, 4)
+        /// 
+        /// @return A PointD object.
+        public PointD ToStageSpace(PointD p, int resolution)
+        {
+            PointD pp = new PointD();
+            pp.X = ((p.X * Resolutions[resolution].PhysicalX) + Volume.Location.X);
+            pp.Y = ((p.Y * Resolutions[resolution].PhysicalY) + Volume.Location.Y);
+            return pp;
+        }
+        /// > The function takes a point in the volume space and converts it to a point in the stage
+        /// space
+        /// 
+        /// @param PointD A custom class that holds an X and Y coordinate.
+        /// @param physicalSizeX The width of the stage in mm
+        /// @param physicalSizeY The height of the stage in mm
+        /// @param volumeX The X coordinate of the top left corner of the volume in stage space.
+        /// @param volumeY The Y position of the top left corner of the volume in stage space.
+        /// 
+        /// @return A PointD object.
         public static PointD ToStageSpace(PointD p, double physicalSizeX, double physicalSizeY, double volumeX, double volumeY)
         {
             PointD pp = new PointD();
@@ -2494,6 +2909,12 @@ namespace BioGTK
             pp.Y = ((p.Y * physicalSizeY) + volumeY);
             return pp;
         }
+        /// > Convert a rectangle from the coordinate space of the image to the coordinate space of the
+        /// stage
+        /// 
+        /// @param RectangleD A rectangle with double precision coordinates.
+        /// 
+        /// @return A RectangleD object.
         public RectangleD ToStageSpace(RectangleD p)
         {
             RectangleD r = new RectangleD();
@@ -2503,6 +2924,16 @@ namespace BioGTK
             r.H = (p.H * physicalSizeY);
             return r;
         }
+        /// > This function takes a rectangle in the coordinate space of the image and converts it to
+        /// the coordinate space of the stage
+        /// 
+        /// @param RectangleD A rectangle with double precision.
+        /// @param physicalSizeX The width of the physical screen in pixels
+        /// @param physicalSizeY The height of the stage in pixels
+        /// @param volumeX The X position of the volume in stage space.
+        /// @param volumeY The Y position of the top of the volume in stage space.
+        /// 
+        /// @return A RectangleD object.
         public static RectangleD ToStageSpace(RectangleD p, double physicalSizeX, double physicalSizeY, double volumeX, double volumeY)
         {
             RectangleD r = new RectangleD();
@@ -2512,6 +2943,12 @@ namespace BioGTK
             r.H = (p.H * physicalSizeY);
             return r;
         }
+        /// > This function takes a list of points in the coordinate system of the image and returns a
+        /// list of points in the coordinate system of the stage
+        /// 
+        /// @param p The array of points to convert
+        /// 
+        /// @return A PointD[] array.
         public PointD[] ToStageSpace(PointD[] p)
         {
             PointD[] ps = new PointD[p.Length];
@@ -2524,6 +2961,17 @@ namespace BioGTK
             }
             return ps;
         }
+        /// It takes a list of points, and converts them from a coordinate system where the origin is in
+        /// the center of the image, to a coordinate system where the origin is in the top left corner
+        /// of the image
+        /// 
+        /// @param p the array of points to convert
+        /// @param physicalSizeX The width of the image in microns
+        /// @param physicalSizeY The height of the image in microns
+        /// @param volumeX The X position of the volume in stage space.
+        /// @param volumeY The Y position of the top left corner of the volume in stage space.
+        /// 
+        /// @return A PointD array.
         public static PointD[] ToStageSpace(PointD[] p, double physicalSizeX, double physicalSizeY, double volumeX, double volumeY)
         {
             PointD[] ps = new PointD[p.Length];
@@ -2536,6 +2984,7 @@ namespace BioGTK
             }
             return ps;
         }
+        /* Creating a new BioImage object. */
         public BioImage(string file)
         {
             id = file;
@@ -2545,6 +2994,19 @@ namespace BioGTK
             rgbChannels[1] = 0;
             rgbChannels[2] = 0;
         }
+        /// It takes a BioImage object, and returns a new BioImage object that is a subset of the
+        /// original
+        /// 
+        /// @param BioImage the image to be processed
+        /// @param ser series number
+        /// @param zs starting z-plane
+        /// @param ze end of z-stack
+        /// @param cs channel start
+        /// @param ce channel end
+        /// @param ts time start
+        /// @param te time end
+        /// 
+        /// @return A new BioImage object.
         public static BioImage Substack(BioImage orig, int ser, int zs, int ze, int cs, int ce, int ts, int te)
         {
             BioImage b = CopyInfo(orig, false, false);
@@ -2588,6 +3050,12 @@ namespace BioGTK
             Recorder.AddLine("Bio.BioImage.Substack(" + '"' + orig.Filename + '"' + "," + ser + "," + zs + "," + ze + "," + cs + "," + ce + "," + ts + "," + te + ");");
             return b;
         }
+        /// This function takes two images and merges them together
+        /// 
+        /// @param BioImage The image to be merged
+        /// @param BioImage The image to be merged
+        /// 
+        /// @return A new BioImage object.
         public static BioImage MergeChannels(BioImage b2, BioImage b)
         {
             BioImage res = new BioImage(b2.ID);
@@ -2673,12 +3141,23 @@ namespace BioGTK
             Recorder.AddLine("Bio.BioImage.MergeChannels(" + '"' + b.ID + '"' + "," + '"' + b2.ID + '"' + ");");
             return res;
         }
+        /// MergeChannels(b, b2) takes two images, b and b2, and merges the channels of b2 into b
+        /// 
+        /// @param bname The name of the first image
+        /// @param b2name The name of the image to merge with the first image.
+        /// 
+        /// @return A BioImage object.
         public static BioImage MergeChannels(string bname, string b2name)
         {
             BioImage b = Images.GetImage(bname);
             BioImage b2 = Images.GetImage(b2name);
             return MergeChannels(b, b2);
         }
+        /// It takes a 3D image and merges the Z-stack into a single 2D image
+        /// 
+        /// @param BioImage The image to be merged
+        /// 
+        /// @return A new BioImage object.
         public static BioImage MergeZ(BioImage b)
         {
             BioImage bi = BioImage.CopyInfo(b, true, true);
@@ -2717,6 +3196,11 @@ namespace BioGTK
             Recorder.AddLine("Bio.BioImage.MergeZ(" + '"' + b.ID + '"' + ");");
             return bi;
         }
+        /// It takes a 3D image and merges the time dimension into a single image
+        /// 
+        /// @param BioImage The image to be processed
+        /// 
+        /// @return A new BioImage object.
         public static BioImage MergeT(BioImage b)
         {
             BioImage bi = BioImage.CopyInfo(b, true, true);
@@ -2755,6 +3239,9 @@ namespace BioGTK
             Recorder.AddLine("Bio.BioImage.MergeT(" + '"' + b.ID + '"' + ");");
             return bi;
         }
+        /// It takes a single image and splits it into three images, one for each channel
+        /// 
+        /// @return A list of BioImages
         public BioImage[] SplitChannels()
         {
             BioImage[] bms;
@@ -2854,29 +3341,86 @@ namespace BioGTK
             Recorder.AddLine("Bio.BioImage.SplitChannels(" + '"' + Filename + '"' + ");");
             return bms;
         }
+        /// > SplitChannels splits a BioImage into its constituent channels
+        /// 
+        /// @param BioImage The image to split
+        /// 
+        /// @return An array of BioImages
         public static BioImage[] SplitChannels(BioImage bb)
         {
             return bb.SplitChannels();
         }
+        /// This function takes an image and splits it into its individual channels
+        /// 
+        /// @param name The name of the image to split.
+        /// 
+        /// @return An array of BioImage objects.
         public static BioImage[] SplitChannels(string name)
         {
             return SplitChannels(Images.GetImage(name));
         }
 
+        /* Creating a new instance of the LevelsLinear class. */
         public static LevelsLinear filter8 = new LevelsLinear();
         public static LevelsLinear16bpp filter16 = new LevelsLinear16bpp();
         private static ExtractChannel extractR = new ExtractChannel(AForge.Imaging.RGB.R);
         private static ExtractChannel extractG = new ExtractChannel(AForge.Imaging.RGB.G);
         private static ExtractChannel extractB = new ExtractChannel(AForge.Imaging.RGB.B);
 
+        /// > Get the image at the specified coordinates
+        /// 
+        /// @param z the z-stack index
+        /// @param c channel
+        /// @param t time
+        /// 
+        /// @return A Bitmap object.
         public Bitmap GetImageByCoord(int z, int c, int t)
         {
             return Buffers[Coords[z, c, t]];
         }
+        /// "Given a z, c, t coordinate, return the bitmap at that coordinate."
+        /// 
+        /// The function is called by the following code:
+        /// 
+        /// @param z the z-stack index
+        /// @param c channel
+        /// @param t time
+        /// 
+        /// @return A bitmap.
         public Bitmap GetBitmap(int z, int c, int t)
         {
             return Buffers[Coords[z, c, t]];
         }
+        /// > GetIndex(x,y) = (y * stridex + x) * 2
+        /// 
+        /// The stridex is the width of the image in bytes. 
+        /// 
+        /// The stridey is the height of the image in bytes. 
+        /// 
+        /// The stridex and stridey are the same for a square image. 
+        /// 
+        /// The stridex and stridey are different for a rectangular image. 
+        /// 
+        /// The stridex and stridey are different for a rectangular image. 
+        /// 
+        /// The stridex and stridey are different for a rectangular image. 
+        /// 
+        /// The stridex and stridey are different for a rectangular image. 
+        /// 
+        /// The stridex and stridey are different for a rectangular image. 
+        /// 
+        /// The stridex and stridey are different for a rectangular image. 
+        /// 
+        /// The stridex and stridey are different for a rectangular image. 
+        /// 
+        /// The stridex and stridey are different for a rectangular image. 
+        /// 
+        /// The
+        /// 
+        /// @param ix x coordinate of the pixel
+        /// @param iy The y coordinate of the pixel
+        /// 
+        /// @return The index of the pixel in the array.
         public int GetIndex(int ix, int iy)
         {
             if (ix > SizeX || iy > SizeY || ix < 0 || iy < 0)
@@ -2893,6 +3437,13 @@ namespace BioGTK
                 return (y * stridex + x);
             }
         }
+        /// > The function returns the index of the pixel in the buffer
+        /// 
+        /// @param ix x coordinate of the pixel
+        /// @param iy The y coordinate of the pixel
+        /// @param index 0 = Red, 1 = Green, 2 = Blue
+        /// 
+        /// @return The index of the pixel in the buffer.
         public int GetIndexRGB(int ix, int iy, int index)
         {
             int stridex = SizeX;
@@ -2908,6 +3459,12 @@ namespace BioGTK
                 return (y * stridex + x) * index;
             }
         }
+        /// If the coordinate is within the bounds of the image, then return the value of the pixel at
+        /// that coordinate
+        /// 
+        /// @param ZCTXY a struct that contains the X, Y, Z, C, and T coordinates of the pixel.
+        /// 
+        /// @return The value of the pixel at the given coordinate.
         public ushort GetValue(ZCTXY coord)
         {
             if (coord.X < 0 || coord.Y < 0 || coord.X > SizeX || coord.Y > SizeY)
@@ -2927,6 +3484,12 @@ namespace BioGTK
                 return GetValueRGB(coord, 0);
             return 0;
         }
+        /// It takes a coordinate and an index and returns the value of the pixel at that coordinate
+        /// 
+        /// @param ZCTXY a struct that contains the Z, C, T, X, and Y coordinates of the pixel.
+        /// @param index 0, 1, 2
+        /// 
+        /// @return A ushort value.
         public ushort GetValueRGB(ZCTXY coord, int index)
         {
             int ind = 0;
@@ -2946,14 +3509,38 @@ namespace BioGTK
                 return c.B;
             throw new IndexOutOfRangeException();
         }
+        /// > Get the value of the pixel at the given coordinates
+        /// 
+        /// @param ZCT Z is the Z-plane, C is the channel, T is the timepoint
+        /// @param x x coordinate of the pixel
+        /// @param y The y coordinate of the pixel
+        /// 
+        /// @return The value of the pixel at the given coordinates.
         public ushort GetValue(ZCT coord, int x, int y)
         {
             return GetValueRGB(new ZCTXY(coord.Z, coord.C, coord.T, x, y), 0);
         }
+        /// > This function returns the value of the pixel at the specified ZCTXY coordinates
+        /// 
+        /// @param z The Z-plane of the image.
+        /// @param c channel
+        /// @param t time
+        /// @param x x coordinate of the pixel
+        /// @param y the y coordinate of the pixel
+        /// 
+        /// @return The value of the pixel at the given coordinates.
         public ushort GetValue(int z, int c, int t, int x, int y)
         {
             return GetValue(new ZCTXY(z, c, t, x, y));
         }
+        /// > Get the value of a pixel at a given coordinate, x, y, and RGB index
+        /// 
+        /// @param ZCT The ZCT coordinate of the image.
+        /// @param x x coordinate of the pixel
+        /// @param y the y coordinate of the pixel
+        /// @param RGBindex 0 = Red, 1 = Green, 2 = Blue
+        /// 
+        /// @return The value of the pixel at the given coordinates.
         public ushort GetValueRGB(ZCT coord, int x, int y, int RGBindex)
         {
             ZCTXY c = new ZCTXY(coord.Z, coord.C, coord.T, x, y);
@@ -2964,37 +3551,91 @@ namespace BioGTK
             else
                 return GetValue(coord, x, y);
         }
+        /// This function returns the value of the pixel at the specified coordinates in the specified
+        /// channel, frame, and RGB index
+        /// 
+        /// @param z The Z-plane index
+        /// @param c channel
+        /// @param t time index
+        /// @param x x coordinate of the pixel
+        /// @param y The y coordinate of the pixel
+        /// @param RGBindex 0 = Red, 1 = Green, 2 = Blue
+        /// 
+        /// @return The value of the pixel at the given coordinates.
         public ushort GetValueRGB(int z, int c, int t, int x, int y, int RGBindex)
         {
             return GetValueRGB(new ZCT(z, c, t), x, y, RGBindex);
         }
+        /// It takes a coordinate and a value, and sets the value at that coordinate
+        /// 
+        /// @param ZCTXY a struct that contains the Z, C, T, X, and Y coordinates of the pixel
+        /// @param value the value to be set
         public void SetValue(ZCTXY coord, ushort value)
         {
             int i = Coords[coord.Z, coord.C, coord.T];
             Buffers[i].SetValue(coord.X, coord.Y, value);
         }
+        /// It sets the value of a pixel in a buffer
+        /// 
+        /// @param x The x coordinate of the pixel to set.
+        /// @param y The y coordinate of the pixel to set.
+        /// @param ind The index of the buffer to set the value in.
+        /// @param value The value to set the pixel to.
         public void SetValue(int x, int y, int ind, ushort value)
         {
             Buffers[ind].SetValue(x, y, value);
         }
+        /// This function sets the value of a pixel at a given x,y coordinate in a given image plane
+        /// 
+        /// @param x x coordinate of the pixel
+        /// @param y The y coordinate of the pixel to set.
+        /// @param ZCT a struct that contains the Z, C, and T coordinates of the pixel
+        /// @param value the value to set
         public void SetValue(int x, int y, ZCT coord, ushort value)
         {
             SetValue(x, y, Coords[coord.Z, coord.C, coord.T], value);
         }
+        /// It takes a coordinate, an RGB index, and a value, and sets the value of the pixel at that
+        /// coordinate to the value
+        /// 
+        /// @param ZCTXY a struct that contains the Z, C, T, X, and Y coordinates of the pixel
+        /// @param RGBindex 0 = Red, 1 = Green, 2 = Blue
+        /// @param value the value to be set
         public void SetValueRGB(ZCTXY coord, int RGBindex, ushort value)
         {
             int ind = Coords[coord.Z, coord.C, coord.T];
             Buffers[ind].SetValueRGB(coord.X, coord.Y, RGBindex, value);
         }
+        /// > This function returns a Bitmap object from the image data stored in the OME-TIFF file
+        /// 
+        /// @param ZCT Z = Z-stack, C = channel, T = timepoint
+        /// 
+        /// @return A Bitmap object.
         public Bitmap GetBitmap(ZCT coord)
         {
             return (Bitmap)GetImageByCoord(coord.Z, coord.C, coord.T);
         }
+        /// > Get the image at the specified ZCT coordinate, and return a filtered version of it
+        /// 
+        /// @param ZCT a 3-tuple of integers (z, c, t)
+        /// @param IntRange 
+        /// @param IntRange 
+        /// @param IntRange 
+        /// 
+        /// @return An UnmanagedImage object.
         public UnmanagedImage GetFiltered(ZCT coord, IntRange r, IntRange g, IntRange b)
         {
             int index = Coords[coord.Z, coord.C, coord.T];
             return GetFiltered(index, r, g, b);
         }
+        /// It takes an image, and returns a filtered version of that image
+        /// 
+        /// @param ind the index of the buffer to be filtered
+        /// @param IntRange 
+        /// @param IntRange 
+        /// @param IntRange 
+        /// 
+        /// @return A filtered image.
         public UnmanagedImage GetFiltered(int ind, IntRange r, IntRange g, IntRange b)
         {
             if (Buffers[ind].BitsPerPixel > 8)
@@ -3015,6 +3656,10 @@ namespace BioGTK
                 return BioImage.filter8.Apply(Buffers[ind].Image);
             }
         }
+        /// It takes an image, and returns a channel of that image
+        /// 
+        /// @param ind the index of the buffer
+        /// @param s 0, 1, 2
         public UnmanagedImage GetChannelImage(int ind, short s)
         {
             Bitmap bf = Buffers[ind];
@@ -3031,6 +3676,15 @@ namespace BioGTK
             else
                 throw new InvalidOperationException();
         }
+        /// > GetEmission() returns an UnmanagedImage object that is a composite of the emission
+        /// channels
+        /// 
+        /// @param ZCT Z, C, T coordinates
+        /// @param IntRange 
+        /// @param IntRange 
+        /// @param IntRange 
+        /// 
+        /// @return A Bitmap or an UnmanagedImage.
         public UnmanagedImage GetEmission(ZCT coord, IntRange rf, IntRange gf, IntRange bf)
         {
             if (RGBChannelCount == 1)
@@ -3050,6 +3704,14 @@ namespace BioGTK
                 return Buffers[index].Image;
             }
         }
+        /// > Get the RGB bitmap for the specified ZCT coordinate
+        /// 
+        /// @param ZCT Z, C, T coordinates
+        /// @param IntRange 
+        /// @param IntRange 
+        /// @param IntRange 
+        /// 
+        /// @return A Bitmap object.
         public Bitmap GetRGBBitmap(ZCT coord, IntRange rf, IntRange gf, IntRange bf)
         {
             int index = Coords[coord.Z, coord.C, coord.T];
@@ -3077,6 +3739,12 @@ namespace BioGTK
         }
 
         public static Stopwatch swatch = new Stopwatch();
+        /// > GetAnnotations() returns a list of ROI objects that are associated with the ZCT coordinate
+        /// passed in as a parameter
+        /// 
+        /// @param ZCT a 3D coordinate (Z, C, T)
+        /// 
+        /// @return A list of ROI objects.
         public List<ROI> GetAnnotations(ZCT coord)
         {
             List<ROI> annotations = new List<ROI>();
@@ -3089,6 +3757,14 @@ namespace BioGTK
             }
             return annotations;
         }
+        /// This function returns a list of ROI objects that are associated with the specified Z, C, and
+        /// T coordinates
+        /// 
+        /// @param Z The Z-stack index
+        /// @param C Channel
+        /// @param T Time
+        /// 
+        /// @return A list of ROI objects.
         public List<ROI> GetAnnotations(int Z, int C, int T)
         {
             List<ROI> annotations = new List<ROI>();
@@ -3101,6 +3777,8 @@ namespace BioGTK
         }
 
         public bool Loading = false;
+        /// We initialize OME on a seperate thread so the user doesn't have to wait for initialization
+        /// to view images.
         public static void Initialize()
         {
             //We initialize OME on a seperate thread so the user doesn't have to wait for initialization to
@@ -3108,6 +3786,7 @@ namespace BioGTK
             System.Threading.Thread t = new System.Threading.Thread(new System.Threading.ThreadStart(InitOME));
             t.Start();
         }
+        /// > Initialize the OME-XML library
         private static void InitOME()
         {
             factory = new ServiceFactory();
@@ -3116,12 +3795,21 @@ namespace BioGTK
             writer = new ImageWriter();
             initialized = true;
         }
+        /// This function takes a string array of file names and a string ID and saves the files to the
+        /// database
+        /// 
+        /// @param file The file path to the file you want to save.
+        /// @param ID The ID of the series you want to save.
         public static void SaveFile(string file, string ID)
         {
             string[] sts = new string[1];
             sts[0] = file;
             SaveSeries(sts, ID);
         }
+        /// It takes a list of image files, and saves them as a single multi-page TIFF file
+        /// 
+        /// @param files an array of file paths to the images to be saved
+        /// @param ID The path to the file to save to.
         public static void SaveSeries(string[] files, string ID)
         {
             string desc = "";
@@ -3226,6 +3914,12 @@ namespace BioGTK
             image.Dispose();
 
         }
+        /// It opens a tiff file, reads the number of pages, reads the number of channels, and then
+        /// reads each page into a BioImage object
+        /// 
+        /// @param file the path to the file
+        /// 
+        /// @return An array of BioImage objects.
         public static BioImage[] OpenSeries(string file)
         {
             Tiff image = Tiff.Open(file, "r");
@@ -3253,10 +3947,21 @@ namespace BioGTK
             }
             return bs;
         }
+        /// This function opens a file and returns a BioImage object
+        /// 
+        /// @param file The path to the file to open.
+        /// 
+        /// @return A BioImage object.
         public static BioImage OpenFile(string file)
         {
             return OpenFile(file, 0);
         }
+        /// It opens a TIFF file and returns a BioImage object
+        /// 
+        /// @param file the file path
+        /// @param series the series number of the image to open
+        /// 
+        /// @return A BioImage object.
         public static BioImage OpenFile(string file, int series)
         {
             if (isOME(file))
@@ -3558,6 +4263,12 @@ namespace BioGTK
             st.Stop();
             return b;
         }
+        /// > The function checks if the image is a Tiff image and if it is, it checks if the image is a
+        /// series of images
+        /// 
+        /// @param file the path to the file
+        /// 
+        /// @return a boolean value.
         public static bool isTiffSeries(string file)
         {
             Tiff image = Tiff.Open(file, "r");
@@ -3586,6 +4297,13 @@ namespace BioGTK
             }
             return false;
         }
+        /// If the file is a TIFF, check the ImageDescription tag for the string "OME-XML". If it's
+        /// there, return true. If it's not a TIFF, return true. If it's a PNG, JPG, JPEG, or BMP,
+        /// return false
+        /// 
+        /// @param file the path to the image file
+        /// 
+        /// @return A boolean value.
         public static bool isOME(string file)
         {
             if (file.EndsWith(".tif") || file.EndsWith(".TIF") || file.EndsWith("tiff") || file.EndsWith("TIFF"))
@@ -3607,6 +4325,11 @@ namespace BioGTK
             }
             else return false;
         }
+        /// > If the file is an OME file and has more than one series, return true
+        /// 
+        /// @param file the file to be checked
+        /// 
+        /// @return A boolean value.
         public static bool isOMESeries(string file)
         {
             if (!isOME(file))
@@ -3622,12 +4345,22 @@ namespace BioGTK
             reader = null;
             return ser;
         }
+        /// This function takes a string array of image IDs, a file name, and a number of planes. It
+        /// then saves the images to the file name
+        /// 
+        /// @param file the file name to save the image to
+        /// @param ID The ID of the image you want to save
         public static void SaveOME(string file, string ID)
         {
             string[] sts = new string[1];
             sts[0] = ID;
             SaveOMESeries(sts, file, BioImage.Planes);
         }
+        /// This function takes a list of image files and saves them as a single OME-TIFF file
+        /// 
+        /// @param files an array of file paths to the images to be saved
+        /// @param f the file name to save to
+        /// @param planes if true, the planes will be saved as well.
         public static void SaveOMESeries(string[] files, string f, bool planes)
         {
             if (File.Exists(f))
@@ -3968,15 +4701,39 @@ namespace BioGTK
 
             } while (!stop);
         }
+        /// > This function opens an OME file and returns a BioImage object
+        /// 
+        /// @param file the path to the file you want to open
+        /// 
+        /// @return A list of BioImages.
         public static BioImage OpenOME(string file)
         {
             return OpenOMESeries(file)[0];
         }
+        /// > OpenOME(string file, int serie)
+        /// 
+        /// The first parameter is a string, the second is an integer
+        /// 
+        /// @param file the path to the file
+        /// @param serie the image series to open
+        /// 
+        /// @return A BioImage object.
         public static BioImage OpenOME(string file, int serie)
         {
             Recorder.AddLine("Bio.BioImage.OpenOME(\"" + file + "\"," + serie + ");");
             return OpenOME(file, serie, true, false, 0, 0, 0, 0);
         }
+        /// It takes a list of files, and creates a new BioImage object with the first file in the list.
+        /// Then it loops through the rest of the files, adding the buffers from each file to the new
+        /// BioImage object. Finally, it updates the coordinates of the new BioImage object, and adds it
+        /// to the Images list
+        /// 
+        /// @param files an array of file paths
+        /// @param sizeZ number of slices in the stack
+        /// @param sizeC number of channels
+        /// @param sizeT number of time points
+        /// 
+        /// @return A BioImage object.
         public static BioImage FilesToStack(string[] files, int sizeZ, int sizeC, int sizeT)
         {
             BioImage b = new BioImage(files[0]);
@@ -3989,6 +4746,11 @@ namespace BioGTK
             Images.AddImage(b);
             return b;
         }
+        /// It takes a folder of images and creates a stack from them
+        /// 
+        /// @param path the path to the folder containing the images
+        /// 
+        /// @return A BioImage object.
         public static BioImage FolderToStack(string path)
         {
             string[] files = Directory.GetFiles(path);
@@ -4028,14 +4790,6 @@ namespace BioGTK
         {
             if (file == null || file == "")
                 throw new InvalidDataException("File is empty or null");
-            /*
-            //Progress pr = null;
-            if (//Progress)
-            {
-                pr = new //Progress(file, "Opening OME");
-                pr.Show();
-            }
-            */
             st.Start();
             BioImage b = new BioImage(file);
             b.Loading = true;
@@ -4137,20 +4891,6 @@ namespace BioGTK
                 catch (Exception e)
                 {
                     Console.WriteLine(e.Message);
-                }
-                if (i == 0)
-                {
-                    b.rgbChannels[0] = 0;
-                }
-                else
-                if (i == 1)
-                {
-                    b.rgbChannels[1] = 1;
-                }
-                else
-                if (i == 2)
-                {
-                    b.rgbChannels[2] = 2;
                 }
                 //If this channel is not defined we have loaded all the channels in the file.
                 if (!def)
@@ -4784,20 +5524,6 @@ namespace BioGTK
                 {
                     Console.WriteLine(e.Message);
                 }
-                if (i == 0)
-                {
-                    b.rgbChannels[0] = 0;
-                }
-                else
-                if (i == 1)
-                {
-                    b.rgbChannels[1] = 1;
-                }
-                else
-                if (i == 2)
-                {
-                    b.rgbChannels[2] = 2;
-                }
                 //If this channel is not defined we have loaded all the channels in the file.
                 if (!def)
                     break;
@@ -5188,7 +5914,20 @@ namespace BioGTK
             b.Loading = false;
             return b;
         }
+        /* Creating an instance of the ImageReader class. */
         ImageReader imRead;
+        /// It reads a tile from a file, and returns a bitmap
+        /// 
+        /// @param BioImage This is a class that contains the image file name, the image reader, and the
+        /// coordinates of the image.
+        /// @param ZCT Z, C, T
+        /// @param serie the series number (0-based)
+        /// @param tilex the x coordinate of the tile
+        /// @param tiley the y coordinate of the tile
+        /// @param tileSizeX the width of the tile
+        /// @param tileSizeY the height of the tile
+        /// 
+        /// @return A Bitmap object.
         public static Bitmap GetTile(BioImage b, ZCT coord, int serie, int tilex, int tiley, int tileSizeX, int tileSizeY)
         {
             if (b.imRead == null)
@@ -5293,6 +6032,10 @@ namespace BioGTK
             //bf.SwitchRedBlue();
             return bf;
         }
+        /// This function sets the minimum and maximum values of the image to the minimum and maximum
+        /// values of the stack
+        /// 
+        /// @param bit16 true = 16 bit, false = 8 bit
         public void StackThreshold(bool bit16)
         {
             if (bit16)
@@ -5322,6 +6065,16 @@ namespace BioGTK
                 bitsPerPixel = 8;
             }
         }
+        /// > If the number is less than or equal to 255, then it's 8 bits. If it's less than or equal
+        /// to 512, then it's 9 bits. If it's less than or equal to 1023, then it's 10 bits. If it's
+        /// less than or equal to 2047, then it's 11 bits. If it's less than or equal to 4095, then it's
+        /// 12 bits. If it's less than or equal to 8191, then it's 13 bits. If it's less than or equal
+        /// to 16383, then it's 14 bits. If it's less than or equal to 32767, then it's 15 bits. If it's
+        /// less than or equal to 65535, then it's 16 bits
+        /// 
+        /// @param bt The number of bits per pixel.
+        /// 
+        /// @return The number of bits per pixel.
         public static int GetBitsPerPixel(int bt)
         {
             if (bt <= 255)
@@ -5343,6 +6096,11 @@ namespace BioGTK
             else
                 return 16;
         }
+        /// It returns the maximum value of a bit.
+        /// 
+        /// @param bt bit depth
+        /// 
+        /// @return The maximum value of a bit.
         public static int GetBitMaxValue(int bt)
         {
             if (bt == 8)
@@ -5364,6 +6122,15 @@ namespace BioGTK
             else
                 return 65535;
         }
+        /// If the bits per pixel is 8, then the pixel format is either 8bppIndexed, 24bppRgb, or
+        /// 32bppArgb. If the bits per pixel is 16, then the pixel format is either 16bppGrayScale or
+        /// 48bppRgb
+        /// 
+        /// @param rgbChannelCount The number of channels in the image. For example, a grayscale image
+        /// has 1 channel, a color image has 3 channels (red, green, blue).
+        /// @param bitsPerPixel 8 or 16
+        /// 
+        /// @return The PixelFormat of the image.
         public static PixelFormat GetPixelFormat(int rgbChannelCount, int bitsPerPixel)
         {
             if (bitsPerPixel == 8)
@@ -5384,6 +6151,12 @@ namespace BioGTK
             }
             throw new NotSupportedException("Not supported pixel format.");
         }
+        /// It opens a file, checks if it's tiled, if it is, it opens it as a tiled image, if not, it
+        /// opens it as a normal image
+        /// 
+        /// @param file the file path
+        /// 
+        /// @return An array of BioImage objects.
         public static BioImage[] OpenOMESeries(string file)
         {
             reader = new ImageReader();
@@ -5443,12 +6216,18 @@ namespace BioGTK
             }
             return bs;
         }
+        /// It opens a file in a new thread.
+        /// 
+        /// @param file The file to open
         public static void OpenAsync(string file)
         {
             Thread t = new Thread(OpenThread);
             t.Name = file;
             t.Start();
         }
+        /// It opens a file asynchronously
+        /// 
+        /// @param files The file(s) to open.
         public static void OpenAsync(string[] files)
         {
             foreach (string file in files)
@@ -5456,10 +6235,16 @@ namespace BioGTK
                 OpenAsync(file);
             }
         }
+        /// It opens a file
+        /// 
+        /// @param file The file to open.
         public static void Open(string file)
         {
             OpenFile(file);
         }
+        /// It opens a file
+        /// 
+        /// @param files The files to open.
         public static void Open(string[] files)
         {
             foreach (string file in files)
@@ -5467,6 +6252,11 @@ namespace BioGTK
                 Open(file);
             }
         }
+        /// It takes a list of files, opens them, and then combines them into a single BioImage object
+        /// 
+        /// @param files an array of file paths
+        /// 
+        /// @return A BioImage object.
         public static BioImage ImagesToStack(string[] files)
         {
             BioImage[] bs = new BioImage[files.Length];
@@ -5503,21 +6293,32 @@ namespace BioGTK
             b.Volume = new VolumeD(bs[0].Volume.Location, new Point3D(bs[0].SizeX * bs[0].physicalSizeX, bs[0].SizeY * bs[0].physicalSizeY, (z + 1) * bs[0].physicalSizeZ));
             return b;
         }
+        /// The function takes a BioImage object, opens the file, and returns a updated BioImage object
+        /// 
+        /// @param BioImage This is the class that contains the image data.
         public static void Update(BioImage b)
         {
             b = OpenFile(b.file);
         }
+        /// > Update() is a function that calls the Update() function of the parent class
         public void Update()
         {
             Update(this);
         }
-
+        /* Creating a list of strings called openfile. */
         private static List<string> openfile = new List<string>();
+        /// The function OpenThread() is a private static function that takes no parameters. It creates
+        /// a string variable called file and assigns it the value of the current thread's name. It then
+        /// calls the function OpenFile() and passes it the file variable
         private static void OpenThread()
         {
             string file = Thread.CurrentThread.Name;
             OpenFile(file);
         }
+        /// It adds the file and ID to a list, then starts a new thread to save the file
+        /// 
+        /// @param file The file to save to
+        /// @param ID The ID of the file
         public static void SaveAsync(string file, string ID)
         {
             saveid.Add(file);
@@ -5525,12 +6326,17 @@ namespace BioGTK
             Thread t = new Thread(Save);
             t.Start();
         }
+        /// It takes a file and an ID and saves the file to the ID
+        /// 
+        /// @param file The file to save the data to.
+        /// @param ID The ID of the user
         public static void Save(string file, string ID)
         {
             SaveFile(file, ID);
         }
         private static List<string> savefile = new List<string>();
         private static List<string> saveid = new List<string>();
+        /// It saves all the files in the savefile list to the saveid list.
         private static void Save()
         {
             List<string> sts = new List<string>();
@@ -5547,12 +6353,17 @@ namespace BioGTK
         }
 
         private static List<string> openOMEfile = new List<string>();
+        /// It takes a string array of file paths, adds them to a list, and starts a new thread to open
+        /// the files
+        /// 
+        /// @param file The file path to the OME file.
         public static void OpenOMEThread(string[] file)
         {
             openOMEfile.AddRange(file);
             Thread t = new Thread(OpenOME);
             t.Start();
         }
+        /// It opens the OME file.
         private static void OpenOME()
         {
             foreach (string f in openOMEfile)
@@ -5561,6 +6372,23 @@ namespace BioGTK
             }
             openOMEfile.Clear();
         }
+        /// It creates a new thread and starts it. 
+        /// 
+        /// The thread is a function called SaveOME. 
+        /// 
+        /// The function SaveOME uses the global variables saveOMEID and saveOMEfile. 
+        /// 
+        /// The global variables saveOMEID and saveOMEfile are set in the function SaveOMEThread. 
+        /// 
+        /// The function SaveOMEThread takes two parameters: file and ID. 
+        /// 
+        /// The function SaveOMEThread sets the global variables saveOMEID and saveOMEfile to the values
+        /// of the parameters file and ID. 
+        /// 
+        /// The function SaveOMEThread then creates a new thread and starts it. 
+        /// 
+        /// @param file The file to save to
+        /// @param ID The ID of the OME file to save.
         public static void SaveOMEThread(string file, string ID)
         {
             saveOMEID = ID;
@@ -5570,6 +6398,7 @@ namespace BioGTK
         }
         private static string saveOMEfile;
         private static string saveOMEID;
+        /// It takes the file name and the ID of the OME and saves it to the file
         private static void SaveOME()
         {
             SaveOME(saveOMEfile, saveOMEID);
@@ -5586,6 +6415,11 @@ namespace BioGTK
         public const char NewLine = '\n';
         public const string columns = "ROIID,ROINAME,TYPE,ID,SHAPEINDEX,TEXT,S,C,Z,T,X,Y,W,H,POINTS,STROKECOLOR,STROKECOLORW,FILLCOLOR,FONTSIZE\n";
 
+        /// > Open the file, get the image description field, and return it as a string
+        /// 
+        /// @param file the path to the file
+        /// 
+        /// @return The image description of the tiff file.
         public static string OpenXML(string file)
         {
             if (!file.EndsWith(".tif"))
@@ -5595,6 +6429,12 @@ namespace BioGTK
             return f[0].ToString();
         }
 
+        /// It reads the OME-XML file and converts the ROIs to a list of ROI objects
+        /// 
+        /// @param file the path to the OME-TIFF file
+        /// @param series the series number of the image you want to open
+        /// 
+        /// @return A list of ROI objects.
         public static List<ROI> OpenOMEROIs(string file, int series)
         {
             List<ROI> Annotations = new List<ROI>();
@@ -5937,6 +6777,11 @@ namespace BioGTK
             imageReader.close();
             return Annotations;
         }
+        /// It takes a list of ROI objects and returns a string of all the ROI objects in the list
+        /// 
+        /// @param Annotations List of ROI objects
+        /// 
+        /// @return A string of the ROI's
         public static string ROIsToString(List<ROI> Annotations)
         {
             string s = "";
@@ -5946,6 +6791,12 @@ namespace BioGTK
             }
             return s;
         }
+        /// This function takes an ROI object and returns a string that contains all the information
+        /// about the ROI
+        /// 
+        /// @param ROI The ROI object
+        /// 
+        /// @return A string
         public static string ROIToString(ROI an)
         {
             PointD[] points = an.GetPoints();
@@ -5966,6 +6817,11 @@ namespace BioGTK
                 an.W.ToString() + ',' + an.H.ToString() + ',' + sep.ToString() + pts + sep.ToString() + ',' + sColor + ',' + an.strokeWidth.ToString() + ',' + bColor + ',' + an.fontSize.ToString() + ',' + NewLine;
             return line;
         }
+        /// It takes a string and returns an ROI object
+        /// 
+        /// @param sts the string that contains the ROI data
+        /// 
+        /// @return A ROI object.
         public static ROI StringToROI(string sts)
         {
             //Works with either comma or tab separated values.
@@ -6129,12 +6985,21 @@ namespace BioGTK
 
             return an;
         }
+        /// This function takes a list of ROIs and writes them to a CSV file
+        /// 
+        /// @param filename the name of the file to be saved
+        /// @param Annotations List of ROI objects
         public static void ExportROIsCSV(string filename, List<ROI> Annotations)
         {
             string con = columns;
             con += ROIsToString(Annotations);
             File.WriteAllText(filename, con);
         }
+        /// It reads the CSV file and converts each line into a ROI object
+        /// 
+        /// @param filename The path to the CSV file.
+        /// 
+        /// @return A list of ROI objects.
         public static List<ROI> ImportROIsCSV(string filename)
         {
             List<ROI> list = new List<ROI>();
@@ -6148,6 +7013,13 @@ namespace BioGTK
             }
             return list;
         }
+        /// ExportROIFolder(path, filename)
+        /// 
+        /// This function takes a folder path and a filename as input and exports all the ROIs in the
+        /// folder as CSV files
+        /// 
+        /// @param path the path to the folder containing the OMERO ROI files
+        /// @param filename the name of the file you want to export
         public static void ExportROIFolder(string path, string filename)
         {
             string[] fs = Directory.GetFiles(path);
@@ -6163,6 +7035,31 @@ namespace BioGTK
 
         private static BioImage bstats = null;
         private static bool update = false;
+        /// It takes a BioImage object, and calculates the mean histogram for each channel, and for the
+        /// entire image. 
+        /// 
+        /// The BioImage object is a class that contains a list of buffers, each of which contains a
+        /// byte array of pixel data. 
+        /// 
+        /// The function also calculates the mean histogram for each buffer, and stores it in the
+        /// buffer's stats property. 
+        /// 
+        /// The function also calculates the mean histogram for each channel, and stores it in the
+        /// channel's stats property. 
+        /// 
+        /// The function also calculates the mean histogram for the entire image, and stores it in the
+        /// image's statistics property. 
+        /// 
+        /// The mean histogram is calculated by adding up the histograms of each buffer, and then
+        /// dividing by the number of buffers. 
+        /// 
+        /// The histogram is calculated by looping through the byte array of pixel data, and
+        /// incrementing the value of the histogram at the index of the pixel value. 
+        /// 
+        /// The histogram
+        /// 
+        /// @param BioImage This is the image object that contains the image data.
+        /// @param updateImageStats if true, the image stats will be updated.
         public static void AutoThreshold(BioImage b, bool updateImageStats)
         {
             bstats = b;
@@ -6254,16 +7151,22 @@ namespace BioGTK
             b.statistics = statistics;
 
         }
+        /// It takes the current image, and finds the best threshold value for it
         public static void AutoThreshold()
         {
             AutoThreshold(bstats, update);
         }
+        /// It creates a new thread that calls the AutoThreshold function
+        /// 
+        /// @param BioImage This is a class that holds the image data and some other information.
         public static void AutoThresholdThread(BioImage b)
         {
             bstats = b;
             Thread th = new Thread(AutoThreshold);
             th.Start();
         }
+        /// It disposes of all the buffers and channels in the image, removes the image from the Images
+        /// list, and then forces the garbage collector to run
         public void Dispose()
         {
             for (int i = 0; i < Buffers.Count; i++)
@@ -6277,11 +7180,21 @@ namespace BioGTK
             Images.RemoveImage(this);
             GC.Collect();
         }
+        /// This function returns the filename of the object, and the location of the object in the 3D
+        /// space
+        /// 
+        /// @return The filename, and the location of the volume.
         public override string ToString()
         {
             return Filename.ToString() + ", (" + Volume.Location.X + ", " + Volume.Location.Y + ", " + Volume.Location.Z + ")";
         }
 
+        /// This function divides each pixel in the image by a constant value
+        /// 
+        /// @param BioImage a class that contains a list of buffers (which are 2D arrays of floats)
+        /// @param b the value to divide by
+        /// 
+        /// @return The image is being returned.
         public static BioImage operator /(BioImage a, float b)
         {
             for (int i = 0; i < a.Buffers.Count; i++)
@@ -6290,14 +7203,13 @@ namespace BioGTK
             }
             return a;
         }
-        public static BioImage operator *(BioImage a, float b)
-        {
-            for (int i = 0; i < a.Buffers.Count; i++)
-            {
-                a.Buffers[i] = a.Buffers[i] * b;
-            }
-            return a;
-        }
+        
+        /// This function adds a constant value to each pixel in the image
+        /// 
+        /// @param BioImage a class that contains a list of buffers (float[])
+        /// @param b the value to add to the image
+        /// 
+        /// @return The image itself.
         public static BioImage operator +(BioImage a, float b)
         {
             for (int i = 0; i < a.Buffers.Count; i++)
@@ -6306,6 +7218,12 @@ namespace BioGTK
             }
             return a;
         }
+        /// Subtracts a scalar value from each pixel in the image
+        /// 
+        /// @param BioImage a class that contains a list of buffers (which are 2D arrays of floats)
+        /// @param b the value to subtract from the image
+        /// 
+        /// @return The BioImage object is being returned.
         public static BioImage operator -(BioImage a, float b)
         {
             for (int i = 0; i < a.Buffers.Count; i++)
@@ -6315,6 +7233,12 @@ namespace BioGTK
             return a;
         }
 
+        /// This function divides each pixel in the image by the value of the color
+        /// 
+        /// @param BioImage a class that contains a list of ColorS objects.
+        /// @param ColorS a struct that contains a byte for each color channel (R, G, B, A)
+        /// 
+        /// @return A BioImage object.
         public static BioImage operator /(BioImage a, ColorS b)
         {
             for (int i = 0; i < a.Buffers.Count; i++)
@@ -6323,6 +7247,12 @@ namespace BioGTK
             }
             return a;
         }
+        /// This function takes a BioImage object and a ColorS object and returns a BioImage object
+        /// 
+        /// @param BioImage a class that contains a list of ColorS objects.
+        /// @param ColorS a struct that contains a byte for each color channel (R, G, B, A)
+        /// 
+        /// @return A BioImage object
         public static BioImage operator *(BioImage a, ColorS b)
         {
             for (int i = 0; i < a.Buffers.Count; i++)
@@ -6331,6 +7261,13 @@ namespace BioGTK
             }
             return a;
         }
+        /// It takes a BioImage object and a ColorS object and adds the ColorS object to each buffer in
+        /// the BioImage object
+        /// 
+        /// @param BioImage a class that contains a list of ColorS objects.
+        /// @param ColorS a struct that contains a byte for each color channel (R, G, B, A)
+        /// 
+        /// @return A BioImage object
         public static BioImage operator +(BioImage a, ColorS b)
         {
             for (int i = 0; i < a.Buffers.Count; i++)
@@ -6339,6 +7276,12 @@ namespace BioGTK
             }
             return a;
         }
+        /// The function subtracts a color from each pixel in the image
+        /// 
+        /// @param BioImage a class that contains a list of ColorS objects.
+        /// @param ColorS a struct that contains a byte for each color channel (R, G, B, A)
+        /// 
+        /// @return The image itself.
         public static BioImage operator -(BioImage a, ColorS b)
         {
             for (int i = 0; i < a.Buffers.Count; i++)

@@ -16,8 +16,6 @@ namespace BioGTK
 
 #pragma warning disable 649
         [Builder.Object]
-        private Box box;
-        [Builder.Object]
         private Button applyBut;
         [Builder.Object]
         private Button resetBut;
@@ -49,7 +47,8 @@ namespace BioGTK
         private SpinButton graphMax;
         [Builder.Object]
         private ComboBox maxUintBox2;
-
+        [Builder.Object]
+        private CheckButton meanStackBox;
 #pragma warning restore 649
 
         #endregion
@@ -85,7 +84,8 @@ namespace BioGTK
             hist = HistogramControl.Create(Channels[0]);
             hist.GraphMax = (int)maxBox.Value;
             graphMax.Value = (int)maxBox.Value;
-            box.Add(hist);
+            hist.Show();
+
 
             minBox.ButtonPressEvent += minBox_ValueChanged;
             //meanStackBox.Clicked += MeanStackBox_Clicked;
@@ -103,9 +103,106 @@ namespace BioGTK
             resetBut.ButtonPressEvent += ResetButton_ButtonPressEvent;
             this.ButtonPressEvent += ChannelsTool_MouseDown;
             this.FocusActivated += ChannelsTool_Activated;
+            channelsBox.Changed += ChannelsBox_Changed;
+            meanStackBox.Clicked += MeanStackBox_Clicked;
 
+            maxUintBox.Changed += MaxUintBox_Changed;
+            maxUintBox2.Changed += MaxUintBox2_Changed;
 
+            var st = new ListStore(typeof(string));
+            st.AppendValues(ushort.MaxValue.ToString());
+            st.AppendValues(16383);
+            st.AppendValues(4096);
+            st.AppendValues(1023);
+            st.AppendValues(byte.MaxValue.ToString());
+            maxUintBox.Model = st;
+            maxUintBox2.Model = st;
+            // Set the text column to display
+            var rend = new CellRendererText();
+            maxUintBox.PackStart(rend, false);
+            maxUintBox.AddAttribute(rend, "text", 0);
+            var rend2 = new CellRendererText();
+            maxUintBox2.PackStart(rend2, false);
+            maxUintBox2.AddAttribute(rend2, "text", 0);
             ShowAll();
+        }
+
+        private void MeanStackBox_Clicked(object sender, EventArgs e)
+        {
+            hist.StackHistogram = meanStackBox.Active;
+        }
+
+        private void MaxUintBox2_Changed(object sender, EventArgs e)
+        {
+            int selectedIndex = maxUintBox2.Active;
+            TreeIter iter;
+            if (maxUintBox2.Model.GetIterFromString(out iter, selectedIndex.ToString()))
+            {
+                string selectedValue = (string)maxUintBox2.Model.GetValue(iter, 0);
+                // Your code to handle the selected value
+                int i = int.Parse(selectedValue);
+                graphMax.Value = i;
+            }
+        }
+
+        private void MaxUintBox_Changed(object sender, EventArgs e)
+        {
+            int selectedIndex = maxUintBox.Active;
+            TreeIter iter;
+            if (maxUintBox.Model.GetIterFromString(out iter, selectedIndex.ToString()))
+            {
+                string selectedValue = (string)maxUintBox.Model.GetValue(iter, 0);
+                // Your code to handle the selected value
+                int i = int.Parse(selectedValue);
+                maxBox.Value = i;
+            }
+        }
+
+        private void ChannelsBox_Changed(object sender, EventArgs e)
+        {
+            UpdateValues();
+        }
+
+        private void UpdateValues()
+        {
+            if (channelsBox.Active == -1)
+                return;
+            sampleBox.Value = 0;
+            sampleBox.Adjustment.Upper = SelectedChannel.range.Length - 1;
+            if (minBox.Adjustment.Upper < SelectedChannel.range[(int)sampleBox.Value].Min || maxBox.Adjustment.Upper < SelectedChannel.range[(int)sampleBox.Value].Max)
+            {
+                minBox.Value = 0;
+                maxBox.Value = ushort.MaxValue;
+            }
+            else
+            {
+                minBox.Value = Channels[channelsBox.Active].range[(int)sampleBox.Value].Min;
+                maxBox.Value = Channels[channelsBox.Active].range[(int)sampleBox.Value].Max;
+            }
+            if (hist != null)
+            {
+                //hist.Statistics = Channels[channelsBox.Active].statistics;
+                hist.UpdateChannel(SelectedChannel);
+                hist.UpdateView();
+            }
+            float max = float.MinValue;
+            float min = float.MaxValue;
+            foreach (Channel c in Channels)
+            {
+                for (int i = 0; i < c.SamplesPerPixel; i++)
+                {
+                    if (max < c.range[i].Max)
+                        max = c.range[i].Max;
+                    if (min > c.range[i].Min)
+                        min = c.range[i].Min;
+                }
+            }
+            graphMax.Value = max;
+            graphMinBox.Value = min;
+            fluorBox.Text = SelectedChannel.Fluor;
+            emissionBox.Value = SelectedChannel.Emission;
+            excitationBox.Value = SelectedChannel.Excitation;
+            App.viewer.UpdateView();
         }
 
         private void UpdateGUI()
@@ -113,23 +210,49 @@ namespace BioGTK
             if (SelectedChannel.BitsPerPixel > 8)
             {
                 minBox.Adjustment.Upper = ushort.MaxValue;
+                minBox.Adjustment.StepIncrement = 1;
+                minBox.Adjustment.PageIncrement = 10;
                 maxBox.Adjustment.Upper = ushort.MaxValue;
+                maxBox.Adjustment.StepIncrement = 1;
+                maxBox.Adjustment.PageIncrement = 10;
                 graphMax.Adjustment.Upper = ushort.MaxValue;
+                graphMax.Adjustment.StepIncrement = 1;
+                graphMax.Adjustment.PageIncrement = 10;
                 graphMinBox.Adjustment.Upper = ushort.MaxValue;
+                graphMinBox.Adjustment.StepIncrement = 1;
+                graphMinBox.Adjustment.PageIncrement = 10;
             }
             else
             {
                 minBox.Adjustment.Upper = byte.MaxValue;
+                minBox.Adjustment.StepIncrement = 1;
+                minBox.Adjustment.PageIncrement = 10;
                 maxBox.Adjustment.Upper = byte.MaxValue;
+                maxBox.Adjustment.StepIncrement = 1;
+                maxBox.Adjustment.PageIncrement = 10;
                 graphMax.Adjustment.Upper = byte.MaxValue;
+                graphMax.Adjustment.StepIncrement = 1;
+                graphMax.Adjustment.PageIncrement = 10;
                 graphMinBox.Adjustment.Upper = byte.MaxValue;
+                graphMinBox.Adjustment.StepIncrement = 1;
+                graphMinBox.Adjustment.PageIncrement = 10;
             }
+            minBox.Value = SelectedChannel.stats[(int)sampleBox.Value].Min;
+            minBox.Value = SelectedChannel.stats[(int)sampleBox.Value].Max;
+            emissionBox.Value = 
 
             emissionBox.Adjustment.Upper = 1000;
+            emissionBox.Adjustment.StepIncrement = 1;
+            emissionBox.Adjustment.PageIncrement = 10;
             excitationBox.Adjustment.Upper = 1000;
+            excitationBox.Adjustment.StepIncrement = 1;
+            excitationBox.Adjustment.PageIncrement = 10;
             binBox.Adjustment.Upper = 1000;
-            sampleBox.Adjustment.Upper = SelectedChannel.SamplesPerPixel;
-
+            binBox.Adjustment.StepIncrement = 1;
+            binBox.Adjustment.PageIncrement = 10;
+            sampleBox.Adjustment.Upper = SelectedChannel.SamplesPerPixel-1;
+            sampleBox.Adjustment.StepIncrement = 1;
+            sampleBox.Adjustment.PageIncrement = 1;
         }
 
         private void ResetButton_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -241,34 +364,6 @@ namespace BioGTK
             App.viewer.UpdateImage();
             App.viewer.UpdateView();
         }
-        private void channelsBox_ActiveChanged(object sender, EventArgs e)
-        {
-            if (channelsBox.Active == -1)
-                return;
-            sampleBox.Value = 0;
-            sampleBox.Adjustment.Upper = SelectedChannel.range.Length - 1;
-            if (minBox.Adjustment.Upper < SelectedChannel.range[(int)sampleBox.Value].Min || maxBox.Adjustment.Upper < SelectedChannel.range[(int)sampleBox.Value].Max)
-            {
-                minBox.Value = 0;
-                maxBox.Value = ushort.MaxValue;
-            }
-            else
-            {
-                minBox.Value = Channels[channelsBox.Active].range[(int)sampleBox.Value].Min;
-                maxBox.Value = Channels[channelsBox.Active].range[(int)sampleBox.Value].Max;
-            }
-            if (hist != null)
-            {
-                //hist.Statistics = Channels[channelsBox.Active].statistics;
-                hist.UpdateChannel(SelectedChannel);
-                hist.UpdateView();
-            }
-            fluorBox.Text = SelectedChannel.Fluor;
-            emissionBox.Value = SelectedChannel.Emission;
-            excitationBox.Value = SelectedChannel.Excitation;
-            App.viewer.UpdateView();
-        }
-
         private void maxUintBox_ActiveChanged(object sender, EventArgs e)
         {
             TreeIter it;
@@ -444,8 +539,7 @@ namespace BioGTK
         {
             if (channelsBox.Active == -1)
                 channelsBox.Active = 0;
-            minBox.Value = Channels[channelsBox.Active].range[(int)sampleBox.Value].Min;
-            maxBox.Value = Channels[channelsBox.Active].range[(int)sampleBox.Value].Max;
+            UpdateValues();
             if (hist != null)
             {
                 //hist.Statistics = Channels[channelsBox.Active].statistics;

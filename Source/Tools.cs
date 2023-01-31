@@ -593,7 +593,7 @@ namespace BioGTK
             if (App.viewer == null)
                 return;
             //TO DO Scripting.UpdateState(Scripting.State.GetMove(e, buts));
-            if ((Tools.currentTool.type == Tools.Tool.Type.pan && buts.Event.State == Gdk.ModifierType.Button1Mask) || buts.Event.State == Gdk.ModifierType.Button2Mask)
+            if ((Tools.currentTool.type == Tools.Tool.Type.pan && buts.Event.State == Gdk.ModifierType.Button1Mask) || buts.Event.State == Gdk.ModifierType.Button2Mask && !ImageView.SelectedImage.isPyramidal)
             {
                 App.viewer.Origin = e;
                 UpdateView();

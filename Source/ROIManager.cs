@@ -89,24 +89,22 @@ namespace Bio
         {
             _builder = builder;
             builder.Autoconnect(this);
-
-            UpdateAnnotationList();
-            xBox.ChangeValue += xBox_ValueChanged;
-            yBox.ChangeValue += yBox_ValueChanged;
-            wBox.ChangeValue += wBox_ValueChanged;
-            hBox.ChangeValue += hBox_ValueChanged;
-            rBox.ChangeValue += rBox_ValueChanged;
-            gBox.ChangeValue += gBox_ValueChanged;
-            bBox.ChangeValue += bBox_ValueChanged;
-            zBox.ChangeValue += zBox_ValueChanged;
-            cBox.ChangeValue += cBox_ValueChanged;
-            tBox.ChangeValue += tBox_ValueChanged;
-            widthBox.ChangeValue += strokeWBox_ValueChanged;
-            pointXBox.ChangeValue += pointXBox_ValueChanged;
-            pointYBox.ChangeValue += pointYBox_ValueChanged;
-            pointBox.ChangeValue += pointBox_ValueChanged;
-            selBox.ChangeValue += selectBoxSize_ValueChanged;
-            widthBox.ChangeValue += strokeWBox_ValueChanged;
+            xBox.ValueChanged += xBox_ValueChanged;
+            yBox.ValueChanged += yBox_ValueChanged;
+            wBox.ValueChanged += wBox_ValueChanged;
+            hBox.ValueChanged += hBox_ValueChanged;
+            rBox.ValueChanged += rBox_ValueChanged;
+            gBox.ValueChanged += gBox_ValueChanged;
+            bBox.ValueChanged += bBox_ValueChanged;
+            zBox.ValueChanged += zBox_ValueChanged;
+            cBox.ValueChanged += cBox_ValueChanged;
+            tBox.ValueChanged += tBox_ValueChanged;
+            widthBox.ValueChanged += strokeWBox_ValueChanged;
+            pointXBox.ValueChanged += pointXBox_ValueChanged;
+            pointYBox.ValueChanged += pointYBox_ValueChanged;
+            pointBox.ValueChanged += pointBox_ValueChanged;
+            selBox.ValueChanged += selectBoxSize_ValueChanged;
+            widthBox.ValueChanged += strokeWBox_ValueChanged;
             textBox.Changed += textBox_TextChanged;
             idBox.Changed += idBox_TextChanged;
             boundsBox.Clicked += showBoundsBox_ActiveChanged;
@@ -118,80 +116,130 @@ namespace Bio
             //roiView.Selection.Changed += roiView_SelectedIndexChanged;
             roiView.RowActivated += RoiView_RowActivated;
             roiView.ActivateOnSingleClick = true;
+            this.FocusInEvent += ROIManager_FocusInEvent;
 
             xBox.Adjustment.Upper = PointD.MaxX;
+            xBox.Adjustment.StepIncrement= 0.1;
+            xBox.Adjustment.PageIncrement= 1;
             yBox.Adjustment.Upper = PointD.MaxY;
+            yBox.Adjustment.StepIncrement = 0.1;
+            yBox.Adjustment.PageIncrement = 1;
             wBox.Adjustment.Upper = PointD.MaxX;
+            wBox.Adjustment.StepIncrement = 0.1;
+            wBox.Adjustment.PageIncrement = 1;
             hBox.Adjustment.Upper = PointD.MaxY;
+            xBox.Adjustment.StepIncrement = 0.1;
+            xBox.Adjustment.PageIncrement = 1;
             rBox.Adjustment.Upper = byte.MaxValue;
+            rBox.Adjustment.StepIncrement = 0.1;
+            rBox.Adjustment.PageIncrement = 1;
             gBox.Adjustment.Upper = byte.MaxValue;
+            gBox.Adjustment.StepIncrement = 0.1;
+            gBox.Adjustment.PageIncrement = 1;
             bBox.Adjustment.Upper = byte.MaxValue;
+            bBox.Adjustment.StepIncrement = 0.1;
+            bBox.Adjustment.PageIncrement = 1;
             zBox.Adjustment.Upper = 10000;
+            zBox.Adjustment.StepIncrement = 0.1;
+            zBox.Adjustment.PageIncrement = 1;
             cBox.Adjustment.Upper = 10000;
+            cBox.Adjustment.StepIncrement = 0.1;
+            cBox.Adjustment.PageIncrement = 1;
             tBox.Adjustment.Upper = 10000;
+            tBox.Adjustment.StepIncrement = 0.1;
+            tBox.Adjustment.PageIncrement = 1;
             widthBox.Adjustment.Upper = 100;
+            widthBox.Adjustment.StepIncrement = 0.1;
+            widthBox.Adjustment.PageIncrement = 1;
             pointBox.Adjustment.Upper = 100000;
+            pointBox.Adjustment.StepIncrement = 0.1;
+            pointBox.Adjustment.PageIncrement = 1;
             pointXBox.Adjustment.Upper = PointD.MaxX;
+            pointXBox.Adjustment.StepIncrement = 0.1;
+            pointXBox.Adjustment.PageIncrement = 0.1;
             pointYBox.Adjustment.Upper = PointD.MaxY;
-
+            pointYBox.Adjustment.StepIncrement = 0.1;
+            pointYBox.Adjustment.PageIncrement = 0.1;
+            InitItems();
         }
+
+        private void ROIManager_FocusInEvent(object o, FocusInEventArgs args)
+        {
+            UpdateAnnotationList();
+        }
+
+
         #endregion
 
         public ROI anno = new ROI();
 
         private void RoiView_RowActivated(object o, RowActivatedArgs args)
         {
-            string id = (string)args.Args[1];
-            if(rois.ContainsKey(id)) 
+            TreeIter iter;
+            if (roiView.Model.GetIter(out iter, args.Path))
             {
-                anno = rois[id];
-                if(App.viewer!=null)
-                App.viewer.SetCoordinate(anno.coord.Z, anno.coord.C, anno.coord.T);
+                string type = (string)roiView.Model.GetValue(iter, 0);
+                ROI.Type t;
+                if (Enum.TryParse<ROI.Type>(type,out t))
+                {
+                    string id = (string)roiView.Model.GetValue(iter, 1);
+                    string text = (string)roiView.Model.GetValue(iter, 2);
+                    string bounds = (string)roiView.Model.GetValue(iter, 3);
+                    if (rois.ContainsKey(type.ToString() + "," + id + "," + text + "," + bounds))
+                    {
+                        anno = rois[type.ToString() + "," + id + "," + text + "," + bounds];
+                        if (App.viewer != null)
+                            App.viewer.SetCoordinate(anno.coord.Z, anno.coord.C, anno.coord.T);
 
-                if(anno.type == ROI.Type.Line || anno.type == ROI.Type.Polygon ||
-                   anno.type == ROI.Type.Polyline)
-                {
-                    xBox.Sensitive = false;
-                    yBox.Sensitive = false;
-                    wBox.Sensitive = false;
-                    hBox.Sensitive = false;
+                        if (anno.type == ROI.Type.Line || anno.type == ROI.Type.Polygon ||
+                           anno.type == ROI.Type.Polyline)
+                        {
+                            xBox.Sensitive = false;
+                            yBox.Sensitive = false;
+                            wBox.Sensitive = false;
+                            hBox.Sensitive = false;
+                        }
+                        else
+                        {
+                            xBox.Sensitive = true;
+                            yBox.Sensitive = true;
+                            wBox.Sensitive = true;
+                            hBox.Sensitive = true;
+                        }
+                        if (anno.type == ROI.Type.Rectangle || anno.type == ROI.Type.Ellipse)
+                        {
+                            pointBox.Sensitive = false;
+                            pointXBox.Sensitive = false;
+                            pointYBox.Sensitive = false;
+                        }
+                        else
+                        {
+                            pointBox.Sensitive = true;
+                            pointXBox.Sensitive = true;
+                            pointYBox.Sensitive = true;
+                        }
+                        xBox.Value = anno.X;
+                        yBox.Value = anno.Y;
+                        wBox.Value = anno.W;
+                        hBox.Value = anno.H;
+                        zBox.Value = anno.coord.Z;
+                        cBox.Value = anno.coord.C;
+                        tBox.Value = anno.coord.T;
+                        rBox.Value = anno.strokeColor.R;
+                        gBox.Value = anno.strokeColor.G;
+                        bBox.Value = anno.strokeColor.B;
+                        widthBox.Value = anno.strokeWidth;
+                        idBox.Text = anno.id;
+                        textBox.Text = anno.Text;
+                        typeLabel.Text = anno.type.ToString();
+                        UpdatePointBox();
+                    }
+                    else return;
                 }
-                else
-                {
-                    xBox.Sensitive = true;
-                    yBox.Sensitive = true;
-                    wBox.Sensitive = true;
-                    hBox.Sensitive = true;
-                }
-                if(anno.type == ROI.Type.Rectangle || anno.type == ROI.Type.Ellipse)
-                {
-                    pointBox.Sensitive = false;
-                    pointXBox.Sensitive = false;
-                    pointYBox.Sensitive = false;
-                }
-                else
-                {
-                    pointBox.Sensitive = true;
-                    pointXBox.Sensitive = true;
-                    pointYBox.Sensitive = true;
-                }
-                xBox.Value = anno.X;
-                yBox.Value = anno.Y;
-                wBox.Value = anno.W;
-                hBox.Value = anno.H;
-                zBox.Value = anno.coord.Z;
-                cBox.Value = anno.coord.C;
-                tBox.Value = anno.coord.T;
-                rBox.Value = anno.strokeColor.R;
-                gBox.Value = anno.strokeColor.G;
-                bBox.Value = anno.strokeColor.B;
-                widthBox.Value = anno.strokeWidth;
-                idBox.Text = anno.id;
-                textBox.Text = anno.Text;
-                typeLabel.Text = anno.type.ToString();
-                UpdatePointBox();
+                else return;
             }
-
+            else
+                return;
         }
         public void InitItems()
         {
@@ -213,7 +261,7 @@ namespace Bio
             Gtk.TreeViewColumn rectCol = new Gtk.TreeViewColumn();
             rectCol.Title = "Bounds";
             Gtk.CellRendererText rectCell = new Gtk.CellRendererText();
-            textCol.PackStart(rectCell, true);
+            rectCol.PackStart(rectCell, true);
 
 
             roiView.AppendColumn(typeCol);
@@ -233,7 +281,7 @@ namespace Bio
                 Gtk.TreeIter iter = store.AppendValues(System.IO.Path.GetFileName(b.Filename));
                 foreach (ROI r in b.Annotations)
                 {
-                    store.AppendValues(iter, r.type.ToString(), r.id, r.Text, r.Rect.ToString());
+                    store.AppendValues(iter, r.type.ToString(), r.id, r.Text, r.BoundingBox.ToString());
                 }
             }
             roiView.Model = store;
@@ -241,15 +289,15 @@ namespace Bio
         }
         public void UpdateAnnotationList()
         {
+            rois.Clear();
             Gtk.TreeStore store = new Gtk.TreeStore(typeof(string), typeof(string), typeof(string), typeof(string));
-
             foreach (BioImage b in Images.images)
             {
                 Gtk.TreeIter iter = store.AppendValues(System.IO.Path.GetFileName(b.Filename));
                 foreach (ROI r in b.Annotations)
                 {
-                    rois.Add(r.id, r);
-                    store.AppendValues(iter, r.type.ToString(), r.id, r.Text, r.Rect.ToString());
+                    rois.Add(r.type.ToString() + "," + r.id + "," + r.Text + "," + r.BoundingBox.ToString(),r);
+                    store.AppendValues(iter, r.type.ToString(), r.id, r.Text, r.BoundingBox.ToString());
                 }
             }
             roiView.Model = store;
@@ -266,29 +314,32 @@ namespace Bio
             ImageView.SelectedImage.Annotations[index] = an;
             UpdateView();
         }
-        private void xBox_ValueChanged(object sender, ChangeValueArgs args)
+        private void xBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
                 return;
             anno.X = (double)xBox.Value;
+            UpdateAnnotationList();
             UpdateView();
         }
-        private void yBox_ValueChanged(object sender, ChangeValueArgs args)
+        private void yBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
                 return;
             anno.Y = (double)yBox.Value;
             UpdateView();
+            UpdateAnnotationList();
         }
-        private void wBox_ValueChanged(object sender, ChangeValueArgs args)
+        private void wBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
                 return;
             if(anno.type == ROI.Type.Rectangle || anno.type == ROI.Type.Ellipse)
                 anno.W = (double)wBox.Value;
             UpdateView();
+            UpdateAnnotationList();
         }
-        private void hBox_ValueChanged(object sender, ChangeValueArgs args)
+        private void hBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
                 return;
@@ -297,48 +348,49 @@ namespace Bio
             UpdateAnnotationList();
             UpdateView();
         }
-        private void sBox_ValueChanged(object sender, ChangeValueArgs args)
+        private void sBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
                 return;
+            UpdateAnnotationList();
             UpdateView();
         }
-        private void zBox_ValueChanged(object sender, ChangeValueArgs args)
+        private void zBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
                 return;
             anno.coord.Z = (int)zBox.Value;
             UpdateView();
         }
-        private void cBox_ValueChanged(object sender, ChangeValueArgs args)
+        private void cBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
                 return;
             anno.coord.C = (int)cBox.Value;
             UpdateView();
         }
-        private void tBox_ValueChanged(object sender, ChangeValueArgs args)
+        private void tBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
                 return;
             anno.coord.T = (int)cBox.Value;
             UpdateView();
         }
-        private void rBox_ValueChanged(object sender, ChangeValueArgs args)
+        private void rBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
                 return;
             anno.strokeColor = Color.FromArgb((byte)rBox.Value, anno.strokeColor.G, anno.strokeColor.B);
             UpdateView();
         }
-        private void gBox_ValueChanged(object sender, ChangeValueArgs args)
+        private void gBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
                 return;
             anno.strokeColor = Color.FromArgb(anno.strokeColor.R, (byte)gBox.Value, anno.strokeColor.B);
             UpdateView();
         }
-        private void bBox_ValueChanged(object sender, ChangeValueArgs args)
+        private void bBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
                 return;
@@ -351,6 +403,7 @@ namespace Bio
                 return;
             anno.Text = textBox.Text;
             UpdateView();
+            UpdateAnnotationList();
         }
         private void idBox_TextChanged(object sender, EventArgs e)
         {
@@ -358,6 +411,7 @@ namespace Bio
                 return;
             anno.id = idBox.Text;
             UpdateView();
+            UpdateAnnotationList();
         }
         private void ROIManager_Activated(object sender, EventArgs e)
         {
@@ -389,7 +443,7 @@ namespace Bio
             showText = showTextBox.Active;
             UpdateView();
         }
-        private void pointXBox_ValueChanged(object sender, ChangeValueArgs args)
+        private void pointXBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
                 return;
@@ -398,7 +452,7 @@ namespace Bio
             anno.UpdatePoint(new PointD((double)pointXBox.Value, (double)pointYBox.Value),(int)pointBox.Value);
             UpdateView();
         }
-        private void pointYBox_ValueChanged(object sender, ChangeValueArgs args)
+        private void pointYBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
                 return;
@@ -416,18 +470,18 @@ namespace Bio
             pointXBox.Value = (int)d.X;
             pointYBox.Value = (int)d.Y;
         }
-        private void pointBox_ValueChanged(object sender, ChangeValueArgs args)
+        private void pointBox_ValueChanged(object sender, EventArgs e)
         {
             UpdatePointBox();
         }
-        private void strokeWBox_ValueChanged(object sender, ChangeValueArgs args)
+        private void strokeWBox_ValueChanged(object sender, EventArgs e)
         {
             if (anno == null)
                 return;
             anno.strokeWidth = (int)widthBox.Value;
             UpdateView();
         }
-        private void selectBoxSize_ValueChanged(object sender, ChangeValueArgs args)
+        private void selectBoxSize_ValueChanged(object sender, EventArgs e)
         {
             ROI.selectBoxSize = (int)widthBox.Value;
             UpdateView();

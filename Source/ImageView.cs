@@ -11,6 +11,7 @@ using AForge.Imaging.Filters;
 using AForge.Math;
 using System.Drawing;
 using loci.formats;
+using CSScripting;
 
 namespace BioGTK
 {
@@ -152,7 +153,7 @@ namespace BioGTK
             selectedImage = im;
             App.viewer = this;
             builder.Autoconnect(this);
-            pictureBox.SetSizeRequest(im.SizeX, im.SizeY);
+            //pictureBox.SetSizeRequest(im.SizeX, im.SizeY);
             AddImage(im);
             if (im.isPyramidal)
             {
@@ -306,6 +307,9 @@ namespace BioGTK
                 else
                     bitmap = (AForge.Bitmap)b.GetEmission(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
             }
+            if (bitmap != null)
+                if (bitmap.PixelFormat == PixelFormat.Format16bppGrayScale || bitmap.PixelFormat == PixelFormat.Format48bppRgb)
+                    bitmap = AForge.Imaging.Image.Convert16bppTo8bpp(bitmap);
             //SKImage ima = SKImage.FromPixels(new SKPixmap(new SKImageInfo(bitmap.Width, bitmap.Height, SKColorType.Bgra8888), bitmap.RGBData));
             if (Bitmaps[selectedIndex] != null)
                 Bitmaps[selectedIndex].Dispose();
@@ -396,9 +400,10 @@ namespace BioGTK
 
         private void PictureBox_SizeAllocated(object o, SizeAllocatedArgs args)
         {
-            UpdateView();
             if (SelectedImage.isPyramidal)
                 UpdateImage();
+            UpdateView();
+            
         }
 
         private static void DrawEllipse(Cairo.Context g, double x, double y, double width, double height)
@@ -434,8 +439,6 @@ namespace BioGTK
                 {
                     Gdk.CairoHelper.SetSourcePixbuf(e.Cr, Bitmaps[i], 0, 0);
                     e.Cr.Paint();
-                    //TODO implement adding ROI's to pyramidal
-                    return;
                 }
                 else
                 {
@@ -755,6 +758,7 @@ namespace BioGTK
         {
             float dx = Scale.Width / 50;
             float dy = Scale.Height / 50;
+            if(!SelectedImage.isPyramidal)
             if (args.Event.State == ModifierType.ControlMask)
             {
                 float dsx = dSize.Width / 50;
@@ -784,18 +788,17 @@ namespace BioGTK
                 if (zBar.Value - 1 >= zBar.Adjustment.Lower)
                     zBar.Value -= 1;
             }
-            if (SelectedImage != null)
-                if (args.Event.State == ModifierType.ControlMask && SelectedImage.isPyramidal)
-                    if (args.Event.Direction == ScrollDirection.Up)
-                    {
-                        if (resolution - 1 > 0)
-                            Resolution--;
-                    }
-                    else
-                    {
-                        if (resolution + 1 < SelectedImage.Resolutions.Count)
-                            Resolution++;
-                    }
+            if (args.Event.State == ModifierType.ControlMask && SelectedImage.isPyramidal)
+            if (args.Event.Direction == ScrollDirection.Up)
+            {
+                if (resolution - 1 > 0)
+                    Resolution--;
+            }
+            else
+            {
+                if (resolution + 1 < SelectedImage.Resolutions.Count)
+                    Resolution++;
+            }
         }
 
         private void ValueChanged(object? sender, EventArgs e)
@@ -843,8 +846,6 @@ namespace BioGTK
                 bBox.Active = 0;
             bBox.Active = 0;
         }
-
-        
 
         public enum ViewMode
         {
@@ -928,17 +929,15 @@ namespace BioGTK
             get { return pyramidalOrigin; }
             set
             {
-
                 if (scrollH.Adjustment.Upper > value.X && value.X > -1)
                     scrollH.Adjustment.Value = value.X;
                 if (scrollV.Adjustment.Upper > value.Y && value.Y > -1)
                     scrollV.Adjustment.Value = value.Y;
                 pyramidalOrigin = value;
+                PointD p = SelectedImage.ToStageSpace(new PointD(pyramidalOrigin.X, pyramidalOrigin.Y),resolution);
+                origin = new PointD(p.X, p.Y);
                 UpdateImage();
                 UpdateView();
-
-                //PointF p = ToScreenSpace(pyramidalOrigin);
-                //origin = new PointD(p.X, p.Y);
             }
         }
         int resolution = 0;
@@ -949,13 +948,13 @@ namespace BioGTK
             {
                 if (SelectedImage.Resolutions.Count <= value || value < 0)
                     return;
-
                 double x = PyramidalOrigin.X * ((double)SelectedImage.Resolutions[resolution].SizeX / (double)SelectedImage.Resolutions[value].SizeX);
                 double y = PyramidalOrigin.Y * ((double)SelectedImage.Resolutions[resolution].SizeY / (double)SelectedImage.Resolutions[value].SizeY);
                 scrollH.Adjustment.Upper = SelectedImage.Resolutions[value].SizeX;
                 scrollV.Adjustment.Upper = SelectedImage.Resolutions[value].SizeY;
                 PyramidalOrigin = new System.Drawing.Point((int)x, (int)y);
-                Resolution = value;
+                SelectedImage.Resolution = value;
+                resolution = value;
                 UpdateImage();
                 UpdateView();
 
@@ -981,7 +980,10 @@ namespace BioGTK
         }
         public void UpdateView()
         {
-            SkiaRender();
+            if (SelectedImage.isPyramidal)
+                imageBox.QueueDraw();
+            else
+                pictureBox.QueueDraw();
         }
         private string mousePoint = "";
         private string mouseColor = "";
@@ -1039,11 +1041,6 @@ namespace BioGTK
         }
         public static bool labels = false;
         public static bool bounds = true;
-
-        public void SkiaRender()
-        {
-            pictureBox.QueueDraw();
-        }
         public double GetScale()
         {
             return ToViewSizeW(ROI.selectBoxSize / Scale.Width);
@@ -1157,16 +1154,19 @@ namespace BioGTK
             App.viewer = this;
             PointD p = ToScreenSpace(e.Event.X, e.Event.Y);
             mouseUp = p;
-            if (e.Event.State == ModifierType.Button3Mask)
+            if (e.Event.State == ModifierType.Button2Mask)
             {
-                PointD pd = new PointD(p.X - mouseDown.X, p.Y - mouseDown.Y);
-                origin = new PointD(origin.X + pd.X, origin.Y + pd.Y);
                 if (SelectedImage != null)
-                    if (SelectedImage.isPyramidal)
-                    {
-                        System.Drawing.Point pf = new System.Drawing.Point((int)e.Event.X - mouseD.X, (int)e.Event.Y - mouseD.Y);
-                        PyramidalOrigin = new System.Drawing.Point(PyramidalOrigin.X - pf.X, PyramidalOrigin.Y - pf.Y);
-                    }
+                if (SelectedImage.isPyramidal)
+                {
+                    System.Drawing.Point pf = new System.Drawing.Point((int)e.Event.X - mouseD.X, (int)e.Event.Y - mouseD.Y);
+                    PyramidalOrigin = new System.Drawing.Point(PyramidalOrigin.X - pf.X, PyramidalOrigin.Y - pf.Y);
+                }
+                else
+                {
+                    PointD pd = new PointD(p.X - mouseDown.X, p.Y - mouseDown.Y);
+                    origin = new PointD(origin.X + pd.X, origin.Y + pd.Y);
+                }
                 UpdateImage();
                 UpdateView();
             }
@@ -1281,10 +1281,17 @@ namespace BioGTK
                     {
                         if (SelectedImage.isRGB)
                         {
-                            int r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc, (int)e.Event.X, (int)e.Event.Y, 0);
-                            int g = SelectedImage.GetValueRGB(zc, GChannel.Index, tc, (int)e.Event.X, (int)e.Event.Y, 1);
-                            int b = SelectedImage.GetValueRGB(zc, BChannel.Index, tc, (int)e.Event.X, (int)e.Event.Y, 2);
-                            mouseColor = ", " + r + "," + g + "," + b;
+                            int x = (int)e.Event.X;
+                            int y = (int)e.Event.Y;
+                            if (x < SelectedImage.SizeX && y < SelectedImage.SizeY)
+                            {
+                                int r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc, x, y, 0);
+                                int g = SelectedImage.GetValueRGB(zc, GChannel.Index, tc, (int)e.Event.X, (int)e.Event.Y, 1);
+                                int b = SelectedImage.GetValueRGB(zc, BChannel.Index, tc, (int)e.Event.X, (int)e.Event.Y, 2);
+                                mouseColor = ", " + r + "," + g + "," + b;
+                            }
+                            else
+                                mouseColor = "";
                         }
                         else
                         {
@@ -1318,7 +1325,7 @@ namespace BioGTK
         {
             PointD d = ToViewSpace(p.X, p.Y);
             double dx = ToScreenW(p.Width);
-            double dy = ToScreenW(p.Height);
+            double dy = ToScreenH(p.Height);
             return new RectangleF((float)d.X, (float)d.Y, (float)dx, (float)dy);
         }
         public PointF ToViewSpace(System.Drawing.Point p)
@@ -1370,7 +1377,6 @@ namespace BioGTK
             return y;
         }
 
-        //Works View
         public PointD ToScreenSpace(double x, double y)
         {
             double fx = ToScreenScaleW(Origin.X + x);

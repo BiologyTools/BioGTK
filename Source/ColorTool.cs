@@ -58,8 +58,14 @@ namespace BioGTK
             gBar.Adjustment.Upper = ushort.MaxValue;
             bBar.Adjustment.Upper = ushort.MaxValue;
             rBox.Adjustment.Upper = ushort.MaxValue;
+            rBox.Adjustment.StepIncrement = 1;
+            rBox.Adjustment.PageIncrement = 10;
             gBox.Adjustment.Upper = ushort.MaxValue;
+            gBox.Adjustment.StepIncrement = 1;
+            gBox.Adjustment.PageIncrement = 10;
             bBox.Adjustment.Upper = ushort.MaxValue;
+            bBox.Adjustment.StepIncrement = 1;
+            bBox.Adjustment.PageIncrement = 10;
 
             rBar.Adjustment.Value = color.R;
             gBar.Adjustment.Value = color.G;
