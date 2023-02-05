@@ -1,3 +1,8 @@
+F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0\BioGTK.csproj.AssemblyReference.cache
+F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0\BioGTK.GeneratedMSBuildEditorConfig.editorconfig
+F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0\BioGTK.AssemblyInfoInputs.cache
+F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0\BioGTK.AssemblyInfo.cs
+F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0\BioGTK.csproj.CoreCompileInputs.cache
 F:\Shared\Bio\BioGTK\BioGTK\bin\Debug\net6.0\icons\brush.png
 F:\Shared\Bio\BioGTK\BioGTK\bin\Debug\net6.0\icons\bucket.png
 F:\Shared\Bio\BioGTK\BioGTK\bin\Debug\net6.0\icons\circle.png
@@ -258,11 +263,6 @@ F:\Shared\Bio\BioGTK\BioGTK\bin\Debug\net6.0\BioGTK.pdb
 F:\Shared\Bio\BioGTK\BioGTK\bin\Debug\net6.0\AForgeBio.dll
 F:\Shared\Bio\BioGTK\BioGTK\bin\Debug\net6.0\bioformats_package.dll
 F:\Shared\Bio\BioGTK\BioGTK\bin\Debug\net6.0\AForgeBio.pdb
-F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0\BioGTK.csproj.AssemblyReference.cache
-F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0\BioGTK.GeneratedMSBuildEditorConfig.editorconfig
-F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0\BioGTK.AssemblyInfoInputs.cache
-F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0\BioGTK.AssemblyInfo.cs
-F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0\BioGTK.csproj.CoreCompileInputs.cache
 F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0\BioGTK.csproj.CopyComplete
 F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0\BioGTK.dll
 F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0\refint\BioGTK.dll

@@ -1,7 +1,6 @@
 ﻿using AForge;
 using Bio;
 using Gtk;
-using javax.swing.filechooser;
 using System;
 using System.Collections.Generic;
 using System.Linq;

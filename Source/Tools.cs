@@ -17,12 +17,10 @@ using java.awt;
 
 namespace BioGTK
 {
-    /// <summary> Example Test Form for GTKSharp and Glade. </summary>
     public class Tools : Gtk.Window
     {
         #region Properties
 
-        /// <summary> Used to load in the glade file resource as a window. </summary>
         private Builder _builder;
 #pragma warning disable 649
 
@@ -296,6 +294,7 @@ namespace BioGTK
         {
             return (Tool)tools[typ.ToString()];
         }
+        
         /// > UpdateView() is a function that updates the view of the viewer
         public void UpdateView()
         {
@@ -326,6 +325,7 @@ namespace BioGTK
 
         /* Creating a new ROI object called selectedROI. */
         public static ROI selectedROI = new ROI();
+
         /// The function is called when the user clicks the mouse button. 
         /// 
         /// The function checks the current tool and if it's a line, polygon, freeform, rectangle,
@@ -536,15 +536,15 @@ namespace BioGTK
             if (currentTool.type == Tool.Type.rectSel && buts.Event.Button == 1)
             {
                 ImageView.selectedAnnotations.Clear();
-                RectangleF r = GetTool(Tool.Type.rectSel).RectangleF;
+                RectangleD r = GetTool(Tool.Type.rectSel).Rectangle;
                 foreach (ROI an in App.viewer.AnnotationsRGB)
                 {
-                    if (an.GetSelectBound(App.viewer.GetScale()).ToRectangleF().IntersectsWith(r))
+                    if (an.GetSelectBound(App.viewer.GetScale()).IntersectsWith(r))
                     {
                         an.selectedPoints.Clear();
                         ImageView.selectedAnnotations.Add(an);
                         an.selected = true;
-                        RectangleF[] sels = an.GetSelectBoxes(App.viewer.Scale.Width);
+                        RectangleD[] sels = an.GetSelectBoxes(App.viewer.Scale.Width);
                         for (int i = 0; i < sels.Length; i++)
                         {
                             if (sels[i].IntersectsWith(r))
@@ -657,12 +657,13 @@ namespace BioGTK
             //TO DO Scripting.UpdateState(Scripting.State.GetMove(e, buts));
             if ((Tools.currentTool.type == Tools.Tool.Type.pan && buts.Event.State == Gdk.ModifierType.Button1Mask) || buts.Event.State == Gdk.ModifierType.Button2Mask && !ImageView.SelectedImage.isPyramidal)
             {
-                App.viewer.Origin = e;
+                PointD pf = new PointD(e.X - ImageView.mouseDown.X, e.Y - ImageView.mouseDown.Y);
+                App.viewer.Origin = new PointD(App.viewer.Origin.X + pf.X, App.viewer.Origin.Y + pf.Y);
                 UpdateView();
             }
             if (ImageView.SelectedImage == null)
                 return;
-            PointF p = ImageView.SelectedImage.ToImageSpace(e);
+            PointD p = ImageView.SelectedImage.ToImageSpace(e);
 
             if (currentTool.type == Tool.Type.line && buts.Event.State == Gdk.ModifierType.Button1Mask)
             {
@@ -710,15 +711,15 @@ namespace BioGTK
             {
                 PointD d = new PointD(e.X - ImageView.mouseDown.X, e.Y - ImageView.mouseDown.Y);
                 Tools.GetTool(Tools.Tool.Type.rectSel).Rectangle = new RectangleD(ImageView.mouseDown.X, ImageView.mouseDown.Y, d.X, d.Y);
-                RectangleF r = Tools.GetTool(Tools.Tool.Type.rectSel).RectangleF;
+                RectangleD r = Tools.GetTool(Tools.Tool.Type.rectSel).Rectangle;
                 foreach (ROI an in App.viewer.AnnotationsRGB)
                 {
-                    if (an.GetSelectBound(App.viewer.GetScale()).ToRectangleF().IntersectsWith(r))
+                    if (an.GetSelectBound(App.viewer.GetScale()).IntersectsWith(r))
                     {
                         an.selectedPoints.Clear();
                         ImageView.selectedAnnotations.Add(an);
                         an.selected = true;
-                        RectangleF[] sels = an.GetSelectBoxes(App.viewer.Scale.Width);
+                        RectangleD[] sels = an.GetSelectBoxes(App.viewer.Scale.Width);
                         for (int i = 0; i < sels.Length; i++)
                         {
                             if (sels[i].IntersectsWith(r))

@@ -218,6 +218,12 @@ namespace BioGTK
             fy = ((float)this.AllocatedHeight) / maxmedian;
             for (int c = 0; c < ImageView.SelectedImage.Channels.Count; c++)
             {
+                //We draw the mouse line
+                g.SetSourceColor(ImageView.FromColor(System.Drawing.Color.Black));
+                g.MoveTo(mouseX, 0);
+                g.LineTo(mouseX, this.AllocatedHeight);
+                g.StrokePreserve();
+                int gmax = graphMax;
                 Channel channel = ImageView.SelectedImage.Channels[c];
                 for (int i = 0; i < channel.range.Length; i++)
                 {
@@ -234,12 +240,7 @@ namespace BioGTK
                     int dark = 200;
                     int light = 50;
                     
-                    //We draw the mouse line
-                    g.SetSourceColor(ImageView.FromColor(System.Drawing.Color.Black));
-                    g.MoveTo(mouseX, 0);
-                    g.LineTo(mouseX, this.AllocatedHeight);
-                    g.StrokePreserve();
-                    int gmax = graphMax;
+                    
                     if (ImageView.SelectedImage.bitsPerPixel <= 8)
                         gmax = 255;
 
@@ -276,7 +277,7 @@ namespace BioGTK
                     int bininds = 0;
                     PointF? prevs = null;
                     PointF? prev = null;
-                    float f = gmax / this.AllocatedWidth;
+                    float f = (float)gmax / (float)this.AllocatedWidth;
                     g.SetSourceColor(pen);
                     for (float x = 0; x < gmax; x+=f)
                     {

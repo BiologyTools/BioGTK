@@ -202,6 +202,12 @@ namespace BioGTK
             emissionMenu.ButtonPressEvent += EmissionMenu_ButtonPressEvent;
             tabsView.SwitchPage += TabsView_SwitchPage;
             this.WindowStateEvent += TabsView_WindowStateEvent;
+            this.KeyPressEvent += TabsView_KeyPressEvent;
+        }
+
+        private void TabsView_KeyPressEvent(object o, KeyPressEventArgs args)
+        {
+            
         }
 
         /// If the window is minimized, hide all the image viewers. If the window is restored, show all
@@ -837,6 +843,45 @@ namespace BioGTK
         {
             About ab = About.Create();
             ab.Show();
+        }
+
+        /// This function removes a tab from the tab control
+        /// 
+        /// @param tabName The name of the tab to remove.
+        public void RemoveTab(string tabName)
+        {
+            int i = 0;
+            foreach (Widget item in tabsView.Children)
+            {
+                Gtk.Label l = item as Gtk.Label;
+                if (System.IO.Path.GetFileName(l.Text) == ImageView.SelectedImage.Filename)
+                {
+                    ImageView iv = viewers[i];
+                    for (int v = 0; v < iv.Images.Count; v++)
+                    {
+                        Images.RemoveImage(iv.Images[v]);
+                    }
+                    tabsView.Remove(item);
+                    viewers[i].Dispose();
+                    viewers.RemoveAt(i);
+                    App.nodeView.UpdateItems();
+                    return;
+                }
+                i++;
+            }
+        }
+        /// Open's a file in a new tab.
+        /// 
+        /// @param tabName The filename of the image to add to tabcontrol/
+        public void Open(string file)
+        {
+            BioImage b = BioImage.OpenFile(file);
+            ImageView view = ImageView.Create(b);
+            viewers.Add(view);
+            Label dummy = new Gtk.Label(b.Filename);
+            dummy.Visible = false;
+            tabsView.AppendPage(dummy, new Gtk.Label(b.Filename));
+            view.Present();
         }
         #endregion
 

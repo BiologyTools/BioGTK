@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 
 namespace BioGTK
 {
-    /// <summary> Example Test Form for GTKSharp and Glade. </summary>
     public class TextInput : Dialog
     {
         #region Properties
@@ -77,8 +76,14 @@ namespace BioGTK
             Tools.selectedROI.family = fontBut.FontFamily.Name;
             Tools.selectedROI.fontSize = float.Parse(sts[sts.Length - 1]);
             ImageView.SelectedImage.Annotations.Add(Tools.selectedROI);
-            
+            Respond(ResponseType.Ok);
             Hide();
+        }
+
+        /* A property that returns the Text value of the text input textbox. */
+        public string Text
+        {
+            get { return textinputBox.Text; }
         }
 
         /* A property that returns the RGBA value of the color button. */
