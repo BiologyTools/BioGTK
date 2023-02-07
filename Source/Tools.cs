@@ -657,8 +657,8 @@ namespace BioGTK
             //TO DO Scripting.UpdateState(Scripting.State.GetMove(e, buts));
             if ((Tools.currentTool.type == Tools.Tool.Type.pan && buts.Event.State == Gdk.ModifierType.Button1Mask) || buts.Event.State == Gdk.ModifierType.Button2Mask && !ImageView.SelectedImage.isPyramidal)
             {
-                PointD pf = new PointD(e.X - ImageView.mouseDown.X, e.Y - ImageView.mouseDown.Y);
-                App.viewer.Origin = new PointD(App.viewer.Origin.X + pf.X, App.viewer.Origin.Y + pf.Y);
+                PointD pf = new PointD(e.X, e.Y);
+                App.viewer.Origin = new PointD(App.viewer.Origin.X - pf.X, App.viewer.Origin.Y - pf.Y);
                 UpdateView();
             }
             if (ImageView.SelectedImage == null)

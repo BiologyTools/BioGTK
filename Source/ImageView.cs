@@ -154,6 +154,7 @@ namespace BioGTK
         {
             Builder builder = new Builder(null, "BioGTK.Glade.ImageView.glade", null);
             ImageView v = new ImageView(builder, builder.GetObject("imageView").Handle, bm);
+            v.Title = bm.Filename;
             return v;
         }
 
@@ -372,6 +373,7 @@ namespace BioGTK
                 scrollV.ButtonReleaseEvent += ScrollV_ButtonReleaseEvent;
             }
             this.KeyPressEvent += ImageView_KeyPressEvent;
+            this.DeleteEvent += ImageView_DeleteEvent;
             rBox.Changed += RBox_Changed;
             gBox.Changed += GBox_Changed;
             bBox.Changed += BBox_Changed;
@@ -380,6 +382,12 @@ namespace BioGTK
             goToOriginMenu.ButtonPressEvent += GoToOriginMenu_ButtonPressEvent;
             roiDelete.ButtonPressEvent += RoiDelete_ButtonPressEvent;
             roiID.ButtonPressEvent += RoiID_ButtonPressEvent;
+
+        }
+
+        private void ImageView_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            App.tabsView.RemoveTab(SelectedImage.Filename);
         }
 
         private void RoiID_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -462,6 +470,7 @@ namespace BioGTK
         {
             return new Cairo.Color((double)color.R / 255, (double)color.G / 255, (double)color.B / 255);
         }
+
         private void PictureBox_Drawn(object o, DrawnArgs e)
         {
             if (Bitmaps.Count == 0 || Bitmaps.Count != Images.Count)
@@ -477,6 +486,7 @@ namespace BioGTK
                 if (Bitmaps[i] == null)
                     UpdateImages();
                 RectangleD r = ToViewSpace(im.Volume.Location.X, im.Volume.Location.Y, im.Volume.Width, im.Volume.Height);
+
                 if (SelectedImage.isPyramidal)
                 {
                     e.Cr.Restore(); //g.ResetTransform();   
@@ -591,18 +601,20 @@ namespace BioGTK
                             e.Cr.LineTo(p2.X, p2.Y);
                             e.Cr.StrokePreserve();
                         }
+                        
+                        PointF pp1 = ToViewSpace(an.PointsD[0].X, an.PointsD[0].Y).ToPointF();
+                        PointF pp2 = ToViewSpace(an.PointsD[an.PointsD.Count - 1].X, an.PointsD[an.PointsD.Count - 1].Y).ToPointF();
+                        e.Cr.MoveTo(pp1.X, pp1.Y);
+                        e.Cr.LineTo(pp2.X, pp2.Y);
+                        e.Cr.StrokePreserve();
                         e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Red));
+
                         foreach (RectangleD re in an.GetSelectBoxes(width))
                         {
                             RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
                             e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
                             e.Cr.StrokePreserve();
                         }
-                        PointF pp1 = ToViewSpace(an.PointsD[0].X, an.PointsD[0].Y).ToPointF();
-                        PointF pp2 = ToViewSpace(an.PointsD[an.PointsD.Count - 1].X, an.PointsD[an.PointsD.Count - 1].Y).ToPointF();
-                        e.Cr.MoveTo(pp1.X, pp1.Y);
-                        e.Cr.LineTo(pp2.X, pp2.Y);
-                        e.Cr.StrokePreserve();
                     }
                     else
                     if ((an.type == ROI.Type.Polygon && !an.closed) || an.type == ROI.Type.Polyline)
@@ -683,31 +695,28 @@ namespace BioGTK
                         e.Cr.Rectangle(rrf.X, rrf.Y, rrf.W, rrf.H);
                         e.Cr.StrokePreserve();
                     }
-                    if (an.selected)
+                    //Lets draw the selected Boxes.
+                    List<RectangleD> rects = new List<RectangleD>();
+                    RectangleD[] sels = an.GetSelectBoxes(width);
+                    for (int p = 0; p < an.selectedPoints.Count; p++)
                     {
-                        //Lets draw the selected Boxes.
-                        List<RectangleD> rects = new List<RectangleD>();
-                        RectangleD[] sels = an.GetSelectBoxes(width);
-                        for (int p = 0; p < an.selectedPoints.Count; p++)
+                        if (an.selectedPoints[p] < an.GetPointCount())
                         {
-                            if (an.selectedPoints[p] < an.GetPointCount())
-                            {
-                                rects.Add(sels[an.selectedPoints[p]]);
-                            }
+                            rects.Add(sels[an.selectedPoints[p]]);
                         }
-                        e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Blue));
-                        if (rects.Count > 0)
-                        {
-                            e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Red));
-                            foreach (RectangleD re in an.GetSelectBoxes(width))
-                            {
-                                RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
-                                e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                                e.Cr.StrokePreserve();
-                            }
-                        }
-                        rects.Clear();
                     }
+                    e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Blue));
+                    if (rects.Count > 0)
+                    {
+                        foreach (RectangleD re in an.GetSelectBoxes(width))
+                        {
+                            RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
+                            e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
+                            e.Cr.StrokePreserve();
+                        }
+                    }
+                    rects.Clear();
+                    
                 }
 
             }
@@ -1098,6 +1107,7 @@ namespace BioGTK
         }
         public static bool x1State;
         public static bool x2State;
+        public static bool mouseLeftState;
         public static ModifierType Modifiers;
         System.Drawing.Point mouseD = new System.Drawing.Point(0, 0);
 
@@ -1107,8 +1117,8 @@ namespace BioGTK
             PointD p = ImageToViewSpace(e.Event.X, e.Event.Y);
             App.tools.ToolMove(p, e);
             mousePoint = "(" + (p.X) + ", " + (p.Y) + ")";
-            pd = p;
-            if (Tools.currentTool.type == Tools.Tool.Type.pointSel && e.Event.State == ModifierType.Button1Mask)
+            //pd = p;
+            if (Tools.currentTool.type == Tools.Tool.Type.pointSel && mouseLeftState)
             {
                 foreach (ROI an in selectedAnnotations)
                 {
@@ -1187,12 +1197,15 @@ namespace BioGTK
                     UpdateImage();
                 }
             UpdateStatus();
+            pd = p;
         }
         public static PointD mouseDown;
         public static PointD mouseUp;
         private void ImageView_ButtonReleaseEvent(object o, ButtonReleaseEventArgs e)
         {
             Modifiers = e.Event.State;
+            if (e.Event.Button == 1)
+                mouseLeftState = false;
             App.viewer = this;
             PointD pointer = ImageToViewSpace(e.Event.X, e.Event.Y);
             mouseUp = pointer;
@@ -1222,13 +1235,20 @@ namespace BioGTK
             double dy = ToViewH(SelectedImage.Volume.Height);
             PointD orig = new PointD(Origin.X - SelectedImage.Volume.Location.X, Origin.Y - SelectedImage.Volume.Location.Y);
             PointD dif = new PointD(ToScreenScaleW(orig.X), ToScreenScaleH(orig.Y));
-            PointD diff = new PointD(ToViewW(dif.X), ToViewH(dif.Y));
+            PointD diff = new PointD(ToViewW(orig.X), ToViewH(orig.Y));
             PointD p = new PointD(x + diff.X, y + diff.Y);
-            return new PointD((p.X / dx) * SelectedImage.Volume.Width, (p.Y / dy) * SelectedImage.Volume.Height);
+            PointD f = new PointD((((x + diff.X)/ dx) * SelectedImage.Volume.Width),(((y + diff.Y) / dy) * SelectedImage.Volume.Height));
+            PointD ff = new PointD(SelectedImage.Volume.Location.X + f.X, SelectedImage.Volume.Location.Y + f.Y);
+            return ff;
         }
         PointD pd;
         private void ImageView_ButtonPressEvent(object o, ButtonPressEventArgs e)
         {
+            Modifiers = e.Event.State;
+            if (e.Event.Button == 1)
+                mouseLeftState = true;
+            else
+                mouseLeftState = false;
             App.viewer = this;
             PointD pointer = ImageToViewSpace(e.Event.X, e.Event.Y);
             pd = pointer;
@@ -1286,12 +1306,15 @@ namespace BioGTK
                 foreach (ROI item in selectedAnnotations)
                 {
                     if (item.selected)
+                    {
                         item.selectedPoints.Clear();
+                        item.selected = false;
+                    }
                 }
                 selectedAnnotations.Clear();
             }
 
-            if (Tools.currentTool.type == Tools.Tool.Type.move && e.Event.Button == 1)
+            if (Tools.currentTool.type == Tools.Tool.Type.pointSel || Tools.currentTool.type == Tools.Tool.Type.move && e.Event.Button == 1)
             {
                 //float width = (float)ToViewSizeW(ROI.selectBoxSize / Scale.Width);
                 float width = (float)ToScreenScaleW(ROI.selectBoxSize);
@@ -1299,7 +1322,7 @@ namespace BioGTK
                 {
                     foreach (ROI an in bi.Annotations)
                     {
-                        if (an.Rect.IntersectsWith(pointer.X, pointer.Y))
+                        if (an.Rect.ToRectangleF().IntersectsWith(new RectangleF(pointer.ToPointF(),new SizeF(1,1))))
                         {
                             selectedAnnotations.Add(an);
                             an.selected = true;
@@ -1307,7 +1330,7 @@ namespace BioGTK
                             RectangleD r = new RectangleD((float)pointer.X, (float)pointer.Y, (float)sels[0].W, (float)sels[0].H);
                             for (int i = 0; i < sels.Length; i++)
                             {
-                                if (sels[i].IntersectsWith(new RectangleD(r.X, r.Y, r.W, r.H)))
+                                if (sels[i].ToRectangleF().IntersectsWith(new RectangleF((float)r.X, (float)r.Y, (float)r.W, (float)r.H)))
                                 {
                                     an.selectedPoints.Add(i);
                                 }
@@ -1396,8 +1419,8 @@ namespace BioGTK
         }
         public PointD ToViewSpace(double x, double y)
         {
-            double dx = (ToViewSizeW(x) - Origin.X) * Scale.Width;
-            double dy = (ToViewSizeH(y) - Origin.Y) * Scale.Height;
+            double dx = (ToViewSizeW(Origin.X - x)) * Scale.Width;
+            double dy = (ToViewSizeH(Origin.Y - y)) * Scale.Height;
             return new PointD(dx, dy);
         }
         public RectangleD ToViewSpace(double x, double y, double w, double h)
@@ -1405,7 +1428,7 @@ namespace BioGTK
             PointD d = ToViewSpace(x, y);
             double dw = ToViewSizeW(w);
             double dh = ToViewSizeH(h);
-            return new RectangleD(d.X, d.Y, dw, dh);
+            return new RectangleD(-d.X, -d.Y, dw, dh);
         }
         private double ToViewSizeW(double d)
         {
