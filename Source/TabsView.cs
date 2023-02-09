@@ -657,6 +657,7 @@ namespace BioGTK
             if(App.tools == null)
             App.tools = Tools.Create();
             App.tools.Show();
+            App.tools.Present();
         }
         /// This function is called when the user clicks on the "Tools" menu item
         /// 

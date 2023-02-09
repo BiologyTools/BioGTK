@@ -117,11 +117,11 @@
           "build/GtkSharp.targets": {}
         }
       },
-      "IKVM/8.4.4": {
+      "IKVM/8.4.5": {
         "type": "package",
         "dependencies": {
-          "IKVM.Image": "8.4.4",
-          "IKVM.MSBuild": "8.4.4",
+          "IKVM.Image": "8.4.5",
+          "IKVM.MSBuild": "8.4.5",
           "Microsoft.Extensions.DependencyModel": "6.0.0",
           "Microsoft.Win32.Registry": "5.0.0",
           "Mono.Posix": "7.1.0-final.1.21458.1",
@@ -181,17 +181,17 @@
           }
         }
       },
-      "IKVM.Image/8.4.4": {
+      "IKVM.Image/8.4.5": {
         "type": "package",
         "build": {
           "buildTransitive/IKVM.Image.props": {},
           "buildTransitive/IKVM.Image.targets": {}
         }
       },
-      "IKVM.MSBuild/8.4.4": {
+      "IKVM.MSBuild/8.4.5": {
         "type": "package",
         "dependencies": {
-          "IKVM.MSBuild.Tools": "8.4.4"
+          "IKVM.MSBuild.Tools": "8.4.5"
         },
         "compile": {
           "lib/netcoreapp3.1/_._": {}
@@ -204,13 +204,13 @@
           "buildTransitive/netstandard2.0/IKVM.MSBuild.targets": {}
         }
       },
-      "IKVM.MSBuild.Tools/8.4.4": {
+      "IKVM.MSBuild.Tools/8.4.5": {
         "type": "package",
         "dependencies": {
-          "IKVM.MSBuild.Tools.runtime.linux-arm": "8.4.4",
-          "IKVM.MSBuild.Tools.runtime.linux-arm64": "8.4.4",
-          "IKVM.MSBuild.Tools.runtime.linux-x64": "8.4.4",
-          "IKVM.MSBuild.Tools.runtime.win7-x64": "8.4.4"
+          "IKVM.MSBuild.Tools.runtime.linux-arm": "8.4.5",
+          "IKVM.MSBuild.Tools.runtime.linux-arm64": "8.4.5",
+          "IKVM.MSBuild.Tools.runtime.linux-x64": "8.4.5",
+          "IKVM.MSBuild.Tools.runtime.win7-x64": "8.4.5"
         },
         "compile": {
           "lib/netcoreapp3.1/_._": {}
@@ -222,25 +222,25 @@
           "buildTransitive/netstandard2.0/IKVM.MSBuild.Tools.targets": {}
         }
       },
-      "IKVM.MSBuild.Tools.runtime.linux-arm/8.4.4": {
+      "IKVM.MSBuild.Tools.runtime.linux-arm/8.4.5": {
         "type": "package",
         "build": {
           "buildTransitive/netstandard2.0/IKVM.MSBuild.Tools.runtime.linux-arm.props": {}
         }
       },
-      "IKVM.MSBuild.Tools.runtime.linux-arm64/8.4.4": {
+      "IKVM.MSBuild.Tools.runtime.linux-arm64/8.4.5": {
         "type": "package",
         "build": {
           "buildTransitive/netstandard2.0/IKVM.MSBuild.Tools.runtime.linux-arm64.props": {}
         }
       },
-      "IKVM.MSBuild.Tools.runtime.linux-x64/8.4.4": {
+      "IKVM.MSBuild.Tools.runtime.linux-x64/8.4.5": {
         "type": "package",
         "build": {
           "buildTransitive/netstandard2.0/IKVM.MSBuild.Tools.runtime.linux-x64.props": {}
         }
       },
-      "IKVM.MSBuild.Tools.runtime.win7-x64/8.4.4": {
+      "IKVM.MSBuild.Tools.runtime.win7-x64/8.4.5": {
         "type": "package",
         "build": {
           "buildTransitive/netstandard2.0/IKVM.MSBuild.Tools.runtime.win7-x64.props": {}
@@ -1772,11 +1772,11 @@
           "build/GtkSharp.targets": {}
         }
       },
-      "IKVM/8.4.4": {
+      "IKVM/8.4.5": {
         "type": "package",
         "dependencies": {
-          "IKVM.Image": "8.4.4",
-          "IKVM.MSBuild": "8.4.4",
+          "IKVM.Image": "8.4.5",
+          "IKVM.MSBuild": "8.4.5",
           "Microsoft.Extensions.DependencyModel": "6.0.0",
           "Microsoft.Win32.Registry": "5.0.0",
           "Mono.Posix": "7.1.0-final.1.21458.1",
@@ -1810,17 +1810,17 @@
           "buildTransitive/netstandard2.0/IKVM.targets": {}
         }
       },
-      "IKVM.Image/8.4.4": {
+      "IKVM.Image/8.4.5": {
         "type": "package",
         "build": {
           "buildTransitive/IKVM.Image.props": {},
           "buildTransitive/IKVM.Image.targets": {}
         }
       },
-      "IKVM.MSBuild/8.4.4": {
+      "IKVM.MSBuild/8.4.5": {
         "type": "package",
         "dependencies": {
-          "IKVM.MSBuild.Tools": "8.4.4"
+          "IKVM.MSBuild.Tools": "8.4.5"
         },
         "compile": {
           "lib/netcoreapp3.1/_._": {}
@@ -1833,13 +1833,13 @@
           "buildTransitive/netstandard2.0/IKVM.MSBuild.targets": {}
         }
       },
-      "IKVM.MSBuild.Tools/8.4.4": {
+      "IKVM.MSBuild.Tools/8.4.5": {
         "type": "package",
         "dependencies": {
-          "IKVM.MSBuild.Tools.runtime.linux-arm": "8.4.4",
-          "IKVM.MSBuild.Tools.runtime.linux-arm64": "8.4.4",
-          "IKVM.MSBuild.Tools.runtime.linux-x64": "8.4.4",
-          "IKVM.MSBuild.Tools.runtime.win7-x64": "8.4.4"
+          "IKVM.MSBuild.Tools.runtime.linux-arm": "8.4.5",
+          "IKVM.MSBuild.Tools.runtime.linux-arm64": "8.4.5",
+          "IKVM.MSBuild.Tools.runtime.linux-x64": "8.4.5",
+          "IKVM.MSBuild.Tools.runtime.win7-x64": "8.4.5"
         },
         "compile": {
           "lib/netcoreapp3.1/_._": {}
@@ -1851,25 +1851,25 @@
           "buildTransitive/netstandard2.0/IKVM.MSBuild.Tools.targets": {}
         }
       },
-      "IKVM.MSBuild.Tools.runtime.linux-arm/8.4.4": {
+      "IKVM.MSBuild.Tools.runtime.linux-arm/8.4.5": {
         "type": "package",
         "build": {
           "buildTransitive/netstandard2.0/IKVM.MSBuild.Tools.runtime.linux-arm.props": {}
         }
       },
-      "IKVM.MSBuild.Tools.runtime.linux-arm64/8.4.4": {
+      "IKVM.MSBuild.Tools.runtime.linux-arm64/8.4.5": {
         "type": "package",
         "build": {
           "buildTransitive/netstandard2.0/IKVM.MSBuild.Tools.runtime.linux-arm64.props": {}
         }
       },
-      "IKVM.MSBuild.Tools.runtime.linux-x64/8.4.4": {
+      "IKVM.MSBuild.Tools.runtime.linux-x64/8.4.5": {
         "type": "package",
         "build": {
           "buildTransitive/netstandard2.0/IKVM.MSBuild.Tools.runtime.linux-x64.props": {}
         }
       },
-      "IKVM.MSBuild.Tools.runtime.win7-x64/8.4.4": {
+      "IKVM.MSBuild.Tools.runtime.win7-x64/8.4.5": {
         "type": "package",
         "build": {
           "buildTransitive/netstandard2.0/IKVM.MSBuild.Tools.runtime.win7-x64.props": {}
@@ -3415,10 +3415,10 @@
         "lib/netstandard2.0/GtkSharp.dll"
       ]
     },
-    "IKVM/8.4.4": {
-      "sha512": "F0miKyr0Rn1tm0zGrAPIuISDFYFp21AuU4v4/rzZjn6yqnTN3jj5T/Q6uIN/+uTahRtHGzzt4fzTrppOI9lYhA==",
+    "IKVM/8.4.5": {
+      "sha512": "pVLpwnPpyhvanwi5ofDbnb6xd7tgFzQs6yI9IorwbnG+0OfY8FRun4TLR1QiM5lk5EKSFofoXud/2oIyS3euSg==",
       "type": "package",
-      "path": "ikvm/8.4.4",
+      "path": "ikvm/8.4.5",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -3428,7 +3428,7 @@
         "buildTransitive/netstandard2.0/IKVM.Tasks.targets",
         "buildTransitive/netstandard2.0/IKVM.props",
         "buildTransitive/netstandard2.0/IKVM.targets",
-        "ikvm.8.4.4.nupkg.sha512",
+        "ikvm.8.4.5.nupkg.sha512",
         "ikvm.nuspec",
         "ikvm.snk",
         "lib/net461/IKVM.Java.dll",
@@ -3444,10 +3444,10 @@
         "targets/generated.props"
       ]
     },
-    "IKVM.Image/8.4.4": {
-      "sha512": "DkUjNi587nkqH4sYqlJPIdCLbRhB2aDqFOY7ZIDIiumRT5vQorBkWBn27ZajZ4glwwMSdRiaMEpUSw7GR12tZQ==",
+    "IKVM.Image/8.4.5": {
+      "sha512": "MSDnzs/MWwohwHOeLkJitiyRazVoZrU0giC2WYUrcVUNX0/2dHiDJiO63VDx0tjHfzpbJvZrLiVbXLLn2MdR+Q==",
       "type": "package",
-      "path": "ikvm.image/8.4.4",
+      "path": "ikvm.image/8.4.5",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -3456,7 +3456,7 @@
         "buildTransitive/IKVM.Image.props",
         "buildTransitive/IKVM.Image.targets",
         "content/ikvm.properties",
-        "ikvm.image.8.4.4.nupkg.sha512",
+        "ikvm.image.8.4.5.nupkg.sha512",
         "ikvm.image.nuspec",
         "ikvm/any/any/LICENSE.md",
         "ikvm/any/any/README.md",
@@ -3491,10 +3491,10 @@
         "ikvm/any/any/lib/tzmappings"
       ]
     },
-    "IKVM.MSBuild/8.4.4": {
-      "sha512": "2gkLfi7rm7Fp9lCTs6XmFzBK/p9/HkLV9hg4R31RdGGaotJ7n8gQclWjH5ul3Ngve5VdZsdGPZQ1UNxnOuFqHw==",
+    "IKVM.MSBuild/8.4.5": {
+      "sha512": "W/8x1FcqSOxnplUWSislF0zBhiBgt72Os/y3GL7sOtFx775raSic1D41rlvQJyGYtN62hyacTZ6sBFnAYoQZlQ==",
       "type": "package",
-      "path": "ikvm.msbuild/8.4.4",
+      "path": "ikvm.msbuild/8.4.5",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -3505,7 +3505,7 @@
         "buildTransitive/netstandard2.0/IKVM.MSBuild.Tasks.targets",
         "buildTransitive/netstandard2.0/IKVM.MSBuild.props",
         "buildTransitive/netstandard2.0/IKVM.MSBuild.targets",
-        "ikvm.msbuild.8.4.4.nupkg.sha512",
+        "ikvm.msbuild.8.4.5.nupkg.sha512",
         "ikvm.msbuild.nuspec",
         "lib/net461/_._",
         "lib/netcoreapp3.1/_._",
@@ -4076,33 +4076,33 @@
         "tasks/netcoreapp3.1/runtimes/win/lib/netstandard2.0/System.Threading.AccessControl.dll"
       ]
     },
-    "IKVM.MSBuild.Tools/8.4.4": {
-      "sha512": "24mamlWunlIBoiwG2nP7c5j5Yhh6AOi2jjiuxmwVAOzwiesiA7XULbCi35NoxhYrYyApX7Q8PCNs90XeT4XCNQ==",
+    "IKVM.MSBuild.Tools/8.4.5": {
+      "sha512": "ILUUtNv2MntRZvocXXZybUYTP0VrozUZjlJ/hlhN0dyCRpUg5fBIMhxLyOQvDSusKsabWGDu0qbTyobqv+P6Jw==",
       "type": "package",
-      "path": "ikvm.msbuild.tools/8.4.4",
+      "path": "ikvm.msbuild.tools/8.4.5",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "LICENSE.md",
         "README.md",
         "buildTransitive/netstandard2.0/IKVM.MSBuild.Tools.targets",
-        "ikvm.msbuild.tools.8.4.4.nupkg.sha512",
+        "ikvm.msbuild.tools.8.4.5.nupkg.sha512",
         "ikvm.msbuild.tools.nuspec",
         "lib/net461/_._",
         "lib/netcoreapp3.1/_._"
       ]
     },
-    "IKVM.MSBuild.Tools.runtime.linux-arm/8.4.4": {
-      "sha512": "wuxY2EoZeW9IUhES3aIp9Y30/c+ZW8LDGVqqkxH0XPT2eXIDzlKvQtBeFowQBvU4ngcQ4yrm/3AGx37Rh6sKQA==",
+    "IKVM.MSBuild.Tools.runtime.linux-arm/8.4.5": {
+      "sha512": "sO2pdfZYoHvNi7o+Mt+ii6cUKSV0kSHxopSLgf0vQOqHhIgzgPtsx1PdfFzQGBKt+ERhTQf99QhGeIuBcj66Rw==",
       "type": "package",
-      "path": "ikvm.msbuild.tools.runtime.linux-arm/8.4.4",
+      "path": "ikvm.msbuild.tools.runtime.linux-arm/8.4.5",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "LICENSE.md",
         "README.md",
         "buildTransitive/netstandard2.0/IKVM.MSBuild.Tools.runtime.linux-arm.props",
-        "ikvm.msbuild.tools.runtime.linux-arm.8.4.4.nupkg.sha512",
+        "ikvm.msbuild.tools.runtime.linux-arm.8.4.5.nupkg.sha512",
         "ikvm.msbuild.tools.runtime.linux-arm.nuspec",
         "ikvmc/net461/linux-arm/ICSharpCode.SharpZipLib.dll",
         "ikvmc/net461/linux-arm/IKVM.Reflection.dll",
@@ -5111,17 +5111,17 @@
         "ikvmstub/netcoreapp3.1/linux-arm/zh-Hant/System.CommandLine.resources.dll"
       ]
     },
-    "IKVM.MSBuild.Tools.runtime.linux-arm64/8.4.4": {
-      "sha512": "im3hBHdu68y7FpjBmIHkU71GVIBs819mYvvD8/qvyHwKGIUF/u7VsVIpVrvw0lcjTJMbpOSf+hNA0tTBC9pnXQ==",
+    "IKVM.MSBuild.Tools.runtime.linux-arm64/8.4.5": {
+      "sha512": "G8dPQcnnJ14ydBThj2cl0vWb6LNvSenucinIgqpY8UuWTV2N0em1J6bACBLup/kKAVEgPVrOJrwwKsAeE3t9Ug==",
       "type": "package",
-      "path": "ikvm.msbuild.tools.runtime.linux-arm64/8.4.4",
+      "path": "ikvm.msbuild.tools.runtime.linux-arm64/8.4.5",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "LICENSE.md",
         "README.md",
         "buildTransitive/netstandard2.0/IKVM.MSBuild.Tools.runtime.linux-arm64.props",
-        "ikvm.msbuild.tools.runtime.linux-arm64.8.4.4.nupkg.sha512",
+        "ikvm.msbuild.tools.runtime.linux-arm64.8.4.5.nupkg.sha512",
         "ikvm.msbuild.tools.runtime.linux-arm64.nuspec",
         "ikvmc/netcoreapp3.1/linux-arm64/ICSharpCode.SharpZipLib.dll",
         "ikvmc/netcoreapp3.1/linux-arm64/IKVM.Reflection.dll",
@@ -5864,17 +5864,17 @@
         "ikvmstub/netcoreapp3.1/linux-arm64/zh-Hant/System.CommandLine.resources.dll"
       ]
     },
-    "IKVM.MSBuild.Tools.runtime.linux-x64/8.4.4": {
-      "sha512": "UhZ2YYqf7QPzMLuLloF4RISswdZr/4jKWv95NF4OeW9TRFGaSXscpQj/AZKl363J/xkCtnT3rqIYZQgQC0dIRw==",
+    "IKVM.MSBuild.Tools.runtime.linux-x64/8.4.5": {
+      "sha512": "bKEWlwDm2kgRWhvYfyH0/lUX3kXVsvyTAj4+of2FmgjhfakHUuilawXjWqN2OemHOkV9NB3VPtimYmpl/C/Cmg==",
       "type": "package",
-      "path": "ikvm.msbuild.tools.runtime.linux-x64/8.4.4",
+      "path": "ikvm.msbuild.tools.runtime.linux-x64/8.4.5",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "LICENSE.md",
         "README.md",
         "buildTransitive/netstandard2.0/IKVM.MSBuild.Tools.runtime.linux-x64.props",
-        "ikvm.msbuild.tools.runtime.linux-x64.8.4.4.nupkg.sha512",
+        "ikvm.msbuild.tools.runtime.linux-x64.8.4.5.nupkg.sha512",
         "ikvm.msbuild.tools.runtime.linux-x64.nuspec",
         "ikvmc/net461/linux-x64/ICSharpCode.SharpZipLib.dll",
         "ikvmc/net461/linux-x64/IKVM.Reflection.dll",
@@ -6883,17 +6883,17 @@
         "ikvmstub/netcoreapp3.1/linux-x64/zh-Hant/System.CommandLine.resources.dll"
       ]
     },
-    "IKVM.MSBuild.Tools.runtime.win7-x64/8.4.4": {
-      "sha512": "JkLA0TlG5xWndiL1HOHLBbiyDBLq6FKGkQT6VDZx6RlXXfEMZ+vYX4bmrt9eNYxNl5GtXM5hGo/2vEolxa1v5w==",
+    "IKVM.MSBuild.Tools.runtime.win7-x64/8.4.5": {
+      "sha512": "/+s/ljM7GYXbISxigZHF5s7YZpIl/su/QjUGELb3nTJoP4AZA5PHIMBI9JL+wtDVXgqQ4wr25l0nLjppeDxV0w==",
       "type": "package",
-      "path": "ikvm.msbuild.tools.runtime.win7-x64/8.4.4",
+      "path": "ikvm.msbuild.tools.runtime.win7-x64/8.4.5",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "LICENSE.md",
         "README.md",
         "buildTransitive/netstandard2.0/IKVM.MSBuild.Tools.runtime.win7-x64.props",
-        "ikvm.msbuild.tools.runtime.win7-x64.8.4.4.nupkg.sha512",
+        "ikvm.msbuild.tools.runtime.win7-x64.8.4.5.nupkg.sha512",
         "ikvm.msbuild.tools.runtime.win7-x64.nuspec",
         "ikvmc/net461/win7-x64/ICSharpCode.SharpZipLib.dll",
         "ikvmc/net461/win7-x64/IKVM.Reflection.dll",
@@ -11332,7 +11332,7 @@
       "CS-Script >= 4.6.2",
       "Dotnet.Bundle >= 0.9.13",
       "GtkSharp >= 3.24.24.38",
-      "IKVM >= 8.4.4",
+      "IKVM >= 8.4.5",
       "Newtonsoft.Json >= 13.0.2",
       "NuGet.Build.Tasks.Pack >= 6.4.0",
       "OpenTK >= 4.7.5"
@@ -11408,7 +11408,7 @@
           },
           "IKVM": {
             "target": "Package",
-            "version": "[8.4.4, )"
+            "version": "[8.4.5, )"
           },
           "Newtonsoft.Json": {
             "target": "Package",

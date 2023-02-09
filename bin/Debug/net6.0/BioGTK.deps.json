@@ -13,7 +13,7 @@
           "CS-Script": "4.6.2",
           "DotNet.Bundle": "0.9.13",
           "GtkSharp": "3.24.24.38",
-          "IKVM": "8.4.4",
+          "IKVM": "8.4.5",
           "Newtonsoft.Json": "13.0.2",
           "NuGet.Build.Tasks.Pack": "6.4.0",
           "OpenTK": "4.7.5",
@@ -114,10 +114,10 @@
           }
         }
       },
-      "IKVM/8.4.4": {
+      "IKVM/8.4.5": {
         "dependencies": {
-          "IKVM.Image": "8.4.4",
-          "IKVM.MSBuild": "8.4.4",
+          "IKVM.Image": "8.4.5",
+          "IKVM.MSBuild": "8.4.5",
           "Microsoft.Extensions.DependencyModel": "6.0.0",
           "Microsoft.Win32.Registry": "5.0.0",
           "Mono.Posix": "7.1.0-final.1.21458.1",
@@ -140,12 +140,12 @@
         },
         "runtime": {
           "lib/netcoreapp3.1/IKVM.Java.dll": {
-            "assemblyVersion": "8.4.4.0",
-            "fileVersion": "8.4.4.0"
+            "assemblyVersion": "8.4.5.0",
+            "fileVersion": "8.4.5.0"
           },
           "lib/netcoreapp3.1/IKVM.Runtime.dll": {
-            "assemblyVersion": "8.4.4.0",
-            "fileVersion": "8.4.4.0"
+            "assemblyVersion": "8.4.5.0",
+            "fileVersion": "8.4.5.0"
           }
         },
         "runtimeTargets": {
@@ -181,24 +181,24 @@
           }
         }
       },
-      "IKVM.Image/8.4.4": {},
-      "IKVM.MSBuild/8.4.4": {
+      "IKVM.Image/8.4.5": {},
+      "IKVM.MSBuild/8.4.5": {
         "dependencies": {
-          "IKVM.MSBuild.Tools": "8.4.4"
+          "IKVM.MSBuild.Tools": "8.4.5"
         }
       },
-      "IKVM.MSBuild.Tools/8.4.4": {
+      "IKVM.MSBuild.Tools/8.4.5": {
         "dependencies": {
-          "IKVM.MSBuild.Tools.runtime.linux-arm": "8.4.4",
-          "IKVM.MSBuild.Tools.runtime.linux-arm64": "8.4.4",
-          "IKVM.MSBuild.Tools.runtime.linux-x64": "8.4.4",
-          "IKVM.MSBuild.Tools.runtime.win7-x64": "8.4.4"
+          "IKVM.MSBuild.Tools.runtime.linux-arm": "8.4.5",
+          "IKVM.MSBuild.Tools.runtime.linux-arm64": "8.4.5",
+          "IKVM.MSBuild.Tools.runtime.linux-x64": "8.4.5",
+          "IKVM.MSBuild.Tools.runtime.win7-x64": "8.4.5"
         }
       },
-      "IKVM.MSBuild.Tools.runtime.linux-arm/8.4.4": {},
-      "IKVM.MSBuild.Tools.runtime.linux-arm64/8.4.4": {},
-      "IKVM.MSBuild.Tools.runtime.linux-x64/8.4.4": {},
-      "IKVM.MSBuild.Tools.runtime.win7-x64/8.4.4": {},
+      "IKVM.MSBuild.Tools.runtime.linux-arm/8.4.5": {},
+      "IKVM.MSBuild.Tools.runtime.linux-arm64/8.4.5": {},
+      "IKVM.MSBuild.Tools.runtime.linux-x64/8.4.5": {},
+      "IKVM.MSBuild.Tools.runtime.win7-x64/8.4.5": {},
       "Microsoft.CodeAnalysis.Analyzers/3.3.3": {},
       "Microsoft.CodeAnalysis.Common/4.1.0": {
         "dependencies": {
@@ -1187,61 +1187,61 @@
       "path": "gtksharp/3.24.24.38",
       "hashPath": "gtksharp.3.24.24.38.nupkg.sha512"
     },
-    "IKVM/8.4.4": {
+    "IKVM/8.4.5": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-F0miKyr0Rn1tm0zGrAPIuISDFYFp21AuU4v4/rzZjn6yqnTN3jj5T/Q6uIN/+uTahRtHGzzt4fzTrppOI9lYhA==",
-      "path": "ikvm/8.4.4",
-      "hashPath": "ikvm.8.4.4.nupkg.sha512"
+      "sha512": "sha512-pVLpwnPpyhvanwi5ofDbnb6xd7tgFzQs6yI9IorwbnG+0OfY8FRun4TLR1QiM5lk5EKSFofoXud/2oIyS3euSg==",
+      "path": "ikvm/8.4.5",
+      "hashPath": "ikvm.8.4.5.nupkg.sha512"
     },
-    "IKVM.Image/8.4.4": {
+    "IKVM.Image/8.4.5": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-DkUjNi587nkqH4sYqlJPIdCLbRhB2aDqFOY7ZIDIiumRT5vQorBkWBn27ZajZ4glwwMSdRiaMEpUSw7GR12tZQ==",
-      "path": "ikvm.image/8.4.4",
-      "hashPath": "ikvm.image.8.4.4.nupkg.sha512"
+      "sha512": "sha512-MSDnzs/MWwohwHOeLkJitiyRazVoZrU0giC2WYUrcVUNX0/2dHiDJiO63VDx0tjHfzpbJvZrLiVbXLLn2MdR+Q==",
+      "path": "ikvm.image/8.4.5",
+      "hashPath": "ikvm.image.8.4.5.nupkg.sha512"
     },
-    "IKVM.MSBuild/8.4.4": {
+    "IKVM.MSBuild/8.4.5": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-2gkLfi7rm7Fp9lCTs6XmFzBK/p9/HkLV9hg4R31RdGGaotJ7n8gQclWjH5ul3Ngve5VdZsdGPZQ1UNxnOuFqHw==",
-      "path": "ikvm.msbuild/8.4.4",
-      "hashPath": "ikvm.msbuild.8.4.4.nupkg.sha512"
+      "sha512": "sha512-W/8x1FcqSOxnplUWSislF0zBhiBgt72Os/y3GL7sOtFx775raSic1D41rlvQJyGYtN62hyacTZ6sBFnAYoQZlQ==",
+      "path": "ikvm.msbuild/8.4.5",
+      "hashPath": "ikvm.msbuild.8.4.5.nupkg.sha512"
     },
-    "IKVM.MSBuild.Tools/8.4.4": {
+    "IKVM.MSBuild.Tools/8.4.5": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-24mamlWunlIBoiwG2nP7c5j5Yhh6AOi2jjiuxmwVAOzwiesiA7XULbCi35NoxhYrYyApX7Q8PCNs90XeT4XCNQ==",
-      "path": "ikvm.msbuild.tools/8.4.4",
-      "hashPath": "ikvm.msbuild.tools.8.4.4.nupkg.sha512"
+      "sha512": "sha512-ILUUtNv2MntRZvocXXZybUYTP0VrozUZjlJ/hlhN0dyCRpUg5fBIMhxLyOQvDSusKsabWGDu0qbTyobqv+P6Jw==",
+      "path": "ikvm.msbuild.tools/8.4.5",
+      "hashPath": "ikvm.msbuild.tools.8.4.5.nupkg.sha512"
     },
-    "IKVM.MSBuild.Tools.runtime.linux-arm/8.4.4": {
+    "IKVM.MSBuild.Tools.runtime.linux-arm/8.4.5": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-wuxY2EoZeW9IUhES3aIp9Y30/c+ZW8LDGVqqkxH0XPT2eXIDzlKvQtBeFowQBvU4ngcQ4yrm/3AGx37Rh6sKQA==",
-      "path": "ikvm.msbuild.tools.runtime.linux-arm/8.4.4",
-      "hashPath": "ikvm.msbuild.tools.runtime.linux-arm.8.4.4.nupkg.sha512"
+      "sha512": "sha512-sO2pdfZYoHvNi7o+Mt+ii6cUKSV0kSHxopSLgf0vQOqHhIgzgPtsx1PdfFzQGBKt+ERhTQf99QhGeIuBcj66Rw==",
+      "path": "ikvm.msbuild.tools.runtime.linux-arm/8.4.5",
+      "hashPath": "ikvm.msbuild.tools.runtime.linux-arm.8.4.5.nupkg.sha512"
     },
-    "IKVM.MSBuild.Tools.runtime.linux-arm64/8.4.4": {
+    "IKVM.MSBuild.Tools.runtime.linux-arm64/8.4.5": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-im3hBHdu68y7FpjBmIHkU71GVIBs819mYvvD8/qvyHwKGIUF/u7VsVIpVrvw0lcjTJMbpOSf+hNA0tTBC9pnXQ==",
-      "path": "ikvm.msbuild.tools.runtime.linux-arm64/8.4.4",
-      "hashPath": "ikvm.msbuild.tools.runtime.linux-arm64.8.4.4.nupkg.sha512"
+      "sha512": "sha512-G8dPQcnnJ14ydBThj2cl0vWb6LNvSenucinIgqpY8UuWTV2N0em1J6bACBLup/kKAVEgPVrOJrwwKsAeE3t9Ug==",
+      "path": "ikvm.msbuild.tools.runtime.linux-arm64/8.4.5",
+      "hashPath": "ikvm.msbuild.tools.runtime.linux-arm64.8.4.5.nupkg.sha512"
     },
-    "IKVM.MSBuild.Tools.runtime.linux-x64/8.4.4": {
+    "IKVM.MSBuild.Tools.runtime.linux-x64/8.4.5": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-UhZ2YYqf7QPzMLuLloF4RISswdZr/4jKWv95NF4OeW9TRFGaSXscpQj/AZKl363J/xkCtnT3rqIYZQgQC0dIRw==",
-      "path": "ikvm.msbuild.tools.runtime.linux-x64/8.4.4",
-      "hashPath": "ikvm.msbuild.tools.runtime.linux-x64.8.4.4.nupkg.sha512"
+      "sha512": "sha512-bKEWlwDm2kgRWhvYfyH0/lUX3kXVsvyTAj4+of2FmgjhfakHUuilawXjWqN2OemHOkV9NB3VPtimYmpl/C/Cmg==",
+      "path": "ikvm.msbuild.tools.runtime.linux-x64/8.4.5",
+      "hashPath": "ikvm.msbuild.tools.runtime.linux-x64.8.4.5.nupkg.sha512"
     },
-    "IKVM.MSBuild.Tools.runtime.win7-x64/8.4.4": {
+    "IKVM.MSBuild.Tools.runtime.win7-x64/8.4.5": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-JkLA0TlG5xWndiL1HOHLBbiyDBLq6FKGkQT6VDZx6RlXXfEMZ+vYX4bmrt9eNYxNl5GtXM5hGo/2vEolxa1v5w==",
-      "path": "ikvm.msbuild.tools.runtime.win7-x64/8.4.4",
-      "hashPath": "ikvm.msbuild.tools.runtime.win7-x64.8.4.4.nupkg.sha512"
+      "sha512": "sha512-/+s/ljM7GYXbISxigZHF5s7YZpIl/su/QjUGELb3nTJoP4AZA5PHIMBI9JL+wtDVXgqQ4wr25l0nLjppeDxV0w==",
+      "path": "ikvm.msbuild.tools.runtime.win7-x64/8.4.5",
+      "hashPath": "ikvm.msbuild.tools.runtime.win7-x64.8.4.5.nupkg.sha512"
     },
     "Microsoft.CodeAnalysis.Analyzers/3.3.3": {
       "type": "package",

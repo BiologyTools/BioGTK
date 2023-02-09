@@ -1,6 +1,7 @@
 ﻿using AForge;
 using Gdk;
 using Gtk;
+using sun.tools.tree;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,12 +11,13 @@ using System.Threading.Tasks;
 namespace BioGTK
 {
     /// <summary> Example Test Form for GTKSharp and Glade. </summary>
-    public class ColorTool : Gtk.Window
+    public class ColorTool : Gtk.Dialog
     {
         #region Properties
 
         /// <summary> Used to load in the glade file resource as a window. </summary>
         private Builder _builder;
+        bool color1 = false;
 
 #pragma warning disable 649
 
@@ -26,13 +28,21 @@ namespace BioGTK
         [Builder.Object]
         private SpinButton bBox;
         [Builder.Object]
+        private SpinButton widthBox;
+        [Builder.Object]
         private Scale rBar;
         [Builder.Object]
         private Scale gBar;
         [Builder.Object]
         private Scale bBar;
         [Builder.Object]
+        private Scale widthBar;
+        [Builder.Object]
         private DrawingArea image;
+        [Builder.Object]
+        private Button cancelBut;
+        [Builder.Object]
+        private Button okBut;
 #pragma warning restore 649
 
         #endregion
@@ -45,18 +55,19 @@ namespace BioGTK
         /// @param ColorS The color to be displayed in the color tool.
         /// 
         /// @return A new instance of the ColorTool class.
-        public static ColorTool Create(ColorS color)
+        public static ColorTool Create(bool color1)
         {
             Builder builder = new Builder(null, "BioGTK.Glade.ColorTool.glade", null);
-            return new ColorTool(builder, builder.GetObject("colorTool").Handle, color);
+            return new ColorTool(builder, builder.GetObject("colorTool").Handle, color1);
         }
 
        
         /* The constructor for the class. */
-        protected ColorTool(Builder builder, IntPtr handle, ColorS color) : base(handle)
+        protected ColorTool(Builder builder, IntPtr handle, bool color1) : base(handle)
         {
             _builder = builder;
             builder.Autoconnect(this);
+            this.color1 = color1;
             SetupHandlers();
             rBar.Adjustment.Upper = ushort.MaxValue;
             gBar.Adjustment.Upper = ushort.MaxValue;
@@ -70,10 +81,22 @@ namespace BioGTK
             bBox.Adjustment.Upper = ushort.MaxValue;
             bBox.Adjustment.StepIncrement = 1;
             bBox.Adjustment.PageIncrement = 10;
-
-            rBar.Adjustment.Value = color.R;
-            gBar.Adjustment.Value = color.G;
-            bBar.Adjustment.Value = color.B;
+            widthBar.Adjustment.Upper = 100;
+            widthBar.Adjustment.Value = Tools.StrokeWidth;
+            widthBox.Adjustment.Upper = 100;
+            widthBox.Adjustment.Value = Tools.StrokeWidth;
+            if (!color1)
+            {
+                rBar.Adjustment.Value = Tools.drawColor.R;
+                gBar.Adjustment.Value = Tools.drawColor.G;
+                bBar.Adjustment.Value = Tools.drawColor.B;
+            }
+            else
+            {
+                rBar.Adjustment.Value = Tools.eraseColor.R;
+                gBar.Adjustment.Value = Tools.eraseColor.G;
+                bBar.Adjustment.Value = Tools.eraseColor.B;
+            }
         }
 
         #endregion
@@ -85,10 +108,32 @@ namespace BioGTK
             rBar.ChangeValue += ChangeValue;
             gBar.ChangeValue += ChangeValue;
             bBar.ChangeValue += ChangeValue;
+            widthBar.ChangeValue += ChangeValue;
             rBox.ChangeValue += Box_ChangeValue;
             gBox.ChangeValue += Box_ChangeValue;
             bBox.ChangeValue += Box_ChangeValue;
+            widthBox.ChangeValue += Box_ChangeValue;
             image.Drawn += Image_Drawn;
+            cancelBut.Clicked += CancelBut_Clicked;
+            okBut.Clicked += OkBut_Clicked;
+            this.DeleteEvent += ColorTool_DeleteEvent;
+        }
+
+        private void OkBut_Clicked(object sender, EventArgs e)
+        {
+            this.DefaultResponse = ResponseType.Ok;
+            this.Destroy();
+        }
+
+        private void CancelBut_Clicked(object sender, EventArgs e)
+        {
+            this.DefaultResponse = ResponseType.Cancel;
+            this.Destroy();
+        }
+
+        private void ColorTool_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            DefaultResponse = ResponseType.Cancel;
         }
 
         /// The function takes the image and draws a rectangle on it with the color specified by the
@@ -120,7 +165,8 @@ namespace BioGTK
             rBox.Value = rBar.Value;
             gBox.Value = gBar.Value;
             bBox.Value = bBar.Value;
-            if (Tools.colorOne)
+            Tools.StrokeWidth = (int)widthBox.Value;
+            if (!color1)
                 Tools.DrawColor = ColorS;
             else
                 Tools.EraseColor = ColorS;
@@ -136,16 +182,20 @@ namespace BioGTK
             rBox.Value = rBar.Value;
             gBox.Value = gBar.Value;
             bBox.Value = bBar.Value;
-            if (Tools.colorOne)
+            if (!color1)
                 Tools.DrawColor = ColorS;
             else
                 Tools.EraseColor = ColorS;
+            Tools.StrokeWidth = (int)widthBar.Value;
         }
 
         /* Returning a new ColorS object with the values of the spin buttons. */
         public ColorS ColorS
         {
-            get { return new ColorS((ushort)rBox.Value, (ushort)gBox.Value, (ushort)bBox.Value); }
+            get 
+            {
+                return new ColorS((ushort)rBox.Value, (ushort)gBox.Value, (ushort)bBox.Value); 
+            }
         }
         /* Returning a new RGBA object with the values of the spin buttons. */
         public RGBA RGBA

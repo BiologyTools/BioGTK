@@ -5,10 +5,11 @@
   <object class="GtkWindow" id="colorTool">
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">Color Tool</property>
+    <property name="modal">True</property>
     <child>
       <object class="GtkFixed">
         <property name="width-request">663</property>
-        <property name="height-request">136</property>
+        <property name="height-request">175</property>
         <property name="visible">True</property>
         <property name="can-focus">False</property>
         <child>
@@ -135,6 +136,66 @@
           <packing>
             <property name="x">552</property>
             <property name="y">23</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="widthBox">
+            <property name="width-request">168</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+          </object>
+          <packing>
+            <property name="x">37</property>
+            <property name="y">133</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">Width</property>
+          </object>
+          <packing>
+            <property name="x">3</property>
+            <property name="y">140</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkScale" id="widthBar">
+            <property name="width-request">344</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="round-digits">0</property>
+          </object>
+          <packing>
+            <property name="x">208</property>
+            <property name="y">127</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton" id="okBut">
+            <property name="label" translatable="yes">OK</property>
+            <property name="width-request">100</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="receives-default">True</property>
+          </object>
+          <packing>
+            <property name="x">553</property>
+            <property name="y">175</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton" id="cancelBut">
+            <property name="label" translatable="yes">Cancel</property>
+            <property name="width-request">100</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="receives-default">True</property>
+          </object>
+          <packing>
+            <property name="x">445</property>
+            <property name="y">176</property>
           </packing>
         </child>
       </object>

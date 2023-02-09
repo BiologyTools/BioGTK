@@ -119,7 +119,7 @@ namespace BioGTK
         public static bool bEnabled = true;
         public static ColorS drawColor = new ColorS(ushort.MaxValue, ushort.MaxValue, ushort.MaxValue);
         public static ColorS eraseColor = new ColorS(0, 0, 0);
-        private static int width = 1;
+        private static int width = 5;
 
         public static System.Drawing.Rectangle selectionRectangle;
         public static Hashtable tools = new Hashtable();
@@ -346,8 +346,6 @@ namespace BioGTK
         /// If the tool is an ellipse tool, it creates a new ROI object and adds it to the list of
         /// annotations. 
         /// 
-        /// If the tool is a
-        /// 
         /// @param PointD A point with double precision
         /// @param ButtonPressEventArgs 
         /// 
@@ -491,7 +489,7 @@ namespace BioGTK
             PointF p = new PointF((float)e.X, (float)e.Y);
             if (App.viewer == null || currentTool == null || ImageView.SelectedImage == null || selectedROI == null)
                 return;
-            //TODO Scripting.UpdateState(Scripting.State.GetUp(e, buts));
+            Scripting.UpdateState(Scripting.State.GetUp(e, buts.Event.Button));
             if (currentTool.type == Tool.Type.pan && buts.Event.Button == 2)
                 currentTool = GetTool(Tool.Type.move);
             if (currentTool.type == Tool.Type.point && buts.Event.Button == 1)
@@ -654,16 +652,25 @@ namespace BioGTK
         {
             if (App.viewer == null)
                 return;
-            //TO DO Scripting.UpdateState(Scripting.State.GetMove(e, buts));
+            if(buts.Event.State == ModifierType.Button1Mask)
+                Scripting.UpdateState(Scripting.State.GetMove(e, 1));
+            if (buts.Event.State == ModifierType.Button2Mask)
+                Scripting.UpdateState(Scripting.State.GetMove(e, 2));
+            if (buts.Event.State == ModifierType.Button3Mask)
+                Scripting.UpdateState(Scripting.State.GetMove(e, 3));
+            if (buts.Event.State == ModifierType.Button4Mask)
+                Scripting.UpdateState(Scripting.State.GetMove(e, 4));
+            if (buts.Event.State == ModifierType.Button5Mask)
+                Scripting.UpdateState(Scripting.State.GetMove(e, 5));
+
             if ((Tools.currentTool.type == Tools.Tool.Type.pan && buts.Event.State == Gdk.ModifierType.Button1Mask) || buts.Event.State == Gdk.ModifierType.Button2Mask && !ImageView.SelectedImage.isPyramidal)
             {
-                PointD pf = new PointD(e.X, e.Y);
-                App.viewer.Origin = new PointD(App.viewer.Origin.X - pf.X, App.viewer.Origin.Y - pf.Y);
+                App.viewer.Origin = new PointD(App.viewer.Origin.X + (ImageView.mouseDown.X - e.X), App.viewer.Origin.Y + (ImageView.mouseDown.Y - e.Y));
                 UpdateView();
             }
             if (ImageView.SelectedImage == null)
                 return;
-            PointD p = ImageView.SelectedImage.ToImageSpace(e);
+            PointD p = App.viewer.ImageToViewSpace(e.X, e.Y);
 
             if (currentTool.type == Tool.Type.line && buts.Event.State == Gdk.ModifierType.Button1Mask)
             {
@@ -823,9 +830,9 @@ namespace BioGTK
         private void Color2_Drawn(object o, DrawnArgs args)
         {
             RGBA r = new RGBA();
-            r.Red = (double)EraseColor.R / ushort.MaxValue;
-            r.Green = (double)EraseColor.G / ushort.MaxValue;
-            r.Blue = (double)EraseColor.B / ushort.MaxValue;
+            r.Red = (double)DrawColor.R / ushort.MaxValue;
+            r.Green = (double)DrawColor.G / ushort.MaxValue;
+            r.Blue = (double)DrawColor.B / ushort.MaxValue;
             r.Alpha = 1.0;
             args.Cr.SetSourceRGBA(r.Red, r.Green, r.Blue, r.Alpha);
             args.Cr.Rectangle(new Cairo.Rectangle(0,0,color2.AllocatedWidth,color2.AllocatedWidth));
@@ -843,9 +850,9 @@ namespace BioGTK
         private void Color1_Drawn(object o, DrawnArgs args)
         {
             RGBA r = new RGBA();
-            r.Red = (double)DrawColor.R / ushort.MaxValue;
-            r.Green = (double)DrawColor.G / ushort.MaxValue;
-            r.Blue = (double)DrawColor.B / ushort.MaxValue;
+            r.Red = (double)EraseColor.R / ushort.MaxValue;
+            r.Green = (double)EraseColor.G / ushort.MaxValue;
+            r.Blue = (double)EraseColor.B / ushort.MaxValue;
             r.Alpha = 1.0;
             args.Cr.SetSourceRGBA(r.Red, r.Green, r.Blue, r.Alpha);
             args.Cr.Rectangle(new Cairo.Rectangle(0, 0, color1.AllocatedWidth, color1.AllocatedWidth));
@@ -961,23 +968,21 @@ namespace BioGTK
             if (App.color != null)
                 if (App.color.Visible)
                 return;
-            App.color = ColorTool.Create(eraseColor);
+            colorOne = false;
+            App.color = ColorTool.Create(false);
             App.color.Show();
             color2.QueueDraw();
-            colorOne = false;
         }
         /// If the color tool is not visible, create it and show it
-        /// 
-        /// @return The color that was selected in the color tool.
         private void Color1Click()
         {
             if(App.color!=null)
                 if (App.color.Visible)
                 return;
-            App.color = ColorTool.Create(drawColor);
+            colorOne = true;
+            App.color = ColorTool.Create(true);
             App.color.Show();
             color1.QueueDraw();
-            colorOne= true;
         }
         /// It switches the color of the pen and the color of the eraser
         private void SwitchClick()

@@ -94,7 +94,7 @@ namespace BioGTK
             {
                 App.applyFilter = ApplyFilter.Create(f, false);
             }
-            App.applyFilter.Show();
+            
         }
         
         /// It creates a treeview with two columns, the first column is the filter type, the second

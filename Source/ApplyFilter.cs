@@ -5,7 +5,7 @@ using Gtk;
 
 namespace Bio
 {
-    public partial class ApplyFilter : Gtk.Window
+    public partial class ApplyFilter : Gtk.Dialog
     {
         #region Properties
 
@@ -89,6 +89,7 @@ namespace Bio
         private void InPlaceBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Apply(true);
+            DefaultResponse = ResponseType.Ok;
         }
 
         /// The ApplyBut_ButtonPressEvent function is called when the Apply button is pressed
@@ -99,6 +100,7 @@ namespace Bio
         private void ApplyBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Apply(false);
+            DefaultResponse = ResponseType.Ok;
         }
 
         /// > When the user clicks on the Apply Filter button, the function UpdateStacks() is called
@@ -236,7 +238,8 @@ namespace Bio
         /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         private void cancelBut_Click(object sender, EventArgs e)
         {
-            this.Close();
+            DefaultResponse = ResponseType.Cancel;
+            Destroy();
         }
         /// The function takes the image ID and the name of the filter and applies the filter to the
         /// image

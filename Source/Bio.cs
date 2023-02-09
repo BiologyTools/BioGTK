@@ -2133,7 +2133,6 @@ namespace BioGTK
             }
         }
         /// Converts a 16-bit image to an 8-bit image
-        /// 
         public void To8Bit()
         {
             if (Buffers[0].RGBChannelsCount == 4)
@@ -2227,9 +2226,11 @@ namespace BioGTK
             Statistics.ClearCalcBuffer();
             AutoThreshold(this, false);
             bitsPerPixel = 8;
+            App.viewer.UpdateGUI();
+            App.viewer.UpdateImages();
+            App.viewer.UpdateView();
             Recorder.AddLine("Bio.Table.GetImage(" + '"' + ID + '"' + ")" + "." + "To8Bit();");
         }
-        /// 
         /// Converts the image to 16 bit.
         public void To16Bit()
         {
@@ -2246,9 +2247,6 @@ namespace BioGTK
                 {
                     Array.Reverse(Buffers[i].Bytes);
                     Bitmap[] bs = Bitmap.RGB48To16(ID, SizeX, SizeY, Buffers[i].Stride, Buffers[i].Bytes, Buffers[i].Coordinate, index, Buffers[i].Plane);
-                    Statistics.CalcStatistics(bs[0]);
-                    Statistics.CalcStatistics(bs[1]);
-                    Statistics.CalcStatistics(bs[2]);
                     bfs.AddRange(bs);
                     index += 3;
                 }
@@ -2271,11 +2269,7 @@ namespace BioGTK
             {
                 for (int i = 0; i < Buffers.Count; i++)
                 {
-                    Bitmap b = AForge.Imaging.Image.Convert8bppTo16bpp(Buffers[i]);
-                    Buffers[i].Image = b;
-                    b.Dispose();
-                    b = null;
-                    GC.Collect();
+                    Buffers[i].Image = AForge.Imaging.Image.Convert8bppTo16bpp(Buffers[i]);
                     Statistics.CalcStatistics(Buffers[i]);
                 }
                 for (int c = 0; c < Channels.Count; c++)
@@ -2336,7 +2330,10 @@ namespace BioGTK
             Statistics.ClearCalcBuffer();
             AutoThreshold(this, false);
             StackThreshold(true);
-            Recorder.AddLine("Bio.Table.GetImage(" + '"' + ID + '"' + ")" + "." + "To16Bit();");
+            App.viewer.UpdateGUI();
+            App.viewer.UpdateImages();
+            App.viewer.UpdateView();
+            Recorder.AddLine("Bio.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To16Bit();");
         }
         /// Converts the image to 24 bit.
         public void To24Bit()
@@ -2459,7 +2456,10 @@ namespace BioGTK
             Statistics.ClearCalcBuffer();
             AutoThreshold(this, false);
             //StackThreshold(false);
-            Recorder.AddLine("Bio.Table.GetImage(" + '"' + ID + '"' + ")" + "." + "To24Bit();");
+            App.viewer.UpdateGUI();
+            App.viewer.UpdateImages();
+            App.viewer.UpdateView();
+            Recorder.AddLine("Bio.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To24Bit();");
         }
         /// Converts the image to 32 bit.
         public void To32Bit()
@@ -2475,10 +2475,7 @@ namespace BioGTK
                 UnmanagedImage b = Bitmap.To32Bit(Buffers[i]);
                 Buffers[i].Image = b;
                 Statistics.CalcStatistics(Buffers[i]);
-                b.Dispose();
-                b = null;
             }
-            GC.Collect();
             //We wait for threshold image statistics calculation
             do
             {
@@ -2486,7 +2483,10 @@ namespace BioGTK
             } while (Buffers[Buffers.Count - 1].Stats == null);
             Statistics.ClearCalcBuffer();
             AutoThreshold(this, false);
-            Recorder.AddLine("Bio.Table.GetImage(" + '"' + ID + '"' + ")" + "." + "To32Bit();");
+            App.viewer.UpdateGUI();
+            App.viewer.UpdateImages();
+            App.viewer.UpdateView();
+            Recorder.AddLine("Bio.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To32Bit();");
         }
         /// It converts a 16 bit image to a 48 bit image
         /// 
@@ -2503,13 +2503,9 @@ namespace BioGTK
                 {
                     for (int i = 0; i < Buffers.Count; i++)
                     {
-                        UnmanagedImage b = AForge.Imaging.Image.Convert8bppTo16bpp(Buffers[i]);
-                        Buffers[i].Image = b;
-                        b.Dispose();
-                        b = null;
+                        Buffers[i] = AForge.Imaging.Image.Convert8bppTo16bpp(Buffers[i]);
                     }
                 }
-                GC.Collect();
                 List<Bitmap> bfs = new List<Bitmap>();
                 if (Buffers.Count % 3 != 0 && Buffers.Count % 2 != 0)
                     for (int i = 0; i < Buffers.Count; i++)
@@ -2541,7 +2537,6 @@ namespace BioGTK
                     }
                 GC.Collect();
                 Buffers = bfs;
-                int index = 0;
                 UpdateCoords(SizeZ, 1, SizeT);
 
             }
@@ -2550,9 +2545,7 @@ namespace BioGTK
             {
                 for (int i = 0; i < Buffers.Count; i++)
                 {
-                    Bitmap b = AForge.Imaging.Image.Convert8bppTo16bpp(Buffers[i]);
-                    Buffers[i].Image = b;
-                    b.Dispose();
+                    Buffers[i] = AForge.Imaging.Image.Convert8bppTo16bpp(Buffers[i]);
                     Statistics.CalcStatistics(Buffers[i]);
                 }
                 for (int c = 0; c < Channels.Count; c++)
@@ -2595,7 +2588,10 @@ namespace BioGTK
             Statistics.ClearCalcBuffer();
             bitsPerPixel = 16;
             AutoThreshold(this, false);
-            Recorder.AddLine("Bio.Table.GetImage(" + '"' + ID + '"' + ")" + "." + "To48Bit();");
+            App.viewer.UpdateGUI();
+            App.viewer.UpdateImages();
+            App.viewer.UpdateView();
+            Recorder.AddLine("Bio.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To48Bit();");
         }
         /// It rotates the image by 90 degrees
         /// 
@@ -3687,8 +3683,6 @@ namespace BioGTK
                 BioImage.filter8.InRed = r;
                 BioImage.filter8.InGreen = g;
                 BioImage.filter8.InBlue = b;
-                //We give the filter an RGB image (ImageRGB) instead of Image as with some padded 8-bit images
-                //AForge will return an invalid managed Bitmap which causes a crash due to faulty image properties.
                 return BioImage.filter8.Apply(Buffers[ind]);
             }
         }
@@ -3759,7 +3753,7 @@ namespace BioGTK
                     bs[0] = Buffers[index + RChannel.Index];
                     bs[1] = Buffers[index + GChannel.Index];
                     bs[2] = Buffers[index + BChannel.Index];
-                    return (Bitmap)Bitmap.GetRGBBitmap(bs, rf, gf, bf);
+                    return Bitmap.GetRGBBitmap(bs, rf, gf, bf);
                 }
                 else
                 {
@@ -3767,7 +3761,7 @@ namespace BioGTK
                     bs[0] = Buffers[index + RChannel.Index];
                     bs[1] = Buffers[index + RChannel.Index + 1];
                     bs[2] = Buffers[index + RChannel.Index + 2];
-                    return (Bitmap)Bitmap.GetRGBBitmap(bs, rf, gf, bf);
+                    return Bitmap.GetRGBBitmap(bs, rf, gf, bf);
                 }
             }
             else
@@ -4342,6 +4336,8 @@ namespace BioGTK
         /// @return A boolean value.
         public static bool isOME(string file)
         {
+            if (file.EndsWith("ome.tif"))
+                return true;
             if (file.EndsWith(".tif") || file.EndsWith(".TIF") || file.EndsWith("tiff") || file.EndsWith("TIFF"))
             {
                 Tiff image = Tiff.Open(file, "r");
@@ -4835,6 +4831,7 @@ namespace BioGTK
             reader.setSeries(serie);
             int RGBChannelCount = reader.getRGBChannelCount();
             b.bitsPerPixel = reader.getBitsPerPixel();
+            //Sometimes getBitsPerPixel will return an incorrect value
             if (b.bitsPerPixel > 16)
             {
                 //pr.Close();
@@ -5296,7 +5293,12 @@ namespace BioGTK
                 pages = image.NumberOfDirectories() / b.seriesCount;
                 //int stride = image.ScanlineSize();
                 int str = image.ScanlineSize();
-
+                //We check to see if the bits per pixel is correct sometimes Bioformats will give the incorrect value.
+                if((float)str / (float)SizeX < RGBChannelCount)
+                {
+                    if (b.bitsPerPixel > 8)
+                        b.bitsPerPixel = 8;
+                }
                 bool planes = false;
                 //If calculated stride and image scanline size is not the same it means the image is written in planes
                 if (stride != str)
