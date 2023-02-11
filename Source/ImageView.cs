@@ -134,7 +134,7 @@ namespace BioGTK
         [Builder.Object]
         private Gtk.Scrollbar scrollH;
         [Builder.Object]
-        private Menu contextMenu;
+        public Menu contextMenu;
         [Builder.Object]
         private MenuItem goToOriginMenu;
         [Builder.Object]
@@ -180,7 +180,7 @@ namespace BioGTK
             SetupHandlers();
             //pictureBox.WidthRequest = im.SizeX;
             //pictureBox.HeightRequest = im.SizeY;
-            
+            Function.InitializeContextMenu();
             this.Scale = new SizeF(1, 1);
         }
         #endregion
@@ -256,6 +256,8 @@ namespace BioGTK
                     else
                         bitmap = b.GetEmission(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
                 }
+                if (bitmap.PixelFormat == PixelFormat.Format16bppGrayScale || bitmap.PixelFormat == PixelFormat.Format48bppRgb)
+                    bitmap = AForge.Imaging.Image.Convert16bppTo8bpp(bitmap);
                 AForge.Bitmap bm = bitmap.ImageRGB;
                 Pixbuf pixbuf = new Pixbuf(bm.Bytes, true, 8, bm.Width, bm.Height, bm.Stride);
                 Bitmaps.Add(pixbuf);
@@ -327,6 +329,8 @@ namespace BioGTK
             }
             if (Bitmaps[selectedIndex] != null)
                 Bitmaps[selectedIndex].Dispose();
+            if (bitmap.PixelFormat == PixelFormat.Format16bppGrayScale || bitmap.PixelFormat == PixelFormat.Format48bppRgb)
+                bitmap = AForge.Imaging.Image.Convert16bppTo8bpp(bitmap);
             AForge.Bitmap bm = bitmap.ImageRGB;
             Pixbuf pixbuf = new Pixbuf(bm.Bytes, true, 8, bm.Width, bm.Height, bm.Stride);
             Bitmaps.Add(pixbuf);
@@ -807,6 +811,16 @@ namespace BioGTK
             {
                 Origin = new PointD(Origin.X - moveAmount, Origin.Y);
             }
+            foreach (Function item in Function.Functions.Values)
+            {
+                if(item.Key == e.Event.Key && item.Modifier == e.Event.State)
+                {
+                    if (item.FuncType == Function.FunctionType.ImageJ)
+                        item.PerformFunction(true);
+                    else
+                        item.PerformFunction(false);
+                }
+            }
             UpdateView();
         }
         private void ImageView_KeyUpEvent(object o, KeyPressEventArgs e)
@@ -1189,9 +1203,10 @@ namespace BioGTK
                 {
                     Tools.Tool tool = Tools.currentTool;
                     Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(SelectedBuffer);
-                    Bio.Graphics.Pen pen = new Bio.Graphics.Pen(Tools.DrawColor, (int)Tools.StrokeWidth, ImageView.SelectedImage.bitsPerPixel);
-                    g.FillEllipse(new System.Drawing.Rectangle((int)ip.X, (int)ip.Y, (int)Tools.StrokeWidth, (int)Tools.StrokeWidth), pen.color);
+                    g.pen = new Bio.Graphics.Pen(Tools.DrawColor, (int)Tools.StrokeWidth, ImageView.SelectedImage.bitsPerPixel);
+                    g.FillEllipse(new System.Drawing.Rectangle((int)ip.X, (int)ip.Y, (int)Tools.StrokeWidth, (int)Tools.StrokeWidth), g.pen.color);
                     UpdateImage();
+                    UpdateView();
                 }
             UpdateStatus();
             pd = p;

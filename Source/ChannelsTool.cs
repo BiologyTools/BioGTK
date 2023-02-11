@@ -103,6 +103,7 @@ namespace BioGTK
             resetBut.ButtonPressEvent += ResetButton_ButtonPressEvent;
             this.ButtonPressEvent += ChannelsTool_MouseDown;
             this.FocusActivated += ChannelsTool_Activated;
+            this.DeleteEvent += ChannelsTool_DeleteEvent;
             channelsBox.Changed += ChannelsBox_Changed;
             meanStackBox.Clicked += MeanStackBox_Clicked;
 
@@ -125,6 +126,12 @@ namespace BioGTK
             maxUintBox2.PackStart(rend2, false);
             maxUintBox2.AddAttribute(rend2, "text", 0);
             ShowAll();
+        }
+
+        private void ChannelsTool_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            args.RetVal = false;
+            Hide();
         }
 
         private void MeanStackBox_Clicked(object sender, EventArgs e)
@@ -288,6 +295,7 @@ namespace BioGTK
         }
         */
         #endregion
+
         private HistogramControl hist = null;
 
         public List<Channel> Channels

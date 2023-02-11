@@ -14,6 +14,9 @@ using Bio.Graphics;
 using System.Collections;
 using Gdk;
 using java.awt;
+using org.checkerframework.framework.qual;
+using static com.sun.management.VMOption;
+using System.Reflection;
 
 namespace BioGTK
 {
@@ -83,7 +86,7 @@ namespace BioGTK
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                System.Console.WriteLine(e);
             }
             return null;
         }
@@ -354,7 +357,7 @@ namespace BioGTK
         {
             if (App.viewer == null || currentTool == null || ImageView.SelectedImage == null)
                 return;
-            //TODO Scripting.UpdateState(Scripting.State.GetDown(e, buts));
+            Scripting.UpdateState(Scripting.State.GetDown(e, buts.Event.Button));
             PointF p = new PointF((float)e.X, (float)e.Y);
             if (currentTool.type == Tool.Type.line && buts.Event.Button == 1)
             {
@@ -487,6 +490,7 @@ namespace BioGTK
         public void ToolUp(PointD e, ButtonReleaseEventArgs buts)
         {
             PointF p = new PointF((float)e.X, (float)e.Y);
+            PointD mouseU = new PointD(((e.X - App.viewer.Origin.X) / ImageView.SelectedImage.Volume.Width) * ImageView.SelectedImage.SizeX, ((e.Y - App.viewer.Origin.Y) / ImageView.SelectedImage.Volume.Height) * ImageView.SelectedImage.SizeY);
             if (App.viewer == null || currentTool == null || ImageView.SelectedImage == null || selectedROI == null)
                 return;
             Scripting.UpdateState(Scripting.State.GetUp(e, buts.Event.Button));
@@ -627,15 +631,15 @@ namespace BioGTK
             {
                 ZCT coord = App.viewer.GetCoordinate();
                 floodFiller.FillColor = DrawColor;
-                floodFiller.Tolerance = currentTool.tolerance;
+                floodFiller.Tolerance = new ColorS(1000, 1000, 1000);
                 floodFiller.Bitmap = ImageView.SelectedImage.Buffers[ImageView.SelectedImage.Coords[coord.C, coord.Z, coord.T]];
-                floodFiller.FloodFill(new System.Drawing.Point((int)p.X, (int)p.Y));
+                floodFiller.FloodFill(new System.Drawing.Point((int)mouseU.X, (int)mouseU.Y));
                 App.viewer.UpdateImages();
             }
             else
             if (Tools.currentTool.type == Tools.Tool.Type.dropper && buts.Event.Button == 1)
             {
-                DrawColor = ImageView.SelectedBuffer.GetPixel((int)p.X, (int)p.Y);
+                DrawColor = ImageView.SelectedBuffer.GetPixel((int)mouseU.X, (int)mouseU.Y);
                 UpdateGUI();
             }
             UpdateView();
@@ -816,10 +820,17 @@ namespace BioGTK
             eraser.File = "icons/eraser.png";
             switchColor.File = "icons/switch.png";
             this.ButtonPressEvent += Tools_ButtonPressEvent;
+            this.DeleteEvent += Tools_DeleteEvent;
             ti = TextInput.Create();
             color1.Drawn += Color1_Drawn;
             color2.Drawn += Color2_Drawn;
             //Tools.ti.Response += Ti_Response;
+        }
+
+        private void Tools_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            args.RetVal = false;
+            Hide();
         }
 
         /// The function is called when the color2 widget is drawn. It sets the color of the widget to
@@ -830,9 +841,9 @@ namespace BioGTK
         private void Color2_Drawn(object o, DrawnArgs args)
         {
             RGBA r = new RGBA();
-            r.Red = (double)DrawColor.R / ushort.MaxValue;
-            r.Green = (double)DrawColor.G / ushort.MaxValue;
-            r.Blue = (double)DrawColor.B / ushort.MaxValue;
+            r.Red = (double)DrawColor.R / (double)ushort.MaxValue;
+            r.Green = (double)DrawColor.G / (double)ushort.MaxValue;
+            r.Blue = (double)DrawColor.B / (double)ushort.MaxValue;
             r.Alpha = 1.0;
             args.Cr.SetSourceRGBA(r.Red, r.Green, r.Blue, r.Alpha);
             args.Cr.Rectangle(new Cairo.Rectangle(0,0,color2.AllocatedWidth,color2.AllocatedWidth));
@@ -850,9 +861,9 @@ namespace BioGTK
         private void Color1_Drawn(object o, DrawnArgs args)
         {
             RGBA r = new RGBA();
-            r.Red = (double)EraseColor.R / ushort.MaxValue;
-            r.Green = (double)EraseColor.G / ushort.MaxValue;
-            r.Blue = (double)EraseColor.B / ushort.MaxValue;
+            r.Red = (double)EraseColor.R / (double)ushort.MaxValue;
+            r.Green = (double)EraseColor.G / (double)ushort.MaxValue;
+            r.Blue = (double)EraseColor.B / (double)ushort.MaxValue;
             r.Alpha = 1.0;
             args.Cr.SetSourceRGBA(r.Red, r.Green, r.Blue, r.Alpha);
             args.Cr.Rectangle(new Cairo.Rectangle(0, 0, color1.AllocatedWidth, color1.AllocatedWidth));

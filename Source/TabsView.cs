@@ -1,4 +1,5 @@
 ﻿using Bio;
+using com.sun.org.apache.xpath.@internal.functions;
 using Gtk;
 using loci.formats.gui;
 using System;
@@ -22,6 +23,8 @@ namespace BioGTK
         }
 #pragma warning disable 649
 
+        [Builder.Object]
+        public MenuBar MainMenu;
         [Builder.Object]
         private MenuItem openImagesMenu;
         [Builder.Object]
@@ -134,9 +137,11 @@ namespace BioGTK
         protected TabsView(Builder builder, IntPtr handle) : base(handle)
         {
             _builder = builder;
+            App.tabsView = this;
             builder.Autoconnect(this);
             filteredMenu.Active = true;
             SetupHandlers();
+            Function.InitializeMainMenu();
         }
 
         #endregion
@@ -521,7 +526,7 @@ namespace BioGTK
            "Save", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            BioImage.Save(filechooser.Filename,ImageView.SelectedImage.ID);
+            BioImage.SaveFile(ImageView.SelectedImage.ID,filechooser.Filename);
             filechooser.Destroy();
         }
         /// This function saves the selected image in the OME-TIFF format
@@ -540,7 +545,7 @@ namespace BioGTK
           "Save", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            BioImage.SaveOME(filechooser.Filename, ImageView.SelectedImage.ID);
+            BioImage.SaveOME(ImageView.SelectedImage.ID, filechooser.Filename);
             filechooser.Destroy();
         }
         /// This function saves the current series of images to an OME-TIFF file
@@ -716,7 +721,13 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         protected void autoThresholdAllMenuClick(object sender, EventArgs a)
         {
-
+            BioImage.AutoThreshold(ImageView.SelectedImage, true);
+            if (ImageView.SelectedImage.bitsPerPixel > 8)
+                ImageView.SelectedImage.StackThreshold(true);
+            else
+                ImageView.SelectedImage.StackThreshold(false);
+            App.viewer.UpdateImage();
+            App.viewer.UpdateView();
         }
         /// It creates a new instance of the ChannelsTool class, and then shows it
         /// 
@@ -733,7 +744,11 @@ namespace BioGTK
         /// @param EventArgs The EventArgs class is the base class for classes that contain event data.
         protected void switchRedBlueMenuClick(object sender, EventArgs a)
         {
-
+            foreach (AForge.Bitmap bf in ImageView.SelectedImage.Buffers)
+            {
+                bf.SwitchRedBlue();
+            }
+            App.viewer.UpdateImage();
         }
 
         /// This function is called when the user clicks on the "Rotate/Flip" menu item
@@ -800,6 +815,7 @@ namespace BioGTK
         /// @param EventArgs The EventArgs class is the base class for classes that contain event data.
         protected void filtersMenuClick(object sender, EventArgs a)
         {
+            App.filters = FiltersView.Create();
             App.filters.Show();
         }
 
@@ -817,7 +833,9 @@ namespace BioGTK
         /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         protected void functionsToolMenuClick(object sender, EventArgs a)
         {
-
+            App.funcs = Functions.Create();
+            App.funcs.Show();
+            App.funcs.Present();
         }
         /// This function is called when the user clicks on the console menu button
         /// 
@@ -825,7 +843,9 @@ namespace BioGTK
         /// @param EventArgs This is the event arguments that are passed to the event handler.
         protected void consoleMenuClick(object sender, EventArgs a)
         {
-
+            App.console = BioConsole.Create();
+            App.console.Show();
+            App.console.Present();
         }
         /// It's a function that runs when the user clicks on the "Script Runner" menu item
         /// 
@@ -833,6 +853,7 @@ namespace BioGTK
         /// @param EventArgs This is the event arguments.
         protected void scriptRunnerMenuClick(object sender, EventArgs a)
         {
+            App.scripting = Scripting.Create();
             App.scripting.Show();
         }
 

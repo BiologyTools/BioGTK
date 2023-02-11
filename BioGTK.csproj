@@ -25,7 +25,9 @@
     <None Remove="Glade\BioConsole.glade" />
     <None Remove="Glade\ChannelsTool.glade" />
     <None Remove="Glade\ColorTool.glade" />
+    <None Remove="Glade\Console.glade" />
     <None Remove="Glade\Filters.glade" />
+    <None Remove="Glade\Functions.glade" />
     <None Remove="Glade\Histogram.glade" />
     <None Remove="Glade\ImageView.glade" />
     <None Remove="Glade\NodeView.glade" />
@@ -83,7 +85,9 @@
     <EmbeddedResource Include="Glade\BioConsole.glade" />
     <EmbeddedResource Include="Glade\ChannelsTool.glade" />
     <EmbeddedResource Include="Glade\ColorTool.glade" />
+    <EmbeddedResource Include="Glade\Console.glade" />
     <EmbeddedResource Include="Glade\Filters.glade" />
+    <EmbeddedResource Include="Glade\Functions.glade" />
     <EmbeddedResource Include="Glade\Histogram.glade" />
     <EmbeddedResource Include="Glade\ImageView.glade" />
     <EmbeddedResource Include="Glade\NodeView.glade" />
@@ -215,7 +219,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="OpenTK" Version="4.7.5" />
+    <PackageReference Include="SharpHook" Version="4.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\AForgeBio\AForgeBio\AForgeBio\AForgeBio.csproj" />

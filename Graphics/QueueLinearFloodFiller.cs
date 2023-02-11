@@ -129,12 +129,12 @@ namespace Bio.Graphics
                 }
                 else if (pixelFormat == PixelFormat.Format48bppRgb)
                 {
-                    bitmapBits[idx] = byteFillColor[0];
-                    bitmapBits[idx + 1] = byteFillColor[1];
+                    bitmapBits[idx] = byteFillColor[4];
+                    bitmapBits[idx + 1] = byteFillColor[5];
                     bitmapBits[idx + 2] = byteFillColor[2];
                     bitmapBits[idx + 3] = byteFillColor[3];
-                    bitmapBits[idx + 4] = byteFillColor[4];
-                    bitmapBits[idx + 5] = byteFillColor[5];
+                    bitmapBits[idx + 4] = byteFillColor[0];
+                    bitmapBits[idx + 5] = byteFillColor[1];
                 }
                 //**indicate that this pixel has already been checked and filled
                 pixelsChecked[pxIdx] = true;
@@ -182,12 +182,12 @@ namespace Bio.Graphics
                 }
                 else if (pixelFormat == PixelFormat.Format48bppRgb)
                 {
-                    bitmapBits[idx] = byteFillColor[0];
-                    bitmapBits[idx + 1] = byteFillColor[1];
+                    bitmapBits[idx] = byteFillColor[4];
+                    bitmapBits[idx + 1] = byteFillColor[5];
                     bitmapBits[idx + 2] = byteFillColor[2];
                     bitmapBits[idx + 3] = byteFillColor[3];
-                    bitmapBits[idx + 4] = byteFillColor[4];
-                    bitmapBits[idx + 5] = byteFillColor[5];
+                    bitmapBits[idx + 4] = byteFillColor[0];
+                    bitmapBits[idx + 5] = byteFillColor[1];
                 }
                 //**indicate that this pixel has already been checked and filled
                 pixelsChecked[pxIdx] = true;

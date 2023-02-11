@@ -709,193 +709,6 @@
           "buildCrossTargeting/NuGet.Build.Tasks.Pack.targets": {}
         }
       },
-      "OpenTK/4.7.5": {
-        "type": "package",
-        "dependencies": {
-          "OpenTK.Compute": "4.7.5",
-          "OpenTK.Core": "4.7.5",
-          "OpenTK.Graphics": "4.7.5",
-          "OpenTK.Input": "4.7.5",
-          "OpenTK.Mathematics": "4.7.5",
-          "OpenTK.OpenAL": "4.7.5",
-          "OpenTK.Windowing.Common": "4.7.5",
-          "OpenTK.Windowing.Desktop": "4.7.5",
-          "OpenTK.Windowing.GraphicsLibraryFramework": "4.7.5"
-        }
-      },
-      "OpenTK.Compute/4.7.5": {
-        "type": "package",
-        "compile": {
-          "lib/netcoreapp3.1/OpenTK.Compute.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/OpenTK.Compute.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "OpenTK.Core/4.7.5": {
-        "type": "package",
-        "compile": {
-          "lib/netstandard2.1/OpenTK.Core.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netstandard2.1/OpenTK.Core.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "OpenTK.Graphics/4.7.5": {
-        "type": "package",
-        "dependencies": {
-          "OpenTK.Core": "[4.7.5, 4.8.0)",
-          "OpenTK.Mathematics": "[4.7.5, 4.8.0)"
-        },
-        "compile": {
-          "lib/netcoreapp3.1/OpenTK.Graphics.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/OpenTK.Graphics.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "OpenTK.Input/4.7.5": {
-        "type": "package",
-        "compile": {
-          "lib/netstandard2.0/OpenTK.Input.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netstandard2.0/OpenTK.Input.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "OpenTK.Mathematics/4.7.5": {
-        "type": "package",
-        "dependencies": {
-          "System.Runtime.CompilerServices.Unsafe": "5.0.0"
-        },
-        "compile": {
-          "lib/netcoreapp3.1/OpenTK.Mathematics.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/OpenTK.Mathematics.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "OpenTK.OpenAL/4.7.5": {
-        "type": "package",
-        "dependencies": {
-          "OpenTK.Core": "[4.7.5, 4.8.0)",
-          "OpenTK.Mathematics": "[4.7.5, 4.8.0)"
-        },
-        "compile": {
-          "lib/netcoreapp3.1/OpenTK.OpenAL.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/OpenTK.OpenAL.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "OpenTK.redist.glfw/3.3.8.30": {
-        "type": "package",
-        "compile": {
-          "lib/netstandard2.0/_._": {}
-        },
-        "runtime": {
-          "lib/netstandard2.0/_._": {}
-        },
-        "runtimeTargets": {
-          "runtimes/linux-x64/native/libglfw.so.3.3": {
-            "assetType": "native",
-            "rid": "linux-x64"
-          },
-          "runtimes/osx-arm64/native/libglfw.3.dylib": {
-            "assetType": "native",
-            "rid": "osx-arm64"
-          },
-          "runtimes/osx-x64/native/libglfw.3.dylib": {
-            "assetType": "native",
-            "rid": "osx-x64"
-          },
-          "runtimes/win-x64/native/glfw3.dll": {
-            "assetType": "native",
-            "rid": "win-x64"
-          },
-          "runtimes/win-x86/native/glfw3.dll": {
-            "assetType": "native",
-            "rid": "win-x86"
-          }
-        }
-      },
-      "OpenTK.Windowing.Common/4.7.5": {
-        "type": "package",
-        "dependencies": {
-          "OpenTK.Core": "[4.7.5, 4.8.0)",
-          "OpenTK.Mathematics": "[4.7.5, 4.8.0)"
-        },
-        "compile": {
-          "lib/netcoreapp3.1/OpenTK.Windowing.Common.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/OpenTK.Windowing.Common.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "OpenTK.Windowing.Desktop/4.7.5": {
-        "type": "package",
-        "dependencies": {
-          "OpenTK.Core": "[4.7.5, 4.8.0)",
-          "OpenTK.Mathematics": "[4.7.5, 4.8.0)",
-          "OpenTK.Windowing.Common": "[4.7.5, 4.8.0)",
-          "OpenTK.Windowing.GraphicsLibraryFramework": "[4.7.5, 4.8.0)"
-        },
-        "compile": {
-          "lib/netcoreapp3.1/OpenTK.Windowing.Desktop.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/OpenTK.Windowing.Desktop.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "OpenTK.Windowing.GraphicsLibraryFramework/4.7.5": {
-        "type": "package",
-        "dependencies": {
-          "OpenTK.Core": "[4.7.5, 4.8.0)",
-          "OpenTK.redist.glfw": "3.3.8.30"
-        },
-        "compile": {
-          "lib/netcoreapp3.1/OpenTK.Windowing.GraphicsLibraryFramework.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/OpenTK.Windowing.GraphicsLibraryFramework.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
       "PangoSharp/3.24.24.38": {
         "type": "package",
         "dependencies": {
@@ -933,6 +746,60 @@
         },
         "runtime": {
           "lib/netstandard1.0/_._": {}
+        }
+      },
+      "SharpHook/4.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net6.0/SharpHook.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net6.0/SharpHook.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "build/SharpHook.targets": {}
+        },
+        "runtimeTargets": {
+          "runtimes/linux-arm/native/libuiohook.so": {
+            "assetType": "native",
+            "rid": "linux-arm"
+          },
+          "runtimes/linux-arm64/native/libuiohook.so": {
+            "assetType": "native",
+            "rid": "linux-arm64"
+          },
+          "runtimes/linux-x64/native/libuiohook.so": {
+            "assetType": "native",
+            "rid": "linux-x64"
+          },
+          "runtimes/osx-arm64/native/libuiohook.dylib": {
+            "assetType": "native",
+            "rid": "osx-arm64"
+          },
+          "runtimes/osx-x64/native/libuiohook.dylib": {
+            "assetType": "native",
+            "rid": "osx-x64"
+          },
+          "runtimes/win-arm/native/uiohook.dll": {
+            "assetType": "native",
+            "rid": "win-arm"
+          },
+          "runtimes/win-arm64/native/uiohook.dll": {
+            "assetType": "native",
+            "rid": "win-arm64"
+          },
+          "runtimes/win-x64/native/uiohook.dll": {
+            "assetType": "native",
+            "rid": "win-x64"
+          },
+          "runtimes/win-x86/native/uiohook.dll": {
+            "assetType": "native",
+            "rid": "win-x86"
+          }
         }
       },
       "SharpZipLib/1.3.3": {
@@ -2255,174 +2122,6 @@
           "buildCrossTargeting/NuGet.Build.Tasks.Pack.targets": {}
         }
       },
-      "OpenTK/4.7.5": {
-        "type": "package",
-        "dependencies": {
-          "OpenTK.Compute": "4.7.5",
-          "OpenTK.Core": "4.7.5",
-          "OpenTK.Graphics": "4.7.5",
-          "OpenTK.Input": "4.7.5",
-          "OpenTK.Mathematics": "4.7.5",
-          "OpenTK.OpenAL": "4.7.5",
-          "OpenTK.Windowing.Common": "4.7.5",
-          "OpenTK.Windowing.Desktop": "4.7.5",
-          "OpenTK.Windowing.GraphicsLibraryFramework": "4.7.5"
-        }
-      },
-      "OpenTK.Compute/4.7.5": {
-        "type": "package",
-        "compile": {
-          "lib/netcoreapp3.1/OpenTK.Compute.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/OpenTK.Compute.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "OpenTK.Core/4.7.5": {
-        "type": "package",
-        "compile": {
-          "lib/netstandard2.1/OpenTK.Core.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netstandard2.1/OpenTK.Core.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "OpenTK.Graphics/4.7.5": {
-        "type": "package",
-        "dependencies": {
-          "OpenTK.Core": "[4.7.5, 4.8.0)",
-          "OpenTK.Mathematics": "[4.7.5, 4.8.0)"
-        },
-        "compile": {
-          "lib/netcoreapp3.1/OpenTK.Graphics.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/OpenTK.Graphics.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "OpenTK.Input/4.7.5": {
-        "type": "package",
-        "compile": {
-          "lib/netstandard2.0/OpenTK.Input.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netstandard2.0/OpenTK.Input.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "OpenTK.Mathematics/4.7.5": {
-        "type": "package",
-        "dependencies": {
-          "System.Runtime.CompilerServices.Unsafe": "5.0.0"
-        },
-        "compile": {
-          "lib/netcoreapp3.1/OpenTK.Mathematics.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/OpenTK.Mathematics.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "OpenTK.OpenAL/4.7.5": {
-        "type": "package",
-        "dependencies": {
-          "OpenTK.Core": "[4.7.5, 4.8.0)",
-          "OpenTK.Mathematics": "[4.7.5, 4.8.0)"
-        },
-        "compile": {
-          "lib/netcoreapp3.1/OpenTK.OpenAL.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/OpenTK.OpenAL.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "OpenTK.redist.glfw/3.3.8.30": {
-        "type": "package",
-        "compile": {
-          "lib/netstandard2.0/_._": {}
-        },
-        "runtime": {
-          "lib/netstandard2.0/_._": {}
-        },
-        "native": {
-          "runtimes/osx-x64/native/libglfw.3.dylib": {}
-        }
-      },
-      "OpenTK.Windowing.Common/4.7.5": {
-        "type": "package",
-        "dependencies": {
-          "OpenTK.Core": "[4.7.5, 4.8.0)",
-          "OpenTK.Mathematics": "[4.7.5, 4.8.0)"
-        },
-        "compile": {
-          "lib/netcoreapp3.1/OpenTK.Windowing.Common.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/OpenTK.Windowing.Common.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "OpenTK.Windowing.Desktop/4.7.5": {
-        "type": "package",
-        "dependencies": {
-          "OpenTK.Core": "[4.7.5, 4.8.0)",
-          "OpenTK.Mathematics": "[4.7.5, 4.8.0)",
-          "OpenTK.Windowing.Common": "[4.7.5, 4.8.0)",
-          "OpenTK.Windowing.GraphicsLibraryFramework": "[4.7.5, 4.8.0)"
-        },
-        "compile": {
-          "lib/netcoreapp3.1/OpenTK.Windowing.Desktop.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/OpenTK.Windowing.Desktop.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "OpenTK.Windowing.GraphicsLibraryFramework/4.7.5": {
-        "type": "package",
-        "dependencies": {
-          "OpenTK.Core": "[4.7.5, 4.8.0)",
-          "OpenTK.redist.glfw": "3.3.8.30"
-        },
-        "compile": {
-          "lib/netcoreapp3.1/OpenTK.Windowing.GraphicsLibraryFramework.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/netcoreapp3.1/OpenTK.Windowing.GraphicsLibraryFramework.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
       "PangoSharp/3.24.24.38": {
         "type": "package",
         "dependencies": {
@@ -2654,6 +2353,25 @@
         },
         "runtime": {
           "runtimes/unix/lib/netstandard1.5/System.Runtime.Extensions.dll": {}
+        }
+      },
+      "SharpHook/4.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net6.0/SharpHook.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net6.0/SharpHook.dll": {
+            "related": ".xml"
+          }
+        },
+        "native": {
+          "runtimes/osx-x64/native/libuiohook.dylib": {}
+        },
+        "build": {
+          "build/SharpHook.targets": {}
         }
       },
       "SharpZipLib/1.3.3": {
@@ -8759,171 +8477,6 @@
         "nuget.build.tasks.pack.nuspec"
       ]
     },
-    "OpenTK/4.7.5": {
-      "sha512": "eFcD4adeP+bTOfjFT44K8gJxr9CabE/F3tQgFkQdHvOb+xI3ynWZ8m0MNZ5vwhTAVSKWFCv12pC5lMhFPAYYOQ==",
-      "type": "package",
-      "path": "opentk/4.7.5",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "opentk.4.7.5.nupkg.sha512",
-        "opentk.nuspec"
-      ]
-    },
-    "OpenTK.Compute/4.7.5": {
-      "sha512": "Vd/ZSX2d/WeAJiPXPXkf823CjOtFKBkcQKu1gYiQYYy6xx5Hv7nUt50t+X/1ZEph54hJBtVFi/ePtvMpIss6VQ==",
-      "type": "package",
-      "path": "opentk.compute/4.7.5",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "lib/netcoreapp3.1/OpenTK.Compute.dll",
-        "lib/netcoreapp3.1/OpenTK.Compute.pdb",
-        "lib/netcoreapp3.1/OpenTK.Compute.xml",
-        "opentk.compute.4.7.5.nupkg.sha512",
-        "opentk.compute.nuspec"
-      ]
-    },
-    "OpenTK.Core/4.7.5": {
-      "sha512": "qRnNUImMQexp0dezp70XkD/DV5lOpDXou+wzYM79u1F4c986hmIK5SyM5gRlVZBPYdSLv1lhSPpEPIcJrWGKRg==",
-      "type": "package",
-      "path": "opentk.core/4.7.5",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "lib/netstandard2.1/OpenTK.Core.dll",
-        "lib/netstandard2.1/OpenTK.Core.pdb",
-        "lib/netstandard2.1/OpenTK.Core.xml",
-        "opentk.core.4.7.5.nupkg.sha512",
-        "opentk.core.nuspec"
-      ]
-    },
-    "OpenTK.Graphics/4.7.5": {
-      "sha512": "8PrVCl/C7v9LUO/3dwXzqfAkp/QnCdQBY62a7VT53cXCEuj/RwkQijDMp3TxOuOhLvUSyIbyt/MFa2yxqmoRUQ==",
-      "type": "package",
-      "path": "opentk.graphics/4.7.5",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "lib/netcoreapp3.1/OpenTK.Graphics.dll",
-        "lib/netcoreapp3.1/OpenTK.Graphics.pdb",
-        "lib/netcoreapp3.1/OpenTK.Graphics.xml",
-        "lib/netstandard2.1/OpenTK.Graphics.dll",
-        "lib/netstandard2.1/OpenTK.Graphics.pdb",
-        "lib/netstandard2.1/OpenTK.Graphics.xml",
-        "opentk.graphics.4.7.5.nupkg.sha512",
-        "opentk.graphics.nuspec"
-      ]
-    },
-    "OpenTK.Input/4.7.5": {
-      "sha512": "tV2QVTzfRsaCUa1oLThiEoEq0Rj/XDE0pNCWjh6mJeziv6+lxsOy+3BvK3n5G1nnA41P0+ZwRFdyhjcZqVLy/g==",
-      "type": "package",
-      "path": "opentk.input/4.7.5",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "lib/netstandard2.0/OpenTK.Input.dll",
-        "lib/netstandard2.0/OpenTK.Input.pdb",
-        "lib/netstandard2.0/OpenTK.Input.xml",
-        "opentk.input.4.7.5.nupkg.sha512",
-        "opentk.input.nuspec"
-      ]
-    },
-    "OpenTK.Mathematics/4.7.5": {
-      "sha512": "pTdhfAMe+eeIu31OTgJ9UwHK14L2hMxigx9wduANBM7eKZwEd6V+cFhzobJJXzc1RjX/weBB6wVcKg6u9XJVQw==",
-      "type": "package",
-      "path": "opentk.mathematics/4.7.5",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "lib/netcoreapp3.1/OpenTK.Mathematics.dll",
-        "lib/netcoreapp3.1/OpenTK.Mathematics.pdb",
-        "lib/netcoreapp3.1/OpenTK.Mathematics.xml",
-        "lib/netstandard2.1/OpenTK.Mathematics.dll",
-        "lib/netstandard2.1/OpenTK.Mathematics.pdb",
-        "lib/netstandard2.1/OpenTK.Mathematics.xml",
-        "opentk.mathematics.4.7.5.nupkg.sha512",
-        "opentk.mathematics.nuspec"
-      ]
-    },
-    "OpenTK.OpenAL/4.7.5": {
-      "sha512": "o0jEaAJnCZytgs17TbmJGRpyrOAfShyDz7dlbjoE9a0clM6QIl1nY9+ct9wnNCXds1NnctKveUzDqIJ5XBcm/A==",
-      "type": "package",
-      "path": "opentk.openal/4.7.5",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "lib/netcoreapp3.1/OpenTK.OpenAL.dll",
-        "lib/netcoreapp3.1/OpenTK.OpenAL.pdb",
-        "lib/netcoreapp3.1/OpenTK.OpenAL.xml",
-        "opentk.openal.4.7.5.nupkg.sha512",
-        "opentk.openal.nuspec"
-      ]
-    },
-    "OpenTK.redist.glfw/3.3.8.30": {
-      "sha512": "dYk7CJ+eOKHVn5IPKCBzmRDHcDy6+oy0fxPntTcl48+NTmOf15e2vKtF9BM7vQFWA8UFmT09Zk05mNHYa3zYWA==",
-      "type": "package",
-      "path": "opentk.redist.glfw/3.3.8.30",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "COPYING.md",
-        "lib/netstandard2.0/_._",
-        "opentk.png",
-        "opentk.redist.glfw.3.3.8.30.nupkg.sha512",
-        "opentk.redist.glfw.nuspec",
-        "runtimes/linux-x64/native/libglfw.so.3.3",
-        "runtimes/osx-arm64/native/libglfw.3.dylib",
-        "runtimes/osx-x64/native/libglfw.3.dylib",
-        "runtimes/win-x64/native/glfw3.dll",
-        "runtimes/win-x86/native/glfw3.dll"
-      ]
-    },
-    "OpenTK.Windowing.Common/4.7.5": {
-      "sha512": "vEO4MgZX1sarZ0q2wgySn0lKunqCTIX2pk/alO76sNZ3vh8lrQsAv+n9qUynD5JRxESiox0HktYxPoIkeUej4A==",
-      "type": "package",
-      "path": "opentk.windowing.common/4.7.5",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "lib/netcoreapp3.1/OpenTK.Windowing.Common.dll",
-        "lib/netcoreapp3.1/OpenTK.Windowing.Common.pdb",
-        "lib/netcoreapp3.1/OpenTK.Windowing.Common.xml",
-        "lib/netstandard2.1/OpenTK.Windowing.Common.dll",
-        "lib/netstandard2.1/OpenTK.Windowing.Common.pdb",
-        "lib/netstandard2.1/OpenTK.Windowing.Common.xml",
-        "opentk.windowing.common.4.7.5.nupkg.sha512",
-        "opentk.windowing.common.nuspec"
-      ]
-    },
-    "OpenTK.Windowing.Desktop/4.7.5": {
-      "sha512": "8yfpN501XAGfNmxE6Ys/RxokVe1WiyeeiYR6uUjUkJUYf4W9rpK2tZqpspGoHjzL5Io1zo7XIKaW1T8S4NK2AQ==",
-      "type": "package",
-      "path": "opentk.windowing.desktop/4.7.5",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "lib/netcoreapp3.1/OpenTK.Windowing.Desktop.dll",
-        "lib/netcoreapp3.1/OpenTK.Windowing.Desktop.pdb",
-        "lib/netcoreapp3.1/OpenTK.Windowing.Desktop.xml",
-        "opentk.windowing.desktop.4.7.5.nupkg.sha512",
-        "opentk.windowing.desktop.nuspec"
-      ]
-    },
-    "OpenTK.Windowing.GraphicsLibraryFramework/4.7.5": {
-      "sha512": "zBSlfqgmtRZD41XlWVKbArtStLjOlvhMIaS6ETbYdbp6Nl/m3oPqnOGegfP12lFe2FvxBq/nRGgaNiQ/VSVPRg==",
-      "type": "package",
-      "path": "opentk.windowing.graphicslibraryframework/4.7.5",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "lib/netcoreapp3.1/OpenTK.Windowing.GraphicsLibraryFramework.dll",
-        "lib/netcoreapp3.1/OpenTK.Windowing.GraphicsLibraryFramework.pdb",
-        "lib/netcoreapp3.1/OpenTK.Windowing.GraphicsLibraryFramework.xml",
-        "opentk.windowing.graphicslibraryframework.4.7.5.nupkg.sha512",
-        "opentk.windowing.graphicslibraryframework.nuspec"
-      ]
-    },
     "PangoSharp/3.24.24.38": {
       "sha512": "NpTRGMOJvxJwRIEXV0hyAnFt26mLYwGu70TLCZecXwWgdQx87HWsAUWgzjL8atdExquebSBumKP6cZjkEAQuaA==",
       "type": "package",
@@ -9454,6 +9007,38 @@
         "runtime.unix.system.runtime.extensions.4.3.0.nupkg.sha512",
         "runtime.unix.system.runtime.extensions.nuspec",
         "runtimes/unix/lib/netstandard1.5/System.Runtime.Extensions.dll"
+      ]
+    },
+    "SharpHook/4.0.0": {
+      "sha512": "OMVZmf8ZQVrjNGpdNIIsmZfsU6Vr9gmLG14CEAVz8X0lI+wOSbBbvJrKM4QHn35c7OchV/ZlTzmwB3ys8T9exQ==",
+      "type": "package",
+      "path": "sharphook/4.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE",
+        "README.md",
+        "build/SharpHook.targets",
+        "icon.png",
+        "lib/net461/SharpHook.dll",
+        "lib/net461/SharpHook.xml",
+        "lib/net6.0/SharpHook.dll",
+        "lib/net6.0/SharpHook.xml",
+        "lib/net7.0/SharpHook.dll",
+        "lib/net7.0/SharpHook.xml",
+        "lib/netstandard2.0/SharpHook.dll",
+        "lib/netstandard2.0/SharpHook.xml",
+        "runtimes/linux-arm/native/libuiohook.so",
+        "runtimes/linux-arm64/native/libuiohook.so",
+        "runtimes/linux-x64/native/libuiohook.so",
+        "runtimes/osx-arm64/native/libuiohook.dylib",
+        "runtimes/osx-x64/native/libuiohook.dylib",
+        "runtimes/win-arm/native/uiohook.dll",
+        "runtimes/win-arm64/native/uiohook.dll",
+        "runtimes/win-x64/native/uiohook.dll",
+        "runtimes/win-x86/native/uiohook.dll",
+        "sharphook.4.0.0.nupkg.sha512",
+        "sharphook.nuspec"
       ]
     },
     "SharpZipLib/1.3.3": {
@@ -11335,7 +10920,7 @@
       "IKVM >= 8.4.5",
       "Newtonsoft.Json >= 13.0.2",
       "NuGet.Build.Tasks.Pack >= 6.4.0",
-      "OpenTK >= 4.7.5"
+      "SharpHook >= 4.0.0"
     ]
   },
   "packageFolders": {
@@ -11420,9 +11005,9 @@
             "target": "Package",
             "version": "[6.4.0, )"
           },
-          "OpenTK": {
+          "SharpHook": {
             "target": "Package",
-            "version": "[4.7.5, )"
+            "version": "[4.0.0, )"
           }
         },
         "imports": [

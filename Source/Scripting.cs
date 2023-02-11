@@ -69,6 +69,7 @@ namespace BioGTK
             _builder = builder;
             builder.Autoconnect(this);
             scriptView.RowActivated += ScriptView_RowActivated;
+            this.DeleteEvent += Scripting_DeleteEvent;
             this.KeyPressEvent += Scripting_KeyPressEvent;
             window = this;
             if (!Directory.Exists(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "//" + "Scripts"))
@@ -77,6 +78,12 @@ namespace BioGTK
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "//" + "Tools");
             InitItems();
             scriptLabel.Text = "NewScript.cs";
+        }
+
+        private void Scripting_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            args.RetVal = false;
+            Hide();
         }
 
         /// If the user presses the "s" key while holding down the control key, then call the Save()
@@ -216,8 +223,8 @@ namespace BioGTK
                     }
                 }
             }
-            /// It takes a string, adds a bunch of using statements, wraps it in a class, and then runs
-            /// it
+            /// It takes a string, adds using statements, wraps it in a class, and then runs
+            /// it.
             /// 
             /// @param st The string to be executed
             /// 
@@ -229,7 +236,7 @@ namespace BioGTK
                     string loader =
                   @"//css_reference " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Name + @".dll
                     using System;
-                    using System.Windows.Forms;
+                    using Gtk;
                     using System.Drawing;
                     using System.Threading;
                     using BioGTK;
@@ -322,6 +329,20 @@ namespace BioGTK
                 st.buts = mb;
                 return st;
             }
+
+            /// It returns a new State object with the type set to Down, the point set to a new PointD
+            /// object, and the buttons set to 
+            /// 
+            /// @return A new State object is being returned.
+            public static State GetDown(PointD pf, uint mb)
+            {
+                State st = new State();
+                st.type = Event.Down;
+                st.p = pf;
+                st.buts = mb;
+                return st;
+            }
+
             /// It returns a new State object with the type set to None, the point set to a new PointD
             /// object, and the buttons set to 0
             /// 
@@ -514,12 +535,12 @@ namespace BioGTK
             Scripts.Add(sc.name, sc);
             RunByName(sc.name);
         }
-        /// It runs a string as a Lua script
+        /// It runs a string as a Bio script
         /// 
         /// @param st The string to run.
-        public static void RunString(string st)
+        public static object RunString(string st)
         {
-            Script.RunString(st);
+            return Script.RunString(st);
         }
         /// It runs the script that is currently selected in the list
         /// 

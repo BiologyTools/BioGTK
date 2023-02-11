@@ -113,6 +113,7 @@ namespace Bio
             showRBox.Clicked += showRBox_ActiveChanged;
             showGBox.Clicked += showGBox_ActiveChanged;
             showBBox.Clicked += showBBox_ActiveChanged;
+            this.DeleteEvent += ROIManager_DeleteEvent;
             
             //roiView.Selection.Changed += roiView_SelectedIndexChanged;
             roiView.RowActivated += RoiView_RowActivated;
@@ -163,6 +164,13 @@ namespace Bio
             pointYBox.Adjustment.PageIncrement = 0.1;
             InitItems();
         }
+
+        private void ROIManager_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            args.RetVal = false;
+            Hide();
+        }
+
         /// When the ROIManager gets focus, update the annotation list.
         /// 
         /// @param o The object that raised the event.

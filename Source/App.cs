@@ -1,5 +1,7 @@
 ﻿using Bio;
 using Gtk;
+using org.checkerframework.checker.units.qual;
+using sun.tools.tree;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,6 +22,8 @@ namespace BioGTK
         public static ChannelsTool channelsTool = null;
         public static ROIManager roiManager = null;
         public static Scripting scripting = null;
+        public static BioConsole console = null;
+        public static Functions funcs = null;
 
         /// Initialize() is a function that initializes the BioImage Suite Web
         public static void Initialize()
@@ -29,6 +33,7 @@ namespace BioGTK
             filters = FiltersView.Create();
             roiManager = ROIManager.Create();
             scripting = Scripting.Create();
+            console = BioConsole.Create();
             //color = ColorTool.Create();
             Settings.Load();
             ImageJ.ImageJPath = Settings.GetSettings("ImageJPath");
@@ -54,5 +59,185 @@ namespace BioGTK
             return true;
         }
 
+        static MenuItem FindItem(Menu w,string label)
+        {
+            foreach (Widget item in w.Children)
+            {
+                //We use a try block incase this widget is a menu instead of a menuitem.
+                try
+                {
+                    Menu m = (Menu)item;
+                    for (int i = 0; i < m.Children.Length; i++)
+                    {
+                        //We again use a try block incase this is a Menu instead of a menuitem
+                        try
+                        {
+                            MenuItem it = (MenuItem)m.Children[i];
+                            if (it.Label == label)
+                            {
+                                return it;
+                            }
+                        }
+                        catch (Exception)
+                        {
+
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    MenuItem it = (MenuItem)item;
+                    if (it.Label == label)
+                    {
+                        return it;
+                    }
+                }
+            }
+            return null;
+        }
+        
+        private static void GetMainMenuItem(string path, out Widget wid, out bool Menu)
+        {
+            string[] s = path.Split('/');
+            MenuBar w = tabsView.MainMenu;
+            for (int i = 0; i < s.Length; i++)
+            {
+                foreach (Widget item in w.Children)
+                {
+                    //We use a try block incase this widget is a MenuItem instead of Menu.
+                    try
+                    {
+                        MenuItem m = FindItem((Menu)item, s[i]);
+                        if(m != null && i == s.Length -1)
+                        {
+                            wid = m;
+                            Menu = true;
+                            return;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        MenuItem mi = (MenuItem)item;
+                        if (mi.Label == s[i] && i == s.Length - 1)
+                        {
+                            wid = mi;
+                            Menu = false;
+                            return;
+                        }
+                    }
+                }
+            }
+            wid = null;
+            Menu = false;
+        }
+
+        private static void GetContextMenuItem(string path, out Widget wid, out bool Menu)
+        {
+            string[] s = path.Split('/');
+            Menu w = App.viewer.contextMenu;
+            for (int i = 0; i < s.Length; i++)
+            {
+                foreach (Widget item in w.Children)
+                {
+                    //We use a try block incase this widget is a MenuItem instead of Menu.
+                    try
+                    {
+                        MenuItem m = FindItem((Menu)item, s[i]);
+                        if (m != null && i == s.Length - 1)
+                        {
+                            wid = m;
+                            Menu = true;
+                            return;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        MenuItem mi = (MenuItem)item;
+                        if (mi.Label == s[i] && i == s.Length - 1)
+                        {
+                            wid = mi;
+                            Menu = false;
+                            return;
+                        }
+                    }
+                }
+            }
+            wid = null;
+            Menu = false;
+        }
+
+        public static void AddMenu(string path)
+        {
+            if (path == null || path == "")
+                return;
+            //We get the Menu containing the MenuItem specified by the path.
+            Widget w;
+            bool menu;
+            GetMainMenuItem(System.IO.Path.GetDirectoryName(path), out w, out menu);
+            if(!menu && w != null)
+            {
+                MenuItem m = (MenuItem)w;
+                if(m.Submenu != null)
+                {
+                    Menu me = (Menu)m.Submenu;
+                    MenuItem mi = new MenuItem(System.IO.Path.GetFileName(path));
+                    mi.ButtonPressEvent += ItemClicked;
+                    me.Append(mi);
+                    me.ShowAll();
+                }
+                else
+                {
+                    //If the item we need to add a child item to, is not already a Menu we need to make it a menu
+                }
+            }
+            else if(menu && w!=null)
+            {
+                //Since this is already a Menu we can just append the item to it.
+                Menu m = (Menu)w;
+                MenuItem mi = new MenuItem(System.IO.Path.GetFileName(path));
+                mi.ButtonPressEvent += ItemClicked;
+                m.Append(mi);
+            }
+        }
+        public static void AddContextMenu(string path)
+        {
+            if (path == null || path == "")
+                return;
+            string[] s = path.Split('/');
+            //We get the Menu containing the MenuItem specified by the path.
+
+            Widget w;
+            bool menu;
+            GetContextMenuItem(System.IO.Path.GetDirectoryName(path), out w, out menu);
+            if (!menu && w != null)
+            {
+                MenuItem m = (MenuItem)w;
+                if (m.Submenu != null)
+                {
+                    Menu me = (Menu)m.Submenu;
+                    MenuItem mi = new MenuItem(System.IO.Path.GetFileName(path));
+                    mi.ButtonPressEvent += ItemClicked;
+                    me.Append(mi);
+                }
+                else
+                {
+                    //If the item we need to add a child item to, is not already a Menu we need to make it a menu
+                }
+            }
+            else if (menu && w != null)
+            {
+                //Since this is already a Menu we can just append the item to it.
+                Menu m = (Menu)w;
+                MenuItem mi = new MenuItem(System.IO.Path.GetFileName(path));
+                mi.ButtonPressEvent += ItemClicked;
+                m.Append(mi);
+            }
+        }
+        private static void ItemClicked(object o, ButtonPressEventArgs args)
+        {
+            MenuItem ts = (MenuItem)o;
+            Function f = Function.Functions[ts.Label];
+            f.PerformFunction(true);
+        }
     }
 }

@@ -5,6 +5,7 @@
   <object class="GtkWindow" id="TabsView">
     <property name="name">tabsView</property>
     <property name="can-focus">False</property>
+    <property name="title" translatable="yes">BioGTK</property>
     <child>
       <object class="GtkBox">
         <property name="visible">True</property>
@@ -140,14 +141,6 @@
                     <child>
                       <object class="GtkImageMenuItem" id="imagesToStack">
                         <property name="label" translatable="yes">Images To Stack</property>
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="use-stock">False</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkImageMenuItem" id="newProcessMenu">
-                        <property name="label" translatable="yes">New Process</property>
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="use-stock">False</property>

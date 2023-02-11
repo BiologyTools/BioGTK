@@ -159,9 +159,9 @@
               "target": "Package",
               "version": "[6.4.0, )"
             },
-            "OpenTK": {
+            "SharpHook": {
               "target": "Package",
-              "version": "[4.7.5, )"
+              "version": "[4.0.0, )"
             }
           },
           "imports": [

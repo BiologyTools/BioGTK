@@ -20,7 +20,7 @@ namespace BioGTK
         [Builder.Object]
         private Gtk.Button clearBut;
         [Builder.Object]
-        private Gtk.Entry textBox;
+        private Gtk.TextView textBox;
 
 #pragma warning restore 649
 
@@ -62,6 +62,12 @@ namespace BioGTK
         {
             DeleteEvent += OnLocalDeleteEvent;
             clearBut.Clicked += ClearBut_Clicked;
+            this.FocusActivated += Recorder_FocusActivated;
+        }
+
+        private void Recorder_FocusActivated(object sender, EventArgs e)
+        {
+            textBox.Buffer.Text = log;
         }
 
         /// This function clears the textbox when the clear button is clicked
@@ -70,7 +76,8 @@ namespace BioGTK
         /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         private void ClearBut_Clicked(object? sender, EventArgs e)
         {
-            textBox.Text = "";
+            textBox.Buffer.Text = "";
+            log = "";
         }
 
         /// When the user clicks the X button on the window, the application will quit.

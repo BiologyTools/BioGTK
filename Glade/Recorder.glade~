@@ -10,12 +10,14 @@
         <property name="can-focus">False</property>
         <property name="orientation">vertical</property>
         <child>
-          <object class="GtkEntry" id="textBox">
+          <object class="GtkTextView">
+            <property name="width-request">440</property>
+            <property name="height-request">213</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
           </object>
           <packing>
-            <property name="expand">True</property>
+            <property name="expand">False</property>
             <property name="fill">True</property>
             <property name="position">0</property>
           </packing>
@@ -32,20 +34,8 @@
                 <property name="receives-default">True</property>
               </object>
               <packing>
-                <property name="x">376</property>
-                <property name="y">3</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="delBut">
-                <property name="label" translatable="yes">Delete Line</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-              </object>
-              <packing>
-                <property name="x">281</property>
-                <property name="y">3</property>
+                <property name="x">378</property>
+                <property name="y">2</property>
               </packing>
             </child>
           </object>

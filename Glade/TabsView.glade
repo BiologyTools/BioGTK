@@ -5,6 +5,7 @@
   <object class="GtkWindow" id="TabsView">
     <property name="name">tabsView</property>
     <property name="can-focus">False</property>
+    <property name="title" translatable="yes">BioGTK</property>
     <child>
       <object class="GtkBox">
         <property name="visible">True</property>
@@ -20,7 +21,7 @@
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="margin-bottom">1</property>
-                <property name="label" translatable="yes">_File</property>
+                <property name="label" translatable="yes">File</property>
                 <property name="use-underline">True</property>
                 <child type="submenu">
                   <object class="GtkMenu">
@@ -169,7 +170,7 @@
               <object class="GtkMenuItem" id="viewMenu">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="label" translatable="yes">_View</property>
+                <property name="label" translatable="yes">View</property>
                 <property name="use-underline">True</property>
                 <child type="submenu">
                   <object class="GtkMenu">
@@ -229,7 +230,7 @@
               <object class="GtkMenuItem" id="toolsMenu">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="label" translatable="yes">_Tools</property>
+                <property name="label" translatable="yes">Tools</property>
                 <property name="use-underline">True</property>
                 <child type="submenu">
                   <object class="GtkMenu">
