@@ -1,7 +1,7 @@
 # BioGTK
 ![alt text](https://github.com/BiologyTools/Bio/blob/master/banner.jpg)
 
-A .NET application & library for editing & annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters & macro functions.Check out the new wiki for [library usage.](https://github.com/BiologyTools/Bio/wiki/Library-Usage) or check out the [documentation.](https://biologytools.github.io/) Supports Windows, Linux and Mac. Currently in Beta stage.
+A .NET application & library for editing & annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters & macro functions.Check out the new wiki for [library usage.](https://github.com/BiologyTools/Bio/wiki/Library-Usage) or check out the [documentation.](https://biologytools.github.io/) Supports Windows, Linux and Mac. For Mac see installation instructions.
 
 ## Features
 
@@ -40,3 +40,8 @@ A .NET application & library for editing & annotating various microscopy image f
 -  Open script editor and recorder from menu.
 -  Scripts saved in Scripts folder will be loaded into script runner.
 -  Use Script recorder to record program function calls and script runner to turn recorder text into working scripts. (See sample [scripts](https://github.com/BioMicroscopy/BioImage-Scripts)
+
+## Mac Installation
+- Install Mac package manager [homebrew](https://brew.sh/)
+- From brew install [GTK3](https://formulae.brew.sh/formula/gtk+3#default)
+- Download the BioGTK application for either OSX-x64 or OSX-Arm from releases.
