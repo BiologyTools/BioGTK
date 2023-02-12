@@ -42,6 +42,6 @@ A .NET application & library for editing & annotating various microscopy image f
 -  Use Script recorder to record program function calls and script runner to turn recorder text into working scripts. (See sample [scripts](https://github.com/BioMicroscopy/BioImage-Scripts)
 
 ## Mac Installation
-- Install Mac package manager [homebrew](https://brew.sh/)
-- From brew install [GTK3](https://formulae.brew.sh/formula/gtk+3#default)
+- Install Mac package manager [homebrew.](https://brew.sh/)
+- From brew install [GTK3.](https://formulae.brew.sh/formula/gtk+3#default)
 - Download the BioGTK application for either OSX-x64 or OSX-Arm from releases.
