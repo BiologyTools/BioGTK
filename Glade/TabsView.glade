@@ -208,20 +208,6 @@
                         <property name="use-underline">True</property>
                       </object>
                     </child>
-                    <child>
-                      <object class="GtkSeparatorMenuItem">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkMenuItem" id="xmlMenu">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="label" translatable="yes">XML</property>
-                        <property name="use-underline">True</property>
-                      </object>
-                    </child>
                   </object>
                 </child>
               </object>
@@ -428,14 +414,6 @@
                   <object class="GtkMenu">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <child>
-                      <object class="GtkImageMenuItem" id="runMenu">
-                        <property name="label">Run</property>
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="use-stock">False</property>
-                      </object>
-                    </child>
                     <child>
                       <object class="GtkImageMenuItem" id="functionsToolMenu">
                         <property name="label" translatable="yes">Functions Tool</property>

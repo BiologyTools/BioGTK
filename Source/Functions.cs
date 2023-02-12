@@ -105,13 +105,6 @@ namespace BioGTK
             textBox.Buffer.Changed += Buffer_Changed;
             imagejRadioBut.Clicked += ImagejRadioBut_Clicked;
             bioRadioBut.Clicked += BioRadioBut_Clicked;
-            this.DeleteEvent += Functions_DeleteEvent;
-        }
-
-        private void Functions_DeleteEvent(object o, DeleteEventArgs args)
-        {
-            args.RetVal = false;
-            Hide();
         }
 
         private void BioRadioBut_Clicked(object sender, EventArgs e)

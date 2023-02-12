@@ -24,16 +24,8 @@
       </object>
     </child>
     <child>
-      <object class="GtkImageMenuItem" id="roiDelete">
+      <object class="GtkImageMenuItem" id="roi">
         <property name="label">ROI Delete</property>
-        <property name="name">openImagesMenu</property>
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
-        <property name="use-stock">False</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkImageMenuItem" id="roiID">
         <property name="name">openImagesMenu</property>
         <property name="visible">True</property>
         <property name="can-focus">False</property>
@@ -297,6 +289,64 @@
             <property name="position">2</property>
           </packing>
         </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkMenu" id="roiMenu">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <child>
+      <object class="GtkImageMenuItem" id="roiDelete">
+        <property name="label">Delete</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="roiID">
+        <property name="label">Set Text</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="copy">
+        <property name="label">Copy</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="paste">
+        <property name="label">Paste</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="draw">
+        <property name="label">Draw</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="fill">
+        <property name="label">Fill</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
       </object>
     </child>
   </object>

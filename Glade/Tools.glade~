@@ -209,7 +209,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkDrawingArea" id="color1">
+              <object class="GtkDrawingArea" id="color2">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
               </object>
@@ -219,7 +219,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkDrawingArea" id="color2">
+              <object class="GtkDrawingArea" id="color1">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
               </object>
@@ -236,6 +236,19 @@
             <property name="expand">False</property>
             <property name="fill">True</property>
             <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="widthBox">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="orientation">vertical</property>
+            <property name="value">5</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
           </packing>
         </child>
       </object>

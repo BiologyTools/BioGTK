@@ -91,11 +91,11 @@ namespace BioGTK
         {
             if(args.Event.Direction == Gdk.ScrollDirection.Up)
             {
-                graphMax += 50;
+                graphMax += 200;
             }
             else if (args.Event.Direction == Gdk.ScrollDirection.Down)
             {
-                graphMax -= 50;
+                graphMax -= 200;
             }
             UpdateView();
         }
@@ -222,7 +222,7 @@ namespace BioGTK
                 g.SetSourceColor(ImageView.FromColor(System.Drawing.Color.Black));
                 g.MoveTo(mouseX, 0);
                 g.LineTo(mouseX, this.AllocatedHeight);
-                g.StrokePreserve();
+                g.Stroke();
                 int gmax = graphMax;
                 Channel channel = ImageView.SelectedImage.Channels[c];
                 for (int i = 0; i < channel.range.Length; i++)
@@ -295,12 +295,12 @@ namespace BioGTK
                                     g.SetSourceColor(blackd);
                                     g.MoveTo(prevs.Value.X, prevs.Value.Y);
                                     g.LineTo(fx * x, yy);
-                                    g.StrokePreserve();
+                                    g.Stroke();
                                 }
                                 g.SetSourceColor(black);
                                 g.MoveTo(fx * x, this.AllocatedHeight);
                                 g.LineTo(fx * x, yy);
-                                g.StrokePreserve();
+                                g.Stroke();
                                 prevs = new PointF(fx * x, yy);
                                 binind = 0;
                                 sumbin = 0;
@@ -314,12 +314,12 @@ namespace BioGTK
                             g.SetSourceColor(pend);
                             g.MoveTo(fx * x, this.AllocatedHeight);
                             g.LineTo(fx * x, this.AllocatedHeight - (fy * (sumbins / bininds)));
-                            g.StrokePreserve();
+                            g.Stroke();
                             if (prev != null)
                             {
                                 g.MoveTo(prev.Value.X,prev.Value.Y);
                                 g.LineTo(fx * x, this.AllocatedHeight - (fy * (sumbins / bininds)));
-                                g.StrokePreserve();
+                                g.Stroke();
                             }
                             prev = new PointF(fx * x, this.AllocatedHeight - (fy * (sumbins / bininds)));
                             bininds = 0;
@@ -332,49 +332,61 @@ namespace BioGTK
                     g.SetSourceColor(ImageView.FromColor(SpectralColor(channel.Emission)));
                     g.MoveTo((fx * channel.range[i].Max), 0);
                     g.LineTo((fx * channel.range[i].Max), this.AllocatedHeight);
-                    g.StrokePreserve();
+                    g.Stroke();
                     g.MoveTo((fx * channel.range[i].Min), 0);
                     g.LineTo((fx * channel.range[i].Min), this.AllocatedHeight);
-                    g.StrokePreserve();
+                    g.Stroke();
                 }
 
             }
-            /*
+            
             float tick = 6;
             if (axisTicks)
             {
+                g.SetSourceRGB(0, 0, 0);
                 if (axisNumbers)
                 {
                     for (float x = 0; x < graphMax; x += 2000)
                     {
-                       
-                        SizeF s = g.MeasureString(x.ToString(), SystemFonts.DefaultFont);
-                        g.DrawString(x.ToString(), SystemFonts.DefaultFont, Brushes.Black, (fx * x) - (s.Width / 2), tick + 6);
-                        g.DrawLine(Pens.Black, new PointF((fx * x), 0), new PointF((fx * x), tick + 3));
+                        g.MoveTo((fx * x), 0);
+                        g.LineTo((fx * x), tick + 3);
+                        g.Stroke();
                     }
                     for (float x = 0; x < graphMax; x += 1000)
                     {
-                        g.DrawLine(Pens.Black, new PointF((fx * x), 0), new PointF((fx * x), tick));
+                        TextExtents ex = g.TextExtents(x.ToString());
+                        g.MoveTo((fx * x) - (ex.Width / 2), tick + 10);
+                        g.ShowText(x.ToString());
+                        g.Stroke();
+                        g.MoveTo((fx * x), 0);
+                        g.LineTo((fx * x), tick);
+                        g.Stroke();
                     }
                 }
                 if (graphMax <= 16383)
                     for (float x = 0; x < graphMax; x += 100)
                     {
-                        g.DrawLine(Pens.Black, new PointF((fx * x), 0), new PointF((fx * x), tick));
+                        g.MoveTo((fx * x), 0);
+                        g.LineTo((fx * x), tick);
+                        g.Stroke();
                     }
                 if (graphMax <= 255)
                 {
                     for (float x = 0; x < graphMax; x += 50)
                     {
-                        g.DrawLine(Pens.Black, new PointF((fx * x), 0), new PointF((fx * x), 4));
+                        g.MoveTo((fx * x), 0);
+                        g.LineTo((fx * x), 4);
+                        g.Stroke();
                     }
                     for (float x = 0; x < graphMax; x += 10)
                     {
-                        g.DrawLine(Pens.Black, new PointF((fx * x), 0), new PointF((fx * x), 2));
+                        g.MoveTo((fx * x), 0);
+                        g.LineTo((fx * x), 2);
+                        g.Stroke();
                     }
                 }
             }
-            */
+            
             if (ImageView.SelectedImage.RGBChannelCount == 3)
             {
                 if (ImageView.SelectedImage.Channels.Count > 2)
@@ -403,7 +415,7 @@ namespace BioGTK
             }
             g.MoveTo(mouseX, mouseY);
             g.ShowText(st);
-            g.StrokePreserve();
+            g.Stroke();
         }
         private float bin = 10;
         public float Bin

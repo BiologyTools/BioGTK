@@ -105,6 +105,7 @@ namespace BioGTK
             this.FocusActivated += ChannelsTool_Activated;
             this.DeleteEvent += ChannelsTool_DeleteEvent;
             channelsBox.Changed += ChannelsBox_Changed;
+            sampleBox.Changed += SampleBox_Changed;
             meanStackBox.Clicked += MeanStackBox_Clicked;
 
             maxUintBox.Changed += MaxUintBox_Changed;
@@ -126,6 +127,11 @@ namespace BioGTK
             maxUintBox2.PackStart(rend2, false);
             maxUintBox2.AddAttribute(rend2, "text", 0);
             ShowAll();
+        }
+
+        private void SampleBox_Changed(object sender, EventArgs e)
+        {
+            UpdateValues();
         }
 
         private void ChannelsTool_DeleteEvent(object o, DeleteEventArgs args)
@@ -174,7 +180,6 @@ namespace BioGTK
         {
             if (channelsBox.Active == -1)
                 return;
-            sampleBox.Value = 0;
             sampleBox.Adjustment.Upper = SelectedChannel.range.Length - 1;
             if (minBox.Adjustment.Upper < SelectedChannel.range[(int)sampleBox.Value].Min || maxBox.Adjustment.Upper < SelectedChannel.range[(int)sampleBox.Value].Max)
             {
@@ -209,7 +214,6 @@ namespace BioGTK
             fluorBox.Text = SelectedChannel.Fluor;
             emissionBox.Value = SelectedChannel.Emission;
             excitationBox.Value = SelectedChannel.Excitation;
-            App.viewer.UpdateView();
         }
 
         private void UpdateGUI()

@@ -13,9 +13,6 @@ using System.Threading.Tasks;
 using Bio.Graphics;
 using System.Collections;
 using Gdk;
-using java.awt;
-using org.checkerframework.framework.qual;
-using static com.sun.management.VMOption;
 using System.Reflection;
 
 namespace BioGTK
@@ -67,7 +64,6 @@ namespace BioGTK
         private Gtk.DrawingArea color1;
         [Builder.Object]
         private Gtk.DrawingArea color2;
-
 #pragma warning restore 649
 
         #endregion
@@ -79,16 +75,8 @@ namespace BioGTK
         /// @return A new instance of the Tools class.
         public static Tools Create()
         {
-            try
-            {
-                Builder builder = new Builder(null, "BioGTK.Glade.Tools.glade", null);
-                return new Tools(builder, builder.GetObject("tools").Handle);
-            }
-            catch (Exception e)
-            {
-                System.Console.WriteLine(e);
-            }
-            return null;
+            Builder builder = new Builder(null, "BioGTK.Glade.Tools.glade", null);
+            return new Tools(builder, builder.GetObject("tools").Handle);
         }
 
         /* Initializing the tools. */
@@ -105,12 +93,12 @@ namespace BioGTK
             _builder = builder;
             builder.Autoconnect(this);
             SetupHandlers();
-
             Tool.Init();
             ColorS col = new ColorS(ushort.MaxValue);
             //We initialize the tools
             currentTool = GetTool(Tool.Type.move);
             floodFiller = new QueueLinearFloodFiller(floodFiller);
+            magicSel = MagicSelect.Create(0);
         }
 
         #endregion
@@ -122,6 +110,8 @@ namespace BioGTK
         public static bool bEnabled = true;
         public static ColorS drawColor = new ColorS(ushort.MaxValue, ushort.MaxValue, ushort.MaxValue);
         public static ColorS eraseColor = new ColorS(0, 0, 0);
+        public static ColorS tolerance = new ColorS(0, 0, 0);
+        private static MagicSelect magicSel;
         private static int width = 5;
 
         public static System.Drawing.Rectangle selectionRectangle;
@@ -298,12 +288,12 @@ namespace BioGTK
             return (Tool)tools[typ.ToString()];
         }
         
-        /// > UpdateView() is a function that updates the view of the viewer
+        /// > UpdateView() is a function that updates the view of the viewer.
         public void UpdateView()
         {
             App.viewer.UpdateView();
         }
-        /// It converts the color from the color picker to a color that can be used by the image
+        /// Updates the gui.
         private void UpdateGUI()
         {
             if (ImageView.SelectedImage != null)
@@ -563,11 +553,10 @@ namespace BioGTK
             else
             if (Tools.currentTool.type == Tools.Tool.Type.magic && buts.Event.Button == 1)
             {
-                /*
                 PointD pf = new PointD(ImageView.mouseUp.X - ImageView.mouseDown.X, ImageView.mouseUp.Y - ImageView.mouseDown.Y);
                 ZCT coord = App.viewer.GetCoordinate();
 
-                System.Drawing.Rectangle r = new Rectangle((int)ImageView.mouseDown.X, (int)ImageView.mouseDown.Y, (int)(ImageView.mouseUp.X - ImageView.mouseDown.X), (int)(ImageView.mouseUp.Y - ImageView.mouseDown.Y));
+                System.Drawing.Rectangle r = new System.Drawing.Rectangle((int)ImageView.mouseDown.X, (int)ImageView.mouseDown.Y, (int)(ImageView.mouseUp.X - ImageView.mouseDown.X), (int)(ImageView.mouseUp.Y - ImageView.mouseDown.Y));
                 if (r.Width <= 2 || r.Height <= 2)
                     return;
                 AForge.Bitmap bf = ImageView.SelectedImage.Buffers[ImageView.SelectedImage.Coords[coord.Z, coord.C, coord.T]].GetCropBuffer(r);
@@ -624,7 +613,6 @@ namespace BioGTK
                     ROI an = ROI.CreateFreeform(coord, pfs);
                     ImageView.SelectedImage.Annotations.Add(an);
                 }
-                */
             }
             else
             if (Tools.currentTool.type == Tools.Tool.Type.bucket && buts.Event.Button == 1)
@@ -674,8 +662,6 @@ namespace BioGTK
             }
             if (ImageView.SelectedImage == null)
                 return;
-            PointD p = App.viewer.ImageToViewSpace(e.X, e.Y);
-
             if (currentTool.type == Tool.Type.line && buts.Event.State == Gdk.ModifierType.Button1Mask)
             {
                 selectedROI.UpdatePoint(new PointD(e.X, e.Y), 1);
@@ -783,14 +769,7 @@ namespace BioGTK
                 UpdateView();
             }
 
-            if (buts.Event.State != Gdk.ModifierType.Button1Mask && currentTool.type == Tool.Type.eraser)
-            {
-                Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(ImageView.SelectedBuffer);
-                Bio.Graphics.Pen pen = new Bio.Graphics.Pen(Tools.EraseColor, (int)Tools.StrokeWidth, ImageView.SelectedBuffer.BitsPerPixel);
-                g.FillEllipse(new System.Drawing.Rectangle((int)p.X, (int)p.Y, (int)width, (int)Tools.StrokeWidth), pen.color);
-                pen.Dispose();
-                App.viewer.UpdateImages();
-            }
+            
         }
 
         Gdk.RGBA selectColor = new Gdk.RGBA();
@@ -820,17 +799,9 @@ namespace BioGTK
             eraser.File = "icons/eraser.png";
             switchColor.File = "icons/switch.png";
             this.ButtonPressEvent += Tools_ButtonPressEvent;
-            this.DeleteEvent += Tools_DeleteEvent;
             ti = TextInput.Create();
             color1.Drawn += Color1_Drawn;
             color2.Drawn += Color2_Drawn;
-            //Tools.ti.Response += Ti_Response;
-        }
-
-        private void Tools_DeleteEvent(object o, DeleteEventArgs args)
-        {
-            args.RetVal = false;
-            Hide();
         }
 
         /// The function is called when the color2 widget is drawn. It sets the color of the widget to
@@ -935,6 +906,13 @@ namespace BioGTK
             if (magic.Allocation.IntersectsWith(r))
             {
                 currentTool = GetTool(Tool.Type.magic);
+                if (args.Event.Type == Gdk.EventType.TwoButtonPress)
+                {
+                    if (magicSel == null)
+                        magicSel = MagicSelect.Create(0);
+                    magicSel.Show();
+                    magicSel.Present();
+                }
                 magic.OverrideBackgroundColor(StateFlags.Normal, selectColor);
             }
             if (freeform.Allocation.IntersectsWith(r))
@@ -946,6 +924,11 @@ namespace BioGTK
             {
                 currentTool = GetTool(Tool.Type.bucket);
                 fill.OverrideBackgroundColor(StateFlags.Normal, selectColor);
+                if (args.Event.Type == Gdk.EventType.TwoButtonPress)
+                {
+                    Tolerance tol = Tolerance.Create();
+                    tol.Show();
+                }
             }
             if (brush.Allocation.IntersectsWith(r))
             {

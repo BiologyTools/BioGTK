@@ -2593,7 +2593,7 @@ namespace BioGTK
             App.viewer.UpdateView();
             Recorder.AddLine("Bio.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To48Bit();");
         }
-        /// It rotates the image by 90 degrees
+        /// Rotates the image by specified degrees or flips it.
         /// 
         /// @param rot The type of rotation to perform.
         public void RotateFlip(AForge.RotateFlipType rot)
@@ -2602,6 +2602,7 @@ namespace BioGTK
             {
                 Buffers[i].RotateFlip(rot);
             }
+            Volume = new VolumeD(new Point3D(stageSizeX, stageSizeY, stageSizeZ), new Point3D(physicalSizeX * SizeX, physicalSizeY * SizeY, physicalSizeZ * SizeZ));
         }
         /// Bake(int rmin, int rmax, int gmin, int gmax, int bmin, int bmax)
         /// 
@@ -3819,6 +3820,8 @@ namespace BioGTK
         /// > Initialize the OME-XML library
         private static void InitOME()
         {
+            if (!OMESupport())
+                return;
             factory = new ServiceFactory();
             service = (OMEXMLService)factory.getInstance(typeof(OMEXMLService));
             reader = new ImageReader(); 
@@ -3996,6 +3999,8 @@ namespace BioGTK
         {
             if (isOME(file))
             {
+                if (!OMESupport())
+                    return null;
                 return OpenOME(file);
             }
             Stopwatch st = new Stopwatch();
@@ -4384,6 +4389,8 @@ namespace BioGTK
         /// @param ID The ID of the image you want to save
         public static void SaveOME(string file, string ID)
         {
+            if (!OMESupport())
+                return;
             string[] sts = new string[1];
             sts[0] = ID;
             SaveOMESeries(sts, file, BioImage.Planes);
@@ -4395,6 +4402,8 @@ namespace BioGTK
         /// @param planes if true, the planes will be saved as well.
         public static void SaveOMESeries(string[] files, string f, bool planes)
         {
+            if (!OMESupport())
+                return;
             if (File.Exists(f))
                 File.Delete(f);
             loci.formats.meta.IMetadata omexml = service.createOMEXMLMetadata();
@@ -4740,6 +4749,8 @@ namespace BioGTK
         /// @return A list of BioImages.
         public static BioImage OpenOME(string file)
         {
+            if (!OMESupport())
+                return null;
             return OpenOMESeries(file)[0];
         }
         /// > OpenOME(string file, int serie)
@@ -4752,6 +4763,8 @@ namespace BioGTK
         /// @return A BioImage object.
         public static BioImage OpenOME(string file, int serie)
         {
+            if (!OMESupport())
+                return null;
             Recorder.AddLine("Bio.BioImage.OpenOME(\"" + file + "\"," + serie + ");");
             return OpenOME(file, serie, true, false, 0, 0, 0, 0);
         }
@@ -4820,6 +4833,8 @@ namespace BioGTK
         }
         public static BioImage OpenOME(string file, int serie, bool progress, bool tile, int tilex, int tiley, int tileSizeX, int tileSizeY)
         {
+            if (!OMESupport())
+                return null;
             if (file == null || file == "")
                 throw new InvalidDataException("File is empty or null");
             st.Start();
@@ -5449,6 +5464,8 @@ namespace BioGTK
         }
         public static BioImage OpenOMETiled(string file, int serie, int tilex, int tiley, int tileSizeX, int tileSizeY)
         {
+            if (!OMESupport())
+                return null;
             bool tile = true;
             //We wait incase OME has not initialized yet.
             if (!initialized)
@@ -6002,6 +6019,8 @@ namespace BioGTK
         /// @return A Bitmap object.
         public static Bitmap GetTile(BioImage b, ZCT coord, int serie, int tilex, int tiley, int tileSizeX, int tileSizeY)
         {
+            if (!OMESupport())
+                return null;
             if (b.imRead == null)
                 b.imRead = new ImageReader();
             string s = b.imRead.getCurrentFile();
@@ -6431,6 +6450,8 @@ namespace BioGTK
         /// @param file The file path to the OME file.
         public static void OpenOMEThread(string[] file)
         {
+            if (!OMESupport())
+                return;
             openOMEfile.AddRange(file);
             Thread t = new Thread(OpenOME);
             t.Start();
@@ -6438,6 +6459,8 @@ namespace BioGTK
         /// It opens the OME file.
         private static void OpenOME()
         {
+            if (!OMESupport())
+                return;
             foreach (string f in openOMEfile)
             {
                 OpenOME(f);
@@ -6463,6 +6486,8 @@ namespace BioGTK
         /// @param ID The ID of the OME file to save.
         public static void SaveOMEThread(string file, string ID)
         {
+            if (!OMESupport())
+                return;
             saveOMEID = ID;
             saveOMEfile = file;
             Thread t = new Thread(SaveOME);
@@ -6474,6 +6499,24 @@ namespace BioGTK
         private static void SaveOME()
         {
             SaveOME(saveOMEfile, saveOMEID);
+        }
+
+        public static bool OMESupport()
+        {
+            if (Environment.OSVersion.Platform == PlatformID.MacOSX)
+            {
+                MessageDialog md = new MessageDialog(
+                null,
+                DialogFlags.DestroyWithParent,
+                MessageType.Info,
+                ButtonsType.Ok, "BioGTK currently doens't support OME images on MacOS. On MacOS only ImageJ Tiff files and Bio Tiff files are supported."
+            );
+                md.Run();
+                md.Destroy();
+                return false;
+            }
+            else
+                return true;
         }
 
         private static Stopwatch st = new Stopwatch();
@@ -6509,6 +6552,8 @@ namespace BioGTK
         /// @return A list of ROI objects.
         public static List<ROI> OpenOMEROIs(string file, int series)
         {
+            if (!OMESupport())
+                return null;
             List<ROI> Annotations = new List<ROI>();
             // create OME-XML metadata store
             ServiceFactory factory = new ServiceFactory();
@@ -7006,19 +7051,9 @@ namespace BioGTK
                     if (col == 14)
                     {
                         //POINTS
-                        if (c == ',')
-                        {
-                            inSep = true;
-                            points = true;
-                            val += c;
-                            continue;
-                        }
-                        else
-                        {
-                            an.AddPoints(an.stringToPoints(val));
-                            points = false;
-                            an.Rect = new RectangleD(x, y, w, h);
-                        }
+                        an.AddPoints(an.stringToPoints(val));
+                        points = false;
+                        an.Rect = new RectangleD(x, y, w, h);
                     }
                     else
                     if (col == 15)
@@ -7094,6 +7129,8 @@ namespace BioGTK
         /// @param filename the name of the file you want to export
         public static void ExportROIFolder(string path, string filename)
         {
+            if (!OMESupport())
+                return;
             string[] fs = Directory.GetFiles(path);
             int i = 0;
             foreach (string f in fs)

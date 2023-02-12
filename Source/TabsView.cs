@@ -1,4 +1,5 @@
-﻿using Bio;
+﻿using AForge;
+using Bio;
 using com.sun.org.apache.xpath.@internal.functions;
 using Gtk;
 using loci.formats.gui;
@@ -58,8 +59,6 @@ namespace BioGTK
         private Gtk.CheckMenuItem rawMenu;
         [Builder.Object]
         private Gtk.CheckMenuItem emissionMenu;
-        [Builder.Object]
-        private MenuItem xmlMenu;
 
         [Builder.Object]
         private MenuItem toolsMenu;
@@ -142,6 +141,26 @@ namespace BioGTK
             filteredMenu.Active = true;
             SetupHandlers();
             Function.InitializeMainMenu();
+
+            Menu m = new Menu();
+            foreach (RotateFlipType flip in (RotateFlipType[])Enum.GetValues(typeof(RotateFlipType)))
+            {
+                MenuItem mi = new MenuItem(flip.ToString());
+                mi.ButtonPressEvent += RotateFlip_ButtonPressEvent;
+                m.Append(mi);
+            }
+            rotateFlipMenu.Submenu = m;
+            rotateFlipMenu.ShowAll();
+        }
+
+        private void RotateFlip_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            if(ImageView.SelectedImage==null) return;
+            MenuItem m = (MenuItem)o;
+            RotateFlipType r = Enum.Parse<RotateFlipType>(m.Label);
+            ImageView.SelectedImage.RotateFlip(r);
+            App.viewer.UpdateImage();
+            App.viewer.UpdateView();
         }
 
         #endregion
@@ -168,7 +187,6 @@ namespace BioGTK
             filteredMenu.ButtonPressEvent += filteredMenuClick;
             rawMenu.ButtonPressEvent += rawMenuClick;
             emissionMenu.ButtonPressEvent += emissionMenuClick;
-            xmlMenu.ButtonPressEvent += xmlMenuClick;
 
             toolsMenu.ButtonPressEvent += toolsMenuClick;
             setToolMenu.ButtonPressEvent += setToolMenuClick;
@@ -182,7 +200,6 @@ namespace BioGTK
             channelsToolMenu.ButtonPressEvent += channelsToolMenuClick;
             switchRedBlueMenu.ButtonPressEvent += switchRedBlueMenuClick;
 
-            rotateFlipMenu.ButtonPressEvent += rotateFlipMenuClick;
             stackToolMenu.ButtonPressEvent += stackToolMenuClick;
 
             to8BitMenu.ButtonPressEvent += to8BitMenuClick;
@@ -192,8 +209,6 @@ namespace BioGTK
             to48BitMenu.ButtonPressEvent += to48BitMenuClick;
 
             filtersMenu.ButtonPressEvent += filtersMenuClick;
-
-            runMenu.ButtonPressEvent += runMenuClick;
             functionsToolMenu.ButtonPressEvent += functionsToolMenuClick;
             consoleMenu.ButtonPressEvent += consoleMenuClick;
             scriptRunnerMenu.ButtonPressEvent += scriptRunnerMenuClick;
@@ -207,12 +222,6 @@ namespace BioGTK
             emissionMenu.ButtonPressEvent += EmissionMenu_ButtonPressEvent;
             tabsView.SwitchPage += TabsView_SwitchPage;
             this.WindowStateEvent += TabsView_WindowStateEvent;
-            this.KeyPressEvent += TabsView_KeyPressEvent;
-        }
-
-        private void TabsView_KeyPressEvent(object o, KeyPressEventArgs args)
-        {
-            
         }
 
         /// If the window is minimized, hide all the image viewers. If the window is restored, show all
@@ -369,7 +378,8 @@ namespace BioGTK
         /// @return The response type of the dialog.
         protected void openOMEImagesMenuClick(object sender, EventArgs a)
         {
-            Gtk.FileChooserDialog filechooser =
+            
+                Gtk.FileChooserDialog filechooser =
         new Gtk.FileChooserDialog("Choose file to open",
             this,
             FileChooserAction.Open,
@@ -610,7 +620,17 @@ namespace BioGTK
         /// @param EventArgs The EventArgs class is the base class for classes that contain event data.
         protected void imagesToStackClick(object sender, EventArgs a)
         {
-
+            Gtk.FileChooserDialog filechooser =
+    new Gtk.FileChooserDialog("Choose the file to open",
+        this,
+        FileChooserAction.Save,
+        "Cancel", ResponseType.Cancel,
+        "Save", ResponseType.Accept);
+            filechooser.SelectMultiple = true;
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            BioImage b = BioImage.ImagesToStack(filechooser.Filenames);
+            AddTab(b);
         }
         /// When the user clicks on the RGB menu item, the viewer's mode is set to RGB
         /// 
@@ -644,14 +664,6 @@ namespace BioGTK
         {
             App.viewer.Mode = ImageView.ViewMode.Emission;
         }
-        /// This function is called when the user clicks on the XML menu item
-        /// 
-        /// @param sender The object that raised the event.
-        /// @param EventArgs This is the event arguments that are passed to the event handler.
-        protected void xmlMenuClick(object sender, EventArgs a)
-        {
-
-        }
 
         /// If the tools window is not open, open it
         /// 
@@ -670,7 +682,9 @@ namespace BioGTK
         /// @param EventArgs This is the event arguments that are passed to the event handler.
         protected void setToolMenuClick(object sender, EventArgs a)
         {
-
+            App.setTool = SetTool.Create();
+            App.setTool.Show();
+            App.setTool.Present();
         }
 
         /// This function is called when the user clicks on the ROI Manager menu item
@@ -681,21 +695,22 @@ namespace BioGTK
         {
             App.roiManager.Show();
         }
-        /// This function is called when a menu item is clicked
-        /// 
-        /// @param sender The object that raised the event.
-        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
-        protected void MenuClick(object sender, EventArgs a)
-        {
 
-        }
         /// This function is called when the user clicks on the "Export ROIs to CSV" menu item
         /// 
         /// @param sender The object that raised the event.
         /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         protected void exportROIsToCSVMenuClick(object sender, EventArgs a)
         {
-
+            Gtk.FileChooserDialog filechooser = new Gtk.FileChooserDialog("Set filename for export.",
+           this,
+           FileChooserAction.Save,
+           "Cancel", ResponseType.Cancel,
+           "Ok", ResponseType.Ok);
+            filechooser.SelectMultiple = false;
+            if (filechooser.Run() != (int)ResponseType.Ok)
+                return;
+            BioImage.ExportROIsCSV(filechooser.Filename, ImageView.SelectedImage.Annotations);
         }
         /// This function is called when the user clicks on the "Import ROIs from CSV" menu item
         /// 
@@ -703,7 +718,19 @@ namespace BioGTK
         /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         protected void importROIsFromCSVMenuClick(object sender, EventArgs a)
         {
-
+            Gtk.FileChooserDialog filechooser = new Gtk.FileChooserDialog("Choose the file to open.",
+          this,
+          FileChooserAction.Open,
+          "Cancel", ResponseType.Cancel,
+          "Ok", ResponseType.Ok);
+            filechooser.SelectMultiple = true;
+            if (filechooser.Run() != (int)ResponseType.Ok)
+                return;
+            foreach (string item in filechooser.Filenames)
+            {
+                ImageView.SelectedImage.Annotations.AddRange(BioImage.ImportROIsCSV(item));
+            }
+            
         }
         /// This function is called when the user clicks on the "Export ROIs of Folder of Images" menu
         /// item
@@ -712,7 +739,24 @@ namespace BioGTK
         /// @param EventArgs 
         protected void exportROIsOfFolderOfImagesMenuClick(object sender, EventArgs a)
         {
+            Gtk.FileChooserDialog folderchooser = new Gtk.FileChooserDialog("Set folder of images for export.",
+          this,
+          FileChooserAction.SelectFolder,
+          "Cancel", ResponseType.Cancel,
+          "Ok", ResponseType.Ok);
+            folderchooser.SelectMultiple = true;
+            if (folderchooser.Run() != (int)ResponseType.Ok)
+                return;
 
+            Gtk.FileChooserDialog filechooser = new Gtk.FileChooserDialog("Set filename for CSV to export.",
+           this,
+           FileChooserAction.Save,
+           "Cancel", ResponseType.Cancel,
+           "Ok", ResponseType.Ok);
+            filechooser.SelectMultiple = false;
+            if (filechooser.Run() != (int)ResponseType.Ok)
+                return;
+            BioImage.ExportROIFolder(folderchooser.Filename, filechooser.Filename);
         }
 
         /// This function is called when the user clicks on the "Auto Threshold All" menu item.
@@ -751,21 +795,15 @@ namespace BioGTK
             App.viewer.UpdateImage();
         }
 
-        /// This function is called when the user clicks on the "Rotate/Flip" menu item
-        /// 
-        /// @param sender The object that raised the event.
-        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
-        protected void rotateFlipMenuClick(object sender, EventArgs a)
-        {
-
-        }
         /// This function is called when the user clicks on the stack tool menu item
         /// 
         /// @param sender The object that raised the event.
         /// @param EventArgs The event arguments.
         protected void stackToolMenuClick(object sender, EventArgs a)
         {
-
+            App.stack = StackTools.Create();
+            App.stack.Show();
+            App.stack.Present();
         }
 
         /// The function is called when the user clicks on the "To 8-bit" menu item
@@ -819,14 +857,6 @@ namespace BioGTK
             App.filters.Show();
         }
 
-        /// This function is called when the user clicks on the "Run" menu item
-        /// 
-        /// @param sender The object that raised the event.
-        /// @param EventArgs This is the event arguments that are passed to the event handler.
-        protected void runMenuClick(object sender, EventArgs a)
-        {
-
-        }
         /// This function is called when the user clicks on the functions tool menu item
         /// 
         /// @param sender The object that raised the event.
@@ -894,7 +924,7 @@ namespace BioGTK
         }
         /// Open's a file in a new tab.
         /// 
-        /// @param tabName The filename of the image to add to tabcontrol/
+        /// @param tabName The filename of the image to add to tabcontrol
         public void Open(string file)
         {
             BioImage b = BioImage.OpenFile(file);

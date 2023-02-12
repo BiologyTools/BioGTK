@@ -16,6 +16,7 @@ using org.checkerframework.checker.units.qual;
 using Pango;
 using java.awt.geom;
 using Bio;
+using com.sun.tools.javac.util;
 
 namespace BioGTK
 {
@@ -140,9 +141,21 @@ namespace BioGTK
         [Builder.Object]
         private MenuItem goToImageMenu;
         [Builder.Object]
+        private MenuItem roi;
+        [Builder.Object]
+        private Menu roiMenu;
+        [Builder.Object]
         private MenuItem roiDelete;
         [Builder.Object]
         private MenuItem roiID;
+        [Builder.Object]
+        private MenuItem copy;
+        [Builder.Object]
+        private MenuItem paste;
+        [Builder.Object]
+        private MenuItem draw;
+        [Builder.Object]
+        private MenuItem fill;
 #pragma warning restore 649
 
         #endregion
@@ -167,6 +180,8 @@ namespace BioGTK
             selectedImage = im;
             App.viewer = this;
             builder.Autoconnect(this);
+            roi.Submenu = roiMenu;
+            roi.ShowAll();
             pxWmicron = SelectedImage.physicalSizeX;
             pxHmicron = SelectedImage.physicalSizeY;
             //pictureBox.SetSizeRequest(im.SizeX, im.SizeY);
@@ -184,6 +199,7 @@ namespace BioGTK
             this.Scale = new SizeF(1, 1);
         }
         #endregion
+        /// It updates the images.
         public void UpdateImages()
         {
             if (SelectedImage == null)
@@ -265,6 +281,7 @@ namespace BioGTK
             }
             UpdateView();
         }
+        /// It updates the image.
         public void UpdateImage()
         {
             if (SelectedImage == null)
@@ -387,9 +404,114 @@ namespace BioGTK
             //Context Menu
             goToImageMenu.ButtonPressEvent += GoToImageMenu_ButtonPressEvent;
             goToOriginMenu.ButtonPressEvent += GoToOriginMenu_ButtonPressEvent;
+
             roiDelete.ButtonPressEvent += RoiDelete_ButtonPressEvent;
             roiID.ButtonPressEvent += RoiID_ButtonPressEvent;
+            copy.ButtonPressEvent += Copy_ButtonPressEvent;
+            paste.ButtonPressEvent += Paste_ButtonPressEvent;
+            draw.ButtonPressEvent += Draw_ButtonPressEvent;
+            fill.ButtonPressEvent += Fill_ButtonPressEvent;
+        }
 
+        private void Fill_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(SelectedBuffer);
+            foreach (ROI item in AnnotationsRGB)
+            {
+                Bio.Graphics.Pen p = new Bio.Graphics.Pen(Tools.DrawColor, (int)Tools.StrokeWidth, SelectedBuffer.BitsPerPixel);
+                if (item.selected)
+                {
+                    if (item.type == ROI.Type.Line)
+                    {
+                        PointD pf = SelectedImage.ToImageSpace(item.GetPoint(0));
+                        PointD pf2 = SelectedImage.ToImageSpace(item.GetPoint(1));
+                        g.DrawLine((int)pf.X, (int)pf.Y, (int)pf2.X, (int)pf2.Y);
+                    }
+                    else
+                    if (item.type == ROI.Type.Rectangle)
+                    {
+                        g.FillRectangle(SelectedImage.ToImageSpace(item.Rect), p.color);
+                    }
+                    else
+                    if (item.type == ROI.Type.Ellipse)
+                    {
+                        g.FillEllipse(SelectedImage.ToImageSpace(item.Rect), p.color);
+                    }
+                    else
+                    if (item.type == ROI.Type.Freeform || item.type == ROI.Type.Polygon || item.type == ROI.Type.Polyline)
+                    {
+                        g.FillPolygon(SelectedImage.ToImageSpace(item.GetPointsF()), SelectedImage.ToImageSpace(item.Rect), p.color);
+                    }
+                }
+            }
+            UpdateImage();
+            UpdateView();
+        }
+
+        private void Draw_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(SelectedBuffer);
+            foreach (ROI item in AnnotationsRGB)
+            {
+                Bio.Graphics.Pen p = new Bio.Graphics.Pen(Tools.DrawColor, (int)Tools.StrokeWidth, SelectedBuffer.BitsPerPixel);
+                g.pen = p;
+                if (item.selected)
+                {
+                    if (item.type == ROI.Type.Line)
+                    {
+                        PointD pf = SelectedImage.ToImageSpace(item.GetPoint(0));
+                        PointD pf2 = SelectedImage.ToImageSpace(item.GetPoint(1));
+                        g.DrawLine((int)pf.X, (int)pf.Y, (int)pf2.X, (int)pf2.Y);
+                    }
+                    else
+                    if (item.type == ROI.Type.Rectangle)
+                    {
+                        g.DrawRectangle(SelectedImage.ToImageSpace(item.Rect));
+                    }
+                    else
+                    if (item.type == ROI.Type.Ellipse)
+                    {
+                        g.DrawEllipse(SelectedImage.ToImageSpace(item.Rect));
+                    }
+                    else
+                    if (item.type == ROI.Type.Freeform || item.type == ROI.Type.Polygon || item.type == ROI.Type.Polyline)
+                    {
+                        if (item.closed)
+                        {
+                            for (int i = 0; i < item.GetPointCount() - 1; i++)
+                            {
+                                PointD pf = SelectedImage.ToImageSpace(item.GetPoint(i));
+                                PointD pf2 = SelectedImage.ToImageSpace(item.GetPoint(i+1));
+                                g.DrawLine((int)pf.X, (int)pf.Y, (int)pf2.X, (int)pf2.Y);
+                            }
+                            PointD pp = SelectedImage.ToImageSpace(item.GetPoint(0));
+                            PointD p2 = SelectedImage.ToImageSpace(item.GetPoint(item.GetPointCount() - 1));
+                            g.DrawLine((int)pp.X, (int)pp.Y, (int)p2.X, (int)p2.Y);
+                        }
+                        else
+                        {
+                            for (int i = 0; i < item.GetPointCount() - 1; i++)
+                            {
+                                PointD pf = SelectedImage.ToImageSpace(item.GetPoint(i));
+                                PointD pf2 = SelectedImage.ToImageSpace(item.GetPoint(i + 1));
+                                g.DrawLine((int)pf.X, (int)pf.Y, (int)pf2.X, (int)pf2.Y);
+                            }
+                        }
+                    }
+                }
+            }
+            UpdateImage();
+            UpdateView();
+        }
+
+        private void Paste_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            PasteSelection();
+        }
+
+        private void Copy_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            CopySelection();
         }
 
         private void ImageView_DeleteEvent(object o, DeleteEventArgs args)
@@ -473,13 +595,36 @@ namespace BioGTK
             g.Arc(0.0, 0.0, 1.0, 0.0, 2 * Math.PI);
             g.Restore();
             g.Stroke();
-            g.StrokePreserve();
+            g.Stroke();
         }
         public static Cairo.Color FromColor(System.Drawing.Color color)
         {
             return new Cairo.Color((double)color.R / 255, (double)color.G / 255, (double)color.B / 255);
         }
 
+        /// The function is called when the picturebox is drawn. It checks if the bitmaps are up to
+        /// date, and if not, it updates them. It then draws the image, and then draws the annotations. 
+        /// 
+        /// The annotations are drawn by looping through the list of annotations, and then drawing them
+        /// based on their type. 
+        /// 
+        /// The annotations are drawn in the view space, which is the space of the picturebox. 
+        /// 
+        /// The annotations are drawn in the view space by converting the coordinates of the annotation
+        /// to the view space. 
+        /// 
+        /// The coordinates of the annotation are converted to the view space by multiplying the
+        /// coordinates by the scale of the image. 
+        /// 
+        /// The scale of the image is the ratio of the size of the image to the size of the picturebox. 
+        /// 
+        /// The size of the image is the size of the image in pixels. 
+        /// 
+        /// The size of the picturebox is the size of the picturebox in pixels.
+        /// 
+        /// @param o The object that is being drawn
+        /// @param DrawnArgs This is a class that contains the Cairo context and the allocated width and
+        /// height of the picturebox.
         private void PictureBox_Drawn(object o, DrawnArgs e)
         {
             if (Bitmaps.Count == 0 || Bitmaps.Count != Images.Count)
@@ -488,7 +633,7 @@ namespace BioGTK
             e.Cr.Scale(Scale.Width, Scale.Height);
             RectangleD rr = ToViewSpace(PointD.MinX, PointD.MinY, PointD.MaxX - PointD.MinX, PointD.MaxY - PointD.MinY);
             e.Cr.Rectangle(rr.X, rr.Y, rr.W, rr.H);
-            e.Cr.StrokePreserve();
+            e.Cr.Stroke();
             int i = 0;
             foreach (BioImage im in Images)
             {
@@ -539,13 +684,13 @@ namespace BioGTK
 
                         e.Cr.MoveTo(p1.X, p1.Y);
                         e.Cr.LineTo(p2.X, p2.Y);
-                        e.Cr.StrokePreserve();
+                        e.Cr.Stroke();
                         e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Red));
                         foreach (RectangleD re in an.GetSelectBoxes(width))
                         {
                             RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
                             e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                            e.Cr.StrokePreserve();
+                            e.Cr.Stroke();
                         }
                     }
                     else
@@ -557,14 +702,14 @@ namespace BioGTK
                             RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y,1,1);
                             e.Cr.MoveTo(p1.X, p1.Y);
                             e.Cr.LineTo(p2.X, p2.Y);
-                            e.Cr.StrokePreserve();
+                            e.Cr.Stroke();
                         }
                         e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Red));
                         foreach (RectangleD re in an.GetSelectBoxes(width))
                         {
                             RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
                             e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                            e.Cr.StrokePreserve();
+                            e.Cr.Stroke();
                         }
                     }
                     else
@@ -574,7 +719,7 @@ namespace BioGTK
                         //RectangleD rect = ToScreenRectF(an.X, an.Y, an.W, an.H);
                         RectangleD rect = ToViewSpace(an.X, an.Y, an.W, an.H);
                         e.Cr.Rectangle(rect.X, rect.Y, rect.W, rect.H);
-                        e.Cr.StrokePreserve();
+                        e.Cr.Stroke();
                         if (!an.selected)
                         { 
                             e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Red));
@@ -582,7 +727,7 @@ namespace BioGTK
                             {
                                 RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
                                 e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                                e.Cr.StrokePreserve();
+                                e.Cr.Stroke();
                             }
                         }
                     }
@@ -596,7 +741,7 @@ namespace BioGTK
                         {
                             RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
                             e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                            e.Cr.StrokePreserve();
+                            e.Cr.Stroke();
                         }
                     }
                     else
@@ -608,21 +753,21 @@ namespace BioGTK
                             RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y,1,1);
                             e.Cr.MoveTo(p1.X, p1.Y);
                             e.Cr.LineTo(p2.X, p2.Y);
-                            e.Cr.StrokePreserve();
+                            e.Cr.Stroke();
                         }
 
                         RectangleD pp1 = ToViewSpace(an.PointsD[0].X, an.PointsD[0].Y,1,1);
                         RectangleD pp2 = ToViewSpace(an.PointsD[an.PointsD.Count - 1].X, an.PointsD[an.PointsD.Count - 1].Y, 1, 1);
                         e.Cr.MoveTo(pp1.X, pp1.Y);
                         e.Cr.LineTo(pp2.X, pp2.Y);
-                        e.Cr.StrokePreserve();
+                        e.Cr.Stroke();
                         e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Red));
 
                         foreach (RectangleD re in an.GetSelectBoxes(width))
                         {
                             RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
                             e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                            e.Cr.StrokePreserve();
+                            e.Cr.Stroke();
                         }
                     }
                     else
@@ -634,14 +779,14 @@ namespace BioGTK
                             RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
                             e.Cr.MoveTo(p1.X, p1.Y);
                             e.Cr.LineTo(p2.X, p2.Y);
-                            e.Cr.StrokePreserve();
+                            e.Cr.Stroke();
                         }
                         e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Red));
                         foreach (RectangleD re in an.GetSelectBoxes(width))
                         {
                             RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
                             e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                            e.Cr.StrokePreserve();
+                            e.Cr.Stroke();
                         }
                     }
                     else
@@ -653,7 +798,7 @@ namespace BioGTK
                             RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
                             e.Cr.MoveTo(p1.X, p1.Y);
                             e.Cr.LineTo(p2.X, p2.Y);
-                            e.Cr.StrokePreserve();
+                            e.Cr.Stroke();
                         }
                         //With freeform we don't draw select boxes unless the ROI is selected
                         if (an.selected)
@@ -663,14 +808,14 @@ namespace BioGTK
                             {
                                 RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
                                 e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                                e.Cr.StrokePreserve();
+                                e.Cr.Stroke();
                             }
                         }
                         RectangleD pp1 = ToViewSpace(an.PointsD[0].X, an.PointsD[0].Y, 1, 1);
                         RectangleD pp2 = ToViewSpace(an.PointsD[an.PointsD.Count - 1].X, an.PointsD[an.PointsD.Count - 1].Y, 1, 1);
                         e.Cr.MoveTo(pp1.X, pp1.Y);
                         e.Cr.LineTo(pp2.X, pp2.Y);
-                        e.Cr.StrokePreserve();
+                        e.Cr.Stroke();
                     }
                     if (an.type == ROI.Type.Label)
                     {
@@ -679,13 +824,13 @@ namespace BioGTK
                         RectangleD p = ToViewSpace(an.Point.X, an.Point.Y, 1 ,1);
                         e.Cr.MoveTo(p.X, p.Y);
                         e.Cr.ShowText(an.Text);
-                        e.Cr.StrokePreserve();
+                        e.Cr.Stroke();
                         e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Red));
                         foreach (RectangleD re in an.GetSelectBoxes(width))
                         {
                             RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
                             e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                            e.Cr.StrokePreserve();
+                            e.Cr.Stroke();
                         }
                     }
                     if (labels)
@@ -695,14 +840,14 @@ namespace BioGTK
                         RectangleD p = ToViewSpace(an.Rect.X, an.Rect.Y, 1, 1);
                         e.Cr.MoveTo(p.X, p.Y);
                         e.Cr.ShowText(an.Text);
-                        e.Cr.StrokePreserve();
+                        e.Cr.Stroke();
                     }
                     if (bounds && an.type != ROI.Type.Rectangle && an.type != ROI.Type.Label)
                     {
                         RectangleD rrf = ToViewSpace(an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
                         e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Green));
                         e.Cr.Rectangle(rrf.X, rrf.Y, rrf.W, rrf.H);
-                        e.Cr.StrokePreserve();
+                        e.Cr.Stroke();
                     }
                     //Lets draw the selected Boxes.
                     List<RectangleD> rects = new List<RectangleD>();
@@ -721,7 +866,7 @@ namespace BioGTK
                         {
                             RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
                             e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                            e.Cr.StrokePreserve();
+                            e.Cr.Stroke();
                         }
                     }
                     rects.Clear();
@@ -779,12 +924,12 @@ namespace BioGTK
             double moveAmount = 5 * Scale.Width;
             if (e.Event.Key == Gdk.Key.c && e.Event.State == ModifierType.ControlMask)
             {
-                //CopySelection();
+                CopySelection();
                 return;
             }
-            if (e.Event.Key == Gdk.Key.c && e.Event.State == ModifierType.ControlMask)
+            if (e.Event.Key == Gdk.Key.v && e.Event.State == ModifierType.ControlMask)
             {
-                //PasteSelection();
+                PasteSelection();
                 return;
             }
             if (e.Event.Key == Gdk.Key.minus)
@@ -875,6 +1020,7 @@ namespace BioGTK
             SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
         }
 
+        /// It updates the GUI to reflect the current state of the image
         public void UpdateGUI()
         {
             cBar.Adjustment.Lower = 0;
@@ -916,6 +1062,40 @@ namespace BioGTK
             bBox.Active = 0;
         }
 
+        public void CopySelection()
+        {
+            copys.Clear();
+            string s = "";
+            foreach (ROI item in AnnotationsRGB)
+            {
+                if (item.selected)
+                {
+                    copys.Add(item);
+                    s += BioImage.ROIToString(item);
+                }
+            }
+            Clipboard clipboard = Clipboard.Get(Gdk.Selection.Clipboard);
+            clipboard.Text = s;
+        }
+        public void PasteSelection()
+        {
+            Clipboard clipboard = Clipboard.Get(Gdk.Selection.Clipboard);
+            string text = clipboard.WaitForText();
+            string[] sts = text.Split(BioImage.NewLine);
+            foreach (string line in sts)
+            {
+                if (line.Length > 8)
+                {
+                    ROI an = BioImage.StringToROI(line);
+                    //We set the coordinates of the ROI's we are pasting
+                    an.coord = GetCoordinate();
+                    SelectedImage.Annotations.Add(an);
+                }
+            }
+            UpdateView();
+        }
+
+        /* Defining an enum. */
         public enum ViewMode
         {
             Raw,
@@ -1043,11 +1223,13 @@ namespace BioGTK
                 UpdateView();
             }
         }
+        /// It updates the status of the user.
         public void UpdateStatus()
         {
             statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
                 mousePoint + mouseColor + ", " + SelectedImage.Buffers[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X + ", " + SelectedImage.Volume.Location.Y + ") " + Origin.ToString();
         }
+        /// It updates the view.
         public void UpdateView()
         {
             if (SelectedImage.isPyramidal)
@@ -1121,6 +1303,11 @@ namespace BioGTK
         public static ModifierType Modifiers;
         PointD mouseD = new PointD(0, 0);
 
+        /// This function is called when the mouse is moved over the image. It updates the mouse
+        /// position, and if the user is drawing a brush stroke, it draws the stroke on the image
+        /// 
+        /// @param o the object that the event is being called from
+        /// @param MotionNotifyEventArgs 
         private void ImageView_MotionNotifyEvent(object o, MotionNotifyEventArgs e)
         {
             Modifiers = e.Event.State;
@@ -1199,6 +1386,7 @@ namespace BioGTK
             }
 
             if (Tools.currentTool != null)
+            {
                 if (Tools.currentTool.type == Tools.Tool.Type.brush && Modifiers == ModifierType.Button1Mask)
                 {
                     Tools.Tool tool = Tools.currentTool;
@@ -1208,11 +1396,35 @@ namespace BioGTK
                     UpdateImage();
                     UpdateView();
                 }
+                else
+                if (Tools.currentTool.type == Tools.Tool.Type.eraser && Modifiers == ModifierType.Button1Mask)
+                {
+                    Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(ImageView.SelectedBuffer);
+                    Bio.Graphics.Pen pen = new Bio.Graphics.Pen(Tools.EraseColor, (int)Tools.StrokeWidth, ImageView.SelectedBuffer.BitsPerPixel);
+                    g.FillEllipse(new System.Drawing.Rectangle((int)ip.X, (int)ip.Y, (int)Tools.StrokeWidth, (int)Tools.StrokeWidth), pen.color);
+                    pen.Dispose();
+                    App.viewer.UpdateImages();
+                }
+            }
             UpdateStatus();
             pd = p;
         }
         public static PointD mouseDown;
         public static PointD mouseUp;
+        /// The function is called when the mouse button is released. It checks if the mouse button is
+        /// the left button, and if it is, it sets the mouseLeftState to false. It then sets the viewer
+        /// to the current viewer, and converts the mouse coordinates to view space. It then sets the
+        /// mouseUp variable to the pointer variable. It then checks if the mouse button is the middle
+        /// button, and if it is, it checks if the selected image is pyramidal. If it is, it sets the
+        /// pyramidal origin to the mouse coordinates. If it isn't, it sets the origin to the mouse
+        /// coordinates. It then updates the image and the view. It then checks if the selected image is
+        /// null, and if it is, it returns. It then calls the ToolUp function in the tools class,
+        /// passing in the pointer and the event
+        /// 
+        /// @param o The object that the event is being called on.
+        /// @param ButtonReleaseEventArgs 
+        /// 
+        /// @return The image is being returned.
         private void ImageView_ButtonReleaseEvent(object o, ButtonReleaseEventArgs e)
         {
             Modifiers = e.Event.State;
@@ -1252,6 +1464,14 @@ namespace BioGTK
             return ff;
         }
         PointD pd;
+        /// The function is called when the user clicks on the image. It checks if the user clicked on
+        /// an annotation, and if so, it selects the annotation
+        /// 
+        /// @param o the object that the event is being called on
+        /// @param ButtonPressEventArgs e.Event.State
+        /// 
+        /// @return The return value is a tuple of the form (x,y,z,c,t) where x,y,z,c,t are the
+        /// coordinates of the pixel in the image.
         private void ImageView_ButtonPressEvent(object o, ButtonPressEventArgs e)
         {
             Modifiers = e.Event.State;

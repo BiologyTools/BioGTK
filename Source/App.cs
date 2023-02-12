@@ -24,6 +24,8 @@ namespace BioGTK
         public static Scripting scripting = null;
         public static BioConsole console = null;
         public static Functions funcs = null;
+        public static StackTools stack = null;
+        public static SetTool setTool = null;
 
         /// Initialize() is a function that initializes the BioImage Suite Web
         public static void Initialize()
@@ -34,6 +36,7 @@ namespace BioGTK
             roiManager = ROIManager.Create();
             scripting = Scripting.Create();
             console = BioConsole.Create();
+            stack = StackTools.Create();
             //color = ColorTool.Create();
             Settings.Load();
             ImageJ.ImageJPath = Settings.GetSettings("ImageJPath");
@@ -188,6 +191,12 @@ namespace BioGTK
                 else
                 {
                     //If the item we need to add a child item to, is not already a Menu we need to make it a menu
+                    Menu me = new Menu();
+                    MenuItem mi = new MenuItem(System.IO.Path.GetFileName(path));
+                    mi.ButtonPressEvent += ItemClicked;
+                    me.Append(mi);
+                    m.Submenu = me;
+                    me.ShowAll();
                 }
             }
             else if(menu && w!=null)
@@ -218,26 +227,35 @@ namespace BioGTK
                     MenuItem mi = new MenuItem(System.IO.Path.GetFileName(path));
                     mi.ButtonPressEvent += ItemClicked;
                     me.Append(mi);
+                    me.ShowAll();
                 }
                 else
                 {
                     //If the item we need to add a child item to, is not already a Menu we need to make it a menu
+                    Menu me = new Menu();
+                    MenuItem mi = new MenuItem(System.IO.Path.GetFileName(path));
+                    mi.ButtonPressEvent += ItemClicked;
+                    me.Append(mi);
+                    m.Submenu = me;
+                    me.ShowAll();
                 }
             }
-            else if (menu && w != null)
+            else if (!menu && w == null)
             {
-                //Since this is already a Menu we can just append the item to it.
-                Menu m = (Menu)w;
                 MenuItem mi = new MenuItem(System.IO.Path.GetFileName(path));
                 mi.ButtonPressEvent += ItemClicked;
-                m.Append(mi);
+                viewer.contextMenu.Append(mi);
+                viewer.contextMenu.ShowAll();
             }
         }
         private static void ItemClicked(object o, ButtonPressEventArgs args)
         {
             MenuItem ts = (MenuItem)o;
-            Function f = Function.Functions[ts.Label];
-            f.PerformFunction(true);
+            if (Function.Functions.ContainsKey(ts.Label))
+            {
+                Function f = Function.Functions[ts.Label];
+                f.PerformFunction(true);
+            }
         }
     }
 }

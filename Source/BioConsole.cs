@@ -113,6 +113,13 @@ namespace BioGTK
             headless = headlessBox.Active;
         }
 
+        /// The function takes the text from the textbox, passes it to the ImageJ plugin, and then
+        /// updates the image
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
+        /// 
+        /// @return The ImageJ.RunOnImage method returns a string.
         private void ImagejBut_Clicked(object sender, EventArgs e)
         {
             if (ImageView.SelectedImage == null)
@@ -136,6 +143,10 @@ namespace BioGTK
                 App.tabsView.AddTab(BioImage.OpenOME(file));
         }
 
+        /// It runs the code in the textbox and prints the output to the console
+        /// 
+        /// @param sender The object that called the event.
+        /// @param EventArgs The event arguments.
         private void RunBut_Clicked(object sender, EventArgs e)
         {
             object o = Scripting.Script.RunString(textBox.Buffer.Text);
