@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Drawing;
+
 using System.Runtime.InteropServices;
 using AForge;
 
@@ -24,7 +24,7 @@ namespace Bio.Graphics
         /// Fills the specified point on the bitmap with the currently selected fill color.
         /// </summary>
         /// <param name="pt">The starting point for the fill.</param>
-        public override void FloodFill(System.Drawing.Point pt)
+        public override void FloodFill(Point pt)
         {
             watch.Reset();
             watch.Start();
@@ -35,9 +35,9 @@ namespace Bio.Graphics
             ranges = new FloodFillRangeQueue(((bitmapWidth+bitmapHeight)/2)*5);//new Queue<FloodFillRange>();
 
             //***Get starting color.
-            int x = pt.X; int y = pt.Y;
+            int x = (int)pt.X; int y = (int)pt.Y;
             int idx = CoordsToByteIndex(ref x, ref y);
-            startColor = bitmap.GetPixel(pt.X, pt.Y);
+            startColor = bitmap.GetPixel((int)pt.X, (int)pt.Y);
             
             bool[] pixelsChecked=this.pixelsChecked;
 

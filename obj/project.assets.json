@@ -748,60 +748,6 @@
           "lib/netstandard1.0/_._": {}
         }
       },
-      "SharpHook/4.0.0": {
-        "type": "package",
-        "compile": {
-          "lib/net6.0/SharpHook.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net6.0/SharpHook.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "build/SharpHook.targets": {}
-        },
-        "runtimeTargets": {
-          "runtimes/linux-arm/native/libuiohook.so": {
-            "assetType": "native",
-            "rid": "linux-arm"
-          },
-          "runtimes/linux-arm64/native/libuiohook.so": {
-            "assetType": "native",
-            "rid": "linux-arm64"
-          },
-          "runtimes/linux-x64/native/libuiohook.so": {
-            "assetType": "native",
-            "rid": "linux-x64"
-          },
-          "runtimes/osx-arm64/native/libuiohook.dylib": {
-            "assetType": "native",
-            "rid": "osx-arm64"
-          },
-          "runtimes/osx-x64/native/libuiohook.dylib": {
-            "assetType": "native",
-            "rid": "osx-x64"
-          },
-          "runtimes/win-arm/native/uiohook.dll": {
-            "assetType": "native",
-            "rid": "win-arm"
-          },
-          "runtimes/win-arm64/native/uiohook.dll": {
-            "assetType": "native",
-            "rid": "win-arm64"
-          },
-          "runtimes/win-x64/native/uiohook.dll": {
-            "assetType": "native",
-            "rid": "win-x64"
-          },
-          "runtimes/win-x86/native/uiohook.dll": {
-            "assetType": "native",
-            "rid": "win-x86"
-          }
-        }
-      },
       "SharpZipLib/1.3.3": {
         "type": "package",
         "compile": {
@@ -963,19 +909,6 @@
             "assetType": "runtime",
             "rid": "win"
           }
-        }
-      },
-      "System.Drawing.Primitives/4.3.0": {
-        "type": "package",
-        "dependencies": {
-          "System.Runtime": "4.3.0",
-          "System.Runtime.Extensions": "4.3.0"
-        },
-        "compile": {
-          "ref/netstandard1.1/System.Drawing.Primitives.dll": {}
-        },
-        "runtime": {
-          "lib/netstandard1.1/System.Drawing.Primitives.dll": {}
         }
       },
       "System.Formats.Asn1/6.0.0": {
@@ -1512,8 +1445,7 @@
         "type": "project",
         "framework": ".NETCoreApp,Version=v6.0",
         "dependencies": {
-          "GtkSharp": "3.24.24.38",
-          "System.Drawing.Primitives": "4.3.0"
+          "GtkSharp": "3.24.24.38"
         },
         "compile": {
           "bin/placeholder/AForgeBio.dll": {}
@@ -2355,25 +2287,6 @@
           "runtimes/unix/lib/netstandard1.5/System.Runtime.Extensions.dll": {}
         }
       },
-      "SharpHook/4.0.0": {
-        "type": "package",
-        "compile": {
-          "lib/net6.0/SharpHook.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net6.0/SharpHook.dll": {
-            "related": ".xml"
-          }
-        },
-        "native": {
-          "runtimes/osx-x64/native/libuiohook.dylib": {}
-        },
-        "build": {
-          "build/SharpHook.targets": {}
-        }
-      },
       "SharpZipLib/1.3.3": {
         "type": "package",
         "compile": {
@@ -2493,19 +2406,6 @@
         },
         "build": {
           "buildTransitive/netcoreapp3.1/_._": {}
-        }
-      },
-      "System.Drawing.Primitives/4.3.0": {
-        "type": "package",
-        "dependencies": {
-          "System.Runtime": "4.3.0",
-          "System.Runtime.Extensions": "4.3.0"
-        },
-        "compile": {
-          "ref/netstandard1.1/System.Drawing.Primitives.dll": {}
-        },
-        "runtime": {
-          "lib/netstandard1.1/System.Drawing.Primitives.dll": {}
         }
       },
       "System.Formats.Asn1/6.0.0": {
@@ -2999,8 +2899,7 @@
         "type": "project",
         "framework": ".NETCoreApp,Version=v6.0",
         "dependencies": {
-          "GtkSharp": "3.24.24.38",
-          "System.Drawing.Primitives": "4.3.0"
+          "GtkSharp": "3.24.24.38"
         },
         "compile": {
           "bin/placeholder/AForgeBio.dll": {}
@@ -9009,38 +8908,6 @@
         "runtimes/unix/lib/netstandard1.5/System.Runtime.Extensions.dll"
       ]
     },
-    "SharpHook/4.0.0": {
-      "sha512": "OMVZmf8ZQVrjNGpdNIIsmZfsU6Vr9gmLG14CEAVz8X0lI+wOSbBbvJrKM4QHn35c7OchV/ZlTzmwB3ys8T9exQ==",
-      "type": "package",
-      "path": "sharphook/4.0.0",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "LICENSE",
-        "README.md",
-        "build/SharpHook.targets",
-        "icon.png",
-        "lib/net461/SharpHook.dll",
-        "lib/net461/SharpHook.xml",
-        "lib/net6.0/SharpHook.dll",
-        "lib/net6.0/SharpHook.xml",
-        "lib/net7.0/SharpHook.dll",
-        "lib/net7.0/SharpHook.xml",
-        "lib/netstandard2.0/SharpHook.dll",
-        "lib/netstandard2.0/SharpHook.xml",
-        "runtimes/linux-arm/native/libuiohook.so",
-        "runtimes/linux-arm64/native/libuiohook.so",
-        "runtimes/linux-x64/native/libuiohook.so",
-        "runtimes/osx-arm64/native/libuiohook.dylib",
-        "runtimes/osx-x64/native/libuiohook.dylib",
-        "runtimes/win-arm/native/uiohook.dll",
-        "runtimes/win-arm64/native/uiohook.dll",
-        "runtimes/win-x64/native/uiohook.dll",
-        "runtimes/win-x86/native/uiohook.dll",
-        "sharphook.4.0.0.nupkg.sha512",
-        "sharphook.nuspec"
-      ]
-    },
     "SharpZipLib/1.3.3": {
       "sha512": "N8+hwhsKZm25tDJfWpBSW7EGhH/R7EMuiX+KJ4C4u+fCWVc1lJ5zg1u3S1RPPVYgTqhx/C3hxrqUpi6RwK5+Tg==",
       "type": "package",
@@ -9368,35 +9235,6 @@
         "system.drawing.common.6.0.0.nupkg.sha512",
         "system.drawing.common.nuspec",
         "useSharedDesignerContext.txt"
-      ]
-    },
-    "System.Drawing.Primitives/4.3.0": {
-      "sha512": "1QU/c35gwdhvj77fkScXQQbjiVAqIL3fEYn/19NE0CV/ic5TN5PyWAft8HsrbRd4SBLEoErNCkWSzMDc0MmbRw==",
-      "type": "package",
-      "path": "system.drawing.primitives/4.3.0",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "ThirdPartyNotices.txt",
-        "dotnet_library_license.txt",
-        "lib/MonoAndroid10/_._",
-        "lib/MonoTouch10/_._",
-        "lib/net45/System.Drawing.Primitives.dll",
-        "lib/netstandard1.1/System.Drawing.Primitives.dll",
-        "lib/xamarinios10/_._",
-        "lib/xamarinmac20/_._",
-        "lib/xamarintvos10/_._",
-        "lib/xamarinwatchos10/_._",
-        "ref/MonoAndroid10/_._",
-        "ref/MonoTouch10/_._",
-        "ref/net45/System.Drawing.Primitives.dll",
-        "ref/netstandard1.1/System.Drawing.Primitives.dll",
-        "ref/xamarinios10/_._",
-        "ref/xamarinmac20/_._",
-        "ref/xamarintvos10/_._",
-        "ref/xamarinwatchos10/_._",
-        "system.drawing.primitives.4.3.0.nupkg.sha512",
-        "system.drawing.primitives.nuspec"
       ]
     },
     "System.Formats.Asn1/6.0.0": {
@@ -10919,8 +10757,7 @@
       "GtkSharp >= 3.24.24.38",
       "IKVM >= 8.4.5",
       "Newtonsoft.Json >= 13.0.2",
-      "NuGet.Build.Tasks.Pack >= 6.4.0",
-      "SharpHook >= 4.0.0"
+      "NuGet.Build.Tasks.Pack >= 6.4.0"
     ]
   },
   "packageFolders": {
@@ -11004,10 +10841,6 @@
             "suppressParent": "All",
             "target": "Package",
             "version": "[6.4.0, )"
-          },
-          "SharpHook": {
-            "target": "Package",
-            "version": "[4.0.0, )"
           }
         },
         "imports": [

@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Drawing.Imaging;
-using System.Drawing;
 using AForge;
 using Bitmap = AForge.Bitmap; 
 
@@ -305,14 +303,14 @@ namespace Bio.Graphics
             filler.Bitmap = bf;
             //Next we need to find a point inside the polygon from where to start the flood fill.
             //We use the center points x-line till we find a point inside.
-            System.Drawing.Point p = new System.Drawing.Point(r.X + (r.Width / 2), r.Y + (r.Height / 2));
-            System.Drawing.Point? pp = null;
+            Point p = new Point(r.X + (r.Width / 2), r.Y + (r.Height / 2));
+            Point? pp = null;
             polygon = pfs;
             for (int x = r.X; x < r.Width + r.X; x++)
             {
-                if (PointInPolygon(x, p.Y))
+                if (PointInPolygon(x, (int)p.Y))
                 {
-                    pp = new System.Drawing.Point(x, p.Y);
+                    pp = new Point(x, p.Y);
                     break;
                 }
             }

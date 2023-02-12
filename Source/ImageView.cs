@@ -9,14 +9,12 @@ using System.Runtime.CompilerServices;
 using AForge;
 using AForge.Imaging.Filters;
 using AForge.Math;
-using System.Drawing;
 using loci.formats;
 using CSScripting;
-using org.checkerframework.checker.units.qual;
-using Pango;
-using java.awt.geom;
 using Bio;
-using com.sun.tools.javac.util;
+using Point = AForge.Point;
+using Color = AForge.Color;
+using Rectangle = AForge.Rectangle;
 
 namespace BioGTK
 {
@@ -226,7 +224,7 @@ namespace BioGTK
                 {
                     if (SelectedImage.isPyramidal)
                     {
-                        AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, PyramidalOrigin.X, PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                        AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
                         bitmap = bf.ImageRGB;
                         SelectedImage.Buffers[index].Dispose();
                         SelectedImage.Buffers[index] = bf;
@@ -240,7 +238,7 @@ namespace BioGTK
                 {
                     if (SelectedImage.isPyramidal)
                     {
-                        AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, PyramidalOrigin.X, PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                        AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
                         bitmap = bf.ImageRGB;
                         SelectedImage.Buffers[index].Dispose();
                         SelectedImage.Buffers[index] = bf;
@@ -252,7 +250,7 @@ namespace BioGTK
                 {
                     if (SelectedImage.isPyramidal)
                     {
-                        AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, PyramidalOrigin.X, PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                        AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
                         bitmap = bf.ImageRGB;
                         SelectedImage.Buffers[index].Dispose();
                         SelectedImage.Buffers[index] = bf;
@@ -264,7 +262,7 @@ namespace BioGTK
                 {
                     if (SelectedImage.isPyramidal)
                     {
-                        AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, PyramidalOrigin.X, PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                        AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
                         bitmap = bf.ImageRGB;
                         SelectedImage.Buffers[index].Dispose();
                         SelectedImage.Buffers[index] = bf;
@@ -298,7 +296,7 @@ namespace BioGTK
             {
                 if (SelectedImage.isPyramidal)
                 {
-                    AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, PyramidalOrigin.X, PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                    AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
                     bitmap = bf.ImageRGB;
                     SelectedImage.Buffers[index].Dispose();
                     SelectedImage.Buffers[index] = bf;
@@ -312,7 +310,7 @@ namespace BioGTK
             {
                 if (SelectedImage.isPyramidal)
                 {
-                    AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, PyramidalOrigin.X, PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                    AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
                     bitmap = bf.ImageRGB;
                     SelectedImage.Buffers[index].Dispose();
                     SelectedImage.Buffers[index] = bf;
@@ -324,7 +322,7 @@ namespace BioGTK
             {
                 if (SelectedImage.isPyramidal)
                 {
-                    AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, PyramidalOrigin.X, PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                    AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
                     bitmap = bf.ImageRGB;
                     SelectedImage.Buffers[index].Dispose();
                     SelectedImage.Buffers[index] = bf;
@@ -336,7 +334,7 @@ namespace BioGTK
             {
                 if (SelectedImage.isPyramidal)
                 {
-                    AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, PyramidalOrigin.X, PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                    AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
                     bitmap = bf.ImageRGB;
                     SelectedImage.Buffers[index].Dispose();
                     SelectedImage.Buffers[index] = bf;
@@ -569,12 +567,12 @@ namespace BioGTK
 
         private void ScrollV_ButtonReleaseEvent(object o, ButtonReleaseEventArgs args)
         {
-            PyramidalOrigin = new System.Drawing.Point((int)scrollH.Value, (int)scrollV.Value);
+            PyramidalOrigin = new Point((int)scrollH.Value, (int)scrollV.Value);
         }
 
         private void ScrollH_ButtonReleaseEvent(object o, ButtonReleaseEventArgs args)
         {
-            PyramidalOrigin = new System.Drawing.Point((int)scrollH.Value, (int)scrollV.Value);
+            PyramidalOrigin = new Point((int)scrollH.Value, (int)scrollV.Value);
         }
 
         private void PictureBox_SizeAllocated(object o, SizeAllocatedArgs args)
@@ -597,7 +595,7 @@ namespace BioGTK
             g.Stroke();
             g.Stroke();
         }
-        public static Cairo.Color FromColor(System.Drawing.Color color)
+        public static Cairo.Color FromColor(Color color)
         {
             return new Cairo.Color((double)color.R / 255, (double)color.G / 255, (double)color.B / 255);
         }
@@ -669,7 +667,7 @@ namespace BioGTK
 
                     if (an.selected)
                     {
-                        e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Magenta));
+                        e.Cr.SetSourceColor(FromColor(Color.Magenta));
                     }
                     else
                         e.Cr.SetSourceColor(FromColor(an.strokeColor));
@@ -685,7 +683,7 @@ namespace BioGTK
                         e.Cr.MoveTo(p1.X, p1.Y);
                         e.Cr.LineTo(p2.X, p2.Y);
                         e.Cr.Stroke();
-                        e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Red));
+                        e.Cr.SetSourceColor(FromColor(Color.Red));
                         foreach (RectangleD re in an.GetSelectBoxes(width))
                         {
                             RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
@@ -704,7 +702,7 @@ namespace BioGTK
                             e.Cr.LineTo(p2.X, p2.Y);
                             e.Cr.Stroke();
                         }
-                        e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Red));
+                        e.Cr.SetSourceColor(FromColor(Color.Red));
                         foreach (RectangleD re in an.GetSelectBoxes(width))
                         {
                             RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
@@ -722,7 +720,7 @@ namespace BioGTK
                         e.Cr.Stroke();
                         if (!an.selected)
                         { 
-                            e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Red));
+                            e.Cr.SetSourceColor(FromColor(Color.Red));
                             foreach (RectangleD re in an.GetSelectBoxes(width))
                             {
                                 RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
@@ -736,7 +734,7 @@ namespace BioGTK
                     {
                         RectangleD rect = ToViewSpace(an.X + (an.W / 2), an.Y + (an.H / 2), an.W, an.H);
                         DrawEllipse(e.Cr, rect.X, rect.Y, rect.W, rect.H);
-                        e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Red));
+                        e.Cr.SetSourceColor(FromColor(Color.Red));
                         foreach (RectangleD re in an.GetSelectBoxes(width))
                         {
                             RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
@@ -761,7 +759,7 @@ namespace BioGTK
                         e.Cr.MoveTo(pp1.X, pp1.Y);
                         e.Cr.LineTo(pp2.X, pp2.Y);
                         e.Cr.Stroke();
-                        e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Red));
+                        e.Cr.SetSourceColor(FromColor(Color.Red));
 
                         foreach (RectangleD re in an.GetSelectBoxes(width))
                         {
@@ -781,7 +779,7 @@ namespace BioGTK
                             e.Cr.LineTo(p2.X, p2.Y);
                             e.Cr.Stroke();
                         }
-                        e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Red));
+                        e.Cr.SetSourceColor(FromColor(Color.Red));
                         foreach (RectangleD re in an.GetSelectBoxes(width))
                         {
                             RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
@@ -803,7 +801,7 @@ namespace BioGTK
                         //With freeform we don't draw select boxes unless the ROI is selected
                         if (an.selected)
                         {
-                            e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Red));
+                            e.Cr.SetSourceColor(FromColor(Color.Red));
                             foreach (RectangleD re in an.GetSelectBoxes(width))
                             {
                                 RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
@@ -825,7 +823,7 @@ namespace BioGTK
                         e.Cr.MoveTo(p.X, p.Y);
                         e.Cr.ShowText(an.Text);
                         e.Cr.Stroke();
-                        e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Red));
+                        e.Cr.SetSourceColor(FromColor(Color.Red));
                         foreach (RectangleD re in an.GetSelectBoxes(width))
                         {
                             RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
@@ -845,7 +843,7 @@ namespace BioGTK
                     if (bounds && an.type != ROI.Type.Rectangle && an.type != ROI.Type.Label)
                     {
                         RectangleD rrf = ToViewSpace(an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
-                        e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Green));
+                        e.Cr.SetSourceColor(FromColor(Color.Green));
                         e.Cr.Rectangle(rrf.X, rrf.Y, rrf.W, rrf.H);
                         e.Cr.Stroke();
                     }
@@ -859,7 +857,7 @@ namespace BioGTK
                             rects.Add(sels[an.selectedPoints[p]]);
                         }
                     }
-                    e.Cr.SetSourceColor(FromColor(System.Drawing.Color.Blue));
+                    e.Cr.SetSourceColor(FromColor(Color.Blue));
                     if (rects.Count > 0)
                     {
                         foreach (RectangleD re in an.GetSelectBoxes(width))
@@ -1165,7 +1163,7 @@ namespace BioGTK
             }
         }
         PointD origin = new PointD(0, 0);
-        System.Drawing.Point pyramidalOrigin = new System.Drawing.Point(0, 0);
+        Point pyramidalOrigin = new Point(0, 0);
         public PointD Origin
         {
             get { return origin; }
@@ -1174,7 +1172,7 @@ namespace BioGTK
                 origin = value;
             }
         }
-        public System.Drawing.Point PyramidalOrigin
+        public Point PyramidalOrigin
         {
             get { return pyramidalOrigin; }
             set
@@ -1202,7 +1200,7 @@ namespace BioGTK
                 double y = PyramidalOrigin.Y * ((double)SelectedImage.Resolutions[resolution].SizeY / (double)SelectedImage.Resolutions[value].SizeY);
                 scrollH.Adjustment.Upper = SelectedImage.Resolutions[value].SizeX;
                 scrollV.Adjustment.Upper = SelectedImage.Resolutions[value].SizeY;
-                PyramidalOrigin = new System.Drawing.Point((int)x, (int)y);
+                PyramidalOrigin = new Point((int)x, (int)y);
                 SelectedImage.Resolution = value;
                 resolution = value;
                 UpdateImage();
@@ -1392,7 +1390,7 @@ namespace BioGTK
                     Tools.Tool tool = Tools.currentTool;
                     Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(SelectedBuffer);
                     g.pen = new Bio.Graphics.Pen(Tools.DrawColor, (int)Tools.StrokeWidth, ImageView.SelectedImage.bitsPerPixel);
-                    g.FillEllipse(new System.Drawing.Rectangle((int)ip.X, (int)ip.Y, (int)Tools.StrokeWidth, (int)Tools.StrokeWidth), g.pen.color);
+                    g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)Tools.StrokeWidth, (int)Tools.StrokeWidth), g.pen.color);
                     UpdateImage();
                     UpdateView();
                 }
@@ -1401,7 +1399,7 @@ namespace BioGTK
                 {
                     Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(ImageView.SelectedBuffer);
                     Bio.Graphics.Pen pen = new Bio.Graphics.Pen(Tools.EraseColor, (int)Tools.StrokeWidth, ImageView.SelectedBuffer.BitsPerPixel);
-                    g.FillEllipse(new System.Drawing.Rectangle((int)ip.X, (int)ip.Y, (int)Tools.StrokeWidth, (int)Tools.StrokeWidth), pen.color);
+                    g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)Tools.StrokeWidth, (int)Tools.StrokeWidth), pen.color);
                     pen.Dispose();
                     App.viewer.UpdateImages();
                 }
@@ -1439,7 +1437,7 @@ namespace BioGTK
                     if (SelectedImage.isPyramidal)
                     {
                         PointD pf = new PointD(e.Event.X - mouseD.X, e.Event.Y - mouseD.Y);
-                        PyramidalOrigin = new System.Drawing.Point(PyramidalOrigin.X - (int)pf.X, PyramidalOrigin.Y - (int)pf.Y);
+                        PyramidalOrigin = new Point(PyramidalOrigin.X - (int)pf.X, PyramidalOrigin.Y - (int)pf.Y);
                     }
                     else
                     {
@@ -1553,7 +1551,7 @@ namespace BioGTK
                 {
                     foreach (ROI an in bi.Annotations)
                     {
-                        if (an.Rect.ToRectangleF().IntersectsWith(new RectangleF(pointer.ToPointF(),new SizeF(1,1))))
+                        if (an.Rect.ToRectangleF().IntersectsWith(new RectangleF((float)pointer.X, (float)pointer.Y,1,1)))
                         {
                             selectedAnnotations.Add(an);
                             an.selected = true;
@@ -1577,7 +1575,7 @@ namespace BioGTK
 
             if (e.Event.Button == 1)
             {
-                System.Drawing.Point s = new System.Drawing.Point(SelectedImage.SizeX, SelectedImage.SizeY);
+                Point s = new Point(SelectedImage.SizeX, SelectedImage.SizeY);
                 if ((mouseD.X < s.X && (mouseD.Y < s.Y) || (mouseD.X >= 0 && (mouseD.Y >= 0))))
                 {
                     int zc = SelectedImage.Coordinate.Z;
@@ -1640,7 +1638,7 @@ namespace BioGTK
             double dy = ToScreenScaleH(p.H);
             return new RectangleD((float)d.X, (float)d.Y, (float)dx, (float)dy);
         }
-        public PointF ToViewSpace(System.Drawing.Point p)
+        public PointF ToViewSpace(Point p)
         {
             PointD d = ToViewSpace(p.X, p.Y);
             return new PointF((float)d.X, (float)d.Y);

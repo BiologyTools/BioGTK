@@ -7,9 +7,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using AForge;
-using System.Drawing;
+
 using Cairo;
-using Color = System.Drawing.Color;
+using Color = AForge.Color;
 using Gdk;
 
 namespace BioGTK
@@ -195,7 +195,7 @@ namespace BioGTK
             Cairo.Context g = args.Cr;
             if (graphMax == 0)
                 graphMax = ushort.MaxValue;
-            g.SetSourceColor(ImageView.FromColor(System.Drawing.Color.LightGray));
+            g.SetSourceColor(ImageView.FromColor(Color.LightGray));
             g.Restore();
             g.Translate(-graphMin, 0);
             g.LineWidth = 1;
@@ -219,7 +219,7 @@ namespace BioGTK
             for (int c = 0; c < ImageView.SelectedImage.Channels.Count; c++)
             {
                 //We draw the mouse line
-                g.SetSourceColor(ImageView.FromColor(System.Drawing.Color.Black));
+                g.SetSourceColor(ImageView.FromColor(Color.Black));
                 g.MoveTo(mouseX, 0);
                 g.LineTo(mouseX, this.AllocatedHeight);
                 g.Stroke();
@@ -233,8 +233,8 @@ namespace BioGTK
                     else
                         stat = channel.stats[i];
                     g.LineWidth = bin * fx;
-                    Cairo.Color black = ImageView.FromColor(System.Drawing.Color.FromArgb(35, 0, 0, 0));
-                    Cairo.Color blackd = ImageView.FromColor(System.Drawing.Color.FromArgb(150, 0, 0, 0));
+                    Cairo.Color black = ImageView.FromColor(Color.FromArgb(35, 0, 0, 0));
+                    Cairo.Color blackd = ImageView.FromColor(Color.FromArgb(150, 0, 0, 0));
                     Cairo.Color pen = new Cairo.Color();
                     Cairo.Color pend = new Cairo.Color();
                     int dark = 200;
@@ -256,18 +256,18 @@ namespace BioGTK
                     {
                         if (i == 0)
                         {
-                            pen = ImageView.FromColor(System.Drawing.Color.FromArgb(light, 255, 0, 0));
-                            pend = ImageView.FromColor(System.Drawing.Color.FromArgb(dark, 255, 0, 0));
+                            pen = ImageView.FromColor(Color.FromArgb(light, 255, 0, 0));
+                            pend = ImageView.FromColor(Color.FromArgb(dark, 255, 0, 0));
                         }
                         else if (i == 1)
                         {
-                            pen = ImageView.FromColor(System.Drawing.Color.FromArgb(light, 0, 255, 0));
-                            pend = ImageView.FromColor(System.Drawing.Color.FromArgb(dark, 0, 255, 0));
+                            pen = ImageView.FromColor(Color.FromArgb(light, 0, 255, 0));
+                            pend = ImageView.FromColor(Color.FromArgb(dark, 0, 255, 0));
                         }
                         else
                         {
-                            pen = ImageView.FromColor(System.Drawing.Color.FromArgb(light, 0, 0, 255));
-                            pend = ImageView.FromColor(System.Drawing.Color.FromArgb(dark, 0, 0, 255));
+                            pen = ImageView.FromColor(Color.FromArgb(light, 0, 0, 255));
+                            pend = ImageView.FromColor(Color.FromArgb(dark, 0, 0, 255));
                         }
                     }
 
@@ -546,7 +546,7 @@ namespace BioGTK
         /// @param l wavelength in nanometers
         /// 
         /// @return A color.
-        System.Drawing.Color SpectralColor(double l) // RGB <0,1> <- lambda l <400,700> [nm]
+        Color SpectralColor(double l) // RGB <0,1> <- lambda l <400,700> [nm]
         {
             double t;
             double r = 0;
@@ -565,7 +565,7 @@ namespace BioGTK
             r *= 255;
             g *= 255;
             b *= 255;
-            return System.Drawing.Color.FromArgb(255, (int)r, (int)g, (int)b);
+            return Color.FromArgb(255, (int)r, (int)g, (int)b);
         }
     }
 }

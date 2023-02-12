@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
-using System.Drawing;
+
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -237,7 +237,7 @@ namespace BioGTK
                   @"//css_reference " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Name + @".dll
                     using System;
                     using Gtk;
-                    using System.Drawing;
+                    
                     using System.Threading;
                     using BioGTK;
                     using AForge;";

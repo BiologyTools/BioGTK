@@ -6,14 +6,11 @@ using Gtk;
 using Bio;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Bio.Graphics;
 using System.Collections;
 using Gdk;
-using System.Reflection;
+using Color = AForge.Color;
+using Rectangle = AForge.Rectangle;
 
 namespace BioGTK
 {
@@ -114,7 +111,7 @@ namespace BioGTK
         private static MagicSelect magicSel;
         private static int width = 5;
 
-        public static System.Drawing.Rectangle selectionRectangle;
+        public static Rectangle selectionRectangle;
         public static Hashtable tools = new Hashtable();
         private AbstractFloodFiller floodFiller = null;
         public class Tool
@@ -162,7 +159,7 @@ namespace BioGTK
                     }
                 }
             }
-            public List<System.Drawing.Point> Points;
+            public List<AForge.Point> Points;
             public ToolType toolType;
             private RectangleD rect;
             public RectangleD Rectangle
@@ -298,8 +295,8 @@ namespace BioGTK
         {
             if (ImageView.SelectedImage != null)
             {
-                System.Drawing.Color c1 = ColorS.ToColor(EraseColor, ImageView.SelectedImage.Buffers[0].BitsPerPixel);
-                System.Drawing.Color c2 = ColorS.ToColor(DrawColor, ImageView.SelectedImage.Buffers[0].BitsPerPixel);
+                Color c1 = ColorS.ToColor(EraseColor);
+                Color c2 = ColorS.ToColor(DrawColor);
                 Gdk.RGBA rGBA = new Gdk.RGBA();
                 rGBA.Red = c1.R;
                 rGBA.Green = c1.G;
@@ -556,7 +553,7 @@ namespace BioGTK
                 PointD pf = new PointD(ImageView.mouseUp.X - ImageView.mouseDown.X, ImageView.mouseUp.Y - ImageView.mouseDown.Y);
                 ZCT coord = App.viewer.GetCoordinate();
 
-                System.Drawing.Rectangle r = new System.Drawing.Rectangle((int)ImageView.mouseDown.X, (int)ImageView.mouseDown.Y, (int)(ImageView.mouseUp.X - ImageView.mouseDown.X), (int)(ImageView.mouseUp.Y - ImageView.mouseDown.Y));
+                Rectangle r = new Rectangle((int)ImageView.mouseDown.X, (int)ImageView.mouseDown.Y, (int)(ImageView.mouseUp.X - ImageView.mouseDown.X), (int)(ImageView.mouseUp.Y - ImageView.mouseDown.Y));
                 if (r.Width <= 2 || r.Height <= 2)
                     return;
                 AForge.Bitmap bf = ImageView.SelectedImage.Buffers[ImageView.SelectedImage.Coords[coord.Z, coord.C, coord.T]].GetCropBuffer(r);
@@ -621,7 +618,7 @@ namespace BioGTK
                 floodFiller.FillColor = DrawColor;
                 floodFiller.Tolerance = new ColorS(1000, 1000, 1000);
                 floodFiller.Bitmap = ImageView.SelectedImage.Buffers[ImageView.SelectedImage.Coords[coord.C, coord.Z, coord.T]];
-                floodFiller.FloodFill(new System.Drawing.Point((int)mouseU.X, (int)mouseU.Y));
+                floodFiller.FloodFill(new AForge.Point((int)mouseU.X, (int)mouseU.Y));
                 App.viewer.UpdateImages();
             }
             else

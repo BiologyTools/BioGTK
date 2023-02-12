@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v6.0": {
-      "BioGTK/1.0.0": {
+      "BioGTK/2.0.0": {
         "dependencies": {
           "AForgeBio": "1.1.0",
           "BitMiracle.LibTiff.NET": "2.4.649",
@@ -16,7 +16,6 @@
           "IKVM": "8.4.5",
           "Newtonsoft.Json": "13.0.2",
           "NuGet.Build.Tasks.Pack": "6.4.0",
-          "SharpHook": "4.0.0",
           "bioformats_package": "0.0.0.0"
         },
         "runtime": {
@@ -601,61 +600,6 @@
           "Microsoft.NETCore.Targets": "1.1.3"
         }
       },
-      "SharpHook/4.0.0": {
-        "runtime": {
-          "lib/net6.0/SharpHook.dll": {
-            "assemblyVersion": "4.0.0.0",
-            "fileVersion": "4.0.0.0"
-          }
-        },
-        "runtimeTargets": {
-          "runtimes/linux-arm/native/libuiohook.so": {
-            "rid": "linux-arm",
-            "assetType": "native",
-            "fileVersion": "0.0.0.0"
-          },
-          "runtimes/linux-arm64/native/libuiohook.so": {
-            "rid": "linux-arm64",
-            "assetType": "native",
-            "fileVersion": "0.0.0.0"
-          },
-          "runtimes/linux-x64/native/libuiohook.so": {
-            "rid": "linux-x64",
-            "assetType": "native",
-            "fileVersion": "0.0.0.0"
-          },
-          "runtimes/osx-arm64/native/libuiohook.dylib": {
-            "rid": "osx-arm64",
-            "assetType": "native",
-            "fileVersion": "0.0.0.0"
-          },
-          "runtimes/osx-x64/native/libuiohook.dylib": {
-            "rid": "osx-x64",
-            "assetType": "native",
-            "fileVersion": "0.0.0.0"
-          },
-          "runtimes/win-arm/native/uiohook.dll": {
-            "rid": "win-arm",
-            "assetType": "native",
-            "fileVersion": "0.0.0.0"
-          },
-          "runtimes/win-arm64/native/uiohook.dll": {
-            "rid": "win-arm64",
-            "assetType": "native",
-            "fileVersion": "0.0.0.0"
-          },
-          "runtimes/win-x64/native/uiohook.dll": {
-            "rid": "win-x64",
-            "assetType": "native",
-            "fileVersion": "0.0.0.0"
-          },
-          "runtimes/win-x86/native/uiohook.dll": {
-            "rid": "win-x86",
-            "assetType": "native",
-            "fileVersion": "0.0.0.0"
-          }
-        }
-      },
       "SharpZipLib/1.3.3": {
         "runtime": {
           "lib/netstandard2.1/ICSharpCode.SharpZipLib.dll": {
@@ -776,12 +720,6 @@
             "assemblyVersion": "6.0.0.0",
             "fileVersion": "6.0.21.52210"
           }
-        }
-      },
-      "System.Drawing.Primitives/4.3.0": {
-        "dependencies": {
-          "System.Runtime": "4.3.1",
-          "System.Runtime.Extensions": "4.3.0"
         }
       },
       "System.Formats.Asn1/6.0.0": {},
@@ -1017,8 +955,7 @@
       },
       "AForgeBio/1.1.0": {
         "dependencies": {
-          "GtkSharp": "3.24.24.38",
-          "System.Drawing.Primitives": "4.3.0"
+          "GtkSharp": "3.24.24.38"
         },
         "runtime": {
           "AForgeBio.dll": {}
@@ -1035,7 +972,7 @@
     }
   },
   "libraries": {
-    "BioGTK/1.0.0": {
+    "BioGTK/2.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -1285,13 +1222,6 @@
       "path": "runtime.native.system.io.compression/4.3.0",
       "hashPath": "runtime.native.system.io.compression.4.3.0.nupkg.sha512"
     },
-    "SharpHook/4.0.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-OMVZmf8ZQVrjNGpdNIIsmZfsU6Vr9gmLG14CEAVz8X0lI+wOSbBbvJrKM4QHn35c7OchV/ZlTzmwB3ys8T9exQ==",
-      "path": "sharphook/4.0.0",
-      "hashPath": "sharphook.4.0.0.nupkg.sha512"
-    },
     "SharpZipLib/1.3.3": {
       "type": "package",
       "serviceable": true,
@@ -1347,13 +1277,6 @@
       "sha512": "sha512-NfuoKUiP2nUWwKZN6twGqXioIe1zVD0RIj2t976A+czLHr2nY454RwwXs6JU9Htc6mwqL6Dn/nEL3dpVf2jOhg==",
       "path": "system.drawing.common/6.0.0",
       "hashPath": "system.drawing.common.6.0.0.nupkg.sha512"
-    },
-    "System.Drawing.Primitives/4.3.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-1QU/c35gwdhvj77fkScXQQbjiVAqIL3fEYn/19NE0CV/ic5TN5PyWAft8HsrbRd4SBLEoErNCkWSzMDc0MmbRw==",
-      "path": "system.drawing.primitives/4.3.0",
-      "hashPath": "system.drawing.primitives.4.3.0.nupkg.sha512"
     },
     "System.Formats.Asn1/6.0.0": {
       "type": "package",

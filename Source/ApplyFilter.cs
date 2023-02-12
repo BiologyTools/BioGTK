@@ -1,9 +1,9 @@
-﻿using System.Drawing;
+﻿
 using System;
 using BioGTK;
 using Gtk;
-
-namespace Bio
+using AForge;
+namespace BioGTK
 {
     public partial class ApplyFilter : Gtk.Dialog
     {
@@ -213,7 +213,7 @@ namespace Bio
         {
             get
             {
-               return System.Drawing.Color.FromArgb(fillColor.Color.Red, fillColor.Color.Green, fillColor.Color.Blue);
+               return Color.FromArgb(fillColor.Color.Red, fillColor.Color.Green, fillColor.Color.Blue);
             }
         }
         /* Returning the value of the wBox. */

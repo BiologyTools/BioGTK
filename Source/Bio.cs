@@ -18,8 +18,8 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Runtime.Serialization;
 using System.Text;
-using System.Drawing;
 using Bitmap = AForge.Bitmap;
+using Color = AForge.Color;
 using loci.formats.@in;
 using Gtk;
 
@@ -235,9 +235,9 @@ namespace BioGTK
             w = W;
             h = H;
         }
-        public System.Drawing.Rectangle ToRectangleInt()
+        public Rectangle ToRectangleInt()
         {
-            return new System.Drawing.Rectangle((int)X, (int)Y, (int)W, (int)H);
+            return new Rectangle((int)X, (int)Y, (int)W, (int)H);
         }
         /// If any of the four corners of the rectangle are inside the polygon, then the rectangle
         /// intersects with the polygon
@@ -443,10 +443,10 @@ namespace BioGTK
         public float fontSize = 8;
         public Cairo.FontSlant slant;
         public Cairo.FontWeight weight;
-        public string family = SystemFonts.DefaultFont.FontFamily.ToString();
+        public string family = "Times New Roman";
         public ZCT coord;
-        public System.Drawing.Color strokeColor;
-        public System.Drawing.Color fillColor;
+        public Color strokeColor;
+        public Color fillColor;
         public bool isFilled = false;
         public string id = "";
         public string roiID = "";
@@ -547,7 +547,7 @@ namespace BioGTK
         public ROI()
         {
             coord = new ZCT(0, 0, 0);
-            strokeColor = System.Drawing.Color.Yellow;
+            strokeColor = Color.Yellow;
             BoundingBox = new RectangleD(0, 0, 1, 1);
         }
 
@@ -1134,7 +1134,7 @@ namespace BioGTK
                 Filt f = filters[name];
                 BaseRotateFilter fi = (BaseRotateFilter)f.filt;
                 fi.Angle = angle;
-                fi.FillColor = System.Drawing.Color.FromArgb(a, r, g, b);
+                fi.FillColor = Color.FromArgb(a, r, g, b);
                 for (int i = 0; i < img.Buffers.Count; i++)
                 {
                     img.Buffers[i] = fi.Apply(img.Buffers[i]);
@@ -1326,10 +1326,10 @@ namespace BioGTK
             f = new Filt("BradleyLocalThresholding", new BradleyLocalThresholding(), Filt.Type.InPlace);
             filters.Add(f.name, f);
             indexs[2, 4] = 16;
-            f = new Filt("CanvasCrop", new CanvasCrop(Rectangle.Empty), Filt.Type.InPlace);
+            f = new Filt("CanvasCrop", new CanvasCrop(new Rectangle(0,0,0,0)), Filt.Type.InPlace);
             filters.Add(f.name, f);
             indexs[2, 5] = 17;
-            f = new Filt("CanvasFill", new CanvasFill(Rectangle.Empty), Filt.Type.InPlace);
+            f = new Filt("CanvasFill", new CanvasFill(new Rectangle(0, 0, 0, 0)), Filt.Type.InPlace);
             filters.Add(f.name, f);
             indexs[2, 6] = 18;
             f = new Filt("CanvasMove", new CanvasMove(new IntPoint()), Filt.Type.InPlace);
@@ -1510,7 +1510,7 @@ namespace BioGTK
 
             //Transformation
             indexs[7, 0] = 61;
-            f = new Filt("Crop", new Crop(Rectangle.Empty), Filt.Type.Transformation);
+            f = new Filt("Crop", new Crop(new Rectangle(0,0,0,0)), Filt.Type.Transformation);
             filters.Add(f.name, f);
             indexs[7, 1] = 62;
             f = new Filt("QuadrilateralTransformation", new QuadrilateralTransformation(), Filt.Type.Transformation);
@@ -2883,8 +2883,8 @@ namespace BioGTK
         /// @return A RectangleF object.
         public RectangleF ToImageSpace(RectangleD p)
         {
-            System.Drawing.RectangleF r = new RectangleF();
-            System.Drawing.Point pp = new System.Drawing.Point();
+            RectangleF r = new RectangleF();
+            Point pp = new Point();
             r.X = (int)((p.X - stageSizeX) / physicalSizeX);
             r.Y = (int)((p.Y - stageSizeY) / physicalSizeY);
             r.Width = (int)(p.W / physicalSizeX);
@@ -3812,6 +3812,8 @@ namespace BioGTK
         /// to view images.
         public static void Initialize()
         {
+            if (!OMESupport())
+                return;
             //We initialize OME on a seperate thread so the user doesn't have to wait for initialization to
             //view images. 
             System.Threading.Thread t = new System.Threading.Thread(new System.Threading.ThreadStart(InitOME));
@@ -3820,8 +3822,6 @@ namespace BioGTK
         /// > Initialize the OME-XML library
         private static void InitOME()
         {
-            if (!OMESupport())
-                return;
             factory = new ServiceFactory();
             service = (OMEXMLService)factory.getInstance(typeof(OMEXMLService));
             reader = new ImageReader(); 
@@ -4621,7 +4621,7 @@ namespace BioGTK
                             omexml.setEllipseID(an.id, i, serie);
                         else
                             omexml.setEllipseID("Shape:" + i + ":" + serie, i, serie);
-                        //We need to change System.Drawing.Rectangle to ellipse radius;
+                        //We need to change Rectangle to ellipse radius;
                         double w = (double)an.W / 2;
                         double h = (double)an.H / 2;
                         omexml.setEllipseRadiusX(java.lang.Double.valueOf(b.ToImageSizeX(w)), i, serie);
@@ -4918,7 +4918,7 @@ namespace BioGTK
                     if (b.meta.getChannelColor(serie, i) != null)
                     {
                         ome.xml.model.primitives.Color cc = b.meta.getChannelColor(serie, i);
-                        ch.Color = System.Drawing.Color.FromArgb(cc.getRed(), cc.getGreen(), cc.getBlue());
+                        ch.Color = Color.FromArgb(cc.getRed(), cc.getGreen(), cc.getBlue());
                     }
                     if (b.meta.getChannelIlluminationType(serie, i) != null)
                         ch.IlluminationType = b.meta.getChannelIlluminationType(serie, i).ToString();
@@ -5040,13 +5040,13 @@ namespace BioGTK
                             an.family = ff.name();
                         ome.xml.model.primitives.Color col = b.meta.getPointStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = b.meta.getPointStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = b.meta.getPointStrokeColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                         continue;
                     }
                     else
@@ -5079,13 +5079,13 @@ namespace BioGTK
                             an.family = ff.name();
                         ome.xml.model.primitives.Color col = b.meta.getLineStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = b.meta.getLineStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = b.meta.getLineFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                         continue;
                     }
                     else
@@ -5118,13 +5118,13 @@ namespace BioGTK
                             an.family = ff.name();
                         ome.xml.model.primitives.Color col = b.meta.getRectangleStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = b.meta.getRectangleStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = b.meta.getRectangleFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                         ome.xml.model.enums.FillRule fr = b.meta.getRectangleFillRule(im, sc);
                         continue;
                     }
@@ -5137,7 +5137,7 @@ namespace BioGTK
                         double py = b.meta.getEllipseY(im, sc).doubleValue();
                         double ew = b.meta.getEllipseRadiusX(im, sc).doubleValue();
                         double eh = b.meta.getEllipseRadiusY(im, sc).doubleValue();
-                        //We convert the ellipse radius to System.Drawing.Rectangle
+                        //We convert the ellipse radius to Rectangle
                         double w = ew * 2;
                         double h = eh * 2;
                         double x = px - ew;
@@ -5162,13 +5162,13 @@ namespace BioGTK
                             an.family = ff.name();
                         ome.xml.model.primitives.Color col = b.meta.getEllipseStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = b.meta.getEllipseStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = b.meta.getEllipseFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                     }
                     else
                     if (type == "Polygon")
@@ -5203,13 +5203,13 @@ namespace BioGTK
                             an.family = ff.name();
                         ome.xml.model.primitives.Color col = b.meta.getPolygonStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = b.meta.getPolygonStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = b.meta.getPolygonFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                     }
                     else
                     if (type == "Polyline")
@@ -5242,13 +5242,13 @@ namespace BioGTK
                             an.family = ff.name();
                         ome.xml.model.primitives.Color col = b.meta.getPolylineStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = b.meta.getPolylineStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = b.meta.getPolylineFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                     }
                     else
                     if (type == "Label")
@@ -5275,13 +5275,13 @@ namespace BioGTK
                             an.family = ff.name();
                         ome.xml.model.primitives.Color col = b.meta.getLabelStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = b.meta.getLabelStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = b.meta.getLabelFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                         PointD p = new PointD(b.meta.getLabelX(im, sc).doubleValue(), b.meta.getLabelY(im, sc).doubleValue());
                         an.AddPoint(b.ToStageSpace(p));
                         an.Text = b.meta.getLabelText(im, sc);
@@ -5574,7 +5574,7 @@ namespace BioGTK
                     if (b.meta.getChannelColor(serie, i) != null)
                     {
                         ome.xml.model.primitives.Color cc = b.meta.getChannelColor(serie, i);
-                        ch.Color = System.Drawing.Color.FromArgb(cc.getRed(), cc.getGreen(), cc.getBlue());
+                        ch.Color = Color.FromArgb(cc.getRed(), cc.getGreen(), cc.getBlue());
                     }
                     if (b.meta.getChannelIlluminationType(serie, i) != null)
                         ch.IlluminationType = b.meta.getChannelIlluminationType(serie, i).ToString();
@@ -5692,13 +5692,13 @@ namespace BioGTK
                             an.family = ff.name();
                         ome.xml.model.primitives.Color col = b.meta.getPointStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = b.meta.getPointStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = b.meta.getPointStrokeColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                         continue;
                     }
                     else
@@ -5731,13 +5731,13 @@ namespace BioGTK
                             an.family = ff.name();
                         ome.xml.model.primitives.Color col = b.meta.getLineStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = b.meta.getLineStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = b.meta.getLineFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                         continue;
                     }
                     else
@@ -5770,13 +5770,13 @@ namespace BioGTK
                             an.family = ff.name();
                         ome.xml.model.primitives.Color col = b.meta.getRectangleStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = b.meta.getRectangleStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = b.meta.getRectangleFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                         ome.xml.model.enums.FillRule fr = b.meta.getRectangleFillRule(im, sc);
                         continue;
                     }
@@ -5789,7 +5789,7 @@ namespace BioGTK
                         double py = b.meta.getEllipseY(im, sc).doubleValue();
                         double ew = b.meta.getEllipseRadiusX(im, sc).doubleValue();
                         double eh = b.meta.getEllipseRadiusY(im, sc).doubleValue();
-                        //We convert the ellipse radius to System.Drawing.Rectangle
+                        //We convert the ellipse radius to Rectangle
                         double w = ew * 2;
                         double h = eh * 2;
                         double x = px - ew;
@@ -5814,13 +5814,13 @@ namespace BioGTK
                             an.family = ff.name();
                         ome.xml.model.primitives.Color col = b.meta.getEllipseStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = b.meta.getEllipseStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = b.meta.getEllipseFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                     }
                     else
                     if (type == "Polygon")
@@ -5855,13 +5855,13 @@ namespace BioGTK
                             an.family = ff.name();
                         ome.xml.model.primitives.Color col = b.meta.getPolygonStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = b.meta.getPolygonStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = b.meta.getPolygonFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                     }
                     else
                     if (type == "Polyline")
@@ -5894,13 +5894,13 @@ namespace BioGTK
                             an.family = ff.name();
                         ome.xml.model.primitives.Color col = b.meta.getPolylineStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = b.meta.getPolylineStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = b.meta.getPolylineFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                     }
                     else
                     if (type == "Label")
@@ -5927,13 +5927,13 @@ namespace BioGTK
                             an.family = ff.name();
                         ome.xml.model.primitives.Color col = b.meta.getLabelStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = b.meta.getLabelStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = b.meta.getLabelFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                         PointD p = new PointD(b.meta.getLabelX(im, sc).doubleValue(), b.meta.getLabelY(im, sc).doubleValue());
                         an.AddPoint(b.ToStageSpace(p));
                         an.Text = b.meta.getLabelText(im, sc);
@@ -6503,13 +6503,13 @@ namespace BioGTK
 
         public static bool OMESupport()
         {
-            if (Environment.OSVersion.Platform == PlatformID.MacOSX)
+            if (Environment.OSVersion.Platform == PlatformID.Unix)
             {
                 MessageDialog md = new MessageDialog(
                 null,
                 DialogFlags.DestroyWithParent,
                 MessageType.Info,
-                ButtonsType.Ok, "BioGTK currently doens't support OME images on MacOS. On MacOS only ImageJ Tiff files and Bio Tiff files are supported."
+                ButtonsType.Ok, "BioGTK currently doens't support OME images on MacOS. On MacOS only ImageJ Tiff files and BioGTK Tiff files are supported."
             );
                 md.Run();
                 md.Destroy();
@@ -6657,13 +6657,13 @@ namespace BioGTK
                         an.family = meta.getPointFontFamily(im, sc).name();
                         ome.xml.model.primitives.Color col = meta.getPointStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = meta.getPointStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = meta.getPointStrokeColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                     }
                     else
                     if (type == "Line")
@@ -6693,13 +6693,13 @@ namespace BioGTK
                         an.family = meta.getPointFontFamily(im, sc).name();
                         ome.xml.model.primitives.Color col = meta.getLineStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = meta.getLineStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = meta.getLineFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                     }
                     else
                     if (type == "Rectangle")
@@ -6729,13 +6729,13 @@ namespace BioGTK
                         an.family = meta.getPointFontFamily(im, sc).name();
                         ome.xml.model.primitives.Color col = meta.getRectangleStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = meta.getRectangleStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = meta.getRectangleFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                         ome.xml.model.enums.FillRule fr = meta.getRectangleFillRule(im, sc);
                     }
                     else
@@ -6747,7 +6747,7 @@ namespace BioGTK
                         double py = meta.getEllipseY(im, sc).doubleValue();
                         double ew = meta.getEllipseRadiusX(im, sc).doubleValue();
                         double eh = meta.getEllipseRadiusY(im, sc).doubleValue();
-                        //We convert the ellipse radius to System.Drawing.Rectangle
+                        //We convert the ellipse radius to Rectangle
                         double w = ew * 2;
                         double h = eh * 2;
                         double x = px - ew;
@@ -6770,13 +6770,13 @@ namespace BioGTK
                         an.family = meta.getPointFontFamily(im, sc).name();
                         ome.xml.model.primitives.Color col = meta.getEllipseStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = meta.getEllipseStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = meta.getEllipseFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                     }
                     else
                     if (type == "Polygon")
@@ -6809,13 +6809,13 @@ namespace BioGTK
                         an.family = meta.getPointFontFamily(im, sc).name();
                         ome.xml.model.primitives.Color col = meta.getPolygonStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = meta.getPolygonStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = meta.getPolygonFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                     }
                     else
                     if (type == "Polyline")
@@ -6846,13 +6846,13 @@ namespace BioGTK
                         an.family = meta.getPointFontFamily(im, sc).name();
                         ome.xml.model.primitives.Color col = meta.getPolylineStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = meta.getPolylineStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = meta.getPolylineFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                     }
                     else
                     if (type == "Label")
@@ -6877,13 +6877,13 @@ namespace BioGTK
                         an.family = meta.getPointFontFamily(im, sc).name();
                         ome.xml.model.primitives.Color col = meta.getLabelStrokeColor(im, sc);
                         if (col != null)
-                            an.strokeColor = System.Drawing.Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
                         ome.units.quantity.Length fw = meta.getLabelStrokeWidth(im, sc);
                         if (fw != null)
                             an.strokeWidth = (float)fw.value().floatValue();
                         ome.xml.model.primitives.Color colf = meta.getLabelFillColor(im, sc);
                         if (colf != null)
-                            an.fillColor = System.Drawing.Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                         PointD p = new PointD(meta.getLabelX(im, sc).doubleValue(), meta.getLabelY(im, sc).doubleValue());
                         an.AddPoint(ToStageSpace(p, physicalSizeX, physicalSizeY, volume.Location.X, volume.Location.Y));
                         an.Text = meta.getLabelText(im, sc);
@@ -7060,7 +7060,7 @@ namespace BioGTK
                     {
                         //STROKECOLOR
                         string[] st = val.Split(',');
-                        an.strokeColor = System.Drawing.Color.FromArgb(int.Parse(st[0]), int.Parse(st[1]), int.Parse(st[2]), int.Parse(st[3]));
+                        an.strokeColor = Color.FromArgb(int.Parse(st[0]), int.Parse(st[1]), int.Parse(st[2]), int.Parse(st[3]));
                     }
                     else
                     if (col == 16)
@@ -7073,7 +7073,7 @@ namespace BioGTK
                     {
                         //FILLCOLOR
                         string[] st = val.Split(',');
-                        an.fillColor = System.Drawing.Color.FromArgb(int.Parse(st[0]), int.Parse(st[1]), int.Parse(st[2]), int.Parse(st[3]));
+                        an.fillColor = Color.FromArgb(int.Parse(st[0]), int.Parse(st[1]), int.Parse(st[2]), int.Parse(st[3]));
                     }
                     else
                     if (col == 18)

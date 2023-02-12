@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "C/qQWjnS9rjaWkQ/KHOQSn9PJ8eUWwU0Kyn0VJDXGh23of4FxUIih59mjwuRGpcAZoXDSLQiawC94Y8zY/VBRA==",
+  "dgSpecHash": "mhCKFg4YwHdgv/mK0m0my0rL85YM2N2MKDhA/jBv1FtU2H603y5Vd3/YNLkIkAcKaC5BvcXdwYNk2uxqxYR24w==",
   "success": true,
   "projectFilePath": "F:\\Shared\\Bio\\BioGTK\\BioGTK\\BioGTK.csproj",
   "expectedPackageFiles": [
@@ -64,7 +64,6 @@
     "C:\\Users\\Erikr\\.nuget\\packages\\runtime.unix.system.diagnostics.debug\\4.3.0\\runtime.unix.system.diagnostics.debug.4.3.0.nupkg.sha512",
     "C:\\Users\\Erikr\\.nuget\\packages\\runtime.unix.system.private.uri\\4.3.0\\runtime.unix.system.private.uri.4.3.0.nupkg.sha512",
     "C:\\Users\\Erikr\\.nuget\\packages\\runtime.unix.system.runtime.extensions\\4.3.0\\runtime.unix.system.runtime.extensions.4.3.0.nupkg.sha512",
-    "C:\\Users\\Erikr\\.nuget\\packages\\sharphook\\4.0.0\\sharphook.4.0.0.nupkg.sha512",
     "C:\\Users\\Erikr\\.nuget\\packages\\sharpziplib\\1.3.3\\sharpziplib.1.3.3.nupkg.sha512",
     "C:\\Users\\Erikr\\.nuget\\packages\\system.buffers\\4.5.1\\system.buffers.4.5.1.nupkg.sha512",
     "C:\\Users\\Erikr\\.nuget\\packages\\system.collections\\4.3.0\\system.collections.4.3.0.nupkg.sha512",
@@ -73,7 +72,6 @@
     "C:\\Users\\Erikr\\.nuget\\packages\\system.data.odbc\\6.0.0\\system.data.odbc.6.0.0.nupkg.sha512",
     "C:\\Users\\Erikr\\.nuget\\packages\\system.diagnostics.debug\\4.3.0\\system.diagnostics.debug.4.3.0.nupkg.sha512",
     "C:\\Users\\Erikr\\.nuget\\packages\\system.drawing.common\\6.0.0\\system.drawing.common.6.0.0.nupkg.sha512",
-    "C:\\Users\\Erikr\\.nuget\\packages\\system.drawing.primitives\\4.3.0\\system.drawing.primitives.4.3.0.nupkg.sha512",
     "C:\\Users\\Erikr\\.nuget\\packages\\system.formats.asn1\\6.0.0\\system.formats.asn1.6.0.0.nupkg.sha512",
     "C:\\Users\\Erikr\\.nuget\\packages\\system.globalization\\4.3.0\\system.globalization.4.3.0.nupkg.sha512",
     "C:\\Users\\Erikr\\.nuget\\packages\\system.io\\4.3.0\\system.io.4.3.0.nupkg.sha512",
@@ -105,9 +103,9 @@
     "C:\\Users\\Erikr\\.nuget\\packages\\system.threading.tasks\\4.3.0\\system.threading.tasks.4.3.0.nupkg.sha512",
     "C:\\Users\\Erikr\\.nuget\\packages\\system.threading.tasks.extensions\\4.5.4\\system.threading.tasks.extensions.4.5.4.nupkg.sha512",
     "C:\\Users\\Erikr\\.nuget\\packages\\system.windows.extensions\\6.0.0\\system.windows.extensions.6.0.0.nupkg.sha512",
-    "C:\\Users\\Erikr\\.nuget\\packages\\microsoft.netcore.app.host.osx-x64\\6.0.11\\microsoft.netcore.app.host.osx-x64.6.0.11.nupkg.sha512",
     "C:\\Users\\Erikr\\.nuget\\packages\\microsoft.netcore.app.runtime.osx-x64\\6.0.11\\microsoft.netcore.app.runtime.osx-x64.6.0.11.nupkg.sha512",
-    "C:\\Users\\Erikr\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.osx-x64\\6.0.11\\microsoft.aspnetcore.app.runtime.osx-x64.6.0.11.nupkg.sha512"
+    "C:\\Users\\Erikr\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.osx-x64\\6.0.11\\microsoft.aspnetcore.app.runtime.osx-x64.6.0.11.nupkg.sha512",
+    "C:\\Users\\Erikr\\.nuget\\packages\\microsoft.netcore.app.host.osx-x64\\6.0.11\\microsoft.netcore.app.host.osx-x64.6.0.11.nupkg.sha512"
   ],
   "logs": []
 }

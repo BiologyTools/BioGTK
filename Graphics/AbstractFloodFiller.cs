@@ -15,7 +15,7 @@ namespace Bio.Graphics
 
         protected Bitmap bitmap;
         protected ColorS tolerance = new ColorS(25, 25, 25);
-        protected ColorS fillColor = ColorS.FromColor(System.Drawing.Color.Black);
+        protected ColorS fillColor = ColorS.FromColor(Color.Black);
         protected bool fillDiagonally = false;
         protected bool slow = false;
 
@@ -85,14 +85,14 @@ namespace Bio.Graphics
         /// It fills the area of the image that is connected to the point pt with the current color
         /// 
         /// @param pt The starting point for the fill.
-        public abstract void FloodFill(System.Drawing.Point pt);
+        public abstract void FloodFill(Point pt);
         /// It takes a point on the bitmap and gets the color of that point. It then creates a new color
         /// that is the fill color. It then gets the stride, pixel format size, pixel format, and the
         /// bitmap bits. It then creates a new boolean array that is the size of the bitmap bits divided
         /// by the pixel format size
         /// 
         /// @param pt The point to start the flood fill from.
-        protected void PrepareForFloodFill(System.Drawing.Point pt)
+        protected void PrepareForFloodFill(Point pt)
         {
             startColor = bitmap.GetPixel((int)pt.X, (int)pt.Y);
             byteFillColor = new ColorS(fillColor.B, fillColor.G, fillColor.R);

@@ -36,7 +36,6 @@ F:\Shared\Bio\BioGTK\BioGTK\bin\Release\net6.0\osx-x64\publish\icons\zoom_out.pn
 F:\Shared\Bio\BioGTK\BioGTK\bin\Release\net6.0\osx-x64\publish\banner.jpg
 F:\Shared\Bio\BioGTK\BioGTK\bin\Release\net6.0\osx-x64\publish\ikvm.properties
 F:\Shared\Bio\BioGTK\BioGTK\bin\Release\net6.0\osx-x64\publish\BioGTK.dll
-F:\Shared\Bio\BioGTK\BioGTK\bin\Release\net6.0\osx-x64\publish\BioGTK.deps.json
 F:\Shared\Bio\BioGTK\BioGTK\bin\Release\net6.0\osx-x64\publish\BioGTK.pdb
 F:\Shared\Bio\BioGTK\BioGTK\bin\Release\net6.0\osx-x64\publish\AtkSharp.dll
 F:\Shared\Bio\BioGTK\BioGTK\bin\Release\net6.0\osx-x64\publish\BitMiracle.LibTiff.NET.dll
@@ -123,3 +122,4 @@ F:\Shared\Bio\BioGTK\BioGTK\bin\Release\net6.0\osx-x64\publish\libMono.Unix.dyli
 F:\Shared\Bio\BioGTK\BioGTK\bin\Release\net6.0\osx-x64\publish\AForgeBio.dll
 F:\Shared\Bio\BioGTK\BioGTK\bin\Release\net6.0\osx-x64\publish\bioformats_package.dll
 F:\Shared\Bio\BioGTK\BioGTK\bin\Release\net6.0\osx-x64\publish\AForgeBio.pdb
+F:\Shared\Bio\BioGTK\BioGTK\bin\Release\net6.0\osx-x64\publish\BioGTK.deps.json

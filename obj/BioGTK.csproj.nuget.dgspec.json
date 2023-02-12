@@ -56,10 +56,6 @@
               "suppressParent": "All",
               "target": "Package",
               "version": "[6.4.0, )"
-            },
-            "System.Drawing.Primitives": {
-              "target": "Package",
-              "version": "[4.3.0, )"
             }
           },
           "imports": [
@@ -79,6 +75,11 @@
             }
           },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.100\\RuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "osx-x64": {
+          "#import": []
         }
       }
     },
@@ -158,10 +159,6 @@
               "suppressParent": "All",
               "target": "Package",
               "version": "[6.4.0, )"
-            },
-            "SharpHook": {
-              "target": "Package",
-              "version": "[4.0.0, )"
             }
           },
           "imports": [
