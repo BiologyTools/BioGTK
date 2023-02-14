@@ -275,6 +275,14 @@
                         <property name="use-stock">False</property>
                       </object>
                     </child>
+                    <child>
+                      <object class="GtkImageMenuItem" id="importROIsFromImageJMenu">
+                        <property name="label" translatable="yes">Import ImageJ ROI</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="use-stock">False</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>

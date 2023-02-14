@@ -451,6 +451,7 @@ namespace BioGTK
         public string id = "";
         public string roiID = "";
         public string roiName = "";
+        public string properties = "";
         public int serie = 0;
         private string text = "";
         private int resolution = 0;
@@ -458,6 +459,7 @@ namespace BioGTK
         public int shapeIndex = 0;
         public bool closed = false;
         public bool selected = false;
+        public bool subPixel = false;
         /*
         public Size TextSize
         {
@@ -723,6 +725,28 @@ namespace BioGTK
         public void AddPoints(PointD[] p)
         {
             Points.AddRange(p);
+            UpdateBoundingBox();
+        }
+        /// > Adds a range of integer points to the Points collection and updates the bounding box
+        /// 
+        /// @param p The points to add to the polygon
+        public void AddPoints(int[] xp, int[] yp)
+        {
+            for (int i = 0; i < xp.Length; i++)
+            {
+                Points.Add(new PointD(xp[i], yp[i]));
+            }
+            UpdateBoundingBox();
+        }
+        /// > Adds a range of float points to the Points collection and updates the bounding box
+        /// 
+        /// @param p The points to add to the polygon
+        public void AddPoints(float[] xp, float[] yp)
+        {
+            for (int i = 0; i < xp.Length; i++)
+            {
+                Points.Add(new PointD(xp[i], yp[i]));
+            }
             UpdateBoundingBox();
         }
         /// It removes points from a list of points based on an array of indexes

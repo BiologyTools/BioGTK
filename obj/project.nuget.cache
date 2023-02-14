@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "mhCKFg4YwHdgv/mK0m0my0rL85YM2N2MKDhA/jBv1FtU2H603y5Vd3/YNLkIkAcKaC5BvcXdwYNk2uxqxYR24w==",
+  "dgSpecHash": "kPiTGSZZkawVazOlVv2MNs4VFpT6sRsy3I/x1DW6YUFqpBj+SmEbbxubl8+AIEYj6gcZPHaigGq85TWEL53gxA==",
   "success": true,
   "projectFilePath": "F:\\Shared\\Bio\\BioGTK\\BioGTK\\BioGTK.csproj",
   "expectedPackageFiles": [
@@ -103,9 +103,9 @@
     "C:\\Users\\Erikr\\.nuget\\packages\\system.threading.tasks\\4.3.0\\system.threading.tasks.4.3.0.nupkg.sha512",
     "C:\\Users\\Erikr\\.nuget\\packages\\system.threading.tasks.extensions\\4.5.4\\system.threading.tasks.extensions.4.5.4.nupkg.sha512",
     "C:\\Users\\Erikr\\.nuget\\packages\\system.windows.extensions\\6.0.0\\system.windows.extensions.6.0.0.nupkg.sha512",
+    "C:\\Users\\Erikr\\.nuget\\packages\\microsoft.netcore.app.host.osx-x64\\6.0.11\\microsoft.netcore.app.host.osx-x64.6.0.11.nupkg.sha512",
     "C:\\Users\\Erikr\\.nuget\\packages\\microsoft.netcore.app.runtime.osx-x64\\6.0.11\\microsoft.netcore.app.runtime.osx-x64.6.0.11.nupkg.sha512",
-    "C:\\Users\\Erikr\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.osx-x64\\6.0.11\\microsoft.aspnetcore.app.runtime.osx-x64.6.0.11.nupkg.sha512",
-    "C:\\Users\\Erikr\\.nuget\\packages\\microsoft.netcore.app.host.osx-x64\\6.0.11\\microsoft.netcore.app.host.osx-x64.6.0.11.nupkg.sha512"
+    "C:\\Users\\Erikr\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.osx-x64\\6.0.11\\microsoft.aspnetcore.app.runtime.osx-x64.6.0.11.nupkg.sha512"
   ],
   "logs": []
 }

@@ -76,11 +76,6 @@
           },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.100\\RuntimeIdentifierGraph.json"
         }
-      },
-      "runtimes": {
-        "osx-x64": {
-          "#import": []
-        }
       }
     },
     "F:\\Shared\\Bio\\BioGTK\\BioGTK\\BioGTK.csproj": {

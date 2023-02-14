@@ -73,6 +73,8 @@ namespace BioGTK
         private MenuItem importROIsFromCSVMenu;
         [Builder.Object]
         private MenuItem exportROIsOfFolderOfImagesMenu;
+        [Builder.Object]
+        private MenuItem importROIsFromImageJMenu;
 
         [Builder.Object]
         private MenuItem autoThresholdAllMenu;
@@ -195,6 +197,7 @@ namespace BioGTK
             exportROIsToCSVMenu.ButtonPressEvent += exportROIsToCSVMenuClick;
             importROIsFromCSVMenu.ButtonPressEvent += importROIsFromCSVMenuClick;
             exportROIsOfFolderOfImagesMenu.ButtonPressEvent += exportROIsOfFolderOfImagesMenuClick;
+            importROIsFromImageJMenu.ButtonPressEvent += ImportROIsFromImageJMenu_ButtonPressEvent;
 
             autoThresholdAllMenu.ButtonPressEvent += autoThresholdAllMenuClick;
             channelsToolMenu.ButtonPressEvent += channelsToolMenuClick;
@@ -222,6 +225,25 @@ namespace BioGTK
             emissionMenu.ButtonPressEvent += EmissionMenu_ButtonPressEvent;
             tabsView.SwitchPage += TabsView_SwitchPage;
             this.WindowStateEvent += TabsView_WindowStateEvent;
+        }
+
+        private void ImportROIsFromImageJMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Gtk.FileChooserDialog filechooser =
+        new Gtk.FileChooserDialog("Choose file to open",
+            this,
+            FileChooserAction.Open,
+            "Cancel", ResponseType.Cancel,
+            "Open", ResponseType.Accept);
+            filechooser.SelectMultiple = true;
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            foreach (string item in filechooser.Filenames)
+            {
+                ROI roi = ImageJ.RoiDecoder.open(item);
+                ImageView.SelectedImage.Annotations.Add(roi);
+            }
+            filechooser.Destroy();
         }
 
         /// If the window is minimized, hide all the image viewers. If the window is restored, show all
