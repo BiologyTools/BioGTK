@@ -1,4 +1,0 @@
-F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0-maccatalyst\osx-x64\actool\_PartialAppManifest.items
-F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0-maccatalyst\osx-x64\actool\_BundleResourceWithLogicalName.items
-F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0-maccatalyst\osx-x64\coremlc\_PartialAppManifest.items
-F:\Shared\Bio\BioGTK\BioGTK\obj\Debug\net6.0-maccatalyst\osx-x64\coremlc\_BundleResourceWithLogicalName.items
