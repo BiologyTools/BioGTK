@@ -844,15 +844,6 @@ namespace BioGTK
             }
             return value;
         }
-        static int UnsignedRightShift(int signed, int places)
-        {
-            unchecked // just in case of unusual compiler switches; this is the default
-            {
-                var unsigned = (uint)signed;
-                unsigned >>= places;
-                return (int)unsigned;
-            }
-        }
         public class RoiEncoder
         {
             static int HEADER_SIZE = 64;
