@@ -5,16 +5,14 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using System.IO;
-using ome.xml.model;
 using CSScripting;
 using Gtk;
-using static BioGTK.ImageJ;
-using com.sun.org.apache.xerces.@internal.impl.xpath;
 using AForge;
+using BioGTK;
 
 namespace BioGTK
 {
-    public class ImageJ
+    public static class ImageJ
     {
         public static string ImageJPath;
         public static List<Process> processes = new List<Process>();
@@ -27,7 +25,7 @@ namespace BioGTK
         /// @return The macro is being returned.
         public static void RunMacro(string file, string param)
         {
-            if(ImageJPath == "")
+            if (ImageJPath == "")
             {
                 if (!App.SetImageJPath())
                     return;
@@ -60,8 +58,8 @@ namespace BioGTK
             string te = rng.Next(0, 9999999).ToString();
             string p = Environment.CurrentDirectory + "\\" + te + ".txt";
             p.Replace("/", "\\");
-            File.WriteAllText(p,con);
-            if(headless)
+            File.WriteAllText(p, con);
+            if (headless)
                 pr.StartInfo.Arguments = "--headless -macro " + p + " " + param;
             else
                 pr.StartInfo.Arguments = "-macro " + p + " " + param;
@@ -80,7 +78,7 @@ namespace BioGTK
                         }
                         catch (Exception)
                         {
-                        
+
                         }
                     } while (File.Exists(Path.GetDirectoryName(ImageJPath) + "/done.txt"));
                     pr.Kill();
@@ -94,8 +92,7 @@ namespace BioGTK
         /// 
         /// @param con The ImageJ macro to run on the image.
         /// @param headless Whether to run ImageJ in headless mode.
-        /// @param onTab If true, the image will be opened in a new tab. If false, the image will be
-        /// opened in the current tab.
+        /// @param onTab If true, the imacro will be run on tab. If false, the macro will be run on selected image.
         /// @param bioformats If true, the image is opened using the bioformats plugin. If false, the
         /// image is opened using the default imagej open command.
         /// 
@@ -124,7 +121,7 @@ namespace BioGTK
             "run(\"Bio-Formats Exporter\", \"save=" + file + " export compression=Uncompressed\"); " +
             "dir = getDir(\"startup\"); " +
             "File.saveString(\"done\", dir + \"/done.txt\");";
-            if(bioformats)
+            if (bioformats)
                 st =
                 "open(getArgument); " + con +
                 "run(\"Bio-Formats Exporter\", \"save=" + file + " export compression=Uncompressed\"); " +
@@ -143,7 +140,7 @@ namespace BioGTK
             App.tabsView.AddTab(BioImage.OpenFile(ffile));
             App.viewer.UpdateImage();
             App.viewer.UpdateView();
-            
+
             Recorder.AddLine("RunOnImage(\"" + con + "\"," + headless + "," + onTab + ");");
         }
         /// This function is used to initialize the path of the ImageJ.exe file
@@ -153,7 +150,6 @@ namespace BioGTK
         {
             ImageJPath = path;
         }
-
 
         public class RoiDecoder
         {
@@ -323,7 +319,7 @@ namespace BioGTK
                     name = name.Substring(0, name.Length - 4);
                 bool isComposite = getInt(SHAPE_ROI_SIZE) > 0;
 
-                
+
                 /*
                 if (isComposite)
                 {
@@ -351,25 +347,25 @@ namespace BioGTK
                 {
                     case 1: //Rect
                         if (subPixelRect)
-                            roi = BioGTK.ROI.CreateRectangle(new AForge.ZCT(slice,channel,frame),xd, yd, widthd, heightd);
+                            roi = BioGTK.ROI.CreateRectangle(new AForge.ZCT(slice-1, channel - 1, frame - 1), xd, yd, widthd, heightd);
                         else
-                            roi = BioGTK.ROI.CreateRectangle(new AForge.ZCT(slice, channel, frame), left, top, width, height);
+                            roi = BioGTK.ROI.CreateRectangle(new AForge.ZCT(slice - 1, channel - 1, frame - 1), left, top, width, height);
                         int arcSize = getShort(ROUNDED_RECT_ARC_SIZE);
                         if (arcSize > 0)
                             throw new NotSupportedException("Type rounded rectangle not supported.");
                         break;
                     case 2: //Ellipse
                         if (subPixelRect)
-                            roi = BioGTK.ROI.CreateEllipse(new AForge.ZCT(slice, channel, frame), xd, yd, widthd, heightd);
+                            roi = BioGTK.ROI.CreateEllipse(new AForge.ZCT(slice - 1, channel - 1, frame - 1), xd, yd, widthd, heightd);
                         else
-                            roi = BioGTK.ROI.CreateEllipse(new AForge.ZCT(slice, channel, frame), left, top, width, height);
+                            roi = BioGTK.ROI.CreateEllipse(new AForge.ZCT(slice - 1, channel - 1, frame - 1), left, top, width, height);
                         break;
                     case 3: //Line
                         float x1 = getFloat(X1);
                         float y1 = getFloat(Y1);
                         float x2 = getFloat(X2);
                         float y2 = getFloat(Y2);
-                        
+
                         if (subtype == ARROW)
                         {
                             throw new NotSupportedException("Type arrow not supported.");
@@ -390,7 +386,7 @@ namespace BioGTK
                             roi = ROI.CreateLine(new AForge.ZCT(slice, channel, frame), new AForge.PointD(x1, y1), new AForge.PointD(x2, y2));
                             //roi.setDrawOffset(drawOffset);
                         }
-                        
+
                         break;
                     case 0:
                     case 5:
@@ -542,11 +538,11 @@ namespace BioGTK
 
                 roi.coord.Z = position;
                 if (channel > 0 || slice > 0 || frame > 0)
-                    roi.coord = new AForge.ZCT(slice-1, channel-1, frame-1); //-1 because our ROI coordinates are 0 based
+                    roi.coord = new AForge.ZCT(slice - 1, channel - 1, frame - 1); //-1 because our ROI coordinates are 0 based
                 //decodeOverlayOptions(roi, version, options, overlayLabelColor, overlayFontSize);
 
                 //We convert pixel to subpixel
-                if(!roi.subPixel)
+                if (!roi.subPixel)
                 {
                     for (int i = 0; i < roi.PointsD.Count; i++)
                     {
@@ -634,7 +630,7 @@ namespace BioGTK
                 return roi;
             }
 	        */
-	        void getTextRoi(BioGTK.ROI roi, int version)
+            void getTextRoi(BioGTK.ROI roi, int version)
             {
                 AForge.Rectangle r = roi.BoundingBox.ToRectangleInt();
                 int hdrSize = 64;
@@ -784,7 +780,631 @@ namespace BioGTK
             }
 
         }
-	        
+
+        static int GetImageJType(ROI roi)
+        {
+            //private int polygon = 0, rect = 1, oval = 2, line = 3, freeline = 4, polyline = 5, noRoi = 6, freehand = 7,
+            //    traced = 8, angle = 9, point = 10;
+            switch (roi.type)
+            {
+                case ROI.Type.Rectangle:
+                    return 1;
+                case ROI.Type.Point:
+                    return 10;
+                case ROI.Type.Line:
+                    return 3;
+                case ROI.Type.Polygon:
+                    return 0;
+                case ROI.Type.Polyline:
+                    return 5;
+                case ROI.Type.Freeform:
+                    return 7;
+                case ROI.Type.Ellipse:
+                    return 2;
+                case ROI.Type.Label:
+                default:
+                    return 0;
+            }
+        }
+
+        static void GetPointsXY(ROI roi, out int[] xp, out int[] yp)
+        {
+            int[] x = new int[roi.PointsD.Count];
+            int[] y = new int[roi.PointsD.Count];
+            for (int i = 0; i < roi.PointsD.Count; i++)
+            {
+                PointD pd = ImageView.SelectedImage.ToImageSpace(roi.PointsD[i]);
+                x[i] = (int)pd.X;
+                y[i] = (int)pd.Y;
+            }
+            xp = x;
+            yp = y;
+
+        }
+
+        static void GetXY(ROI roi,out float x, out float y)
+        {
+            PointD pd = ImageView.SelectedImage.ToImageSpace(new PointD(roi.X,roi.Y));
+            x = (float)pd.X;
+            y = (float)pd.Y;
+        }
+        static void GetWH(ROI roi, out float w, out float h)
+        {
+            w = (float)ImageView.SelectedImage.ToImageSizeX(roi.W);
+            h = (float)ImageView.SelectedImage.ToImageSizeY(roi.H);
+        }
+        static int rightMove(int value, int pos)
+        {
+            if (pos != 0)
+            {
+                int mask = 0x7fffffff;
+                value >>= 1;
+                value &= mask;
+                value >>= pos - 1;
+            }
+            return value;
+        }
+        static int UnsignedRightShift(int signed, int places)
+        {
+            unchecked // just in case of unusual compiler switches; this is the default
+            {
+                var unsigned = (uint)signed;
+                unsigned >>= places;
+                return (int)unsigned;
+            }
+        }
+        public class RoiEncoder
+        {
+            static int HEADER_SIZE = 64;
+            static int HEADER2_SIZE = 64;
+            static int VERSION = 228; // v1.52t (roi groups, scale stroke width)
+            private string path;
+            private FileStream f;
+            private int polygon = 0, rect = 1, oval = 2, line = 3, freeline = 4, polyline = 5, noRoi = 6, freehand = 7,
+                traced = 8, angle = 9, point = 10;
+            private byte[] data;
+            private string roiName;
+            private int roiNameSize;
+            private string roiProps;
+            private int roiPropsSize;
+            private int countersSize;
+            private int[] counters;
+            private bool subres = true;
+
+            /** Creates an RoiEncoder using the specified path. */
+            public RoiEncoder(String path)
+            {
+                this.path = path;
+            }
+
+            /** Creates an RoiEncoder using the specified OutputStream. */
+            public RoiEncoder(FileStream f)
+            {
+                this.f = f;
+            }
+
+            /** Saves the specified ROI as a file, returning 'true' if successful. */
+            public static bool save(ROI roi, String path)
+            {
+                RoiEncoder re = new RoiEncoder(path);
+                try
+                {
+                    re.write(roi);
+                }
+                catch (IOException e)
+                {
+                    return false;
+                }
+                return true;
+            }
+
+            /** Save the Roi to the file of stream. */
+            public void write(ROI roi)
+            {
+                if (f != null) 
+                {
+                    write(roi, f);
+                } 
+                else
+                {
+                    f = new FileStream(path,FileMode.Create);
+                    write(roi, f);
+                    f.Close();
+                }
+            }
+            
+            /** Saves the specified ROI as a byte array. 
+            public static byte[] saveAsByteArray(ROI roi)
+            {
+                if (roi == null) return null;
+                byte[] bytes = null;
+                try
+                {
+                    MemoryStream outs = new MemoryStream(4096);
+                    RoiEncoder encoder = new RoiEncoder(path);
+                    encoder.write(roi);
+			        outs.close();
+                    bytes = out.toByteArray();
+                }
+                catch (IOException e)
+                {
+                    return null;
+                }
+                return bytes;
+            }
+            */
+            void write(ROI roi, FileStream f)
+            {
+                RectangleD r = roi.Rect;
+                //if (r.width > 60000 || r.height > 60000 || r.x > 60000 || r.y > 60000)
+                //    roi.enableSubPixelResolution();
+                //int roiType = GetImageJType(roi);
+                int type = GetImageJType(roi);
+                int options = 0;
+                //if (roi.getScaleStrokeWidth())
+                //    options |= RoiDecoder.SCALE_STROKE_WIDTH;
+                roiName = roi.Text;
+                if (roiName != null)
+                    roiNameSize = roiName.Length * 2;
+                else
+                    roiNameSize = 0;
+
+                roiProps = roi.properties;
+                if (roiProps != null)
+                    roiPropsSize = roiProps.Length * 2;
+                else
+                    roiPropsSize = 0;
+                /*
+                switch (roiType) {
+                    case Roi.POLYGON: type = polygon; break;
+                    case Roi.FREEROI: type = freehand; break;
+                    case Roi.TRACED_ROI: type = traced; break;
+                    case Roi.OVAL: type = oval; break;
+                    case Roi.LINE: type = line; break;
+                    case Roi.POLYLINE: type = polyline; break;
+                    case Roi.FREELINE: type = freeline; break;
+                    case Roi.ANGLE: type = angle; break;
+                    case Roi.COMPOSITE: type = rect; break; // shape array size (36-39) will be >0 to indicate composite type
+                    case Roi.POINT: type = point; break;
+                    default: type = rect; break;
+                }
+                */
+                /*
+                if (roiType == Roi.COMPOSITE) {
+                    saveShapeRoi(roi, type, f, options);
+                    return;
+                }
+                */
+                int n = 0;
+                int[]
+                x = null, y = null;
+                float[]
+                xf = null, yf = null;
+                int floatSize = 0;
+                //if (roi instanceof PolygonRoi) {
+                //PolygonRoi proi = (PolygonRoi)roi;
+                //Polygon p = proi.getNonSplineCoordinates();
+                n = roi.PointsD.Count; //p.npoints;
+                //x = p.xpoints;
+                //y = p.ypoints;
+                GetPointsXY(roi, out x, out y);
+                if (subres)
+                {
+                    /*
+                    if (proi.isSplineFit())
+                        fp = proi.getNonSplineFloatPolygon();
+                    else
+                        fp = roi.getFloatPolygon();
+                    if (n == fp.npoints)
+                    {
+                        options |= RoiDecoder.SUB_PIXEL_RESOLUTION;
+                        if (roi.getDrawOffset())
+                            options |= RoiDecoder.DRAW_OFFSET;
+                        xf = fp.xpoints;
+                        yf = fp.ypoints;
+                        floatSize = n * 8;
+                    }
+                    */
+                }
+                
+
+                countersSize = 0;
+                /*
+                if (roi instanceof PointRoi) {
+                    counters = ((PointRoi)roi).getCounters();
+                    if (counters != null && counters.length >= n)
+                        countersSize = n * 4;
+                }
+                */
+                data = new byte[HEADER_SIZE + HEADER2_SIZE + n * 4 + floatSize + roiNameSize + roiPropsSize + countersSize];
+                data[0] = 73; data[1] = 111; data[2] = 117; data[3] = 116; // "Iout"
+                putShort(RoiDecoder.VERSION_OFFSET, VERSION);
+                data[RoiDecoder.TYPE] = (byte)type;
+                float px, py, pw, ph;
+                GetXY(roi, out px, out py);
+                GetWH(roi, out pw, out ph);
+                putShort(RoiDecoder.TOP, (int)py);
+                putShort(RoiDecoder.LEFT, (int)px);
+                putShort(RoiDecoder.BOTTOM, (int)(py + ph));
+                putShort(RoiDecoder.RIGHT, (int)(px + pw));
+                if (subres && (type == rect || type == oval))
+                {
+                    //FloatPolygon p = null;
+                    /*
+                    if (roi instanceof OvalRoi)
+				            p = ((OvalRoi)roi).getFloatPolygon4();
+                        else
+                    {
+                        int d = roi.getCornerDiameter();
+                        if (d > 0)
+                        {
+                            roi.setCornerDiameter(0);
+                            p = roi.getFloatPolygon();
+                            roi.setCornerDiameter(d);
+                        }
+                        else
+                            p = roi.getFloatPolygon();
+                    }
+                        */
+                    if (roi.PointsD.Count == 4)
+                    {
+                        putFloat(RoiDecoder.XD, (float)roi.PointsImage[0].X);
+                        putFloat(RoiDecoder.YD, (float)roi.PointsImage[0].Y);
+                        //putFloat(RoiDecoder.WIDTHD, p.xpoints[1] - roi.PointsD[0]);
+                        //putFloat(RoiDecoder.HEIGHTD, p.ypoints[2] - p.ypoints[1]);
+                        putFloat(RoiDecoder.WIDTHD, (float)roi.PointsImage[1].X - (float)roi.PointsImage[0].X);
+                        putFloat(RoiDecoder.HEIGHTD, (float)roi.PointsImage[2].Y - (float)roi.PointsImage[1].Y);
+                        options |= RoiDecoder.SUB_PIXEL_RESOLUTION;
+                        putShort(RoiDecoder.OPTIONS, options);
+                    }
+                }
+                if (n > 65535 && type != point)
+                {
+                    if (type == polygon || type == freehand || type == traced)
+                    {
+                        //String name = roi.Text;
+                        //roi = new ShapeRoi(roi);
+                        //if (name != null) roi.setName(name);
+                        saveShapeRoi(roi, rect, f, options);
+                        return;
+                    }
+                    //ij.IJ.beep();
+                    //ij.IJ.log("Non-polygonal selections with more than 65k points cannot be saved.");
+                    n = 65535;
+                }
+                if (type == point && n > 65535)
+                    putInt(RoiDecoder.SIZE, n);
+                else
+                    putShort(RoiDecoder.N_COORDINATES, n);
+                putInt(RoiDecoder.POSITION, roi.coord.Z);
+
+                /*
+                if (type == rect)
+                {
+                    int arcSize = roi.getCornerDiameter();
+                    if (arcSize > 0)
+                        putShort(RoiDecoder.ROUNDED_RECT_ARC_SIZE, arcSize);
+                }
+                */
+
+                if(type == line) //(roi instanceof Line) 
+                {
+                    //Line line = (Line)roi;
+                    putFloat(RoiDecoder.X1, (float)roi.PointsImage[0].X);
+                    putFloat(RoiDecoder.Y1, (float)roi.PointsImage[0].Y);
+                    putFloat(RoiDecoder.X2, (float)roi.PointsImage[1].X);
+                    putFloat(RoiDecoder.Y2, (float)roi.PointsImage[1].Y);
+                    /*
+                    if (roi instanceof Arrow) {
+                        putShort(RoiDecoder.SUBTYPE, RoiDecoder.ARROW);
+                        if (((Arrow)roi).getDoubleHeaded())
+                            options |= RoiDecoder.DOUBLE_HEADED;
+                        if (((Arrow)roi).getOutline())
+                            options |= RoiDecoder.OUTLINE;
+                        putShort(RoiDecoder.OPTIONS, options);
+                        putByte(RoiDecoder.ARROW_STYLE, ((Arrow)roi).getStyle());
+                        putByte(RoiDecoder.ARROW_HEAD_SIZE, (int)((Arrow)roi).getHeadSize());
+                    } else
+                    {
+                        if (roi.getDrawOffset())
+                            options |= RoiDecoder.SUB_PIXEL_RESOLUTION + RoiDecoder.DRAW_OFFSET;
+                    }
+                    */
+                }
+
+                if (type == point) {
+                    //PointRoi point = (PointRoi)roi;
+                    putByte(RoiDecoder.POINT_TYPE, 1);//point.getPointType());
+                    putShort(RoiDecoder.STROKE_WIDTH, (int)roi.strokeWidth);
+                    /*
+                    if (point.getShowLabels())
+                        options |= RoiDecoder.SHOW_LABELS;
+                    if (point.promptBeforeDeleting())
+                        options |= RoiDecoder.PROMPT_BEFORE_DELETING;
+                    */
+                }
+
+                if (type == oval) 
+                {
+                    /*
+                    double[] p = null;
+                    if (roi instanceof RotatedRectRoi) {
+                        putShort(RoiDecoder.SUBTYPE, RoiDecoder.ROTATED_RECT);
+                        p = ((RotatedRectRoi)roi).getParams();
+                    } else
+                    {
+                        */
+                        putShort(RoiDecoder.SUBTYPE, RoiDecoder.ELLIPSE);
+                    //p = ((EllipseRoi)roi).getParams();
+                    //}
+                    float fx, fy, fw, fh;
+                    GetXY(roi, out fx, out fy);
+                    GetWH(roi, out fw, out fh);
+                    putFloat(RoiDecoder.X1, fx);
+                    putFloat(RoiDecoder.Y1, fy);
+                    putFloat(RoiDecoder.X2, fw);
+                    putFloat(RoiDecoder.Y2, fh);
+                    //putFloat(RoiDecoder.FLOAT_PARAM, (float)p[4]);
+                }
+
+                // save stroke width, stroke color and fill color (1.43i or later)
+                if (VERSION >= 218)
+                {
+                    saveStrokeWidthAndColor(roi);
+                    /*
+                    if ((roi instanceof PolygonRoi) && ((PolygonRoi)roi).isSplineFit()) {
+                        options |= RoiDecoder.SPLINE_FIT;
+                        putShort(RoiDecoder.OPTIONS, options);
+                    }
+                    */
+                }
+
+                if (roi.type == ROI.Type.Label)//(n == 0 && roi instanceof TextRoi)
+			            saveTextRoi(roi);
+                /*
+                else if (n == 0 && roi instanceof ImageRoi)
+			        options = saveImageRoi((ImageRoi)roi, options);
+                */
+                //else
+                putHeader2(roi, HEADER_SIZE + n * 4 + floatSize);
+
+                if (n > 0)
+                {
+                    int base1 = 64;
+                    int base2 = base1 + 2 * n;
+                    for (int i = 0; i < n; i++)
+                    {
+                        putShort(base1 + i * 2, (int)(x[i] - px));
+                        putShort(base2 + i * 2, (int)(y[i] - py));
+                    }
+                    if (xf != null)
+                    {
+                        base1 = 64 + 4 * n;
+                        base2 = base1 + 4 * n;
+                        for (int i = 0; i < n; i++)
+                        {
+                            putFloat(base1 + i * 4, xf[i]);
+                            putFloat(base2 + i * 4, yf[i]);
+                        }
+                    }
+                }
+
+                //saveOverlayOptions(roi, options);
+                f.Write(data);
+            }
+
+            void saveStrokeWidthAndColor(ROI roi)
+            {
+                //BasicStroke stroke = roi.getStroke();
+                //if (stroke != null)
+                    putShort(RoiDecoder.STROKE_WIDTH, (int)roi.strokeWidth);
+                Color strokeColor = roi.strokeColor;
+                int intColor = (strokeColor.R << 16) | (strokeColor.G << 8) | (strokeColor.B);
+                putInt(RoiDecoder.STROKE_COLOR, 0);
+                Color fillColor = roi.fillColor;
+                int intFillColor = (fillColor.R << 16) | (fillColor.G << 8) | (fillColor.B);
+                putInt(RoiDecoder.FILL_COLOR, 0);
+            }
+
+            void saveShapeRoi(ROI roi, int type, FileStream f, int options)
+            {
+                //float[] shapeArray = ((ShapeRoi)roi).getShapeAsArray();
+                //if (shapeArray == null) return;
+                //BufferedOutputStream bout = new BufferedOutputStream(f);
+
+                data = new byte[HEADER_SIZE + HEADER2_SIZE + roiNameSize + roiPropsSize];//shapeArray.length * 4 + roiNameSize + roiPropsSize];
+                data[0] = 73; data[1] = 111; data[2] = 117; data[3] = 116; // "Iout"
+
+                putShort(RoiDecoder.VERSION_OFFSET, VERSION);
+                data[RoiDecoder.TYPE] = (byte)type;
+
+                float x, y, w, h;
+                GetXY(roi, out x,out y);
+                GetWH(roi, out w, out h);
+                putShort(RoiDecoder.TOP, (int)y);
+                putShort(RoiDecoder.LEFT, (int)x);
+                putShort(RoiDecoder.BOTTOM, (int)(y + h));
+                putShort(RoiDecoder.RIGHT, (int)(x + w));
+                putInt(RoiDecoder.POSITION, roi.coord.Z);
+                ///putShort(16, n);
+                //putInt(36, shapeArray.Length); // non-zero segment count indicate composite type
+                if (VERSION >= 218)
+                    saveStrokeWidthAndColor(roi);
+                //saveOverlayOptions(roi, options);
+
+                // handle the actual data: data are stored segment-wise, i.e.,
+                // the type of the segment followed by 0-6 control point coordinates.
+                /*
+                int bas = 64;
+                for (int i = 0; i < shapeArray.Length; i++)
+                {
+                    putFloat(bas, shapeArray[i]);
+                    bas += 4;
+                }
+                */
+                int hdr2Offset = HEADER_SIZE;// + shapeArray.Length * 4;
+                //ij.IJ.log("saveShapeRoi: "+HEADER_SIZE+"  "+shapeArray.length);
+                putHeader2(roi, hdr2Offset);
+                f.Write(data, 0, data.Length);
+                f.Flush();
+            }
+
+            /*
+            void saveOverlayOptions(ROI roi, int options)
+            {
+                Overlay proto = roi.getPrototypeOverlay();
+                if (proto.getDrawLabels())
+                    options |= RoiDecoder.OVERLAY_LABELS;
+                if (proto.getDrawNames())
+                    options |= RoiDecoder.OVERLAY_NAMES;
+                if (proto.getDrawBackgrounds())
+                    options |= RoiDecoder.OVERLAY_BACKGROUNDS;
+                Font font = proto.getLabelFont();
+                if (font != null && font.getStyle() == Font.BOLD)
+                    options |= RoiDecoder.OVERLAY_BOLD;
+                if (proto.scalableLabels())
+                    options |= RoiDecoder.SCALE_LABELS;
+                putShort(RoiDecoder.OPTIONS, options);
+            }
+            */
+            void saveTextRoi(ROI roi)
+            {
+                //Font font = roi.getCurrentFont();
+                string fontName = roi.family;
+                int size = (int)roi.fontSize;
+                int drawStringMode = 0; //roi.getDrawStringMode() ? 1024 : 0;
+                int style = 0;//font.getStyle() + roi.getJustification() * 256 + drawStringMode;
+                string text = roi.roiName;
+                float angle = 0;
+                int angleLength = 4;
+                int fontNameLength = fontName.Length;
+                int textLength = text.Length;
+                int textRoiDataLength = 16 + fontNameLength * 2 + textLength * 2 + angleLength;
+                byte[] data2 = new byte[HEADER_SIZE + HEADER2_SIZE + textRoiDataLength + roiNameSize + roiPropsSize];
+                Array.Copy(data, 0, data2, 0, HEADER_SIZE);
+                data = data2;
+                putShort(RoiDecoder.SUBTYPE, RoiDecoder.TEXT);
+                putInt(HEADER_SIZE, size);
+                putInt(HEADER_SIZE + 4, style);
+                putInt(HEADER_SIZE + 8, fontNameLength);
+                putInt(HEADER_SIZE + 12, textLength);
+                for (int i = 0; i < fontNameLength; i++)
+                    putShort(HEADER_SIZE + 16 + i * 2, fontName.ElementAt(i));
+                for (int i = 0; i < textLength; i++)
+                    putShort(HEADER_SIZE + 16 + fontNameLength * 2 + i * 2, text.ElementAt(i));
+                int hdr2Offset = HEADER_SIZE + textRoiDataLength;
+                //ij.IJ.log("saveTextRoi: "+HEADER_SIZE+"  "+textRoiDataLength+"  "+fontNameLength+"  "+textLength);
+                putFloat(hdr2Offset - angleLength, angle);
+                putHeader2(roi, hdr2Offset);
+            }
+            /*
+            private int saveImageRoi(ROI roi, int options)
+            {
+                byte[] bytes = roi.getSerializedImage();
+                int imageSize = bytes.length;
+                byte[] data2 = new byte[HEADER_SIZE + HEADER2_SIZE + imageSize + roiNameSize + roiPropsSize];
+                System.arraycopy(data, 0, data2, 0, HEADER_SIZE);
+                data = data2;
+                putShort(RoiDecoder.SUBTYPE, RoiDecoder.IMAGE);
+                for (int i = 0; i < imageSize; i++)
+                    putByte(HEADER_SIZE + i, bytes[i] & 255);
+                int hdr2Offset = HEADER_SIZE + imageSize;
+                double opacity = roi.getOpacity();
+                putByte(hdr2Offset + RoiDecoder.IMAGE_OPACITY, (int)(opacity * 255.0));
+                putInt(hdr2Offset + RoiDecoder.IMAGE_SIZE, imageSize);
+                if (roi.getZeroTransparent())
+                    options |= RoiDecoder.ZERO_TRANSPARENT;
+                putHeader2(roi, hdr2Offset);
+                return options;
+            }
+            */
+            void putHeader2(ROI roi, int hdr2Offset)
+            {
+                //ij.IJ.log("putHeader2: "+hdr2Offset+" "+roiNameSize+"  "+roiName);
+                putInt(RoiDecoder.HEADER2_OFFSET, hdr2Offset);
+                putInt(hdr2Offset + RoiDecoder.C_POSITION, roi.coord.C + 1);
+                putInt(hdr2Offset + RoiDecoder.Z_POSITION, roi.coord.Z + 1);
+                putInt(hdr2Offset + RoiDecoder.T_POSITION, roi.coord.T + 1);
+                //Overlay proto = roi.getPrototypeOverlay();
+                Color overlayLabelColor = roi.strokeColor; //proto.getLabelColor();
+                int intColor = (overlayLabelColor.R << 16) | (overlayLabelColor.G << 8) | (overlayLabelColor.B);
+                //if (overlayLabelColor != null)
+                putInt(hdr2Offset + RoiDecoder.OVERLAY_LABEL_COLOR, 0);
+                //Font font = proto.getLabelFont();
+                //if (font != null)
+                    putShort(hdr2Offset + RoiDecoder.OVERLAY_FONT_SIZE, (int)roi.fontSize);
+                if (roiNameSize > 0)
+                    putName(roi, hdr2Offset);
+                double strokeWidth = roi.strokeWidth;
+                //if (roi.getStroke() == null)
+                //    strokeWidth = 0.0;
+                putFloat(hdr2Offset + RoiDecoder.FLOAT_STROKE_WIDTH, (float)strokeWidth);
+                if (roiPropsSize > 0)
+                    putProps(roi, hdr2Offset);
+                if (countersSize > 0)
+                    putPointCounters(roi, hdr2Offset);
+                putByte(hdr2Offset + RoiDecoder.GROUP, roi.serie);//roi.getGroup());
+            }
+
+            void putName(ROI roi, int hdr2Offset)
+            {
+                int offset = hdr2Offset + HEADER2_SIZE;
+                int nameLength = roiNameSize / 2;
+                putInt(hdr2Offset + RoiDecoder.NAME_OFFSET, offset);
+                putInt(hdr2Offset + RoiDecoder.NAME_LENGTH, nameLength);
+                for (int i = 0; i < nameLength; i++)
+                    putShort(offset + i * 2, roiName.ElementAt(i));
+            }
+
+            void putProps(ROI roi, int hdr2Offset)
+            {
+                int offset = hdr2Offset + HEADER2_SIZE + roiNameSize;
+                int roiPropsLength = roiPropsSize / 2;
+                putInt(hdr2Offset + RoiDecoder.ROI_PROPS_OFFSET, offset);
+                putInt(hdr2Offset + RoiDecoder.ROI_PROPS_LENGTH, roiPropsLength);
+                for (int i = 0; i < roiPropsLength; i++)
+                    putShort(offset + i * 2, roiProps.ElementAt(i));
+            }
+
+            void putPointCounters(ROI roi, int hdr2Offset)
+            {
+                int offset = hdr2Offset + HEADER2_SIZE + roiNameSize + roiPropsSize;
+                putInt(hdr2Offset + RoiDecoder.COUNTERS_OFFSET, offset);
+                for (int i = 0; i < countersSize / 4; i++)
+                    putInt(offset + i * 4, counters[i]);
+                countersSize = 0;
+            }
+
+            void putByte(int bas, int v)
+            {
+                data[bas] = (byte)v;
+            }
+
+            void putShort(int bas, int v)
+            {
+                //data[bas] = (byte)(v >>> 8);
+                //data[bas] = (byte)UnsignedRightShift(v, 8);
+                data[bas] = (byte)rightMove(v, 8);
+                data[bas + 1] = (byte)v;
+            }
+
+            void putFloat(int bas, float v)
+            {
+                int tmp = BitConverter.SingleToInt32Bits(v);//Float.floatToIntBits(v);
+                data[bas] = (byte)(tmp >> 24);
+                data[bas + 1] = (byte)(tmp >> 16);
+                data[bas + 2] = (byte)(tmp >> 8);
+                data[bas + 3] = (byte)tmp;
+            }
+
+            void putInt(int bas, int i)
+            {
+                data[bas] = (byte)(i >> 24);
+                data[bas + 1] = (byte)(i >> 16);
+                data[bas + 2] = (byte)(i >> 8);
+                data[bas + 3] = (byte)i;
+            }
+        }
 
     }
 }

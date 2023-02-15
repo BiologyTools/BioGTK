@@ -8,3 +8,8 @@ obj/Release/
 obj/ 	# ignore bin directory 
 *.obj 	# ignore any files with .obj postfix 
 packages
+obj/project.nuget.cache
+obj/project.assets.json
+obj/BioGTK.csproj.nuget.g.targets
+obj/BioGTK.csproj.nuget.g.props
+obj/BioGTK.csproj.nuget.dgspec.json

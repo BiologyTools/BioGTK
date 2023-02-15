@@ -75,6 +75,8 @@ namespace BioGTK
         private MenuItem exportROIsOfFolderOfImagesMenu;
         [Builder.Object]
         private MenuItem importROIsFromImageJMenu;
+        [Builder.Object]
+        private MenuItem exportROIsFromImageJMenu;
 
         [Builder.Object]
         private MenuItem autoThresholdAllMenu;
@@ -198,6 +200,7 @@ namespace BioGTK
             importROIsFromCSVMenu.ButtonPressEvent += importROIsFromCSVMenuClick;
             exportROIsOfFolderOfImagesMenu.ButtonPressEvent += exportROIsOfFolderOfImagesMenuClick;
             importROIsFromImageJMenu.ButtonPressEvent += ImportROIsFromImageJMenu_ButtonPressEvent;
+            exportROIsFromImageJMenu.ButtonPressEvent += ExportROIsFromImageJMenu_ButtonPressEvent;
 
             autoThresholdAllMenu.ButtonPressEvent += autoThresholdAllMenuClick;
             channelsToolMenu.ButtonPressEvent += channelsToolMenuClick;
@@ -225,6 +228,23 @@ namespace BioGTK
             emissionMenu.ButtonPressEvent += EmissionMenu_ButtonPressEvent;
             tabsView.SwitchPage += TabsView_SwitchPage;
             this.WindowStateEvent += TabsView_WindowStateEvent;
+        }
+
+        private void ExportROIsFromImageJMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Gtk.FileChooserDialog filechooser =
+        new Gtk.FileChooserDialog("Set filename to save",
+            this,
+            FileChooserAction.Open,
+            "Cancel", ResponseType.Cancel,
+            "Save", ResponseType.Accept);
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            foreach (ROI item in ImageView.SelectedImage.Annotations)
+            {
+                ImageJ.RoiEncoder.save(item,filechooser.Filename);
+            }
+            filechooser.Destroy();
         }
 
         private void ImportROIsFromImageJMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)

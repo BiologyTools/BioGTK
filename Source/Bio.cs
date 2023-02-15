@@ -437,6 +437,13 @@ namespace BioGTK
                 return Points;
             }
         }
+        public PointD[] PointsImage
+        {
+            get
+            {
+                return ImageView.SelectedImage.ToImageSpace(PointsD);
+            }
+        }
         private List<RectangleD> selectBoxs = new List<RectangleD>();
         public List<int> selectedPoints = new List<int>();
         public RectangleD BoundingBox;
@@ -847,6 +854,7 @@ namespace BioGTK
                 r.H = 1;
             BoundingBox = r;
         }
+        
         public override string ToString()
         {
             return type.ToString() + ", " + Text + " (" + W + ", " + H + "); " + " (" + Point.X + ", " + Point.Y + ") " + coord.ToString();
