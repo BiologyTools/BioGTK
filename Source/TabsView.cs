@@ -235,7 +235,7 @@ namespace BioGTK
             Gtk.FileChooserDialog filechooser =
         new Gtk.FileChooserDialog("Set filename to save",
             this,
-            FileChooserAction.Open,
+            FileChooserAction.Save,
             "Cancel", ResponseType.Cancel,
             "Save", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
