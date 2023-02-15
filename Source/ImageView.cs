@@ -1314,7 +1314,7 @@ namespace BioGTK
             App.tools.ToolMove(p, e);
             mousePoint = "(" + (p.X) + ", " + (p.Y) + ")";
             //pd = p;
-            if (Tools.currentTool.type == Tools.Tool.Type.pointSel && mouseLeftState)
+            if (Tools.currentTool.type == Tools.Tool.Type.pointSel && e.Event.State == ModifierType.Button1Mask)
             {
                 foreach (ROI an in selectedAnnotations)
                 {
