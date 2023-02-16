@@ -12,20 +12,24 @@ namespace BioGTK
 {
     public static class App
     {
-        public static TabsView tabsView = null;
-        public static Tools tools = null;
-        public static ImageView viewer = null;
-        public static ColorTool color = null;
-        public static NodeView nodeView = null;
-        public static FiltersView filters = null;
-        public static ApplyFilter applyFilter = null;
-        public static ChannelsTool channelsTool = null;
-        public static ROIManager roiManager = null;
-        public static Scripting scripting = null;
-        public static BioConsole console = null;
-        public static Functions funcs = null;
-        public static StackTools stack = null;
-        public static SetTool setTool = null;
+        public static TabsView tabsView;
+        public static Tools tools;
+        public static ImageView viewer;
+        public static ColorTool color;
+
+        public static About about;
+        public static NodeView nodeView;
+        public static FiltersView filters;
+        public static ApplyFilter applyFilter;
+        public static ChannelsTool channelsTool;
+        public static ROIManager roiManager;
+        public static Scripting scripting;
+        public static BioConsole console;
+        public static Functions funcs;
+        public static StackTools stack;
+        public static SetTool setTool;
+        public static Resolutions resolutions;
+        public static Recorder recorder;
 
         /// Initialize() is a function that initializes the BioImage Suite Web
         public static void Initialize()
@@ -35,8 +39,13 @@ namespace BioGTK
             filters = FiltersView.Create();
             roiManager = ROIManager.Create();
             scripting = Scripting.Create();
+            funcs = Functions.Create();
+            //channelsTool = ChannelsTool.Create();
             console = BioConsole.Create();
             stack = StackTools.Create();
+            about = About.Create();
+            setTool = SetTool.Create();
+            recorder = Recorder.Create();
             //color = ColorTool.Create();
             Settings.Load();
             ImageJ.ImageJPath = Settings.GetSettings("ImageJPath");

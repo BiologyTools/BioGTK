@@ -5,7 +5,7 @@
   <object class="GtkWindow" id="TabsView">
     <property name="name">tabsView</property>
     <property name="can-focus">False</property>
-    <property name="title" translatable="yes">BioGTK</property>
+    <property name="title" translatable="yes">BioGTK - Tabs View</property>
     <child>
       <object class="GtkBox">
         <property name="visible">True</property>
@@ -455,7 +455,7 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkMenuItem">
+                      <object class="GtkMenuItem" id="scriptRecorderMenu">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="label" translatable="yes">Script Recorder</property>

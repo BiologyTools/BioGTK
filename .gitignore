@@ -3,8 +3,12 @@
 bin/ 	# ignore bin directory 
 bin/Debug/
 bin/Release/
+bin/x64/
+bin/ARM64/
 obj/Debug/
 obj/Release/
+obj/ARM64/
+obj/x64/
 obj/ 	# ignore bin directory 
 *.obj 	# ignore any files with .obj postfix 
 packages
@@ -13,3 +17,10 @@ obj/project.assets.json
 obj/BioGTK.csproj.nuget.g.targets
 obj/BioGTK.csproj.nuget.g.props
 obj/BioGTK.csproj.nuget.dgspec.json
+*.nupkg
+*.pdb
+*.pf
+*.data
+*.cache
+*.jar
+*.properties

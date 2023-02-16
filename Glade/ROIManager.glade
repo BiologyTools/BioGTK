@@ -10,6 +10,7 @@
     <property name="can-focus">False</property>
     <property name="hexpand">False</property>
     <property name="vexpand">False</property>
+    <property name="title" translatable="yes">ROI Manager</property>
     <child>
       <object class="GtkBox">
         <property name="visible">True</property>
@@ -32,7 +33,7 @@
         </child>
         <child>
           <object class="GtkFixed">
-            <property name="width-request">32</property>
+            <property name="width-request">420</property>
             <property name="height-request">32</property>
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -75,6 +76,7 @@
                 <property name="label" translatable="yes">X, Y:</property>
               </object>
               <packing>
+                <property name="x">4</property>
                 <property name="y">54</property>
               </packing>
             </child>
@@ -89,6 +91,7 @@
                 <property name="label" translatable="yes">W, H:</property>
               </object>
               <packing>
+                <property name="x">3</property>
                 <property name="y">93</property>
               </packing>
             </child>
@@ -103,7 +106,7 @@
                 <property name="numeric">True</property>
               </object>
               <packing>
-                <property name="x">35</property>
+                <property name="x">38</property>
                 <property name="y">48</property>
               </packing>
             </child>
@@ -113,10 +116,11 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
                 <property name="digits">8</property>
               </object>
               <packing>
-                <property name="x">35</property>
+                <property name="x">38</property>
                 <property name="y">86</property>
               </packing>
             </child>
@@ -126,10 +130,11 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
                 <property name="digits">8</property>
               </object>
               <packing>
-                <property name="x">202</property>
+                <property name="x">213</property>
                 <property name="y">48</property>
               </packing>
             </child>
@@ -139,10 +144,11 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
                 <property name="digits">8</property>
               </object>
               <packing>
-                <property name="x">202</property>
+                <property name="x">213</property>
                 <property name="y">85</property>
               </packing>
             </child>
@@ -160,24 +166,25 @@
             </child>
             <child>
               <object class="GtkSpinButton" id="zBox">
-                <property name="width-request">126</property>
+                <property name="width-request">118</property>
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
               </object>
               <packing>
+                <property name="x">4</property>
                 <property name="y">145</property>
               </packing>
             </child>
             <child>
               <object class="GtkSpinButton" id="cBox">
-                <property name="width-request">126</property>
+                <property name="width-request">118</property>
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
               </object>
               <packing>
-                <property name="x">130</property>
+                <property name="x">135</property>
                 <property name="y">145</property>
               </packing>
             </child>
@@ -189,7 +196,7 @@
                 <property name="can-focus">True</property>
               </object>
               <packing>
-                <property name="x">260</property>
+                <property name="x">272</property>
                 <property name="y">145</property>
               </packing>
             </child>
@@ -205,7 +212,7 @@
                 <property name="preview-text"/>
               </object>
               <packing>
-                <property name="x">122</property>
+                <property name="x">135</property>
                 <property name="y">205</property>
               </packing>
             </child>
@@ -230,6 +237,7 @@
                 <property name="digits">1</property>
               </object>
               <packing>
+                <property name="x">4</property>
                 <property name="y">205</property>
               </packing>
             </child>
@@ -242,7 +250,7 @@
                 <property name="label" translatable="yes">Set Font</property>
               </object>
               <packing>
-                <property name="x">120</property>
+                <property name="x">135</property>
                 <property name="y">184</property>
               </packing>
             </child>
@@ -254,7 +262,7 @@
                 <property name="can-focus">True</property>
               </object>
               <packing>
-                <property name="x">245</property>
+                <property name="x">269</property>
                 <property name="y">261</property>
               </packing>
             </child>
@@ -266,7 +274,7 @@
                 <property name="can-focus">True</property>
               </object>
               <packing>
-                <property name="x">120</property>
+                <property name="x">134</property>
                 <property name="y">261</property>
               </packing>
             </child>
@@ -278,6 +286,7 @@
                 <property name="can-focus">True</property>
               </object>
               <packing>
+                <property name="x">3</property>
                 <property name="y">262</property>
               </packing>
             </child>
@@ -302,6 +311,7 @@
                 <property name="label" translatable="yes">Type</property>
               </object>
               <packing>
+                <property name="x">3</property>
                 <property name="y">311</property>
               </packing>
             </child>
@@ -361,6 +371,7 @@
                 <property name="can-focus">True</property>
               </object>
               <packing>
+                <property name="x">4</property>
                 <property name="y">440</property>
               </packing>
             </child>
@@ -373,6 +384,7 @@
                 <property name="label" translatable="yes">Point</property>
               </object>
               <packing>
+                <property name="x">7</property>
                 <property name="y">415</property>
               </packing>
             </child>
@@ -386,7 +398,7 @@
                 <property name="digits">3</property>
               </object>
               <packing>
-                <property name="x">132</property>
+                <property name="x">142</property>
                 <property name="y">440</property>
               </packing>
             </child>
@@ -400,7 +412,7 @@
                 <property name="digits">3</property>
               </object>
               <packing>
-                <property name="x">265</property>
+                <property name="x">279</property>
                 <property name="y">440</property>
               </packing>
             </child>
@@ -431,7 +443,7 @@
                 <property name="draw-indicator">True</property>
               </object>
               <packing>
-                <property name="x">100</property>
+                <property name="x">103</property>
                 <property name="y">481</property>
               </packing>
             </child>
@@ -444,6 +456,7 @@
                 <property name="label" translatable="yes">Show ROI's in RGB View</property>
               </object>
               <packing>
+                <property name="x">5</property>
                 <property name="y">505</property>
               </packing>
             </child>
@@ -458,6 +471,7 @@
                 <property name="draw-indicator">True</property>
               </object>
               <packing>
+                <property name="x">3</property>
                 <property name="y">527</property>
               </packing>
             </child>
@@ -473,7 +487,7 @@
                 <property name="draw-indicator">True</property>
               </object>
               <packing>
-                <property name="x">50</property>
+                <property name="x">59</property>
                 <property name="y">527</property>
               </packing>
             </child>
@@ -489,7 +503,7 @@
                 <property name="draw-indicator">True</property>
               </object>
               <packing>
-                <property name="x">100</property>
+                <property name="x">118</property>
                 <property name="y">528</property>
               </packing>
             </child>
@@ -502,7 +516,7 @@
                 <property name="digits">1</property>
               </object>
               <packing>
-                <property name="x">181</property>
+                <property name="x">189</property>
                 <property name="y">513</property>
               </packing>
             </child>

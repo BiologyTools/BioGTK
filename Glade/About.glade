@@ -11,13 +11,14 @@
         <property name="can-focus">False</property>
         <property name="orientation">vertical</property>
         <child>
-          <object class="GtkImage" id="image">
+          <object class="GtkDrawingArea" id="image">
+            <property name="width-request">557</property>
+            <property name="height-request">251</property>
             <property name="visible">True</property>
             <property name="can-focus">False</property>
-            <property name="pixbuf">../banner.jpg</property>
           </object>
           <packing>
-            <property name="expand">True</property>
+            <property name="expand">False</property>
             <property name="fill">True</property>
             <property name="position">0</property>
           </packing>

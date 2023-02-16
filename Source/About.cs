@@ -1,4 +1,5 @@
-﻿using Gtk;
+﻿using Gdk;
+using Gtk;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,15 +10,14 @@ namespace BioGTK
 {
    
     /* It's a window that displays the version of the program and the author */
-    public class About : Window
+    public class About : Gtk.Window
     {
         #region Properties
-
+        Pixbuf pixbuf;
         private Builder _builder;
 #pragma warning disable 649
-
         [Builder.Object]
-        private Gtk.Image image;
+        private Gtk.DrawingArea image;
         [Builder.Object]
         private Gtk.Label label;
 #pragma warning restore 649
@@ -40,8 +40,26 @@ namespace BioGTK
         {
             _builder = builder;
             builder.Autoconnect(this);
-            image.File = "banner.jpg";
+            Console.WriteLine(Environment.CurrentDirectory);
+            string s = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/";
+            pixbuf = new Pixbuf(s + "Resources/banner.jpg");
             label.Text = "BioGTK " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString() + " by Erik Repo, Github.com/BiologyTools/BioGTK.";
+            image.Drawn += Image_Drawn;
+            this.DeleteEvent += About_DeleteEvent;
+        }
+
+        private void About_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            args.RetVal = true;
+            Hide();
+        }
+
+        private void Image_Drawn(object o, DrawnArgs e)
+        {
+            Pixbuf pf = pixbuf.ScaleSimple(image.AllocatedWidth, image.AllocatedHeight, InterpType.Bilinear);
+            Gdk.CairoHelper.SetSourcePixbuf(e.Cr,pf,0,0);
+            e.Cr.Paint();
+            e.Cr.Stroke();
         }
 
         #endregion

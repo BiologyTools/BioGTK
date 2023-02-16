@@ -113,6 +113,8 @@ namespace BioGTK
         private MenuItem consoleMenu;
         [Builder.Object]
         private MenuItem scriptRunnerMenu;
+        [Builder.Object]
+        private MenuItem scriptRecorderMenu;
 
         [Builder.Object]
         private MenuItem aboutMenu;
@@ -218,6 +220,7 @@ namespace BioGTK
             functionsToolMenu.ButtonPressEvent += functionsToolMenuClick;
             consoleMenu.ButtonPressEvent += consoleMenuClick;
             scriptRunnerMenu.ButtonPressEvent += scriptRunnerMenuClick;
+            scriptRecorderMenu.ButtonPressEvent += ScriptRecorderMenu_ButtonPressEvent;
 
             aboutMenu.ButtonPressEvent += AboutClick;
 
@@ -230,19 +233,27 @@ namespace BioGTK
             this.WindowStateEvent += TabsView_WindowStateEvent;
         }
 
+        private void ScriptRecorderMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            App.recorder.Show();
+            App.recorder.Present();
+        }
+
         private void ExportROIsFromImageJMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Gtk.FileChooserDialog filechooser =
-        new Gtk.FileChooserDialog("Set filename to save",
+        new Gtk.FileChooserDialog("Set ROI filename to save",
             this,
             FileChooserAction.Save,
             "Cancel", ResponseType.Cancel,
             "Save", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
+            int i = 1;
             foreach (ROI item in ImageView.SelectedImage.Annotations)
             {
-                ImageJ.RoiEncoder.save(item,filechooser.Filename);
+                ImageJ.RoiEncoder.save(item,filechooser.Filename + "-" + i);
+                i++;
             }
             filechooser.Destroy();
         }
@@ -713,8 +724,6 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         protected void toolsMenuClick(object sender, EventArgs a)
         {
-            if(App.tools == null)
-            App.tools = Tools.Create();
             App.tools.Show();
             App.tools.Present();
         }
@@ -724,7 +733,6 @@ namespace BioGTK
         /// @param EventArgs This is the event arguments that are passed to the event handler.
         protected void setToolMenuClick(object sender, EventArgs a)
         {
-            App.setTool = SetTool.Create();
             App.setTool.Show();
             App.setTool.Present();
         }
@@ -736,6 +744,7 @@ namespace BioGTK
         protected void roiManagerMenuClick(object sender, EventArgs a)
         {
             App.roiManager.Show();
+            App.roiManager.Present();
         }
 
         /// This function is called when the user clicks on the "Export ROIs to CSV" menu item
@@ -821,8 +830,12 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         protected void channelsToolMenuClick(object sender, EventArgs a)
         {
-            App.channelsTool = ChannelsTool.Create();
+            if (App.viewer == null)
+                return;
+            if (App.channelsTool == null)
+                App.channelsTool = ChannelsTool.Create();
             App.channelsTool.Show();
+            App.channelsTool.Present();
         }
         /// This function is called when the user clicks on the "Switch Red and Blue" menu item
         /// 
@@ -843,7 +856,6 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         protected void stackToolMenuClick(object sender, EventArgs a)
         {
-            App.stack = StackTools.Create();
             App.stack.Show();
             App.stack.Present();
         }
@@ -895,8 +907,8 @@ namespace BioGTK
         /// @param EventArgs The EventArgs class is the base class for classes that contain event data.
         protected void filtersMenuClick(object sender, EventArgs a)
         {
-            App.filters = FiltersView.Create();
             App.filters.Show();
+            App.filters.Present();
         }
 
         /// This function is called when the user clicks on the functions tool menu item
@@ -905,7 +917,6 @@ namespace BioGTK
         /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         protected void functionsToolMenuClick(object sender, EventArgs a)
         {
-            App.funcs = Functions.Create();
             App.funcs.Show();
             App.funcs.Present();
         }
@@ -915,7 +926,6 @@ namespace BioGTK
         /// @param EventArgs This is the event arguments that are passed to the event handler.
         protected void consoleMenuClick(object sender, EventArgs a)
         {
-            App.console = BioConsole.Create();
             App.console.Show();
             App.console.Present();
         }
@@ -925,8 +935,8 @@ namespace BioGTK
         /// @param EventArgs This is the event arguments.
         protected void scriptRunnerMenuClick(object sender, EventArgs a)
         {
-            App.scripting = Scripting.Create();
             App.scripting.Show();
+            App.scripting.Present();
         }
 
         /// It creates a new instance of the About class, and then shows it
@@ -935,8 +945,8 @@ namespace BioGTK
         /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         protected void AboutClick(object sender, EventArgs a)
         {
-            About ab = About.Create();
-            ab.Show();
+            App.about.Show();
+            App.about.Present();
         }
 
         /// This function removes a tab from the tab control

@@ -82,7 +82,7 @@ namespace BioGTK
 
         private void Scripting_DeleteEvent(object o, DeleteEventArgs args)
         {
-            args.RetVal = false;
+            args.RetVal = true;
             Hide();
         }
 

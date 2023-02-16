@@ -49,7 +49,7 @@
         <child>
           <object class="GtkFixed">
             <property name="width-request">451</property>
-            <property name="height-request">67</property>
+            <property name="height-request">62</property>
             <property name="visible">True</property>
             <property name="can-focus">False</property>
             <child>

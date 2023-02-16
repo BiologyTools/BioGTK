@@ -10,6 +10,7 @@
         <property name="can-focus">False</property>
         <child>
           <object class="GtkTreeView" id="scriptView">
+            <property name="width-request">200</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
             <child internal-child="selection">
@@ -31,6 +32,7 @@
             <property name="orientation">vertical</property>
             <child>
               <object class="GtkLabel" id="scriptLabel">
+                <property name="height-request">27</property>
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="halign">start</property>
@@ -131,6 +133,7 @@
                 </child>
                 <child>
                   <object class="GtkFixed">
+                    <property name="height-request">56</property>
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <child>
@@ -143,7 +146,7 @@
                       </object>
                       <packing>
                         <property name="x">8</property>
-                        <property name="y">3</property>
+                        <property name="y">11</property>
                       </packing>
                     </child>
                     <child>
@@ -156,7 +159,7 @@
                       </object>
                       <packing>
                         <property name="x">110</property>
-                        <property name="y">3</property>
+                        <property name="y">11</property>
                       </packing>
                     </child>
                     <child>
@@ -169,7 +172,7 @@
                       </object>
                       <packing>
                         <property name="x">212</property>
-                        <property name="y">3</property>
+                        <property name="y">11</property>
                       </packing>
                     </child>
                     <child>
@@ -182,7 +185,7 @@
                       </object>
                       <packing>
                         <property name="x">314</property>
-                        <property name="y">3</property>
+                        <property name="y">12</property>
                       </packing>
                     </child>
                     <child>
@@ -196,7 +199,7 @@
                       </object>
                       <packing>
                         <property name="x">421</property>
-                        <property name="y">9</property>
+                        <property name="y">16</property>
                       </packing>
                     </child>
                   </object>

@@ -64,6 +64,13 @@ namespace BioGTK
             mergeZBut.Clicked += MergeZBut_Clicked;
             mergeTBut.Clicked += MergeTBut_Clicked;
             mergeBut.Clicked += MergeBut_Clicked;
+            this.DeleteEvent += StackTools_DeleteEvent;
+        }
+
+        private void StackTools_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            args.RetVal = true;
+            Hide();
         }
         #endregion
         private void StackBBox_Changed(object sender, EventArgs e)

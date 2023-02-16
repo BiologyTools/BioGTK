@@ -8,8 +8,8 @@
     <property name="resizable">False</property>
     <child>
       <object class="GtkFixed">
-        <property name="width-request">313</property>
-        <property name="height-request">345</property>
+        <property name="width-request">322</property>
+        <property name="height-request">356</property>
         <property name="visible">True</property>
         <property name="can-focus">False</property>
         <child>
@@ -162,7 +162,7 @@
             <property name="label" translatable="yes">Angle</property>
           </object>
           <packing>
-            <property name="x">10</property>
+            <property name="x">33</property>
             <property name="y">197</property>
           </packing>
         </child>
@@ -184,7 +184,7 @@
             <property name="label" translatable="yes">ROI</property>
           </object>
           <packing>
-            <property name="x">154</property>
+            <property name="x">180</property>
             <property name="y">197</property>
           </packing>
         </child>

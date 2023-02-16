@@ -4,6 +4,7 @@
   <requires lib="gtk+" version="3.24"/>
   <object class="GtkWindow" id="recorderWindow">
     <property name="can-focus">False</property>
+    <property name="title" translatable="yes">Recorder</property>
     <child>
       <object class="GtkBox">
         <property name="visible">True</property>
@@ -24,6 +25,7 @@
         </child>
         <child>
           <object class="GtkFixed" id="recorder">
+            <property name="height-request">54</property>
             <property name="visible">True</property>
             <property name="can-focus">False</property>
             <child>
@@ -35,7 +37,7 @@
               </object>
               <packing>
                 <property name="x">378</property>
-                <property name="y">2</property>
+                <property name="y">10</property>
               </packing>
             </child>
           </object>

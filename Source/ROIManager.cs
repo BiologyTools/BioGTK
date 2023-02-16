@@ -167,7 +167,7 @@ namespace Bio
 
         private void ROIManager_DeleteEvent(object o, DeleteEventArgs args)
         {
-            args.RetVal = false;
+            args.RetVal = true;
             Hide();
         }
 

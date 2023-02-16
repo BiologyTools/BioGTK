@@ -63,6 +63,13 @@ namespace BioGTK
             DeleteEvent += OnLocalDeleteEvent;
             clearBut.Clicked += ClearBut_Clicked;
             this.FocusActivated += Recorder_FocusActivated;
+            this.DeleteEvent += Recorder_DeleteEvent;
+        }
+
+        private void Recorder_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            args.RetVal = true;
+            Hide();
         }
 
         private void Recorder_FocusActivated(object sender, EventArgs e)
@@ -86,8 +93,8 @@ namespace BioGTK
         /// @param DeleteEventArgs This is the event arguments that are passed to the event handler.
         protected void OnLocalDeleteEvent(object sender, DeleteEventArgs a)
         {
-            Application.Quit();
             a.RetVal = true;
+            Hide();
         }
 
         #endregion

@@ -74,7 +74,7 @@ namespace BioGTK
         private void BioConsole_DeleteEvent(object o, DeleteEventArgs args)
         {
             Hide();
-            args.RetVal = false;
+            args.RetVal = true;
         }
 
         private void Console_KeyPressEvent(object o, KeyPressEventArgs args)

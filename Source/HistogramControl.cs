@@ -65,12 +65,13 @@ namespace BioGTK
             else
             {
                 graphMax = ushort.MaxValue;
-                Bin = 10;
+                Bin = 1;
             }
             this.Drawn += HistogramControl_Drawn;
             this.MotionNotifyEvent += HistogramControl_MotionNotifyEvent;
             this.ButtonPressEvent += HistogramControl_ButtonPressEvent;
             this.ScrollEvent += HistogramControl_ScrollEvent;
+            this.DeleteEvent += HistogramControl_DeleteEvent;
             setMin.ButtonPressEvent += SetMin_ButtonPressEvent;
             setMax.ButtonPressEvent += SetMax_ButtonPressEvent;
             setMinAll.ButtonPressEvent += SetMinAll_ButtonPressEvent;
@@ -82,6 +83,12 @@ namespace BioGTK
                 | EventMask.PointerMotionMask | EventMask.ScrollMask));
         }
 
+        private void HistogramControl_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            args.RetVal = true;
+            Hide();
+        }
+
         /// If the scroll direction is up, increase the graphMax by 50. If the scroll direction is down,
         /// decrease the graphMax by 50
         /// 
@@ -91,11 +98,11 @@ namespace BioGTK
         {
             if(args.Event.Direction == Gdk.ScrollDirection.Up)
             {
-                graphMax += 200;
+                graphMax += 400;
             }
             else if (args.Event.Direction == Gdk.ScrollDirection.Down)
             {
-                graphMax -= 200;
+                graphMax -= 400;
             }
             UpdateView();
         }

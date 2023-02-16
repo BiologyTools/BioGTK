@@ -134,6 +134,8 @@ namespace BioGTK
         private void ColorTool_DeleteEvent(object o, DeleteEventArgs args)
         {
             DefaultResponse = ResponseType.Cancel;
+            args.RetVal = true;
+            Hide();
         }
 
         /// The function takes the image and draws a rectangle on it with the color specified by the

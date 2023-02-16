@@ -7,6 +7,8 @@
     <property name="resizable">False</property>
     <child>
       <object class="GtkFixed">
+        <property name="width-request">308</property>
+        <property name="height-request">370</property>
         <property name="visible">True</property>
         <property name="can-focus">False</property>
         <child>
@@ -21,8 +23,8 @@
           </packing>
         </child>
         <child>
-          <object class="GtkComboBox">
-            <property name="width-request">230</property>
+          <object class="GtkComboBox" id="stackABox">
+            <property name="width-request">246</property>
             <property name="visible">True</property>
             <property name="can-focus">False</property>
           </object>
@@ -103,7 +105,7 @@
             <property name="can-focus">True</property>
           </object>
           <packing>
-            <property name="x">154</property>
+            <property name="x">173</property>
             <property name="y">70</property>
           </packing>
         </child>
@@ -124,7 +126,7 @@
             <property name="can-focus">True</property>
           </object>
           <packing>
-            <property name="x">154</property>
+            <property name="x">173</property>
             <property name="y">108</property>
           </packing>
         </child>
@@ -146,12 +148,12 @@
             <property name="can-focus">True</property>
           </object>
           <packing>
-            <property name="x">155</property>
+            <property name="x">173</property>
             <property name="y">146</property>
           </packing>
         </child>
         <child>
-          <object class="GtkButton">
+          <object class="GtkButton" id="splitChannelsBut">
             <property name="label" translatable="yes">Split Channels</property>
             <property name="width-request">120</property>
             <property name="visible">True</property>
@@ -164,7 +166,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkButton">
+          <object class="GtkButton" id="substackBut">
             <property name="label" translatable="yes">Create Substack</property>
             <property name="width-request">100</property>
             <property name="visible">True</property>
@@ -172,18 +174,18 @@
             <property name="receives-default">True</property>
           </object>
           <packing>
-            <property name="x">155</property>
+            <property name="x">173</property>
             <property name="y">196</property>
           </packing>
         </child>
         <child>
-          <object class="GtkComboBox">
+          <object class="GtkComboBox" id="stackBBox">
             <property name="width-request">230</property>
             <property name="visible">True</property>
             <property name="can-focus">False</property>
           </object>
           <packing>
-            <property name="x">48</property>
+            <property name="x">58</property>
             <property name="y">237</property>
           </packing>
         </child>
@@ -194,8 +196,49 @@
             <property name="label" translatable="yes">Stack B</property>
           </object>
           <packing>
-            <property name="x">5</property>
+            <property name="x">11</property>
             <property name="y">245</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton" id="mergeZBut">
+            <property name="label" translatable="yes">Merge Z</property>
+            <property name="width-request">120</property>
+            <property name="height-request">34</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="receives-default">True</property>
+          </object>
+          <packing>
+            <property name="x">30</property>
+            <property name="y">278</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton" id="mergeBut">
+            <property name="label" translatable="yes">Merge Channels</property>
+            <property name="width-request">120</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="receives-default">True</property>
+          </object>
+          <packing>
+            <property name="x">168</property>
+            <property name="y">278</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton" id="mergeTBut">
+            <property name="label" translatable="yes">Merge T</property>
+            <property name="width-request">118</property>
+            <property name="height-request">36</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="receives-default">True</property>
+          </object>
+          <packing>
+            <property name="x">31</property>
+            <property name="y">317</property>
           </packing>
         </child>
       </object>

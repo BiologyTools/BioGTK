@@ -83,14 +83,10 @@ namespace BioGTK
             
         }
 
-        /// When the user clicks the close button on the window, the application will quit.
-        /// 
-        /// @param sender The object that raised the event.
-        /// @param DeleteEventArgs This is the event arguments that are passed to the event handler.
         protected void OnLocalDeleteEvent(object sender, DeleteEventArgs a)
         {
-            Application.Quit();
             a.RetVal = true;
+            Hide();
         }
 
         #endregion

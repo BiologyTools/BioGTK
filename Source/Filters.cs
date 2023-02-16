@@ -41,6 +41,13 @@ namespace BioGTK
             builder.Autoconnect(this);
             InitItems();
             tree.RowActivated += Tree_RowActivated;
+            this.DeleteEvent += FiltersView_DeleteEvent;
+        }
+
+        private void FiltersView_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            args.RetVal = true;
+            Hide();
         }
 
         /// It creates a new instance of the ApplyFilter class, passing in the filter that was selected
@@ -101,12 +108,12 @@ namespace BioGTK
         /// column is the filter name
         public void InitItems()
         {
+            tree.Model = null;
             tree.ActivateOnSingleClick = false;
             Gtk.TreeViewColumn coordCol = new Gtk.TreeViewColumn();
             coordCol.Title = "Filter";
             Gtk.CellRendererText coordCell = new Gtk.CellRendererText();
             coordCol.PackStart(coordCell, true);
-
             tree.AppendColumn(coordCol);
             coordCol.AddAttribute(coordCell, "text", 0);
             Gtk.TreeStore store = new Gtk.TreeStore(typeof(string));

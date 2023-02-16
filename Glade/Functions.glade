@@ -3,12 +3,16 @@
 <interface>
   <requires lib="gtk+" version="3.24"/>
   <object class="GtkWindow" id="functions">
+    <property name="width-request">4</property>
+    <property name="height-request">-1</property>
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">Functions</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
     <child>
       <object class="GtkFixed">
+        <property name="width-request">370</property>
+        <property name="height-request">520</property>
         <property name="visible">True</property>
         <property name="can-focus">False</property>
         <child>
@@ -24,7 +28,7 @@
         </child>
         <child>
           <object class="GtkComboBox" id="funcsBox">
-            <property name="width-request">280</property>
+            <property name="width-request">336</property>
             <property name="visible">True</property>
             <property name="can-focus">False</property>
           </object>
@@ -46,7 +50,7 @@
         </child>
         <child>
           <object class="GtkEntry" id="nameBox">
-            <property name="width-request">280</property>
+            <property name="width-request">335</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
           </object>
@@ -101,12 +105,12 @@
         </child>
         <child>
           <object class="GtkComboBox" id="modifierBox">
-            <property name="width-request">100</property>
+            <property name="width-request">167</property>
             <property name="visible">True</property>
             <property name="can-focus">False</property>
           </object>
           <packing>
-            <property name="x">255</property>
+            <property name="x">243</property>
             <property name="y">129</property>
           </packing>
         </child>
@@ -123,7 +127,7 @@
         </child>
         <child>
           <object class="GtkSpinButton" id="valBox">
-            <property name="width-request">280</property>
+            <property name="width-request">335</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
           </object>
@@ -145,7 +149,7 @@
         </child>
         <child>
           <object class="GtkTextView" id="textBox">
-            <property name="width-request">280</property>
+            <property name="width-request">335</property>
             <property name="height-request">100</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
@@ -168,7 +172,7 @@
         </child>
         <child>
           <object class="GtkEntry" id="menuPath">
-            <property name="width-request">272</property>
+            <property name="width-request">322</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
           </object>
@@ -194,7 +198,7 @@
         </child>
         <child>
           <object class="GtkEntry" id="contextMenuPath">
-            <property name="width-request">270</property>
+            <property name="width-request">324</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
           </object>
@@ -276,7 +280,7 @@
         </child>
         <child>
           <object class="GtkComboBox" id="keysBox">
-            <property name="width-request">280</property>
+            <property name="width-request">335</property>
             <property name="visible">True</property>
             <property name="can-focus">False</property>
           </object>

@@ -36,8 +36,16 @@ namespace BioGTK
             builder.Autoconnect(this);
             tree.RowActivated += TreeView_RowActivated;
             this.FocusActivated += SetTool_FocusActivated;
+            this.DeleteEvent += SetTool_DeleteEvent;
             InitItems();
         }
+
+        private void SetTool_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            args.RetVal = true;
+            Hide();
+        }
+
         private void SetTool_FocusActivated(object sender, EventArgs e)
         {
             UpdateItems();

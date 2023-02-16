@@ -4,7 +4,6 @@
   <requires lib="gtk+" version="3.20"/>
   <object class="GtkWindow" id="chanTool">
     <property name="can-focus">False</property>
-    <signal name="activate-default" handler="ChannelsTool_activate_default_cb" swapped="no"/>
     <child>
       <object class="GtkBox">
         <property name="visible">True</property>
@@ -12,8 +11,8 @@
         <property name="orientation">vertical</property>
         <child>
           <object class="GtkFixed" id="fixed1">
-            <property name="width-request">32</property>
-            <property name="height-request">32</property>
+            <property name="width-request">630</property>
+            <property name="height-request">329</property>
             <property name="visible">True</property>
             <property name="can-focus">False</property>
             <child>
@@ -57,7 +56,6 @@
                 <property name="width-request">217</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
-                <property name="climb-rate">0.01</property>
                 <property name="numeric">True</property>
               </object>
               <packing>
@@ -70,7 +68,6 @@
                 <property name="width-request">145</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
-                <property name="climb-rate">1</property>
                 <property name="numeric">True</property>
               </object>
               <packing>
@@ -94,7 +91,6 @@
                 <property name="width-request">143</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
-                <property name="climb-rate">1</property>
                 <property name="numeric">True</property>
               </object>
               <packing>
@@ -261,7 +257,7 @@
               </object>
               <packing>
                 <property name="x">319</property>
-                <property name="y">72</property>
+                <property name="y">76</property>
               </packing>
             </child>
             <child>
@@ -272,7 +268,7 @@
               </object>
               <packing>
                 <property name="x">320</property>
-                <property name="y">55</property>
+                <property name="y">57</property>
               </packing>
             </child>
             <child>
@@ -284,7 +280,7 @@
               </object>
               <packing>
                 <property name="x">470</property>
-                <property name="y">72</property>
+                <property name="y">76</property>
               </packing>
             </child>
             <child>
@@ -309,7 +305,7 @@
               </object>
               <packing>
                 <property name="x">306</property>
-                <property name="y">289</property>
+                <property name="y">281</property>
               </packing>
             </child>
             <child>
@@ -336,8 +332,8 @@
                 <property name="receives-default">True</property>
               </object>
               <packing>
-                <property name="x">534</property>
-                <property name="y">115</property>
+                <property name="x">539</property>
+                <property name="y">119</property>
               </packing>
             </child>
             <child>
@@ -350,7 +346,7 @@
               </object>
               <packing>
                 <property name="x">455</property>
-                <property name="y">115</property>
+                <property name="y">119</property>
               </packing>
             </child>
           </object>
@@ -358,21 +354,6 @@
             <property name="expand">False</property>
             <property name="fill">True</property>
             <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkBox" id="box">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="baseline-position">bottom</property>
-            <child>
-              <placeholder/>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
           </packing>
         </child>
       </object>
