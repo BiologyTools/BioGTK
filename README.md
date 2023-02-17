@@ -9,7 +9,7 @@ A .NET application & library for editing & annotating various microscopy image f
 
 - Supports running ImageJ macro commands on images open in Bio. Console to run ImageJ macro commands and Bio C# functions.
 
-- Supports drawing shapes & colors onto 16 bit & 48 bit images, unlike Graphics.
+- Supports drawing shapes & colors onto 16 bit & 48 bit images, unlike System.Graphics.
 
 - Convenient viewing of image stacks with scroll wheel moving Z-plane and mouse side buttons scrolling C-planes.
 
