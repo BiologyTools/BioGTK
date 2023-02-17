@@ -1,7 +1,7 @@
 # BioGTK
 ![alt text](https://github.com/BiologyTools/Bio/blob/master/banner.jpg)
 
-A .NET application & library for editing & annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters & macro functions.Check out the new wiki for [library usage.](https://github.com/BiologyTools/Bio/wiki/Library-Usage) or check out the [documentation.](https://biologytools.github.io/) Supports Windows, Linux and Mac. For Mac see installation instructions.
+A .NET application & library for editing & annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters & macro functions.Check out the new wiki for [library usage.](https://github.com/BiologyTools/Bio/wiki/Library-Usage) or check out the [documentation.](https://biologytools.github.io/) Supports Windows, Linux and Mac. For Mac see installation instructions. For Discussion check out the new Discord Server. https://discord.gg/NpREVubS
 
 ## Features
 
