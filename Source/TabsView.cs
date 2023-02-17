@@ -848,6 +848,7 @@ namespace BioGTK
                 bf.SwitchRedBlue();
             }
             App.viewer.UpdateImage();
+            App.viewer.UpdateView();
         }
 
         /// This function is called when the user clicks on the stack tool menu item

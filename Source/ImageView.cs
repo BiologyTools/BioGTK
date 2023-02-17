@@ -347,7 +347,7 @@ namespace BioGTK
             if (bitmap.PixelFormat == PixelFormat.Format16bppGrayScale || bitmap.PixelFormat == PixelFormat.Format48bppRgb)
                 bitmap = AForge.Imaging.Image.Convert16bppTo8bpp(bitmap);
             AForge.Bitmap bm = bitmap.ImageRGB;
-            Pixbuf pixbuf = new Pixbuf(bm.Bytes, true, 8, bm.Width, bm.Height, bm.Stride);
+            Pixbuf pixbuf = new Pixbuf(bm.RGBBytes, true, 8, bm.Width, bm.Height, bm.Stride);
             Bitmaps.Add(pixbuf);
         }
 
@@ -1046,18 +1046,23 @@ namespace BioGTK
             var rendererg = new CellRendererText();
             gBox.PackStart(rendererg, false);
             gBox.AddAttribute(rendererg, "text", 0);
-            if (SelectedImage.Channels.Count > 1)
-                gBox.Active = 1;
-            else
-                gBox.Active = 0;
             var rendererb = new CellRendererText();
             bBox.PackStart(rendererb, false);
             bBox.AddAttribute(rendererb, "text", 0);
+
             if (SelectedImage.Channels.Count > 2)
+            {
+                rBox.Active = 0;
+                gBox.Active = 1;
                 bBox.Active = 2;
+            }
             else
-                bBox.Active = 0;
-            bBox.Active = 0;
+            if (SelectedImage.Channels.Count == 2)
+            {
+                rBox.Active = 0;
+                gBox.Active = 1;
+            }
+
         }
 
         public void CopySelection()

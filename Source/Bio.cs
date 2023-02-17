@@ -3783,17 +3783,17 @@ namespace BioGTK
                 if (Channels.Count >= 3)
                 {
                     Bitmap[] bs = new Bitmap[3];
-                    bs[0] = Buffers[index + RChannel.Index];
+                    bs[2] = Buffers[index + RChannel.Index];
                     bs[1] = Buffers[index + GChannel.Index];
-                    bs[2] = Buffers[index + BChannel.Index];
+                    bs[0] = Buffers[index + BChannel.Index];
                     return Bitmap.GetRGBBitmap(bs, rf, gf, bf);
                 }
                 else
                 {
                     Bitmap[] bs = new Bitmap[3];
-                    bs[0] = Buffers[index + RChannel.Index];
+                    bs[2] = Buffers[index + RChannel.Index];
                     bs[1] = Buffers[index + RChannel.Index + 1];
-                    bs[2] = Buffers[index + RChannel.Index + 2];
+                    bs[0] = Buffers[index + RChannel.Index + 2];
                     return Bitmap.GetRGBBitmap(bs, rf, gf, bf);
                 }
             }
@@ -4189,6 +4189,20 @@ namespace BioGTK
                             Channel ch = new Channel(index, b.bitsPerPixel, info.SamplesPerPixel);
                             ch.info = info;
                             b.Channels.Add(ch);
+                            if (index == 0)
+                            {
+                                b.rgbChannels[0] = 0;
+                            }
+                            else
+                            if (index == 1)
+                            {
+                                b.rgbChannels[1] = 1;
+                            }
+                            else
+                            if (index == 2)
+                            {
+                                b.rgbChannels[2] = 2;
+                            }
                             index++;
                         }
                     }
@@ -4977,6 +4991,20 @@ namespace BioGTK
                     break;
                 else
                     b.Channels.Add(ch);
+                if (i == 0)
+                {
+                    b.rgbChannels[0] = 0;
+                }
+                else
+                if (i == 1)
+                {
+                    b.rgbChannels[1] = 1;
+                }
+                else
+                if (i == 2)
+                {
+                    b.rgbChannels[2] = 2;
+                }
                 i++;
             }
 
@@ -5633,6 +5661,20 @@ namespace BioGTK
                     break;
                 else
                     b.Channels.Add(ch);
+                if (i == 0)
+                {
+                    b.rgbChannels[0] = 0;
+                }
+                else
+                if (i == 1)
+                {
+                    b.rgbChannels[1] = 1;
+                }
+                else
+                if (i == 2)
+                {
+                    b.rgbChannels[2] = 2;
+                }
                 i++;
             }
 

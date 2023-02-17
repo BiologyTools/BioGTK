@@ -226,6 +226,7 @@ namespace BioGTK
             for (int c = 0; c < ImageView.SelectedImage.Channels.Count; c++)
             {
                 //We draw the mouse line
+
                 g.SetSourceColor(ImageView.FromColor(Color.Black));
                 g.MoveTo(mouseX, 0);
                 g.LineTo(mouseX, this.AllocatedHeight);
@@ -244,8 +245,8 @@ namespace BioGTK
                     Cairo.Color blackd = ImageView.FromColor(Color.FromArgb(150, 0, 0, 0));
                     Cairo.Color pen = new Cairo.Color();
                     Cairo.Color pend = new Cairo.Color();
-                    int dark = 200;
-                    int light = 50;
+                    int dark = 100;
+                    int light = 75;
                     
                     
                     if (ImageView.SelectedImage.bitsPerPixel <= 8)
