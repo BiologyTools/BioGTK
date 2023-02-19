@@ -379,7 +379,8 @@ namespace BioGTK
         /// @param BioImage This is the image that you want to display.
         public void AddTab(BioImage im)
         {
-            tabsView.Add(ImageView.Create(im));
+            tabsView.AppendPage(ImageView.Create(im), new Gtk.Label(im.Filename));
+            tabsView.ShowAll();
         }
 
        /// When the TabsView is focused, set the tabsView variable in the App class to the TabsView

@@ -22,6 +22,7 @@ using Bitmap = AForge.Bitmap;
 using Color = AForge.Color;
 using loci.formats.@in;
 using Gtk;
+using System.Linq;
 
 namespace BioGTK
 {
@@ -897,7 +898,12 @@ namespace BioGTK
         /// @return The value of the key "name" in the dictionary "filters"
         public static Filt GetFilter(string name)
         {
-            return filters[name];
+            foreach (Filt item in filters)
+            {
+                if(item.name == name)
+                    return item;
+            }
+            return null;
         }
         /// It returns a filter from the filters dictionary, using the indexs array to find the index of
         /// the filter in the dictionary
@@ -908,11 +914,9 @@ namespace BioGTK
         /// @return The value of the filter at the index of the type and index.
         public static Filt GetFilter(int type, int index)
         {
-            Filt[] Values = new Filt[filters.Values.Count];
-            filters.Values.CopyTo(Values, 0);
-            return Values[indexs[type,index]];
+            return filters[indexs[type, index]];
         }
-        public static Dictionary<string, Filt> filters = new Dictionary<string, Filt>();
+        public static List<Filt> filters = new List<Filt>();
         /// It takes an image, applies a filter to it, and returns the filtered image
         /// 
         /// @param id The id of the image to apply the filter to.
@@ -928,7 +932,7 @@ namespace BioGTK
                 img = BioImage.Copy(img);
             try
             {
-                Filt f = filters[name];
+                Filt f = GetFilter(name);
                 BaseFilter fi = (BaseFilter)f.filt;
                 for (int i = 0; i < img.Buffers.Count; i++)
                 {
@@ -946,7 +950,8 @@ namespace BioGTK
             }
             catch (Exception e)
             {
-                Gtk.MessageDialog md = new Gtk.MessageDialog(App.tabsView, Gtk.DialogFlags.Modal, Gtk.MessageType.Error, Gtk.ButtonsType.Ok, "", e.ToString());
+                MessageDialog dialog = new MessageDialog(null, DialogFlags.Modal, MessageType.Info, ButtonsType.Ok, e.Message);
+                dialog.Show();
             }
             return img;
         }
@@ -968,7 +973,7 @@ namespace BioGTK
                 img = BioImage.Copy(img);
             try
             {
-                Filt f = filters[name];
+                Filt f = GetFilter(name);
                 BaseFilter2 fi = (BaseFilter2)f.filt;
                 for (int i = 0; i < img.Buffers.Count; i++)
                 {
@@ -987,7 +992,8 @@ namespace BioGTK
             }
             catch (Exception e)
             {
-                Gtk.MessageDialog md = new Gtk.MessageDialog(App.tabsView, Gtk.DialogFlags.Modal, Gtk.MessageType.Error, Gtk.ButtonsType.Ok, "", e.ToString());
+                MessageDialog dialog = new MessageDialog(null, DialogFlags.Modal, MessageType.Info, ButtonsType.Ok, e.Message);
+                dialog.Show();
             }
             return img;
         }
@@ -1006,7 +1012,7 @@ namespace BioGTK
                 img = BioImage.Copy(img);
             try
             {
-                Filt f = filters[name];
+                Filt f = GetFilter(name);
                 BaseInPlaceFilter fi = (BaseInPlaceFilter)f.filt;
                 for (int i = 0; i < img.Buffers.Count; i++)
                 {
@@ -1024,7 +1030,8 @@ namespace BioGTK
             }
             catch (Exception e)
             {
-                Gtk.MessageDialog md = new Gtk.MessageDialog(App.tabsView, Gtk.DialogFlags.Modal, Gtk.MessageType.Error, Gtk.ButtonsType.Ok, "", e.ToString());
+                MessageDialog dialog = new MessageDialog(null, DialogFlags.Modal, MessageType.Info, ButtonsType.Ok, e.Message);
+                dialog.Show();
             }
             return img;
         }
@@ -1044,7 +1051,7 @@ namespace BioGTK
                 img = BioImage.Copy(img);
             try
             {
-                Filt f = filters[name];
+                Filt f = GetFilter(name);
                 BaseInPlaceFilter2 fi = (BaseInPlaceFilter2)f.filt;
                 for (int i = 0; i < img.Buffers.Count; i++)
                 {
@@ -1063,7 +1070,8 @@ namespace BioGTK
             }
             catch (Exception e)
             {
-                Gtk.MessageDialog md = new Gtk.MessageDialog(App.tabsView, Gtk.DialogFlags.Modal, Gtk.MessageType.Error, Gtk.ButtonsType.Ok, "", e.ToString());
+                MessageDialog dialog = new MessageDialog(null, DialogFlags.Modal, MessageType.Info, ButtonsType.Ok, e.Message);
+                dialog.Show();
             }
             return img;
         }
@@ -1082,7 +1090,7 @@ namespace BioGTK
                 img = BioImage.Copy(img);
             try
             {
-                Filt f = filters[name];
+                Filt f = GetFilter(name);
                 BaseInPlacePartialFilter fi = (BaseInPlacePartialFilter)f.filt;
                 for (int i = 0; i < img.Buffers.Count; i++)
                 {
@@ -1100,7 +1108,8 @@ namespace BioGTK
             }
             catch (Exception e)
             {
-                Gtk.MessageDialog md = new Gtk.MessageDialog(App.tabsView, Gtk.DialogFlags.Modal, Gtk.MessageType.Error, Gtk.ButtonsType.Ok, "", e.ToString());
+                MessageDialog dialog = new MessageDialog(null, DialogFlags.Modal, MessageType.Info, ButtonsType.Ok, e.Message);
+                dialog.Show();
             }
             return img;
         }
@@ -1121,7 +1130,7 @@ namespace BioGTK
                 img = BioImage.Copy(img);
             try
             {
-                Filt f = filters[name];
+                Filt f = GetFilter(name);
                 BaseResizeFilter fi = (BaseResizeFilter)f.filt;
                 fi.NewHeight = h;
                 fi.NewWidth = w;
@@ -1140,7 +1149,8 @@ namespace BioGTK
             }
             catch (Exception e)
             {
-                Gtk.MessageDialog md = new Gtk.MessageDialog(App.tabsView, Gtk.DialogFlags.Modal, Gtk.MessageType.Error, Gtk.ButtonsType.Ok, "", e.ToString());
+                MessageDialog dialog = new MessageDialog(null, DialogFlags.Modal, MessageType.Info, ButtonsType.Ok, e.Message);
+                dialog.Show();
             }
             return img;
         }
@@ -1163,7 +1173,7 @@ namespace BioGTK
                 img = BioImage.Copy(Images.GetImage(id));
             try
             {
-                Filt f = filters[name];
+                Filt f = GetFilter(name);
                 BaseRotateFilter fi = (BaseRotateFilter)f.filt;
                 fi.Angle = angle;
                 fi.FillColor = Color.FromArgb(a, r, g, b);
@@ -1183,7 +1193,8 @@ namespace BioGTK
             }
             catch (Exception e)
             {
-                Gtk.MessageDialog md = new Gtk.MessageDialog(App.tabsView, Gtk.DialogFlags.Modal, Gtk.MessageType.Error, Gtk.ButtonsType.Ok, "", e.ToString());
+                MessageDialog dialog = new MessageDialog(null, DialogFlags.Modal, MessageType.Info, ButtonsType.Ok, e.Message);
+                dialog.Show();
             }
             return img;
 
@@ -1205,7 +1216,7 @@ namespace BioGTK
                 img = BioImage.Copy(img);
             try
             {
-                Filt f = filters[name];
+                Filt f = GetFilter(name);
                 BaseTransformationFilter fi = (BaseTransformationFilter)f.filt;
                 for (int i = 0; i < img.Buffers.Count; i++)
                 {
@@ -1222,7 +1233,8 @@ namespace BioGTK
             }
             catch (Exception e)
             {
-                Gtk.MessageDialog md = new Gtk.MessageDialog(App.tabsView, Gtk.DialogFlags.Modal, Gtk.MessageType.Error, Gtk.ButtonsType.Ok, "", e.ToString());
+                MessageDialog dialog = new MessageDialog(null, DialogFlags.Modal, MessageType.Info, ButtonsType.Ok, e.Message);
+                dialog.Show();
             }
             return img;
         }
@@ -1241,7 +1253,7 @@ namespace BioGTK
                 img = BioImage.Copy(img);
             try
             {
-                Filt f = filters[name];
+                Filt f = GetFilter(name);
                 BaseUsingCopyPartialFilter fi = (BaseUsingCopyPartialFilter)f.filt;
                 for (int i = 0; i < img.Buffers.Count; i++)
                 {
@@ -1258,7 +1270,8 @@ namespace BioGTK
             }
             catch (Exception e)
             {
-                Gtk.MessageDialog md = new Gtk.MessageDialog(App.tabsView, Gtk.DialogFlags.Modal, Gtk.MessageType.Error, Gtk.ButtonsType.Ok, "", e.ToString());
+                MessageDialog dialog = new MessageDialog(null, DialogFlags.Modal, MessageType.Info, ButtonsType.Ok, e.Message);
+                dialog.Show();
             }
             return img;
         }
@@ -1283,7 +1296,7 @@ namespace BioGTK
             }
             Images.AddImage(img);
             Recorder.AddLine("Bio.Filters.Crop(" + '"' + id + '"' + "," + x + "," + y + "," + w + "," + h + ");");
-            App.tabsView.AddTab(img);
+            //App.tabsView.AddTab(img);
             return img;
         }
         /// This function takes a string and a rectangle and returns a BioImage
@@ -1302,278 +1315,278 @@ namespace BioGTK
         {
             //Base Filters
             indexs = new int[9,32];
-            indexs[0,0] = 0;
+            indexs[0, 0] = filters.Count;
             Filt f = new Filt("AdaptiveSmoothing", new AdaptiveSmoothing(), Filt.Type.Base);
-            filters.Add(f.name, f);
-            indexs[0, 1] = 1;
+            filters.Add(f);
+            indexs[0, 1] = filters.Count;
             f = new Filt("BayerFilter", new BayerFilter(), Filt.Type.Base);
-            filters.Add(f.name, f);
-            indexs[0, 2] = 2;
+            filters.Add(f);
+            indexs[0, 2] = filters.Count;
             f = new Filt("BayerFilterOptimized", new BayerFilterOptimized(), Filt.Type.Base);
-            filters.Add(f.name, f);
-            indexs[0, 3] = 3;
+            filters.Add(f);
+            indexs[0, 3] = filters.Count;
             f = new Filt("BayerDithering", new BayerDithering(), Filt.Type.Base);
-            filters.Add(f.name, f);
-            indexs[0, 4] = 4;
+            filters.Add(f);
+            indexs[0, 4] = filters.Count;
             f = new Filt("ConnectedComponentsLabeling", new ConnectedComponentsLabeling(), Filt.Type.Base);
-            filters.Add(f.name, f);
-            indexs[0, 5] = 5;
+            filters.Add(f);
+            indexs[0, 5] = filters.Count;
             f = new Filt("ExtractChannel", new ExtractChannel(), Filt.Type.Base);
-            filters.Add(f.name, f);
-            indexs[0, 6] = 6;
+            filters.Add(f);
+            indexs[0, 6] = filters.Count;
             f = new Filt("ExtractNormalizedRGBChannel", new ExtractNormalizedRGBChannel(), Filt.Type.Base);
-            filters.Add(f.name, f);
-            indexs[0, 7] = 7;
+            filters.Add(f);
+            indexs[0, 7] = filters.Count;
             f = new Filt("Grayscale", new Grayscale(0.2125, 0.7154, 0.0721), Filt.Type.Base);
-            filters.Add(f.name, f);
+            filters.Add(f);
             //f = new Filt("TexturedFilter", new TexturedFilter());
-            //filters.Add(f.name, f);
-            indexs[0, 8] = 8;
+            //filters.Add(f);
+            indexs[0, 8] = filters.Count;
             f = new Filt("WaterWave", new WaterWave(), Filt.Type.Base);
-            filters.Add(f.name, f);
-            indexs[0, 9] = 9;
+            filters.Add(f);
+            indexs[0, 9] = filters.Count;
             f = new Filt("YCbCrExtractChannel", new YCbCrExtractChannel(), Filt.Type.Base);
-            filters.Add(f.name, f);
-
+            filters.Add(f);
+            indexs[0, 10] = filters.Count;
             //BaseFilter2
-            indexs[1, 0] = 10;
-            f = new Filt("ThresholdedDifference", new ThresholdedDifference(), Filt.Type.Base2);
-            filters.Add(f.name, f);
-            indexs[1, 1] = 11;
-            f = new Filt("ThresholdedEuclideanDifference", new ThresholdedDifference(), Filt.Type.Base2);
-            filters.Add(f.name, f);
 
+            f = new Filt("ThresholdedDifference", new ThresholdedDifference(), Filt.Type.Base2);
+            filters.Add(f);
+            indexs[1, 0] = filters.Count;
+            f = new Filt("ThresholdedEuclideanDifference", new ThresholdedEuclideanDifference(), Filt.Type.Base2);
+            filters.Add(f);
+            indexs[1, 1] = filters.Count;
 
             //BaseInPlaceFilter
-            indexs[2, 0] = 12;
+            indexs[2, 0] = filters.Count;
             f = new Filt("BackwardQuadrilateralTransformation", new BackwardQuadrilateralTransformation(), Filt.Type.InPlace);
-            filters.Add(f.name, f);
-            indexs[2, 1] = 13;
+            filters.Add(f);
+            indexs[2, 1] = filters.Count;
             f = new Filt("BlobsFiltering", new BlobsFiltering(), Filt.Type.InPlace);
-            filters.Add(f.name, f);
-            indexs[2, 2] = 14;
+            filters.Add(f);
+            indexs[2, 2] = filters.Count;
             f = new Filt("BottomHat", new BottomHat(), Filt.Type.InPlace);
-            filters.Add(f.name, f);
-            indexs[2, 3] = 15;
+            filters.Add(f);
+            indexs[2, 3] = filters.Count;
             f = new Filt("BradleyLocalThresholding", new BradleyLocalThresholding(), Filt.Type.InPlace);
-            filters.Add(f.name, f);
-            indexs[2, 4] = 16;
+            filters.Add(f);
+            indexs[2, 4] = filters.Count;
             f = new Filt("CanvasCrop", new CanvasCrop(new Rectangle(0,0,0,0)), Filt.Type.InPlace);
-            filters.Add(f.name, f);
-            indexs[2, 5] = 17;
+            filters.Add(f);
+            indexs[2, 5] = filters.Count;
             f = new Filt("CanvasFill", new CanvasFill(new Rectangle(0, 0, 0, 0)), Filt.Type.InPlace);
-            filters.Add(f.name, f);
-            indexs[2, 6] = 18;
+            filters.Add(f);
+            indexs[2, 6] = filters.Count;
             f = new Filt("CanvasMove", new CanvasMove(new IntPoint()), Filt.Type.InPlace);
-            filters.Add(f.name, f);
-            indexs[2, 7] = 19;
+            filters.Add(f);
+            indexs[2, 7] = filters.Count;
             f = new Filt("FillHoles", new FillHoles(), Filt.Type.InPlace);
-            filters.Add(f.name, f);
-            indexs[2, 8] = 20;
+            filters.Add(f);
+            indexs[2, 8] = filters.Count;
             f = new Filt("FlatFieldCorrection", new FlatFieldCorrection(), Filt.Type.InPlace);
-            filters.Add(f.name, f);
-            indexs[2, 9] = 21;
+            filters.Add(f);
+            indexs[2, 9] = filters.Count;
             f = new Filt("TopHat", new TopHat(), Filt.Type.InPlace);
-            filters.Add(f.name, f);
+            filters.Add(f);
 
             //BaseInPlaceFilter2
-            indexs[3, 0] = 22;
+            indexs[3, 0] = filters.Count;
             f = new Filt("Add", new Add(), Filt.Type.InPlace2);
-            filters.Add(f.name, f);
-            indexs[3, 1] = 23;
+            filters.Add(f);
+            indexs[3, 1] = filters.Count;
             f = new Filt("Difference", new Difference(), Filt.Type.InPlace2);
-            filters.Add(f.name, f);
-            indexs[3, 2] = 24;
+            filters.Add(f);
+            indexs[3, 2] = filters.Count;
             f = new Filt("Intersect", new Intersect(), Filt.Type.InPlace2);
-            filters.Add(f.name, f);
-            indexs[3, 3] = 25;
+            filters.Add(f);
+            indexs[3, 3] = filters.Count;
             f = new Filt("Merge", new Merge(), Filt.Type.InPlace2);
-            filters.Add(f.name, f);
-            indexs[3, 4] = 26;
+            filters.Add(f);
+            indexs[3, 4] = filters.Count;
             f = new Filt("Morph", new Morph(), Filt.Type.InPlace2);
-            filters.Add(f.name, f);
-            indexs[3, 5] = 27;
+            filters.Add(f);
+            indexs[3, 5] = filters.Count;
             f = new Filt("MoveTowards", new MoveTowards(), Filt.Type.InPlace2);
-            filters.Add(f.name, f);
-            indexs[3, 6] = 28;
+            filters.Add(f);
+            indexs[3, 6] = filters.Count;
             f = new Filt("StereoAnaglyph", new StereoAnaglyph(), Filt.Type.InPlace2);
-            filters.Add(f.name, f);
-            indexs[3, 7] = 29;
+            filters.Add(f);
+            indexs[3, 7] = filters.Count;
             f = new Filt("Subtract", new Subtract(), Filt.Type.InPlace2);
-            filters.Add(f.name, f);
+            filters.Add(f);
             //f = new Filt("Add", new TexturedMerge(), Filt.Type.InPlace2);
-            //filters.Add(f.name, f);
+            //filters.Add(f);
 
             //BaseInPlacePartialFilter
-            indexs[4, 0] = 22;
+            indexs[4, 0] = filters.Count;
             f = new Filt("AdditiveNoise", new AdditiveNoise(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
+            filters.Add(f);
             //f = new Filt("ApplyMask", new ApplyMask(), Filt.Type.InPlacePartial2);
-            //filters.Add(f.name, f);
-            indexs[4, 1] = 23;
+            //filters.Add(f);
+            indexs[4, 1] = filters.Count;
             f = new Filt("BrightnessCorrection", new BrightnessCorrection(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 2] = 24;
+            filters.Add(f);
+            indexs[4, 2] = filters.Count;
             f = new Filt("ChannelFiltering", new ChannelFiltering(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 3] = 25;
+            filters.Add(f);
+            indexs[4, 3] = filters.Count;
             f = new Filt("ColorFiltering", new ColorFiltering(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 4] = 26;
+            filters.Add(f);
+            indexs[4, 4] = filters.Count;
             f = new Filt("ColorRemapping", new ColorRemapping(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 5] = 27;
+            filters.Add(f);
+            indexs[4, 5] = filters.Count;
             f = new Filt("ContrastCorrection", new ContrastCorrection(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 6] = 28;
+            filters.Add(f);
+            indexs[4, 6] = filters.Count;
             f = new Filt("ContrastStretch", new ContrastStretch(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
+            filters.Add(f);
             
             //f = new Filt("ErrorDiffusionDithering", new ErrorDiffusionDithering(), Filt.Type.InPlacePartial);
-            //filters.Add(f.name, f);
-            indexs[4, 7] = 29;
+            //filters.Add(f);
+            indexs[4, 7] = filters.Count;
             f = new Filt("EuclideanColorFiltering", new EuclideanColorFiltering(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 8] = 30;
+            filters.Add(f);
+            indexs[4, 8] = filters.Count;
             f = new Filt("GammaCorrection", new GammaCorrection(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 9] = 31;
+            filters.Add(f);
+            indexs[4, 9] = filters.Count;
             f = new Filt("HistogramEqualization", new HistogramEqualization(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 10] = 32;
+            filters.Add(f);
+            indexs[4, 10] = filters.Count;
             f = new Filt("HorizontalRunLengthSmoothing", new HorizontalRunLengthSmoothing(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 11] = 33;
+            filters.Add(f);
+            indexs[4, 11] = filters.Count;
             f = new Filt("HSLFiltering", new HSLFiltering(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 12] = 34;
+            filters.Add(f);
+            indexs[4, 12] = filters.Count;
             f = new Filt("HueModifier", new HueModifier(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 13] = 35;
+            filters.Add(f);
+            indexs[4, 13] = filters.Count;
             f = new Filt("Invert", new Invert(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 14] = 36;
+            filters.Add(f);
+            indexs[4, 14] = filters.Count;
             f = new Filt("LevelsLinear", new LevelsLinear(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 15] = 37;
+            filters.Add(f);
+            indexs[4, 15] = filters.Count;
             f = new Filt("LevelsLinear16bpp", new LevelsLinear16bpp(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 16] = 38;
+            filters.Add(f);
+            //indexs[4, 16] = 46;
             //f = new Filt("MaskedFilter", new MaskedFilter(), Filt.Type.InPlacePartial);
-            //filters.Add(f.name, f);
+            //filters.Add(f);
             //f = new Filt("Mirror", new Mirror(), Filt.Type.InPlacePartial);
-            //filters.Add(f.name, f);
-            indexs[4, 17] = 39;
+            //filters.Add(f);
+            indexs[4, 16] = filters.Count;
             f = new Filt("OrderedDithering", new OrderedDithering(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 18] = 40;
+            filters.Add(f);
+            indexs[4, 17] = filters.Count;
             f = new Filt("OtsuThreshold", new OtsuThreshold(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 19] = 41;
+            filters.Add(f);
+            indexs[4, 19] = filters.Count;
             f = new Filt("Pixellate", new Pixellate(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 20] = 42;
+            filters.Add(f);
+            indexs[4, 20] = filters.Count;
             f = new Filt("PointedColorFloodFill", new PointedColorFloodFill(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 21] = 43;
+            filters.Add(f);
+            indexs[4, 21] = filters.Count;
             f = new Filt("PointedMeanFloodFill", new PointedMeanFloodFill(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 22] = 44;
+            filters.Add(f);
+            indexs[4, 22] = filters.Count;
             f = new Filt("ReplaceChannel", new Invert(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 23] = 45;
+            filters.Add(f);
+            indexs[4, 23] = filters.Count;
             f = new Filt("RotateChannels", new LevelsLinear(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 24] = 46;
+            filters.Add(f);
+            indexs[4, 24] = filters.Count;
             f = new Filt("SaltAndPepperNoise", new LevelsLinear16bpp(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 25] = 47;
+            filters.Add(f);
+            indexs[4, 25] = filters.Count;
             f = new Filt("SaturationCorrection", new SaturationCorrection(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 26] = 48;
+            filters.Add(f);
+            indexs[4, 26] = filters.Count;
             f = new Filt("Sepia", new Sepia(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 26] = 49;
+            filters.Add(f);
+            indexs[4, 26] = filters.Count;
             f = new Filt("SimplePosterization", new SimplePosterization(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 27] = 50;
+            filters.Add(f);
+            indexs[4, 27] = filters.Count;
             f = new Filt("SISThreshold", new SISThreshold(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
+            filters.Add(f);
             //f = new Filt("Texturer", new Texturer(), Filt.Type.InPlacePartial);
-            //filters.Add(f.name, f);
+            //filters.Add(f);
             //f = new Filt("Threshold", new Threshold(), Filt.Type.InPlacePartial);
-            //filters.Add(f.name, f);
-            indexs[4, 28] = 51;
+            //filters.Add(f);
+            indexs[4, 28] = filters.Count;
             f = new Filt("ThresholdWithCarry", new ThresholdWithCarry(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 29] = 52;
+            filters.Add(f);
+            indexs[4, 29] = filters.Count;
             f = new Filt("VerticalRunLengthSmoothing", new VerticalRunLengthSmoothing(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 30] = 53;
+            filters.Add(f);
+            indexs[4, 30] = filters.Count;
             f = new Filt("YCbCrFiltering", new YCbCrFiltering(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
-            indexs[4, 31] = 54;
+            filters.Add(f);
+            indexs[4, 31] = filters.Count;
             f = new Filt("YCbCrLinear", new YCbCrLinear(), Filt.Type.InPlacePartial);
-            filters.Add(f.name, f);
+            filters.Add(f);
             //f = new Filt("YCbCrReplaceChannel", new YCbCrReplaceChannel(), Filt.Type.InPlacePartial);
-            //filters.Add(f.name, f);
+            //filters.Add(f);
 
             //BaseResizeFilter
-            indexs[5, 0] = 55;
+            indexs[5, 0] = filters.Count;
             f = new Filt("ResizeBicubic", new ResizeBicubic(0, 0), Filt.Type.Resize);
-            filters.Add(f.name, f);
-            indexs[5, 1] = 56;
+            filters.Add(f);
+            indexs[5, 1] = filters.Count;
             f = new Filt("ResizeBilinear", new ResizeBilinear(0, 0), Filt.Type.Resize);
-            filters.Add(f.name, f);
-            indexs[5, 2] = 57;
+            filters.Add(f);
+            indexs[5, 2] = filters.Count;
             f = new Filt("ResizeNearestNeighbor", new ResizeNearestNeighbor(0, 0), Filt.Type.Resize);
-            filters.Add(f.name, f);
+            filters.Add(f);
 
             //BaseRotateFilter
-            indexs[6, 0] = 58;
+            indexs[6, 0] = filters.Count;
             f = new Filt("RotateBicubic", new RotateBicubic(0), Filt.Type.Rotate);
-            filters.Add(f.name, f);
-            indexs[6, 1] = 59;
+            filters.Add(f);
+            indexs[6, 1] = filters.Count;
             f = new Filt("RotateBilinear", new RotateBilinear(0), Filt.Type.Rotate);
-            filters.Add(f.name, f);
-            indexs[6, 2] = 60;
+            filters.Add(f);
+            indexs[6, 2] = filters.Count;
             f = new Filt("RotateNearestNeighbor", new RotateNearestNeighbor(0), Filt.Type.Rotate);
-            filters.Add(f.name, f);
+            filters.Add(f);
 
             //Transformation
-            indexs[7, 0] = 61;
+            indexs[7, 0] = filters.Count;
             f = new Filt("Crop", new Crop(new Rectangle(0,0,0,0)), Filt.Type.Transformation);
-            filters.Add(f.name, f);
-            indexs[7, 1] = 62;
+            filters.Add(f);
+            indexs[7, 1] = filters.Count;
             f = new Filt("QuadrilateralTransformation", new QuadrilateralTransformation(), Filt.Type.Transformation);
-            filters.Add(f.name, f);
+            filters.Add(f);
             //f = new Filt("QuadrilateralTransformationBilinear", new QuadrilateralTransformationBilinear(), Filt.Type.Transformation);
-            //filters.Add(f.name, f);
+            //filters.Add(f);
             //f = new Filt("QuadrilateralTransformationNearestNeighbor", new QuadrilateralTransformationNearestNeighbor(), Filt.Type.Transformation);
-            //filters.Add(f.name, f);
-            indexs[7, 2] = 63;
+            //filters.Add(f);
+            indexs[7, 2] = filters.Count;
             f = new Filt("Shrink", new Shrink(), Filt.Type.Transformation);
-            filters.Add(f.name, f);
-            indexs[7, 3] = 64;
+            filters.Add(f);
+            indexs[7, 3] = filters.Count;
             f = new Filt("SimpleQuadrilateralTransformation", new SimpleQuadrilateralTransformation(), Filt.Type.Transformation);
-            filters.Add(f.name, f);
-            indexs[7, 4] = 65;
+            filters.Add(f);
+            indexs[7, 4] = filters.Count;
             f = new Filt("TransformFromPolar", new TransformFromPolar(), Filt.Type.Transformation);
-            filters.Add(f.name, f);
-            indexs[7, 5] = 66;
+            filters.Add(f);
+            indexs[7, 5] = filters.Count;
             f = new Filt("TransformToPolar", new TransformToPolar(), Filt.Type.Transformation);
-            filters.Add(f.name, f);
+            filters.Add(f);
 
             //BaseUsingCopyPartialFilter
-            indexs[8, 0] = 67;
+            indexs[8, 0] = filters.Count;
             f = new Filt("BinaryDilatation3x3", new BinaryDilatation3x3(), Filt.Type.Copy);
-            filters.Add(f.name, f);
-            indexs[8, 1] = 68;
+            filters.Add(f);
+            indexs[8, 1] = filters.Count;
             f = new Filt("BilateralSmoothing ", new BilateralSmoothing(), Filt.Type.Copy);
-            filters.Add(f.name, f);
-            indexs[8, 2] = 69;
+            filters.Add(f);
+            indexs[8, 2] = filters.Count;
             f = new Filt("BinaryErosion3x3 ", new BinaryErosion3x3(), Filt.Type.Copy);
-            filters.Add(f.name, f);
+            filters.Add(f);
 
         }
     }
@@ -2377,12 +2390,7 @@ namespace BioGTK
             {
                 for (int i = 0; i < Buffers.Count; i++)
                 {
-                    UnmanagedImage b = Bitmap.To24Bit(Buffers[i]);
-                    Buffers[i].Image = b;
-                    b.Dispose();
-                    b = null;
-                    GC.Collect();
-                    Statistics.CalcStatistics(Buffers[i]);
+                    Buffers[i] = Bitmap.To24Bit(Buffers[i]);
                 }
                 if (Channels.Count == 4)
                 {
@@ -2399,9 +2407,7 @@ namespace BioGTK
                 //We run 8bit so we get 24 bit rgb.
                 for (int i = 0; i < Buffers.Count; i++)
                 {
-                    Bitmap b = AForge.Imaging.Image.Convert16bppTo8bpp(Buffers[i]);
-                    Buffers[i].Image = b;
-                    Statistics.CalcStatistics(Buffers[i]);
+                    Buffers[i] = AForge.Imaging.Image.Convert16bppTo8bpp(Buffers[i]);
                 }
                 if (Channels[0].SamplesPerPixel == 3)
                 {
@@ -2432,11 +2438,7 @@ namespace BioGTK
                 {
                     for (int i = 0; i < Buffers.Count; i++)
                     {
-                        Bitmap b = AForge.Imaging.Image.Convert16bppTo8bpp(Buffers[i]);
-                        Buffers[i].Image = b;
-                        b.Dispose();
-                        b = null;
-                        GC.Collect();
+                        Buffers[i] = AForge.Imaging.Image.Convert16bppTo8bpp(Buffers[i]);
                     }
                     for (int c = 0; c < Channels.Count; c++)
                     {
@@ -2454,7 +2456,6 @@ namespace BioGTK
                     {
                         Bitmap bs = new Bitmap(ID, SizeX, SizeY, Buffers[i].PixelFormat, Buffers[i].Bytes, new ZCT(Buffers[i].Coordinate.Z, 0, Buffers[i].Coordinate.T), i, Buffers[i].Plane);
                         Bitmap bbs = Bitmap.RGB16To48(bs);
-                        Statistics.CalcStatistics(bbs);
                         bs.Dispose();
                         bs = null;
                         bfs.Add(bbs);
@@ -2463,10 +2464,10 @@ namespace BioGTK
                     for (int i = 0; i < Buffers.Count; i += Channels.Count)
                     {
                         Bitmap[] bs = new Bitmap[3];
-                        bs[0] = new Bitmap(ID, SizeX, SizeY, Buffers[i].PixelFormat, Buffers[i].Bytes, new ZCT(Buffers[i].Coordinate.Z, 0, Buffers[i].Coordinate.T), i, Buffers[i].Plane);
+                        bs[2] = new Bitmap(ID, SizeX, SizeY, Buffers[i].PixelFormat, Buffers[i].Bytes, new ZCT(Buffers[i].Coordinate.Z, 0, Buffers[i].Coordinate.T), i, Buffers[i].Plane);
                         bs[1] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 1].PixelFormat, Buffers[i + 1].Bytes, new ZCT(Buffers[i + 1].Coordinate.Z, 0, Buffers[i + 1].Coordinate.T), i + 1, Buffers[i + 1].Plane);
                         if (Channels.Count > 2)
-                            bs[2] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 2].PixelFormat, Buffers[i + 2].Bytes, new ZCT(Buffers[i + 2].Coordinate.Z, 0, Buffers[i + 2].Coordinate.T), i + 2, Buffers[i + 2].Plane);
+                            bs[0] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 2].PixelFormat, Buffers[i + 2].Bytes, new ZCT(Buffers[i + 2].Coordinate.Z, 0, Buffers[i + 2].Coordinate.T), i + 2, Buffers[i + 2].Plane);
                         Bitmap bbs = Bitmap.RGB8To24(bs);
                         for (int b = 0; b < 3; b++)
                         {
@@ -2474,20 +2475,14 @@ namespace BioGTK
                                 bs[b].Dispose();
                             bs[b] = null;
                         }
-                        Statistics.CalcStatistics(bbs);
                         bfs.Add(bbs);
                     }
                 Buffers = bfs;
                 UpdateCoords(SizeZ, 1, SizeT);
             }
-            //We wait for threshold image statistics calculation
-            do
-            {
-                Thread.Sleep(100);
-            } while (Buffers[Buffers.Count - 1].Stats == null);
-            Statistics.ClearCalcBuffer();
-            AutoThreshold(this, false);
-            //StackThreshold(false);
+
+            AutoThreshold(this, true);
+            StackThreshold(false);
             App.viewer.UpdateGUI();
             App.viewer.UpdateImages();
             App.viewer.UpdateView();
@@ -2506,15 +2501,8 @@ namespace BioGTK
             {
                 UnmanagedImage b = Bitmap.To32Bit(Buffers[i]);
                 Buffers[i].Image = b;
-                Statistics.CalcStatistics(Buffers[i]);
             }
-            //We wait for threshold image statistics calculation
-            do
-            {
-                Thread.Sleep(50);
-            } while (Buffers[Buffers.Count - 1].Stats == null);
-            Statistics.ClearCalcBuffer();
-            AutoThreshold(this, false);
+            AutoThreshold(this, true);
             App.viewer.UpdateGUI();
             App.viewer.UpdateImages();
             App.viewer.UpdateView();
@@ -2620,6 +2608,7 @@ namespace BioGTK
             Statistics.ClearCalcBuffer();
             bitsPerPixel = 16;
             AutoThreshold(this, false);
+            StackThreshold(true);
             App.viewer.UpdateGUI();
             App.viewer.UpdateImages();
             App.viewer.UpdateView();

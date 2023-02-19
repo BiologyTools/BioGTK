@@ -240,7 +240,7 @@ namespace BioGTK
                         stat = channel.stats[0];
                     else
                         stat = channel.stats[i];
-                    g.LineWidth = bin * fx;
+                    g.LineWidth = 1;// bin * fx;
                     Cairo.Color black = ImageView.FromColor(Color.FromArgb(35, 0, 0, 0));
                     Cairo.Color blackd = ImageView.FromColor(Color.FromArgb(150, 0, 0, 0));
                     Cairo.Color pen = new Cairo.Color();

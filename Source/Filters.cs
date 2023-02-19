@@ -101,7 +101,8 @@ namespace BioGTK
             {
                 App.applyFilter = ApplyFilter.Create(f, false);
             }
-            
+            App.applyFilter.Show();
+            App.applyFilter.Present();
         }
         
         /// It creates a treeview with two columns, the first column is the filter type, the second
@@ -121,7 +122,7 @@ namespace BioGTK
             foreach (Filt.Type f in (Filt.Type[])Enum.GetValues(typeof(Filt.Type)))
             {
                 Gtk.TreeIter iter = store.AppendValues(f.ToString());
-                foreach (Filt fil in Filters.filters.Values)
+                foreach (Filt fil in Filters.filters)
                 {
                     if(fil.type == f)
                     {
@@ -138,7 +139,7 @@ namespace BioGTK
             foreach (Filt.Type f in (Filt.Type[])Enum.GetValues(typeof(Filt.Type)))
             {
                 Gtk.TreeIter iter = store.AppendValues(f.ToString());
-                foreach (Filt fil in Filters.filters.Values)
+                foreach (Filt fil in Filters.filters)
                 {
                     if (fil.type == f)
                     {

@@ -3,6 +3,8 @@ using System;
 using BioGTK;
 using Gtk;
 using AForge;
+using sun.tools.tree;
+
 namespace BioGTK
 {
     public partial class ApplyFilter : Gtk.Dialog
@@ -56,21 +58,22 @@ namespace BioGTK
         {
             Builder builder = new Builder(null, "BioGTK.Glade.ApplyFilter.glade", null);
             filt = filter;
-            return new ApplyFilter(builder, builder.GetObject("applyFilter").Handle, two);
+            return new ApplyFilter(builder, builder.GetObject("applyFilter").Handle, two, filter);
         }
         
         /* This is the constructor for the ApplyFilter class. */
-        protected ApplyFilter(Builder builder, IntPtr handle, bool two) : base(handle)
+        protected ApplyFilter(Builder builder, IntPtr handle, bool two,Filt filter) : base(handle)
         {
             _builder = builder;
             App.applyFilter = this;
             builder.Autoconnect(this);
-            UpdateStacks();
+            InitStacks();
             stackABox.Changed += StackABox_Changed;
             stackBBox.Changed += StackBBox_Changed;
             applyBut.ButtonPressEvent += ApplyBut_ButtonPressEvent;
             inPlaceBut.ButtonPressEvent += InPlaceBut_ButtonPressEvent;
             this.FocusActivated += ApplyFilter_FocusActivated;
+            this.Title = filter.name;
             if (!two)
             {
                 stackBBox.Sensitive = false;
@@ -90,6 +93,7 @@ namespace BioGTK
         {
             Apply(true);
             DefaultResponse = ResponseType.Ok;
+            Destroy();
         }
 
         /// The ApplyBut_ButtonPressEvent function is called when the Apply button is pressed
@@ -101,6 +105,7 @@ namespace BioGTK
         {
             Apply(false);
             DefaultResponse = ResponseType.Ok;
+            Destroy();
         }
 
         /// > When the user clicks on the Apply Filter button, the function UpdateStacks() is called
@@ -155,7 +160,7 @@ namespace BioGTK
         }
         #endregion
         /// It takes the list of images and updates the dropdown boxes with the filenames of the images
-        public void UpdateStacks()
+        public void InitStacks()
         {
             ListStore store = new ListStore(typeof(string));
             if (Images.images.Count != stackABox.Children.Length)
@@ -178,6 +183,42 @@ namespace BioGTK
             var renderer2 = new CellRendererText();
             stackBBox.PackStart(renderer2, false);
             stackBBox.AddAttribute(renderer2, "text", 0);
+
+            ListStore rois = new ListStore(typeof(string));
+            foreach (ROI b in ImageA.Annotations)
+            {
+                rois.AppendValues(b.ToString());
+            }
+            roiBox.Active = 0;
+            roiBox.Model = rois;
+            // Set the text column to display
+            var renderer3 = new CellRendererText();
+            roiBox.PackStart(renderer3, false);
+            roiBox.AddAttribute(renderer3, "text", 0);
+
+        }
+        /// It takes the list of images and updates the dropdown boxes with the filenames of the images
+        public void UpdateStacks()
+        {
+            ListStore store = new ListStore(typeof(string));
+            if (Images.images.Count != stackABox.Children.Length)
+            {
+                stackABox.Model = null;
+                stackBBox.Model = null;
+                foreach (BioImage b in Images.images)
+                {
+                    store.AppendValues(System.IO.Path.GetFileName(b.Filename));
+                }
+                stackABox.Active = 0;
+            }
+            stackABox.Model = store;
+            stackBBox.Model = store;
+            ListStore rois = new ListStore(typeof(string));
+            foreach (ROI b in ImageA.Annotations)
+            {
+                rois.AppendValues(b.ToString());
+            }
+            roiBox.Model = rois;
         }
         /* Returning the image that is selected in the dropdown menu. */
         public BioImage ImageA
@@ -250,36 +291,36 @@ namespace BioGTK
         {
             if (filt.type == Filt.Type.Base)
             {
-                Filters.Base(ImageA.ID, filt.name, false);
+                ImageView.SelectedImage = Filters.Base(ImageA.ID, filt.name, false);
             }
             if (filt.type == Filt.Type.Base2)
             {
-                Filters.Base2(ImageA.ID, ImageB.ID, filt.name, false);
+                ImageView.SelectedImage = Filters.Base2(ImageA.ID, ImageB.ID, filt.name, false);
             }
             else
             if (filt.type == Filt.Type.InPlace)
             {
-                Filters.InPlace(ImageA.ID, filt.name, false);
+                ImageView.SelectedImage = Filters.InPlace(ImageA.ID, filt.name, false);
             }
             else
             if (filt.type == Filt.Type.InPlace2)
             {
-                Filters.InPlace2(ImageA.ID, ImageB.ID, filt.name, false);
+                ImageView.SelectedImage = Filters.InPlace2(ImageA.ID, ImageB.ID, filt.name, false);
             }
             else
             if (filt.type == Filt.Type.InPlacePartial)
             {
-                Filters.InPlacePartial(ImageA.ID, filt.name, false);
+                ImageView.SelectedImage = Filters.InPlacePartial(ImageA.ID, filt.name, false);
             }
             else
             if (filt.type == Filt.Type.Resize)
             {
-                Filters.Resize(ImageA.ID, filt.name, false, W, H);
+                ImageView.SelectedImage = Filters.Resize(ImageA.ID, filt.name, false, W, H);
             }
             else
             if (filt.type == Filt.Type.Rotate)
             {
-                Filters.Rotate(ImageA.ID, filt.name, false, Angle, Color.A, Color.R, Color.G, Color.B);
+                ImageView.SelectedImage = Filters.Rotate(ImageA.ID, filt.name, false, Angle, Color.A, Color.R, Color.G, Color.B);
             }
             else
             if (filt.type == Filt.Type.Transformation)
@@ -287,17 +328,17 @@ namespace BioGTK
                 //We use the Crop function of Bio as AForge doesn't support croppping 16bit images.
                 if (filt.name == "Crop")
                 {
-                    Filters.Crop(ImageA.ID, Rectangle);
+                    App.tabsView.AddTab(Filters.Crop(ImageA.ID, Rectangle));
                 }
                 else
                 {
-                    Filters.Transformation(ImageA.ID, filt.name, false, Angle);
+                    ImageView.SelectedImage = Filters.Transformation(ImageA.ID, filt.name, false, Angle);
                 }
             }
             else
             if (filt.type == Filt.Type.Copy)
             {
-                Filters.Copy(ImageA.ID, filt.name, false);
+                ImageView.SelectedImage = Filters.Copy(ImageA.ID, filt.name, false);
             }
             App.viewer.UpdateView();
         }

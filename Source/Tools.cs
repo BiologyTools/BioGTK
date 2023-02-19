@@ -95,7 +95,6 @@ namespace BioGTK
                 line,
                 rect,
                 ellipse,
-                polyline,
                 polygon,
                 text,
                 delete,
@@ -106,8 +105,8 @@ namespace BioGTK
                 bucket,
                 eraser,               
                 dropper,
-                color1,
                 switchColors,
+                color1,
                 color2,
                 script,
             }
@@ -828,23 +827,23 @@ namespace BioGTK
         /// If the color tool is not visible, create it and show it
         /// 
         /// @return The color of the button.
-        private void Color2Click()
+        private void Color1Click()
         {
             if (App.color != null)
                 if (App.color.Visible)
                 return;
-            colorOne = false;
-            App.color = ColorTool.Create(false);
+            colorOne = true;
+            App.color = ColorTool.Create(true);
             App.color.Show();
         }
         /// If the color tool is not visible, create it and show it
-        private void Color1Click()
+        private void Color2Click()
         {
             if(App.color!=null)
                 if (App.color.Visible)
                 return;
-            colorOne = true;
-            App.color = ColorTool.Create(true);
+            colorOne = false;
+            App.color = ColorTool.Create(false);
             App.color.Show();
         }
         /// It switches the color of the pen and the color of the eraser
