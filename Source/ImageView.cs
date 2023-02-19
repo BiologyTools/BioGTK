@@ -514,9 +514,7 @@ namespace BioGTK
 
         private void ImageView_DeleteEvent(object o, DeleteEventArgs args)
         {
-            App.tabsView.RemoveTab(SelectedImage.Filename);
-            args.RetVal = true;
-            Hide();
+            App.tabsView.RemoveTab(Images[0].Filename);
         }
 
         private void RoiID_ButtonPressEvent(object o, ButtonPressEventArgs args)

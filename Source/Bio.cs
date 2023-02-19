@@ -1294,6 +1294,11 @@ namespace BioGTK
             {
                 img.Buffers[i].Crop(rec);
             }
+            BioImage.AutoThreshold(img, true);
+            if (img.bitsPerPixel > 8)
+                img.StackThreshold(true);
+            else
+                img.StackThreshold(false);
             Images.AddImage(img);
             Recorder.AddLine("Bio.Filters.Crop(" + '"' + id + '"' + "," + x + "," + y + "," + w + "," + h + ");");
             //App.tabsView.AddTab(img);

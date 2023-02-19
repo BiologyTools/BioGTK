@@ -310,6 +310,7 @@ namespace BioGTK
         /// @param SwitchPageArgs 
         private void TabsView_SwitchPage(object o, SwitchPageArgs args)
         {
+            if(viewers.Count == 0) return;
             viewers[(int)args.PageNum].Present();
         }
 
@@ -379,7 +380,11 @@ namespace BioGTK
         /// @param BioImage This is the image that you want to display.
         public void AddTab(BioImage im)
         {
-            tabsView.AppendPage(ImageView.Create(im), new Gtk.Label(im.Filename));
+            ImageView v = ImageView.Create(im);
+            viewers.Add(v);
+            Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file) + "/" + im.Filename);
+            dummy.Visible = false;
+            tabsView.AppendPage(dummy, new Gtk.Label(im.Filename));
             tabsView.ShowAll();
         }
 
@@ -960,7 +965,9 @@ namespace BioGTK
             foreach (Widget item in tabsView.Children)
             {
                 Gtk.Label l = item as Gtk.Label;
-                if (System.IO.Path.GetFileName(l.Text) == ImageView.SelectedImage.Filename)
+                string name = System.IO.Path.GetFileName(l.Text);
+                string file = System.IO.Path.GetFileName(ImageView.SelectedImage.file);
+                if (System.IO.Path.GetFileName(l.Text) == ImageView.SelectedImage.Filename || name == file)
                 {
                     ImageView iv = viewers[i];
                     for (int v = 0; v < iv.Images.Count; v++)
