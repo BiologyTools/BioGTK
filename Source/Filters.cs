@@ -57,7 +57,11 @@ namespace BioGTK
         /// @param RowActivatedArgs 
         private void Tree_RowActivated(object o, RowActivatedArgs args)
         {
+            if (args.Path.Indices.Length == 1)
+                return;
             Filt f = Filters.GetFilter(args.Path.Indices[0], args.Path.Indices[1]);
+            if (f == null)
+                return;
             if (f.type == Filt.Type.Base)
             {
                 App.applyFilter = ApplyFilter.Create(f, false);

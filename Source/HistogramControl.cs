@@ -203,8 +203,8 @@ namespace BioGTK
             if (graphMax == 0)
                 graphMax = ushort.MaxValue;
             g.SetSourceColor(ImageView.FromColor(Color.LightGray));
-            g.Restore();
-            g.Translate(-graphMin, 0);
+            //g.Restore();
+            //g.Translate(-graphMin, 0);
             g.LineWidth = 1;
             string st = "";
             fx = ((float)this.AllocatedWidth) / ((float)graphMax);
@@ -232,6 +232,7 @@ namespace BioGTK
                 g.LineTo(mouseX, this.AllocatedHeight);
                 g.Stroke();
                 int gmax = graphMax;
+                int gmin = graphMin;
                 Channel channel = ImageView.SelectedImage.Channels[c];
                 for (int i = 0; i < channel.range.Length; i++)
                 {
@@ -285,9 +286,9 @@ namespace BioGTK
                     int bininds = 0;
                     PointF? prevs = null;
                     PointF? prev = null;
-                    float f = (float)gmax / (float)this.AllocatedWidth;
+                    float f = (float)(gmax - gmin) / (float)this.AllocatedWidth;
                     g.SetSourceColor(pen);
-                    for (float x = 0; x < gmax; x+=f)
+                    for (float x = gmin; x < gmax; x+=f)
                     {
                         if (StackHistogram && c == ImageView.SelectedImage.Channels.Count - 1)
                         {

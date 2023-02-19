@@ -119,6 +119,8 @@ namespace BioGTK
         [Builder.Object]
         private Gtk.Box rgbBox;
         [Builder.Object]
+        private Gtk.Box controlsBox;
+        [Builder.Object]
         public Gtk.Box mainBox;
         [Builder.Object]
         private Gtk.ComboBox rBox;
@@ -182,7 +184,12 @@ namespace BioGTK
             roi.ShowAll();
             pxWmicron = SelectedImage.physicalSizeX;
             pxHmicron = SelectedImage.physicalSizeY;
-            //pictureBox.SetSizeRequest(im.SizeX, im.SizeY);
+            if (im.SizeX >= 1920 && im.SizeY >= 1080)
+            {
+                pictureBox.SetSizeRequest(1920, 1080 - 130);
+            }
+            else
+                pictureBox.SetSizeRequest(im.SizeX, im.SizeY);
             AddImage(im);
             if (im.isPyramidal)
             {
@@ -195,6 +202,7 @@ namespace BioGTK
             //pictureBox.HeightRequest = im.SizeY;
             Function.InitializeContextMenu();
             this.Scale = new SizeF(1, 1);
+            
         }
         #endregion
         /// It updates the images.
@@ -409,6 +417,7 @@ namespace BioGTK
             paste.ButtonPressEvent += Paste_ButtonPressEvent;
             draw.ButtonPressEvent += Draw_ButtonPressEvent;
             fill.ButtonPressEvent += Fill_ButtonPressEvent;
+            
         }
 
         private void Fill_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -575,12 +584,18 @@ namespace BioGTK
             PyramidalOrigin = new Point((int)scrollH.Value, (int)scrollV.Value);
         }
 
+        bool initialized = false;
         private void PictureBox_SizeAllocated(object o, SizeAllocatedArgs args)
         {
-            //GoToImage();
             if (SelectedImage.isPyramidal)
+            {
                 UpdateImage();
-
+            }
+            if (!initialized)
+            {
+                GoToImage();
+                initialized = true;
+            }
             UpdateView();
         }
 
@@ -1774,12 +1789,21 @@ namespace BioGTK
         }
         public void GoToImage(int i)
         {
+            if(pictureBox.AllocatedWidth == 1 || pictureBox.AllocatedHeight== 1) { return; }
             if (Images.Count <= i)
                 return;
             double dx = Images[i].Volume.Width / 2;
             double dy = Images[i].Volume.Height / 2;
             Origin = new PointD((Images[i].Volume.Location.X), (Images[i].Volume.Location.Y));
-            Scale = new SizeF(1, 1);
+            PxWmicron = Images[i].physicalSizeX;
+            PxHmicron = Images[i].physicalSizeY;
+            if (Images[i].SizeX > 1080)
+            {
+                double w = (double)SelectedImage.SizeX / (double)pictureBox.AllocatedWidth;
+                double h = (double)SelectedImage.SizeY / (double)pictureBox.AllocatedHeight;
+                PxWmicron *= h;
+                PxHmicron *= h;
+            }
             UpdateView();
         }
 

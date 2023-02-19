@@ -743,8 +743,7 @@ namespace BioGTK
 
         private void View_DeleteEvent(object o, DeleteEventArgs args)
         {
-            args.RetVal = true;
-            Hide();
+            Destroy();
         }
 
         static int gridW = 2;

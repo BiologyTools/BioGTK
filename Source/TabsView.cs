@@ -730,6 +730,8 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         protected void toolsMenuClick(object sender, EventArgs a)
         {
+            if(!App.tools.Visible)
+            App.tools = Tools.Create();
             App.tools.Show();
             App.tools.Present();
         }
@@ -966,8 +968,7 @@ namespace BioGTK
             {
                 Gtk.Label l = item as Gtk.Label;
                 string name = System.IO.Path.GetFileName(l.Text);
-                string file = System.IO.Path.GetFileName(ImageView.SelectedImage.file);
-                if (System.IO.Path.GetFileName(l.Text) == ImageView.SelectedImage.Filename || name == file)
+                if (name == tabName)
                 {
                     ImageView iv = viewers[i];
                     for (int v = 0; v < iv.Images.Count; v++)

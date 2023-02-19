@@ -137,6 +137,7 @@
         </child>
         <child>
           <object class="GtkBox" id="controlsBox">
+            <property name="height-request">100</property>
             <property name="visible">True</property>
             <property name="can-focus">False</property>
             <property name="orientation">vertical</property>
