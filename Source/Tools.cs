@@ -486,6 +486,7 @@ namespace BioGTK
                 {
                     if (an.GetSelectBound(App.viewer.GetScale()).IntersectsWith(r))
                     {
+                        if(!buts.Event.State.HasFlag(ModifierType.ControlMask))
                         an.selectedPoints.Clear();
                         ImageView.selectedAnnotations.Add(an);
                         an.selected = true;

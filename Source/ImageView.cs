@@ -184,9 +184,9 @@ namespace BioGTK
             roi.ShowAll();
             pxWmicron = SelectedImage.physicalSizeX;
             pxHmicron = SelectedImage.physicalSizeY;
-            if (im.SizeX >= 1920 && im.SizeY >= 1080)
+            if (im.SizeY >= 1080)
             {
-                pictureBox.SetSizeRequest(1920, 1080 - 130);
+                pictureBox.SetSizeRequest(800, 600 - 130);
             }
             else
                 pictureBox.SetSizeRequest(im.SizeX, im.SizeY);
