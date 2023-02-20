@@ -8,8 +8,8 @@
     <property name="resizable">False</property>
     <child>
       <object class="GtkFixed">
-        <property name="width-request">313</property>
-        <property name="height-request">345</property>
+        <property name="width-request">322</property>
+        <property name="height-request">356</property>
         <property name="visible">True</property>
         <property name="can-focus">False</property>
         <child>

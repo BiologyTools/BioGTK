@@ -481,7 +481,7 @@ namespace BioGTK
             if (currentTool.type == Tool.Type.select && buts.Event.Button == 1)
             {
                 ImageView.selectedAnnotations.Clear();
-                RectangleD r = GetTool(Tool.Type.select).Rectangle;
+                RectangleD r = new RectangleD(ImageView.mouseDown.X,ImageView.mouseDown.Y, Math.Abs(e.X - ImageView.mouseDown.X),Math.Abs(e.Y - ImageView.mouseDown.Y));
                 foreach (ROI an in App.viewer.AnnotationsRGB)
                 {
                     if (an.GetSelectBound(App.viewer.GetScale()).IntersectsWith(r))
@@ -501,7 +501,7 @@ namespace BioGTK
                     else
                         an.selected = false;
                 }
-                Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(0, 0, 0, 0);
+                //Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(0, 0, 0, 0);
             }
             else
             if (Tools.currentTool.type == Tools.Tool.Type.magic && buts.Event.Button == 1)
@@ -581,8 +581,15 @@ namespace BioGTK
             else
             if (Tools.currentTool.type == Tools.Tool.Type.dropper && buts.Event.Button == 1)
             {
-                if(mouseU.X < ImageView.SelectedImage.SizeX && mouseU.Y < ImageView.SelectedImage.SizeY)
-                DrawColor = ImageView.SelectedBuffer.GetPixel((int)mouseU.X, (int)mouseU.Y);
+                if (mouseU.X < ImageView.SelectedImage.SizeX && mouseU.Y < ImageView.SelectedImage.SizeY)
+                {
+                    DrawColor = ImageView.SelectedBuffer.GetPixel((int)mouseU.X, (int)mouseU.Y);
+                }
+            }
+
+            if(Tools.currentTool.type == Tool.Type.select)
+            {
+                currentTool.Rectangle = new RectangleD(0, 0, 0, 0);
             }
             UpdateView();
         }
@@ -661,7 +668,7 @@ namespace BioGTK
             if (currentTool.type == Tool.Type.select && buts.Event.State == Gdk.ModifierType.Button1Mask)
             {
                 PointD d = new PointD(e.X - ImageView.mouseDown.X, e.Y - ImageView.mouseDown.Y);
-                Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(ImageView.mouseDown.X, ImageView.mouseDown.Y, d.X, d.Y);
+                Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(ImageView.mouseDown.X, ImageView.mouseDown.Y,Math.Abs(d.X),Math.Abs(d.Y));
                 RectangleD r = Tools.GetTool(Tools.Tool.Type.select).Rectangle;
                 foreach (ROI an in App.viewer.AnnotationsRGB)
                 {
@@ -683,11 +690,12 @@ namespace BioGTK
                         an.selected = false;
                 }
             }
-            else
+            /*else
             if (currentTool.type == Tool.Type.select && buts.Event.State != Gdk.ModifierType.Button1Mask)
             {
                 Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(0, 0, 0, 0);
             }
+            */
             else
             if (ImageView.keyDown == Gdk.Key.Delete)
             {
@@ -832,7 +840,7 @@ namespace BioGTK
                 if (App.color.Visible)
                 return;
             colorOne = true;
-            App.color = ColorTool.Create(true);
+            App.color = ColorTool.Create(false);
             App.color.Show();
         }
         /// If the color tool is not visible, create it and show it
@@ -842,7 +850,7 @@ namespace BioGTK
                 if (App.color.Visible)
                 return;
             colorOne = false;
-            App.color = ColorTool.Create(false);
+            App.color = ColorTool.Create(true);
             App.color.Show();
         }
         /// It switches the color of the pen and the color of the eraser

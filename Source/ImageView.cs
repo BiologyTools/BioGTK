@@ -645,7 +645,7 @@ namespace BioGTK
             //e.Cr.Translate(-(pictureBox.AllocatedWidth / 2),-(pictureBox.AllocatedHeight / 2));
             e.Cr.Scale(Scale.Width, Scale.Height);
             RectangleD rr = ToViewSpace(PointD.MinX, PointD.MinY, PointD.MaxX - PointD.MinX, PointD.MaxY - PointD.MinY);
-            e.Cr.Rectangle(rr.X, rr.Y, rr.W, rr.H);
+            e.Cr.Rectangle(rr.X, rr.Y,Math.Abs(rr.W),Math.Abs(rr.H));
             e.Cr.Stroke();
             int i = 0;
             foreach (BioImage im in Images)
@@ -698,9 +698,9 @@ namespace BioGTK
                         e.Cr.MoveTo(p1.X, p1.Y);
                         e.Cr.LineTo(p2.X, p2.Y);
                         e.Cr.Stroke();
-                        e.Cr.SetSourceColor(FromColor(Color.Red));
                         foreach (RectangleD re in an.GetSelectBoxes(width))
                         {
+                            e.Cr.SetSourceColor(FromColor(Color.Red));
                             RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
                             e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
                             e.Cr.Stroke();
@@ -875,17 +875,28 @@ namespace BioGTK
                     e.Cr.SetSourceColor(FromColor(Color.Blue));
                     if (rects.Count > 0)
                     {
+                        int ind = 0;
                         foreach (RectangleD re in an.GetSelectBoxes(width))
                         {
                             RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
-                            e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                            e.Cr.Stroke();
+                            if (an.selectedPoints.Contains(ind))
+                            {
+                                e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
+                                e.Cr.Stroke();
+                            }
+                            ind++;
                         }
                     }
                     rects.Clear();
                     
                 }
-
+                if (Tools.currentTool.type == Tools.Tool.Type.select)
+                {
+                    RectangleD rrf = ToViewSpace(Tools.currentTool.Rectangle.X, Tools.currentTool.Rectangle.Y, Math.Abs(Tools.currentTool.Rectangle.W),Math.Abs(Tools.currentTool.Rectangle.H));
+                    e.Cr.SetSourceColor(FromColor(Color.Magenta));
+                    e.Cr.Rectangle(rrf.X, rrf.Y, rrf.W, rrf.H);
+                    e.Cr.Stroke();
+                }
             }
 
         }
@@ -1336,9 +1347,10 @@ namespace BioGTK
             PointD p = ImageToViewSpace(e.Event.X, e.Event.Y);
             PointD ip = new PointD((p.X - origin.X) / pxWmicron, (p.Y - origin.Y) / pxHmicron);
             App.tools.ToolMove(p, e);
+            Tools.currentTool.Rectangle = new RectangleD(mouseDown.X, mouseDown.Y, p.X - mouseDown.X, p.Y - mouseDown.Y);
             mousePoint = "(" + (p.X) + ", " + (p.Y) + ")";
             //pd = p;
-            if (Tools.currentTool.type == Tools.Tool.Type.pointSel && e.Event.State == ModifierType.Button1Mask)
+            if (Tools.currentTool.type == Tools.Tool.Type.pointSel && (e.Event.State.HasFlag(ModifierType.ControlMask) && e.Event.State.HasFlag(ModifierType.Button1Mask)))
             {
                 foreach (ROI an in selectedAnnotations)
                 {
@@ -1430,6 +1442,8 @@ namespace BioGTK
             }
             UpdateStatus();
             pd = p;
+            if(Tools.currentTool.type == Tools.Tool.Type.select && Modifiers == ModifierType.Button1Mask)
+            UpdateView();
         }
         public static PointD mouseDown;
         public static PointD mouseUp;

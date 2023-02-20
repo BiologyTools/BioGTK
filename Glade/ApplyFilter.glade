@@ -184,19 +184,19 @@
             <property name="label" translatable="yes">ROI</property>
           </object>
           <packing>
-            <property name="x">180</property>
-            <property name="y">197</property>
+            <property name="x">30</property>
+            <property name="y">260</property>
           </packing>
         </child>
         <child>
           <object class="GtkComboBox" id="roiBox">
-            <property name="width-request">125</property>
+            <property name="width-request">277</property>
             <property name="visible">True</property>
             <property name="can-focus">False</property>
           </object>
           <packing>
-            <property name="x">177</property>
-            <property name="y">217</property>
+            <property name="x">26</property>
+            <property name="y">284</property>
           </packing>
         </child>
         <child>
@@ -210,7 +210,7 @@
           </object>
           <packing>
             <property name="x">27</property>
-            <property name="y">265</property>
+            <property name="y">323</property>
           </packing>
         </child>
         <child>
@@ -223,7 +223,7 @@
           </object>
           <packing>
             <property name="x">178</property>
-            <property name="y">264</property>
+            <property name="y">324</property>
           </packing>
         </child>
         <child>
@@ -235,8 +235,8 @@
             <property name="receives-default">True</property>
           </object>
           <packing>
-            <property name="x">179</property>
-            <property name="y">301</property>
+            <property name="x">177</property>
+            <property name="y">364</property>
           </packing>
         </child>
         <child>
@@ -249,7 +249,7 @@
           </object>
           <packing>
             <property name="x">27</property>
-            <property name="y">303</property>
+            <property name="y">363</property>
           </packing>
         </child>
       </object>

@@ -85,7 +85,7 @@ namespace BioGTK
             widthBar.Adjustment.Value = Tools.StrokeWidth;
             widthBox.Adjustment.Upper = 100;
             widthBox.Adjustment.Value = Tools.StrokeWidth;
-            if (color1)
+            if (!color1)
             {
                 rBar.Adjustment.Value = Tools.drawColor.R;
                 gBar.Adjustment.Value = Tools.drawColor.G;
@@ -169,7 +169,7 @@ namespace BioGTK
             gBox.Value = gBar.Value;
             bBox.Value = bBar.Value;
             Tools.StrokeWidth = (int)widthBox.Value;
-            if (!color1)
+            if (color1)
                 Tools.DrawColor = ColorS;
             else
                 Tools.EraseColor = ColorS;

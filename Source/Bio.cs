@@ -246,12 +246,14 @@ namespace BioGTK
         /// @param RectangleD The rectangle that is being checked for intersection.
         /// 
         /// @return a boolean value.
-        public bool IntersectsWith(RectangleD p)
+        public bool IntersectsWith(RectangleD rect1)
         {
-            if (IntersectsWith(p.X, p.Y) || IntersectsWith(p.X + p.W, p.Y) || IntersectsWith(p.X, p.Y + p.H) || IntersectsWith(p.X + p.W, p.Y + p.H))
-                return true;
-            else
+            if (rect1.X + rect1.W < X || X + W < rect1.X ||
+        rect1.Y + rect1.H < Y || Y + H < rect1.Y)
+            {
                 return false;
+            }
+            return true;
         }
         /// > Returns true if the point is inside the rectangle
         /// 
@@ -3794,7 +3796,173 @@ namespace BioGTK
             else
                 return Buffers[index];
         }
+        /// It takes a byte array of RGB or RGBA data and converts it to a Bitmap
+        /// 
+        /// @param w width of the image
+        /// @param h height of the image
+        /// @param PixelFormat The pixel format of the image.
+        /// @param bts the byte array of the image
+        /// 
+        /// @return A Bitmap object.
+        public static unsafe Bitmap GetBitmapRGB(int w, int h, PixelFormat px, byte[] bts)
+        {
+            if (px == PixelFormat.Format32bppArgb)
+            {
+                //opening a 8 bit per pixel jpg image
+                Bitmap bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+                //creating the bitmapdata and lock bits
+                AForge.Rectangle rec = new AForge.Rectangle(0, 0, w, h);
+                BitmapData bmd = bmp.LockBits(rec, ImageLockMode.ReadWrite, bmp.PixelFormat);
+                //iterating through all the pixels in y direction
+                for (int y = 0; y < h; y++)
+                {
+                    //getting the pixels of current row
+                    byte* row = (byte*)bmd.Scan0 + (y * bmd.Stride);
+                    int rowRGB = y * w * 4;
+                    //iterating through all the pixels in x direction
+                    for (int x = 0; x < w; x++)
+                    {
+                        int indexRGB = x * 4;
+                        int indexRGBA = x * 4;
+                        row[indexRGBA + 3] = bts[rowRGB + indexRGB + 3];//byte A
+                        row[indexRGBA + 2] = bts[rowRGB + indexRGB + 2];//byte R
+                        row[indexRGBA + 1] = bts[rowRGB + indexRGB + 1];//byte G
+                        row[indexRGBA] = bts[rowRGB + indexRGB];//byte B
+                    }
+                }
+                //unlocking bits and disposing image
+                bmp.UnlockBits(bmd);
+                return bmp;
+            }
+            else if (px == PixelFormat.Format24bppRgb)
+            {
+                //opening a 8 bit per pixel jpg image
+                Bitmap bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+                //creating the bitmapdata and lock bits
+                AForge.Rectangle rec = new AForge.Rectangle(0, 0, w, h);
+                BitmapData bmd = bmp.LockBits(rec, ImageLockMode.ReadWrite, bmp.PixelFormat);
+                //iterating through all the pixels in y direction
+                for (int y = 0; y < h; y++)
+                {
+                    //getting the pixels of current row
+                    byte* row = (byte*)bmd.Scan0 + (y * bmd.Stride);
+                    int rowRGB = y * w * 3;
+                    //iterating through all the pixels in x direction
+                    for (int x = 0; x < w; x++)
+                    {
+                        int indexRGB = x * 3;
+                        int indexRGBA = x * 4;
+                        row[indexRGBA + 3] = byte.MaxValue;//byte A
+                        row[indexRGBA + 2] = bts[rowRGB + indexRGB + 2];//byte R
+                        row[indexRGBA + 1] = bts[rowRGB + indexRGB + 1];//byte G
+                        row[indexRGBA] = bts[rowRGB + indexRGB];//byte B
+                    }
+                }
+                //unlocking bits and disposing image
+                bmp.UnlockBits(bmd);
+                return bmp;
+            }
+            else
+            if (px == PixelFormat.Format48bppRgb)
+            {
+                //opening a 8 bit per pixel jpg image
+                Bitmap bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+                //creating the bitmapdata and lock bits
+                AForge.Rectangle rec = new AForge.Rectangle(0, 0, w, h);
+                BitmapData bmd = bmp.LockBits(rec, ImageLockMode.ReadWrite, bmp.PixelFormat);
+                unsafe
+                {
+                    //iterating through all the pixels in y direction
+                    for (int y = 0; y < h; y++)
+                    {
+                        //getting the pixels of current row
+                        byte* row = (byte*)bmd.Scan0 + (y * bmd.Stride);
+                        int rowRGB = y * w * 6;
+                        //iterating through all the pixels in x direction
+                        for (int x = 0; x < w; x++)
+                        {
+                            int indexRGB = x * 6;
+                            int indexRGBA = x * 4;
+                            int b = (int)((float)BitConverter.ToUInt16(bts, rowRGB + indexRGB) / 255);
+                            int g = (int)((float)BitConverter.ToUInt16(bts, rowRGB + indexRGB + 2) / 255);
+                            int r = (int)((float)BitConverter.ToUInt16(bts, rowRGB + indexRGB + 4) / 255);
+                            row[indexRGBA + 3] = 255;//byte A
+                            row[indexRGBA + 2] = (byte)(b);//byte R
+                            row[indexRGBA + 1] = (byte)(g);//byte G
+                            row[indexRGBA] = (byte)(r);//byte B
+                        }
+                    }
+                }
+                bmp.UnlockBits(bmd);
+                return bmp;
+            }
+            else
+            if (px == PixelFormat.Format8bppIndexed)
+            {
+                //opening a 8 bit per pixel jpg image
+                Bitmap bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+                //creating the bitmapdata and lock bits
+                AForge.Rectangle rec = new AForge.Rectangle(0, 0, w, h);
+                BitmapData bmd = bmp.LockBits(rec, ImageLockMode.ReadWrite, bmp.PixelFormat);
+                unsafe
+                {
+                    //iterating through all the pixels in y direction
+                    for (int y = 0; y < h; y++)
+                    {
+                        //getting the pixels of current row
+                        byte* row = (byte*)bmd.Scan0 + (y * bmd.Stride);
+                        int rowRGB = y * w;
+                        //iterating through all the pixels in x direction
+                        for (int x = 0; x < w; x++)
+                        {
+                            int indexRGB = x;
+                            int indexRGBA = x * 4;
+                            byte b = bts[rowRGB + indexRGB];
+                            row[indexRGBA + 3] = 255;//byte A
+                            row[indexRGBA + 2] = (byte)(b);//byte R
+                            row[indexRGBA + 1] = (byte)(b);//byte G
+                            row[indexRGBA] = (byte)(b);//byte B
+                        }
+                    }
+                }
+                bmp.UnlockBits(bmd);
+                return bmp;
+            }
+            else
+            if (px == PixelFormat.Format16bppGrayScale)
+            {
+                //opening a 8 bit per pixel jpg image
+                Bitmap bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+                //creating the bitmapdata and lock bits
+                AForge.Rectangle rec = new AForge.Rectangle(0, 0, w, h);
+                BitmapData bmd = bmp.LockBits(rec, ImageLockMode.ReadWrite, bmp.PixelFormat);
+                unsafe
+                {
+                    //iterating through all the pixels in y direction
+                    for (int y = 0; y < h; y++)
+                    {
+                        //getting the pixels of current row
+                        byte* row = (byte*)bmd.Scan0 + (y * bmd.Stride);
+                        int rowRGB = y * w * 2;
+                        //iterating through all the pixels in x direction
+                        for (int x = 0; x < w; x++)
+                        {
+                            int indexRGB = x * 2;
+                            int indexRGBA = x * 4;
+                            ushort b = (ushort)((float)BitConverter.ToUInt16(bts, rowRGB + indexRGB) / 255);
+                            row[indexRGBA + 3] = 255;//byte A
+                            row[indexRGBA + 2] = (byte)(b);//byte R
+                            row[indexRGBA + 1] = (byte)(b);//byte G
+                            row[indexRGBA] = (byte)(b);//byte B
+                        }
+                    }
+                }
+                bmp.UnlockBits(bmd);
+                return bmp;
+            }
 
+            throw new NotSupportedException("Pixelformat " + px + " is not supported.");
+        }
         public static Stopwatch swatch = new Stopwatch();
         /// > GetAnnotations() returns a list of ROI objects that are associated with the ZCT coordinate
         /// passed in as a parameter
