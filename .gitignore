@@ -24,3 +24,4 @@ obj/BioGTK.csproj.nuget.dgspec.json
 *.cache
 *.jar
 *.properties
+*.TMP

@@ -19,8 +19,8 @@
             </child>
           </object>
           <packing>
-            <property name="expand">True</property>
-            <property name="fill">True</property>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
             <property name="position">0</property>
           </packing>
         </child>
@@ -50,12 +50,19 @@
                 <property name="can-focus">False</property>
                 <property name="orientation">vertical</property>
                 <child>
-                  <object class="GtkTextView">
-                    <property name="name">view</property>
-                    <property name="width-request">550</property>
-                    <property name="height-request">400</property>
+                  <object class="GtkScrolledWindow">
+                    <property name="height-request">450</property>
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
+                    <property name="shadow-type">in</property>
+                    <child>
+                      <object class="GtkTextView" id="view">
+                        <property name="width-request">600</property>
+                        <property name="height-request">700</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                      </object>
+                    </child>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -64,15 +71,22 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkNotebook">
+                  <object class="GtkNotebook" id="tabsView">
                     <property name="width-request">13</property>
-                    <property name="height-request">171</property>
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <child>
-                      <object class="GtkTextView" id="outputBox">
+                      <object class="GtkScrolledWindow">
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
+                        <property name="shadow-type">in</property>
+                        <child>
+                          <object class="GtkTextView" id="outputBox">
+                            <property name="name">outputBox</property>
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                          </object>
+                        </child>
                       </object>
                     </child>
                     <child type="tab">
@@ -86,9 +100,17 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkTextView" id="errorBox">
+                      <object class="GtkScrolledWindow">
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
+                        <property name="shadow-type">in</property>
+                        <child>
+                          <object class="GtkTextView" id="errorBox">
+                            <property name="name">errorBox</property>
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                          </object>
+                        </child>
                       </object>
                       <packing>
                         <property name="position">1</property>
@@ -106,9 +128,17 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkTextView" id="logBox">
+                      <object class="GtkScrolledWindow">
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
+                        <property name="shadow-type">in</property>
+                        <child>
+                          <object class="GtkTextView" id="logBox">
+                            <property name="name">logBox</property>
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                          </object>
+                        </child>
                       </object>
                       <packing>
                         <property name="position">2</property>
@@ -127,7 +157,7 @@
                     </child>
                   </object>
                   <packing>
-                    <property name="expand">False</property>
+                    <property name="expand">True</property>
                     <property name="fill">True</property>
                     <property name="position">1</property>
                   </packing>
@@ -159,7 +189,7 @@
                         <property name="receives-default">True</property>
                       </object>
                       <packing>
-                        <property name="x">110</property>
+                        <property name="x">115</property>
                         <property name="y">11</property>
                       </packing>
                     </child>
@@ -172,7 +202,7 @@
                         <property name="receives-default">True</property>
                       </object>
                       <packing>
-                        <property name="x">212</property>
+                        <property name="x">221</property>
                         <property name="y">11</property>
                       </packing>
                     </child>
@@ -185,8 +215,8 @@
                         <property name="receives-default">True</property>
                       </object>
                       <packing>
-                        <property name="x">314</property>
-                        <property name="y">12</property>
+                        <property name="x">326</property>
+                        <property name="y">11</property>
                       </packing>
                     </child>
                     <child>
@@ -199,7 +229,7 @@
                         <property name="draw-indicator">True</property>
                       </object>
                       <packing>
-                        <property name="x">421</property>
+                        <property name="x">437</property>
                         <property name="y">16</property>
                       </packing>
                     </child>
@@ -207,19 +237,21 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
+                    <property name="pack-type">end</property>
                     <property name="position">2</property>
                   </packing>
                 </child>
               </object>
               <packing>
-                <property name="expand">False</property>
+                <property name="expand">True</property>
                 <property name="fill">True</property>
+                <property name="pack-type">end</property>
                 <property name="position">1</property>
               </packing>
             </child>
           </object>
           <packing>
-            <property name="expand">False</property>
+            <property name="expand">True</property>
             <property name="fill">True</property>
             <property name="position">1</property>
           </packing>

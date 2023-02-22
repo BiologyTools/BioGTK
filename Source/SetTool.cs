@@ -1,5 +1,6 @@
 ﻿using Gtk;
 using System;
+using System.Threading;
 
 namespace BioGTK
 {
@@ -75,10 +76,13 @@ namespace BioGTK
         {
             Gtk.TreeStore store = new Gtk.TreeStore(typeof(string), typeof(string), typeof(string));
 
-            foreach (Scripting.Script s in Scripting.Scripts.Values)
+            foreach (Scripting.Script s in Scripting.scripts.Values)
             {
                 Gtk.TreeIter iter = store.AppendValues(System.IO.Path.GetFileName(s.name));
-                store.AppendValues(iter, s.name, s.thread.ThreadState);
+                if (s.thread == null)
+                    store.AppendValues(s.name, ThreadState.Unstarted);
+                else
+                    store.AppendValues(s.name, s.thread.ThreadState);
             }
             tree.Model = store;
         }
@@ -86,9 +90,12 @@ namespace BioGTK
         private void TreeView_RowActivated(object o, RowActivatedArgs args)
         {
             string s = (string)args.Args[0];
-            if (Scripting.Scripts.ContainsKey(s))
+            if (Scripting.scripts.ContainsKey(s))
             {
-                Scripting.Script sc = Scripting.Scripts[s];
+                Scripting.Script sc = Scripting.scripts[s];
+                if (sc.thread == null)
+                    sc.Run();
+                else
                 if(sc.thread.ThreadState == System.Threading.ThreadState.Running || sc.thread.ThreadState!= System.Threading.ThreadState.WaitSleepJoin)
                 {
                     sc.Stop();

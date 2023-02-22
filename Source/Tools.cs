@@ -616,6 +616,8 @@ namespace BioGTK
                 Scripting.UpdateState(Scripting.State.GetMove(e, 4));
             if (buts.Event.State == ModifierType.Button5Mask)
                 Scripting.UpdateState(Scripting.State.GetMove(e, 5));
+            if (buts.Event.State == ModifierType.None)
+                Scripting.UpdateState(Scripting.State.GetMove(e, 0));
 
             if ((Tools.currentTool.type == Tools.Tool.Type.pan && buts.Event.State == Gdk.ModifierType.Button1Mask) || buts.Event.State == Gdk.ModifierType.Button2Mask && !ImageView.SelectedImage.isPyramidal)
             {

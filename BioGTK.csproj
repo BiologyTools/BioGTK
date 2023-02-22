@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <OutputType>Library</OutputType>
-    <RuntimeIdentifiers>osx-x64</RuntimeIdentifiers>
+    <RuntimeIdentifiers>osx-x64;linux-x64;win7-x64</RuntimeIdentifiers>
     <AssemblyVersion>2.1.1</AssemblyVersion>
     <FileVersion>2.1.1</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>

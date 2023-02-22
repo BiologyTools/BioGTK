@@ -6739,7 +6739,8 @@ namespace BioGTK
 
         public static bool OMESupport()
         {
-            if (Environment.OSVersion.Platform == PlatformID.Unix)
+            bool isMacOS = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+            if (isMacOS)
             {
                 MessageDialog md = new MessageDialog(
                 null,

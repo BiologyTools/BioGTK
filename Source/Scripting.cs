@@ -15,6 +15,7 @@ using CSScriptLib;
 using Gtk;
 using AForge;
 using BioGTK;
+using System.Reflection.Metadata;
 
 namespace BioGTK
 {
@@ -48,6 +49,8 @@ namespace BioGTK
         private Label scriptLabel;
         [Builder.Object]
         private CheckButton headlessBox;
+        [Builder.Object]
+        private Notebook tabsView;
 #pragma warning restore 649
 
         #endregion
@@ -69,8 +72,17 @@ namespace BioGTK
             _builder = builder;
             builder.Autoconnect(this);
             scriptView.RowActivated += ScriptView_RowActivated;
+            scriptView.ButtonPressEvent += ScriptView_ButtonPressEvent;
             this.DeleteEvent += Scripting_DeleteEvent;
             this.KeyPressEvent += Scripting_KeyPressEvent;
+            saveBut.ButtonPressEvent += SaveBut_ButtonPressEvent;
+            runBut.ButtonPressEvent += runButton_Click;
+            scriptLoadBut.ButtonPressEvent += scriptLoadBut_Click;
+            outputBox.ButtonPressEvent += OutputBox_ButtonPressEvent;
+            errorBox.ButtonPressEvent += OutputBox_ButtonPressEvent;
+            logBox.ButtonPressEvent += OutputBox_ButtonPressEvent;
+            stopBut.ButtonPressEvent += stopBut_Click;
+            tabsView.SwitchPage += TabsView_SwitchPage;
             window = this;
             if (!Directory.Exists(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "//" + "Scripts"))
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "//" + "Scripts");
@@ -78,6 +90,30 @@ namespace BioGTK
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "//" + "Tools");
             InitItems();
             scriptLabel.Text = "NewScript.cs";
+        }
+
+        private void TabsView_SwitchPage(object o, SwitchPageArgs args)
+        {
+            logBox.Buffer.Text = log;
+            errorBox.Buffer.Text = error;
+            outputBox.Buffer.Text = output;
+        }
+
+        private void OutputBox_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            logBox.Buffer.Text = log;
+            errorBox.Buffer.Text = error;
+            outputBox.Buffer.Text = output;
+        }
+
+        private void ScriptView_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            RefreshItems();
+        }
+
+        private void SaveBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Save();
         }
 
         private void Scripting_DeleteEvent(object o, DeleteEventArgs args)
@@ -107,9 +143,22 @@ namespace BioGTK
        /// event handler.
         private void ScriptView_RowActivated(object o, RowActivatedArgs args)
         {
-            string s = (string)args.Args[0];
-            if(scripts.ContainsKey(s))
-                selectedItem = scripts[s];
+            TreeView treeView = (TreeView)o;
+            TreePath path = args.Path;
+            TreeIter iter;
+
+            // Get the TreeIter for the selected row
+            if (treeView.Model.GetIter(out iter, path))
+            {
+                // Get the value of the "Text" column for the selected row
+                string text = (string)treeView.Model.GetValue(iter, 0);
+                if (scripts.ContainsKey(text))
+                {
+                    selectedItem = scripts[text];
+                    view.Buffer.Text = selectedItem.scriptString;
+                    scriptLabel.Text = selectedItem.name;
+                }
+            }
         }
         #endregion
 
@@ -117,18 +166,20 @@ namespace BioGTK
         public static Window window;
         /* Declaring a static variable called log. */
         public static string log;
+        public static string output;
+        public static string error;
         public static string ImageJPath = ImageJ.ImageJPath;
         public static Dictionary<string,Script> scripts = new Dictionary<string,Script>();
         public static void LogLine(string s)
         {
             log += s + Environment.NewLine;
         }
-        public static Dictionary<string, Script> Scripts = new Dictionary<string, Script>();
         public class Script
         {
             public string name;
             public string file;
             public string scriptString;
+            public bool exit = false;
             public dynamic script;
             public object obj;
             public string output = "";
@@ -192,7 +243,7 @@ namespace BioGTK
             /// It runs a script in a separate thread
             private static void RunScript()
             {
-                Script rn = Scripts[scriptName];
+                Script rn = scripts[scriptName];
                 rn.ex = null;
                 if (rn.type == ScriptType.imagej)
                 {
@@ -216,10 +267,12 @@ namespace BioGTK
                         rn.obj = rn.script.Load();
                         rn.output = rn.obj.ToString();
                         rn.done = true;
+                        
                     }
                     catch (Exception e)
                     {
                         rn.ex = e;
+                        error = e.Message + Environment.NewLine + e.StackTrace;
                     }
                 }
             }
@@ -268,8 +321,8 @@ namespace BioGTK
             /// It creates a new thread and starts it
             public void Run()
             {
-                if (!Scripts.ContainsKey(name))
-                    Scripts.Add(name, this);
+                if (!scripts.ContainsKey(name))
+                    scripts.Add(name, this);
                 scriptName = this.name;
                 thread = new Thread(new ThreadStart(RunScript));
                 thread.Start();
@@ -277,8 +330,7 @@ namespace BioGTK
             /// It stops the thread
             public void Stop()
             {
-                if(thread!=null)
-                thread.Abort();
+                exit = true;
             }
             /// If the thread is not null, return the name and the thread state. Otherwise, return the
             /// name
@@ -396,6 +448,16 @@ namespace BioGTK
         {
             return state;
         }
+
+        public static bool Exit(string name)
+        {
+            if(scripts.ContainsKey(name))
+            {
+                return scripts[name].exit;
+            }
+            return false;
+        }
+
         /// If the state is null, return. If the state is not null, set the state to the new state. If
         /// the state is not null and the new state is the same as the old state, set the processed flag
         /// to true
@@ -435,26 +497,32 @@ namespace BioGTK
 
             Gtk.TreeStore store = new Gtk.TreeStore(typeof(string), typeof(string));
             scriptView.Model = store;
-            Scripts.Clear();
+            scripts.Clear();
             string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath);
             foreach (string file in Directory.GetFiles(st + "/Scripts"))
             {
-                if (!Scripts.ContainsKey(System.IO.Path.GetFileName(file)))
+                if (!scripts.ContainsKey(System.IO.Path.GetFileName(file)))
                 {
                     Script sc = new Script(file, File.ReadAllText(file));
-                    store.AppendValues(sc.name, sc.thread.ThreadState);
-                    Scripts.Add(sc.name, sc);
+                    if(sc.thread == null)
+                        store.AppendValues(sc.name, ThreadState.Unstarted.ToString());
+                    else
+                        store.AppendValues(sc.name, sc.thread.ThreadState.ToString());
+                    scripts.Add(sc.name, sc);
                 }
             }
             foreach (string file in Directory.GetFiles(st + "/Tools"))
             {
                 if (file.EndsWith(".cs"))
                 {
-                    if (!Scripts.ContainsKey(System.IO.Path.GetFileName(file)))
+                    if (!scripts.ContainsKey(System.IO.Path.GetFileName(file)))
                     {
                         Script sc = new Script(file, File.ReadAllText(file));
-                        store.AppendValues(sc.name,sc.thread.ThreadState);
-                        Scripts.Add(sc.name, sc);
+                        if (sc.thread == null)
+                            store.AppendValues(sc.name, ThreadState.Unstarted.ToString());
+                        else
+                            store.AppendValues(sc.name, sc.thread.ThreadState.ToString());
+                        scripts.Add(sc.name, sc);
                     }
                 }
             }
@@ -464,9 +532,12 @@ namespace BioGTK
         public void RefreshItems()
         {
             Gtk.TreeStore store = new Gtk.TreeStore(typeof(string), typeof(string));
-            foreach (Script s in Scripts.Values)
+            foreach (Script sc in scripts.Values)
             {
-                store.AppendValues(s.name, s.thread.ThreadState);
+                if (sc.thread == null)
+                    store.AppendValues(sc.name, ThreadState.Unstarted.ToString());
+                else
+                    store.AppendValues(sc.name, sc.thread.ThreadState.ToString());
             }
             scriptView.Model = store;
         }
@@ -514,7 +585,7 @@ namespace BioGTK
         /// @param file The filename of the script you want to run.
         public static void RunByName(string name)
         {
-            Scripts[name].Run();
+            scripts[name].Run();
         }
         /// It runs a script file
         /// 
@@ -522,7 +593,7 @@ namespace BioGTK
         public void RunScriptFile(string file)
         {
             Script sc = new Script(file);
-            Scripts.Add(sc.name,sc);
+            scripts.Add(sc.name,sc);
             RefreshItems();
             RunByName(sc.name);
         }
@@ -532,7 +603,7 @@ namespace BioGTK
         public static void RunScript(string file)
         {
             Script sc = new Script(file);
-            Scripts.Add(sc.name, sc);
+            scripts.Add(sc.name, sc);
             RunByName(sc.name);
         }
         /// It runs a string as a Bio script
@@ -559,7 +630,7 @@ namespace BioGTK
             sc.Run();
             outputBox.Buffer.Text = sc.output;
             logBox.Buffer.Text = log;
-            
+            RefreshItems();
         }
         /// We stop the script.
         /// 
@@ -618,7 +689,7 @@ namespace BioGTK
         /// 
         /// @param sender The object that raised the event.
         /// @param EventArgs The event arguments.
-        private void runButton_Click(object sender, EventArgs e)
+        private void runButton_Click(object sender, ButtonPressEventArgs args)
         {
             if (scriptLabel.Text.EndsWith(".ijm"))
             {
@@ -634,7 +705,7 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         /// 
         /// @return The file name of the file that was selected.
-        private void scriptLoadBut_Click(object sender, EventArgs e)
+        private void scriptLoadBut_Click(object sender, ButtonPressEventArgs args)
         {
             Gtk.FileChooserDialog filechooser =
     new Gtk.FileChooserDialog("Choose script file to open",
@@ -651,7 +722,7 @@ namespace BioGTK
             view.Buffer.Text = script.scriptString;
             scriptLabel.Text = System.IO.Path.GetFileName(filechooser.Filename);
 
-            Scripts.Add(script.name, script);
+            scripts.Add(script.name, script);
             RefreshItems();
         }
 
@@ -663,7 +734,7 @@ namespace BioGTK
         private void Save()
         {
             Gtk.FileChooserDialog filechooser =
-    new Gtk.FileChooserDialog("Choose script file to open",
+    new Gtk.FileChooserDialog("Choose script filename to save",
         this,
         FileChooserAction.Save,
         "Cancel", ResponseType.Cancel,
@@ -673,13 +744,18 @@ namespace BioGTK
                 return;
             scriptLabel.Text = System.IO.Path.GetFileName(filechooser.Filename);
             File.WriteAllText(filechooser.Filename, view.Buffer.Text);
+            if(!scripts.ContainsKey(scriptLabel.Text))
+            {
+                scripts.Add(scriptLabel.Text,new Script(filechooser.Filename, view.Buffer.Text));
+            }
+            RefreshItems();
         }
 
         /// It stops the timer and resets the timer to 0
         /// 
         /// @param sender The object that raised the event.
         /// @param EventArgs The EventArgs class is the base class for classes containing event data.
-        private void stopBut_Click(object sender, EventArgs e)
+        private void stopBut_Click(object sender, ButtonPressEventArgs args)
         {
             Stop();
         }
