@@ -52,7 +52,7 @@ A .NET application & library for editing & annotating various microscopy image f
 using System; 
 using BioGTK;
 using System.Threading;
-
+using AForge;
 public class Loader {
 
 //Point ROI Tool Example
@@ -66,7 +66,7 @@ public string Load()
 		{
 			if (!s.processed)
 			{
-				if (s.type == BioGTK.Scripting.Event.Down && s.buts == MouseButtons.Left)
+				if (s.type == BioGTK.Scripting.Event.Down && s.buts == 1)
 				{
 					ZCT cord = BioGTK.App.viewer.GetCoordinate();
 					BioGTK.Scripting.LogLine(cord.ToString() + " Coordinate");
