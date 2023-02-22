@@ -7,7 +7,7 @@
     <property name="title" translatable="yes">Set Tool</property>
     <child>
       <object class="GtkTreeView" id="tree">
-        <property name="width-request">170</property>
+        <property name="width-request">220</property>
         <property name="height-request">220</property>
         <property name="visible">True</property>
         <property name="can-focus">True</property>

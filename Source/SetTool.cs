@@ -1,4 +1,5 @@
 ﻿using Gtk;
+using javax.swing.text;
 using System;
 using System.Threading;
 
@@ -78,18 +79,28 @@ namespace BioGTK
 
             foreach (Scripting.Script s in Scripting.scripts.Values)
             {
-                Gtk.TreeIter iter = store.AppendValues(System.IO.Path.GetFileName(s.name));
                 if (s.thread == null)
-                    store.AppendValues(s.name, ThreadState.Unstarted);
+                    store.AppendValues(s.name, ThreadState.Unstarted.ToString());
                 else
-                    store.AppendValues(s.name, s.thread.ThreadState);
+                    store.AppendValues(s.name, s.thread.ThreadState.ToString());
             }
             tree.Model = store;
         }
 
         private void TreeView_RowActivated(object o, RowActivatedArgs args)
         {
-            string s = (string)args.Args[0];
+            TreeView treeView = (TreeView)o;
+            TreePath path = args.Path;
+            TreeIter iter;
+            string s;
+            // Get the TreeIter for the selected row
+            if (treeView.Model.GetIter(out iter, path))
+            {
+                // Get the value of the "Text" column for the selected row
+                s = (string)treeView.Model.GetValue(iter, 0);
+            }
+            else
+                return;
             if (Scripting.scripts.ContainsKey(s))
             {
                 Scripting.Script sc = Scripting.scripts[s];
@@ -105,6 +116,7 @@ namespace BioGTK
                     sc.Run();
                 }
             }
+            UpdateItems();
         }
     }
 }

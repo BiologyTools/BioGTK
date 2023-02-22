@@ -846,7 +846,7 @@ namespace BioGTK
                             e.Cr.Stroke();
                         }
                     }
-                    if (labels)
+                    if (ROIManager.showText)
                     {
                         e.Cr.SetFontSize(an.fontSize);
                         e.Cr.SelectFontFace(an.family, Cairo.FontSlant.Normal, Cairo.FontWeight.Normal);
@@ -855,7 +855,7 @@ namespace BioGTK
                         e.Cr.ShowText(an.Text);
                         e.Cr.Stroke();
                     }
-                    if (bounds && an.type != ROI.Type.Rectangle && an.type != ROI.Type.Label)
+                    if (ROIManager.showBounds && an.type != ROI.Type.Rectangle && an.type != ROI.Type.Label)
                     {
                         RectangleD rrf = ToViewSpace(an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
                         e.Cr.SetSourceColor(FromColor(Color.Green));
@@ -956,29 +956,59 @@ namespace BioGTK
                 PasteSelection();
                 return;
             }
-            if (e.Event.Key == Gdk.Key.minus)
+            if (e.Event.Key == Gdk.Key.e)
             {
-                Scale = new SizeF(Scale.Width - 0.1f, Scale.Height - 0.1f);
+                if (SelectedImage.isPyramidal)
+                {
+                    Resolution--;
+                }
+                else
+                    Scale = new SizeF(Scale.Width - 0.1f, Scale.Height - 0.1f);
             }
-            if (e.Event.Key == Gdk.Key.plus)
+            if (e.Event.Key == Gdk.Key.q)
             {
-                Scale = new SizeF(Scale.Width + 0.1f, Scale.Height + 0.1f);
+                if (SelectedImage.isPyramidal)
+                {
+                    Resolution++;
+                }
+                else
+                    Scale = new SizeF(Scale.Width + 0.1f, Scale.Height + 0.1f);
             }
             if (e.Event.Key == Gdk.Key.w)
             {
-                Origin = new PointD(Origin.X, Origin.Y + moveAmount);
+                if (SelectedImage.isPyramidal)
+                {
+                    PyramidalOrigin = new Point(PyramidalOrigin.X, PyramidalOrigin.Y + 150);
+                }
+                else
+                    Origin = new PointD(Origin.X, Origin.Y + moveAmount);
             }
             if (e.Event.Key == Gdk.Key.s)
             {
-                Origin = new PointD(Origin.X, Origin.Y - moveAmount);
+                if (SelectedImage.isPyramidal)
+                {
+                    PyramidalOrigin = new Point(PyramidalOrigin.X, PyramidalOrigin.Y - 150);
+                }
+                else
+                    Origin = new PointD(Origin.X, Origin.Y - moveAmount);
             }
             if (e.Event.Key == Gdk.Key.a)
             {
-                Origin = new PointD(Origin.X + moveAmount, Origin.Y);
+                if (SelectedImage.isPyramidal)
+                {
+                    PyramidalOrigin = new Point(PyramidalOrigin.X - 150, PyramidalOrigin.Y);
+                }
+                else
+                    Origin = new PointD(Origin.X + moveAmount, Origin.Y);
             }
             if (e.Event.Key == Gdk.Key.d)
             {
-                Origin = new PointD(Origin.X - moveAmount, Origin.Y);
+                if (SelectedImage.isPyramidal)
+                {
+                    PyramidalOrigin = new Point(PyramidalOrigin.X + 150, PyramidalOrigin.Y);
+                }
+                else
+                    Origin = new PointD(Origin.X - moveAmount, Origin.Y);
             }
             foreach (Function item in Function.Functions.Values)
             {
@@ -1324,8 +1354,6 @@ namespace BioGTK
                 return ans;
             }
         }
-        public static bool labels = false;
-        public static bool bounds = true;
         public double GetScale()
         {
             return ToViewSizeW(ROI.selectBoxSize / Scale.Width);

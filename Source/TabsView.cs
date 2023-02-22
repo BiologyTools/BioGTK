@@ -1,5 +1,6 @@
 ﻿using AForge;
 using Bio;
+using com.sun.corba.se.spi.orb;
 using com.sun.org.apache.xpath.@internal.functions;
 using Gtk;
 using loci.formats.gui;
@@ -415,18 +416,12 @@ namespace BioGTK
             filechooser.SelectMultiple= true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            foreach (string item in filechooser.Filenames)
-            {
-                BioImage b = BioImage.OpenFile(item);
-                ImageView view = ImageView.Create(b);
-                viewers.Add(view);
-                Label dummy = new Gtk.Label(b.file);
-                dummy.Visible = false;
-                tabsView.AppendPage(dummy, new Gtk.Label(b.Filename));
-                view.Present();
-            }
-            this.ShowAll();
+            string[] sts = filechooser.Filenames;
             filechooser.Destroy();
+            foreach (string item in sts)
+            {
+                BioImage.OpenAsync(item);
+            }
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file and adds
         /// it to the list of open images
@@ -449,7 +444,7 @@ namespace BioGTK
                 return;
             foreach (string item in filechooser.Filenames)
             {
-                BioImage b = BioImage.OpenOME(item);
+                BioImage b = BioImage.OpenOME(item,true);
                 ImageView view = ImageView.Create(b);
                 viewers.Add(view);
                 Label dummy = new Gtk.Label(b.file);
@@ -480,7 +475,7 @@ namespace BioGTK
                 return;
             foreach (string item in filechooser.Filenames)
             {
-                BioImage[] bm = BioImage.OpenOMESeries(item);
+                BioImage[] bm = BioImage.OpenOMESeries(item,true);
                 foreach (BioImage b in bm)
                 {
                     ImageView view = ImageView.Create(b);
@@ -512,7 +507,7 @@ namespace BioGTK
                 return;
             foreach (string item in filechooser.Filenames)
             {
-                BioImage[] bm = BioImage.OpenSeries(item);
+                BioImage[] bm = BioImage.OpenSeries(item, true);
                 foreach (BioImage b in bm)
                 {
                     ImageView view = ImageView.Create(b);
@@ -545,7 +540,7 @@ namespace BioGTK
                 return;
             foreach (string item in filechooser.Filenames)
             {
-                BioImage b = BioImage.OpenFile(item);
+                BioImage b = BioImage.OpenFile(item, false);
                 SelectedViewer.AddImage(b);
             }
             this.ShowAll();
@@ -571,7 +566,7 @@ namespace BioGTK
                 return;
             foreach (string item in filechooser.Filenames)
             {
-                BioImage b = BioImage.OpenOME(item);
+                BioImage b = BioImage.OpenOME(item, false);
                 SelectedViewer.AddImage(b);
             }
             this.ShowAll();
@@ -688,7 +683,7 @@ namespace BioGTK
             filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            BioImage b = BioImage.ImagesToStack(filechooser.Filenames);
+            BioImage b = BioImage.ImagesToStack(filechooser.Filenames, true);
             AddTab(b);
         }
         /// When the user clicks on the RGB menu item, the viewer's mode is set to RGB

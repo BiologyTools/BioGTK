@@ -559,11 +559,11 @@ namespace Bio
             ImageView.SelectedImage.Annotations.Add(anno);
             UpdateView();
         }
-        public static bool showBounds;
-        public static bool showText;
-        public static bool showR;
-        public static bool showG;
-        public static bool showB;
+        public static bool showBounds = true;
+        public static bool showText = false;
+        public static bool showR = true;
+        public static bool showG = true;
+        public static bool showB = true;
         /// When the checkbox is clicked, the showBounds variable is set to the value of the checkbox
         /// 
         /// @param sender The object that raised the event.

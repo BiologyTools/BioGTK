@@ -140,7 +140,7 @@ namespace BioGTK
             if (ImageView.SelectedImage.ID.EndsWith(".ome.tif"))
                 ImageView.SelectedImage.Update();
             else
-                App.tabsView.AddTab(BioImage.OpenOME(file));
+               BioImage.OpenOME(file,true);
         }
 
         /// It runs the code in the textbox and prints the output to the console

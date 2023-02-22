@@ -16,7 +16,7 @@ namespace BioGTK
         public static Tools tools;
         public static ImageView viewer;
         public static ColorTool color;
-
+        public static Progress progress;
         public static About about;
         public static NodeView nodeView;
         public static FiltersView filters;
@@ -40,6 +40,7 @@ namespace BioGTK
             roiManager = ROIManager.Create();
             scripting = Scripting.Create();
             funcs = Functions.Create();
+            progress = Progress.Create();
             //channelsTool = ChannelsTool.Create();
             console = BioConsole.Create();
             stack = StackTools.Create();

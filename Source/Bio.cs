@@ -36,7 +36,7 @@ namespace BioGTK
         {
             for (int i = 0; i < images.Count; i++)
             {
-                if (images[i].ID.Contains(ids))
+                if (images[i].ID.Contains(ids) || images[i].file == ids)
                     return images[i];
             }
             return null;
@@ -45,13 +45,25 @@ namespace BioGTK
         /// 
         /// @param BioImage A class that contains the image data and other information.
         
-        public static void AddImage(BioImage im)
+        public static void AddImage(BioImage im, bool newtab)
         {
             im.Filename = GetImageName(im.ID);
             im.ID = im.Filename;
             images.Add(im);
-            App.nodeView.UpdateItems();
-            //App.tabsView.AddTab(im);
+            // start a background task to update progress bar
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                // update ui on main UI thread
+                Application.Invoke(delegate
+                {
+                    App.nodeView.UpdateItems();
+                    if (newtab)
+                        App.tabsView.AddTab(im);
+                    else
+                        App.viewer.AddImage(im);
+                    App.progress.Hide();
+                });
+            });
             //App.Image = im;
             //NodeView.viewer.AddTab(im);
         }
@@ -450,7 +462,7 @@ namespace BioGTK
         private List<RectangleD> selectBoxs = new List<RectangleD>();
         public List<int> selectedPoints = new List<int>();
         public RectangleD BoundingBox;
-        public float fontSize = 8;
+        public float fontSize = 12;
         public Cairo.FontSlant slant;
         public Cairo.FontWeight weight;
         public string family = "Times New Roman";
@@ -555,7 +567,7 @@ namespace BioGTK
             double f = scale / 2;
             return new RectangleD(BoundingBox.X - f, BoundingBox.Y - f, BoundingBox.W + scale, BoundingBox.H + scale);
         }
-/* Creating a new ROI object. */
+        /* Creating a new ROI object. */
         public ROI()
         {
             coord = new ZCT(0, 0, 0);
@@ -943,7 +955,7 @@ namespace BioGTK
                 }
                 if (!inPlace)
                 {
-                    Images.AddImage(img);
+                    Images.AddImage(img,true);
                     ImageView iv = ImageView.Create(img);
                     iv.Show();
                 }
@@ -984,7 +996,7 @@ namespace BioGTK
                 }
                 if (!inPlace)
                 {
-                    Images.AddImage(img);
+                    Images.AddImage(img, true);
                     ImageView iv = ImageView.Create(img);
                     iv.Show();
                 }
@@ -1022,7 +1034,7 @@ namespace BioGTK
                 }
                 if (!inPlace)
                 {
-                    Images.AddImage(img);
+                    Images.AddImage(img, true);
                     ImageView iv = ImageView.Create(img);
                     iv.Show();
                 }
@@ -1062,7 +1074,7 @@ namespace BioGTK
                 }
                 if (!inPlace)
                 {
-                    Images.AddImage(img);
+                    Images.AddImage(img, true);
                     ImageView iv = ImageView.Create(img);
                     iv.Show();
                 }
@@ -1100,7 +1112,7 @@ namespace BioGTK
                 }
                 if (!inPlace)
                 {
-                    Images.AddImage(img);
+                    Images.AddImage(img, true);
                     ImageView iv = ImageView.Create(img);
                     iv.Show();
                 }
@@ -1142,7 +1154,7 @@ namespace BioGTK
                 }
                 if (!inPlace)
                 {
-                    Images.AddImage(img);
+                    Images.AddImage(img, true);
                     ImageView iv = ImageView.Create(img);
                     iv.Show();
                 }
@@ -1185,7 +1197,7 @@ namespace BioGTK
                 }
                 if (!inPlace)
                 {
-                    Images.AddImage(img);
+                    Images.AddImage(img, true);
                     ImageView iv = ImageView.Create(img);
                     iv.Show();
                 }
@@ -1226,7 +1238,7 @@ namespace BioGTK
                 }
                 if (!inPlace)
                 {
-                    Images.AddImage(img);
+                    Images.AddImage(img, true);
                     ImageView iv = ImageView.Create(img);
                     iv.Show();
                 }
@@ -1263,7 +1275,7 @@ namespace BioGTK
                 }
                 if (!inPlace)
                 {
-                    Images.AddImage(img);
+                    Images.AddImage(img, true);
                     ImageView iv = ImageView.Create(img);
                     iv.Show();
                 }
@@ -1301,7 +1313,7 @@ namespace BioGTK
                 img.StackThreshold(true);
             else
                 img.StackThreshold(false);
-            Images.AddImage(img);
+            Images.AddImage(img, true);
             Recorder.AddLine("Bio.Filters.Crop(" + '"' + id + '"' + "," + x + "," + y + "," + w + "," + h + ");");
             //App.tabsView.AddTab(img);
             return img;
@@ -2177,6 +2189,23 @@ namespace BioGTK
             }
         }
         public string file;
+        public static double progressValue
+        {
+            get
+            {
+                return App.progress.ProgressValue;
+            }
+            set
+            {
+                // update ui on main UI thread
+                Application.Invoke(delegate
+                {
+                    App.progress.ProgressValue = value;
+                });
+            }
+        }
+        public static string status;
+        public static string progFile;
         public static bool Initialized
         {
             get
@@ -2681,7 +2710,7 @@ namespace BioGTK
             } while (Buffers[Buffers.Count - 1].Stats == null);
             AutoThreshold(bm, false);
             Statistics.ClearCalcBuffer();
-            Images.AddImage(bm);
+            Images.AddImage(bm, true);
             App.tabsView.AddTab(bm);
             Recorder.AddLine("ImageView.SelectedImage.Bake(" + rf.Min + "," + rf.Max + "," + gf.Min + "," + gf.Max + "," + bf.Min + "," + bf.Max + ");");
         }
@@ -3107,7 +3136,7 @@ namespace BioGTK
                 b.StackThreshold(true);
             else
                 b.StackThreshold(false);
-            Images.AddImage(b);
+            Images.AddImage(b, true);
             Recorder.AddLine("Bio.BioImage.Substack(" + '"' + orig.Filename + '"' + "," + ser + "," + zs + "," + ze + "," + cs + "," + ce + "," + ts + "," + te + ");");
             return b;
         }
@@ -3188,7 +3217,7 @@ namespace BioGTK
                     cc++;
                 }
             }
-            Images.AddImage(res);
+            Images.AddImage(res, true);
             //We wait for threshold image statistics calculation
             do
             {
@@ -3240,7 +3269,7 @@ namespace BioGTK
                     ind++;
                 }
             }
-            Images.AddImage(bi);
+            Images.AddImage(bi, true);
             bi.UpdateCoords(1, b.SizeC, b.SizeT);
             bi.Coordinate = new ZCT(0, 0, 0);
             //We wait for threshold image statistics calculation
@@ -3283,7 +3312,7 @@ namespace BioGTK
                     ind++;
                 }
             }
-            Images.AddImage(bi);
+            Images.AddImage(bi, true);
             bi.UpdateCoords(1, b.SizeC, b.SizeT);
             bi.Coordinate = new ZCT(0, 0, 0);
             //We wait for threshold image statistics calculation
@@ -3380,9 +3409,9 @@ namespace BioGTK
                 AutoThreshold(ri, false);
                 AutoThreshold(gi, false);
                 AutoThreshold(bi, false);
-                Images.AddImage(ri);
-                Images.AddImage(gi);
-                Images.AddImage(bi);
+                Images.AddImage(ri, true);
+                Images.AddImage(gi, true);
+                Images.AddImage(bi, true);
                 Statistics.ClearCalcBuffer();
                 bms[0] = ri;
                 bms[1] = gi;
@@ -4142,12 +4171,12 @@ namespace BioGTK
 
         }
         /// It opens a tiff file, reads the number of pages, reads the number of channels, and then
-        /// reads each page into a BioImage object
+        /// reads each page into a BioImage object.
         /// 
         /// @param file the path to the file
-        /// 
+        /// @param tab open image in new tab.
         /// @return An array of BioImage objects.
-        public static BioImage[] OpenSeries(string file)
+        public static BioImage[] OpenSeries(string file, bool tab)
         {
             Tiff image = Tiff.Open(file, "r");
             int pages = image.NumberOfDirectories();
@@ -4170,7 +4199,7 @@ namespace BioGTK
             image.Close();
             for (int i = 0; i < pages; i++)
             {
-                bs[i] = OpenFile(file, i);
+                bs[i] = OpenFile(file, i, tab, true);
             }
             return bs;
         }
@@ -4181,27 +4210,33 @@ namespace BioGTK
         /// @return A BioImage object.
         public static BioImage OpenFile(string file)
         {
-            return OpenFile(file, 0);
+            return OpenFile(file, 0, true, true);
         }
+        public static BioImage OpenFile(string file, bool tab)
+        {
+            return OpenFile(file, 0, tab, true);
+        }
+
         /// It opens a TIFF file and returns a BioImage object
         /// 
         /// @param file the file path
         /// @param series the series number of the image to open
         /// 
         /// @return A BioImage object.
-        public static BioImage OpenFile(string file, int series)
+        public static BioImage OpenFile(string file, int series, bool tab, bool addToImages)
         {
             if (isOME(file))
             {
                 if (!OMESupport())
                     return null;
-                return OpenOME(file);
+                return OpenOME(file, series, tab, addToImages, false, 0,0,0,0);
             }
+
             Stopwatch st = new Stopwatch();
             st.Start();
-            ////Progress pr = new //Progress(file, "Opening");
-            //pr.Show();
-
+            status = "Opening Image";
+            progFile = file;
+            progressValue = 0;
             BioImage b = new BioImage(file);
             b.series = series;
             b.file = file;
@@ -4467,8 +4502,7 @@ namespace BioGTK
                         b.Buffers.Add(inf);
                         Statistics.CalcStatistics(inf);
                     }
-                    //pr.Update//ProgressF((float)((double)p / (double)(series + 1) * pages));
-                    //Application.DoEvents();
+                    progressValue = (float)p / (float)(series + 1) * pages;
                 }
                 image.Close();
                 b.UpdateCoords();
@@ -4500,10 +4534,11 @@ namespace BioGTK
             else
                 b.StackThreshold(false);
             Recorder.AddLine("Bio.BioImage.Open(" + '"' + file + '"' + ");");
-            Images.AddImage(b);
+            Images.AddImage(b,tab);
             //pr.Close();
             //pr.Dispose();
             st.Stop();
+            b.loadTimeMS = st.ElapsedMilliseconds;
             return b;
         }
         /// > The function checks if the image is a Tiff image and if it is, it checks if the image is a
@@ -4615,8 +4650,11 @@ namespace BioGTK
             if (File.Exists(f))
                 File.Delete(f);
             loci.formats.meta.IMetadata omexml = service.createOMEXMLMetadata();
+            progressValue = 0;
+            status = "Saving OME Image";
             for (int fi = 0; fi < files.Length; fi++)
             {
+                progFile = files[fi];
                 int serie = fi;
                 string file = files[fi];
                 BioImage b = Images.GetImage(file);
@@ -4928,6 +4966,7 @@ namespace BioGTK
                 writer.setSeries(i);
                 for (int bu = 0; bu < b.Buffers.Count; bu++)
                 {
+                    progressValue = (float)bu / (float)b.Buffers.Count;
                     writer.saveBytes(bu, b.Buffers[bu].GetSaveBytes(BitConverter.IsLittleEndian));
                     //pr.Update//ProgressF((float)bu / b.Buffers.Count);
                     //Application.DoEvents();
@@ -4950,16 +4989,11 @@ namespace BioGTK
 
             } while (!stop);
         }
-        /// > This function opens an OME file and returns a BioImage object
-        /// 
-        /// @param file the path to the file you want to open
-        /// 
-        /// @return A list of BioImages.
-        public static BioImage OpenOME(string file)
+        public static BioImage OpenOME(string file, bool tab)
         {
             if (!OMESupport())
                 return null;
-            return OpenOMESeries(file)[0];
+            return OpenOMESeries(file, tab)[0];
         }
         /// > OpenOME(string file, int serie)
         /// 
@@ -4974,7 +5008,7 @@ namespace BioGTK
             if (!OMESupport())
                 return null;
             Recorder.AddLine("Bio.BioImage.OpenOME(\"" + file + "\"," + serie + ");");
-            return OpenOME(file, serie, true, false, 0, 0, 0, 0);
+            return OpenOME(file, serie, true, false, false, 0, 0, 0, 0);
         }
         /// It takes a list of files, and creates a new BioImage object with the first file in the list.
         /// Then it loops through the rest of the files, adding the buffers from each file to the new
@@ -4992,11 +5026,11 @@ namespace BioGTK
             BioImage b = new BioImage(files[0]);
             for (int i = 0; i < files.Length; i++)
             {
-                BioImage bb = OpenFile(files[i]);
+                BioImage bb = OpenFile(files[i],false);
                 b.Buffers.AddRange(bb.Buffers);
             }
             b.UpdateCoords(sizeZ, sizeC, sizeT);
-            Images.AddImage(b);
+            Images.AddImage(b,true);
             return b;
         }
         /// It takes a folder of images and creates a stack from them
@@ -5004,7 +5038,7 @@ namespace BioGTK
         /// @param path the path to the folder containing the images
         /// 
         /// @return A BioImage object.
-        public static BioImage FolderToStack(string path)
+        public static BioImage FolderToStack(string path, bool tab)
         {
             string[] files = Directory.GetFiles(path);
             BioImage b = new BioImage(files[0]);
@@ -5021,7 +5055,7 @@ namespace BioGTK
                     c = int.Parse(st[2].Replace("C", ""));
                     t = int.Parse(st[3].Replace("T", ""));
                 }
-                bb = OpenFile(files[i]);
+                bb = OpenFile(files[i],tab);
                 b.Buffers.AddRange(bb.Buffers);
             }
             if (z == 0)
@@ -5035,16 +5069,19 @@ namespace BioGTK
             }
             else
                 b.UpdateCoords(z + 1, c + 1, t + 1);
-            Images.AddImage(b);
+            Images.AddImage(b,tab);
             Recorder.AddLine("BioImage.FolderToStack(\"" + path + "\");");
             return b;
         }
-        public static BioImage OpenOME(string file, int serie, bool progress, bool tile, int tilex, int tiley, int tileSizeX, int tileSizeY)
+        public static BioImage OpenOME(string file, int serie, bool tab, bool addToImages, bool tile, int tilex, int tiley, int tileSizeX, int tileSizeY)
         {
             if (!OMESupport())
                 return null;
             if (file == null || file == "")
                 throw new InvalidDataException("File is empty or null");
+            progressValue = 0;
+            progFile = file;
+            status = "Opening OME Image";
             st.Start();
             BioImage b = new BioImage(file);
             b.Loading = true;
@@ -5611,6 +5648,7 @@ namespace BioGTK
                     }
                     else
                     {
+                        progressValue = (float)p / (float)pages;
                         byte[] bytes = reader.openBytes(p);
                         bf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(z, c, t), p, b.littleEndian);
                         b.Buffers.Add(bf);
@@ -5679,8 +5717,8 @@ namespace BioGTK
                 b.StackThreshold(true);
             else
                 b.StackThreshold(false);
-            if (!tile)
-                Images.AddImage(b);
+            if (!tile && addToImages)
+                Images.AddImage(b,tab);
             b.Loading = false;
             return b;
         }
@@ -5691,11 +5729,11 @@ namespace BioGTK
             bool tile = true;
             //We wait incase OME has not initialized yet.
             if (!initialized)
-                do
-                {
-                    Thread.Sleep(100);
-                    //Application.DoEvents();
-                } while (!Initialized);
+            do
+            {
+                Thread.Sleep(100);
+                //Application.DoEvents();
+            } while (!Initialized);
             if (file == null || file == "")
                 throw new InvalidDataException("File is empty or null");
             BioImage b = new BioImage(file);
@@ -6232,9 +6270,6 @@ namespace BioGTK
                 b.StackThreshold(true);
             else
                 b.StackThreshold(false);
-            if (!tile)
-                Images.AddImage(b);
-
             //Recorder.AddLine("Bio.BioImage.OpenOMETiled(\"" + file + "\"," + serie + ");");
             b.Loading = false;
             return b;
@@ -6484,7 +6519,7 @@ namespace BioGTK
         /// @param file the file path
         /// 
         /// @return An array of BioImage objects.
-        public static BioImage[] OpenOMESeries(string file)
+        public static BioImage[] OpenOMESeries(string file, bool tab)
         {
             reader = new ImageReader();
             var meta = (IMetadata)((OMEXMLService)new ServiceFactory().getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
@@ -6537,7 +6572,7 @@ namespace BioGTK
             reader.close();
             for (int i = 0; i < count; i++)
             {
-                bs[i] = OpenOME(file, i);
+                bs[i] = OpenOME(file, i, tab, true, false, 0,0,0,0);
                 if (bs[i] == null)
                     return null;
             }
@@ -6551,11 +6586,56 @@ namespace BioGTK
             Thread t = new Thread(OpenThread);
             t.Name = file;
             t.Start();
+            App.progress.ProgressValue = 0;
+            App.progress.Title = "Opening File";
+            App.progress.Text = file;
+            App.progress.Show();
+            // start a background task to update progress bar
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                // update progress bar on main UI thread
+                Application.Invoke(delegate
+                {
+                    App.progress.ProgressValue = progressValue;
+                });
+            });
         }
         /// It opens a file asynchronously
         /// 
         /// @param files The file(s) to open.
         public static void OpenAsync(string[] files)
+        {
+            foreach (string file in files)
+            {
+                OpenAsync(file);
+            }
+        }
+        /// It opens a file in a new thread.
+        /// 
+        /// @param file The file to open
+        public static void AddAsync(string file)
+        {
+            Thread t = new Thread(OpenThread);
+            t.Name = file;
+            t.Start();
+            App.progress.ProgressValue = 0;
+            App.progress.Title = "Opening File";
+            App.progress.Text = file;
+            App.progress.Show();
+            // start a background task to update progress bar
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                // update progress bar on main UI thread
+                Application.Invoke(delegate
+                {
+                    App.progress.ProgressValue = progressValue;
+                });
+            });
+        }
+        /// It opens a file asynchronously
+        /// 
+        /// @param files The file(s) to open.
+        public static void AddAsync(string[] files)
         {
             foreach (string file in files)
             {
@@ -6584,7 +6664,7 @@ namespace BioGTK
         /// @param files an array of file paths
         /// 
         /// @return A BioImage object.
-        public static BioImage ImagesToStack(string[] files)
+        public static BioImage ImagesToStack(string[] files, bool tab)
         {
             BioImage[] bs = new BioImage[files.Length];
             int z = 0;
@@ -6602,10 +6682,10 @@ namespace BioGTK
                     t = int.Parse(st[3].Replace("T", ""));
                 }
                 if (i == 0)
-                    bs[0] = OpenOME(files[i]);
+                    bs[0] = OpenOME(files[i],tab);
                 else
                 {
-                    bs[i] = OpenFile(files[i], 0);
+                    bs[i] = OpenFile(files[i], 0, tab, false);
                 }
             }
             BioImage b = BioImage.CopyInfo(bs[0], true, true);
@@ -6639,8 +6719,11 @@ namespace BioGTK
         /// calls the function OpenFile() and passes it the file variable
         private static void OpenThread()
         {
-            string file = Thread.CurrentThread.Name;
-            OpenFile(file);
+            OpenFile(Thread.CurrentThread.Name);
+        }
+        private static void AddThread()
+        {
+            OpenFile(Thread.CurrentThread.Name, false);
         }
         /// It adds the file and ID to a list, then starts a new thread to save the file
         /// 
@@ -6699,7 +6782,7 @@ namespace BioGTK
                 return;
             foreach (string f in openOMEfile)
             {
-                OpenOME(f);
+                OpenOME(f,true);
             }
             openOMEfile.Clear();
         }

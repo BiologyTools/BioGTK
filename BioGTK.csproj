@@ -59,6 +59,7 @@
     <None Remove="Glade\ImageView.glade" />
     <None Remove="Glade\Magic.glade" />
     <None Remove="Glade\NodeView.glade" />
+    <None Remove="Glade\Progress.glade" />
     <None Remove="Glade\Recorder.glade" />
     <None Remove="Glade\Resolutions.glade" />
     <None Remove="Glade\ROIManager.glade" />
@@ -205,6 +206,7 @@
     <EmbeddedResource Include="Glade\ImageView.glade" />
     <EmbeddedResource Include="Glade\Magic.glade" />
     <EmbeddedResource Include="Glade\NodeView.glade" />
+    <EmbeddedResource Include="Glade\Progress.glade" />
     <EmbeddedResource Include="Glade\Recorder.glade" />
     <EmbeddedResource Include="Glade\Resolutions.glade" />
     <EmbeddedResource Include="Glade\ROIManager.glade" />
