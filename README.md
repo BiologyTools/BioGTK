@@ -46,3 +46,56 @@ A .NET application & library for editing & annotating various microscopy image f
 - From brew install [GTK3.](https://formulae.brew.sh/formula/gtk+3#default)
 - Download the BioGTK application for either OSX-x64 or OSX-Arm from releases.
 - If you experience a crash when opening a new TabsView the fix is runnning the application via terminal, by opening the package contents by right click and then double clicking BioGTKApp. This will open the application via terminal and show any warnings or errors.
+
+## Sample Tool Script
+```//css_reference BioGTK.dll; 
+using System; 
+using BioGTK;
+using System.Threading;
+
+public class Loader {
+
+//Point ROI Tool Example
+public string Load()
+{
+	int ind = 1;
+	do
+	{
+		BioGTK.Scripting.State s = BioGTK.Scripting.GetState();
+		if (s != null)
+		{
+			if (!s.processed)
+			{
+				if (s.type == BioGTK.Scripting.Event.Down && s.buts == MouseButtons.Left)
+				{
+					ZCT cord = BioGTK.App.viewer.GetCoordinate();
+					BioGTK.Scripting.LogLine(cord.ToString() + " Coordinate");
+					BioGTK.ROI an = BioGTK.ROI.CreatePoint(cord, s.p.X, s.p.Y);
+					BioGTK.ImageView.SelectedImage.Annotations.Add(an);
+					BioGTK.Scripting.LogLine(cord.ToString() + " Coordinate");
+					an.Text = "Point" + ind;
+					ind++;
+					BioGTK.Scripting.LogLine(s.ToString() + " Point");
+					//ImageView.viewer.UpdateOverlay();
+				}
+				else
+				if (s.type == BioGTK.Scripting.Event.Up)
+				{
+					BioGTK.Scripting.LogLine(s.ToString());
+				}
+				else
+				if (s.type == BioGTK.Scripting.Event.Move)
+				{
+					BioGTK.Scripting.LogLine(s.ToString());
+				}
+				s.processed = true;
+			}
+		}
+		if(BioGTK.Scripting.Exit("points.cs"))
+		{	
+			return "OK";
+		}
+	} while (true);
+	return "OK";
+}
+}```
