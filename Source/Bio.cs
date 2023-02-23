@@ -4229,7 +4229,8 @@ namespace BioGTK
             {
                 if (!OMESupport())
                     return null;
-                return OpenOME(file, series, tab, addToImages, false, 0,0,0,0);
+                //We open with OME series incase this is a pyramidal image.
+                return OpenOMESeries(file, tab, addToImages)[series];
             }
 
             Stopwatch st = new Stopwatch();
@@ -4993,7 +4994,7 @@ namespace BioGTK
         {
             if (!OMESupport())
                 return null;
-            return OpenOMESeries(file, tab)[0];
+            return OpenOMESeries(file, tab, true)[0];
         }
         /// > OpenOME(string file, int serie)
         /// 
@@ -6517,9 +6518,10 @@ namespace BioGTK
         /// opens it as a normal image
         /// 
         /// @param file the file path
-        /// 
+        /// @param tab open in new tab
+        /// @param addToImages add to images list.
         /// @return An array of BioImage objects.
-        public static BioImage[] OpenOMESeries(string file, bool tab)
+        public static BioImage[] OpenOMESeries(string file, bool tab, bool addToImages)
         {
             reader = new ImageReader();
             var meta = (IMetadata)((OMEXMLService)new ServiceFactory().getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
@@ -6565,6 +6567,7 @@ namespace BioGTK
                 bs[0] = OpenOMETiled(file, res, 0, 0, 1920, 1080);
                 bs[0].Resolutions = ress;
                 bs[0].isPyramidal = true;
+                Images.AddImage(bs[0],true);
                 return bs;
             }
             else
@@ -6572,7 +6575,7 @@ namespace BioGTK
             reader.close();
             for (int i = 0; i < count; i++)
             {
-                bs[i] = OpenOME(file, i, tab, true, false, 0,0,0,0);
+                bs[i] = OpenOME(file, i, tab, addToImages, false, 0,0,0,0);
                 if (bs[i] == null)
                     return null;
             }

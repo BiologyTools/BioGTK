@@ -1668,7 +1668,7 @@ namespace BioGTK
                         {
                             if (x < SelectedImage.SizeX && y < SelectedImage.SizeY)
                             {
-                                int r = SelectedImage.GetValueRGB(zc, 0, tc, x, y, 0);
+                                int r = SelectedImage.GetValueRGB(zc, (int)cBar.Value, tc, x, y, 0);
                                 mouseColor = ", " + r;
                             }
                             else
@@ -1686,7 +1686,7 @@ namespace BioGTK
                         }
                         else
                         {
-                            int r = SelectedImage.GetValueRGB(zc, 0, tc, (int)mouseD.X, (int)mouseD.Y, 0);
+                            int r = SelectedImage.GetValueRGB(zc, (int)cBar.Value, tc, (int)mouseD.X, (int)mouseD.Y, 0);
                             mouseColor = ", " + r;
                         }
                     }

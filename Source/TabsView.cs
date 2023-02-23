@@ -475,7 +475,7 @@ namespace BioGTK
                 return;
             foreach (string item in filechooser.Filenames)
             {
-                BioImage[] bm = BioImage.OpenOMESeries(item,true);
+                BioImage[] bm = BioImage.OpenOMESeries(item,true, true);
                 foreach (BioImage b in bm)
                 {
                     ImageView view = ImageView.Create(b);
@@ -784,7 +784,7 @@ namespace BioGTK
             {
                 ImageView.SelectedImage.Annotations.AddRange(BioImage.ImportROIsCSV(item));
             }
-            
+            filechooser.Destroy();
         }
         /// This function is called when the user clicks on the "Export ROIs of Folder of Images" menu
         /// item
@@ -801,7 +801,8 @@ namespace BioGTK
             folderchooser.SelectMultiple = true;
             if (folderchooser.Run() != (int)ResponseType.Ok)
                 return;
-
+            string folder = folderchooser.Filename;
+            folderchooser.Destroy();
             Gtk.FileChooserDialog filechooser = new Gtk.FileChooserDialog("Set filename for CSV to export.",
            this,
            FileChooserAction.Save,
@@ -810,7 +811,9 @@ namespace BioGTK
             filechooser.SelectMultiple = false;
             if (filechooser.Run() != (int)ResponseType.Ok)
                 return;
-            BioImage.ExportROIFolder(folderchooser.Filename, filechooser.Filename);
+            string file = filechooser.Filename;
+            filechooser.Destroy();
+            BioImage.ExportROIFolder(folder, file);
         }
 
         /// This function is called when the user clicks on the "Auto Threshold All" menu item.

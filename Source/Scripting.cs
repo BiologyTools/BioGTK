@@ -209,28 +209,6 @@ namespace BioGTK
             /// It creates a new thread and starts it. 
             /// 
             /// The thread is started by calling the RunScript function. 
-            /// 
-            /// The RunScript function is defined below: 
-            /// 
-            /// /*
-            /// C#
-            /// */
-            /// public static void RunScript()
-            ///             {
-            ///                 try
-            ///                 {
-            ///                     // Get the script
-            ///                     Script script = Script.GetScript(scriptName);
-            ///                     // Run the script
-            ///                     script.Run();
-            ///                 }
-            ///                 catch (Exception ex)
-            ///                 {
-            ///                     // Log the error
-            ///                     Logger.LogError(ex);
-            ///                 }
-            ///             }
-            /// 
             /// @param Script The script you want to run.
             public static void Run(Script rn)
             {
