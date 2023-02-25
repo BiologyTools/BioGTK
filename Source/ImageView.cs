@@ -100,6 +100,7 @@ namespace BioGTK
             }
         }
         internal int selectedIndex = 0;
+        Menu imagesMenu;
         public static List<ROI> selectedAnnotations = new List<ROI>();
 
 #pragma warning disable 649
@@ -217,7 +218,17 @@ namespace BioGTK
             //pictureBox.HeightRequest = im.SizeY;
             Function.InitializeContextMenu();
             this.Scale = new SizeF(1, 1);
-            
+
+            // Set the text column to display for comboboxs.
+            var rendererr = new CellRendererText();
+            rBox.PackStart(rendererr, false);
+            rBox.AddAttribute(rendererr, "text", 0);
+            var rendererg = new CellRendererText();
+            gBox.PackStart(rendererg, false);
+            gBox.AddAttribute(rendererg, "text", 0);
+            var rendererb = new CellRendererText();
+            bBox.PackStart(rendererb, false);
+            bBox.AddAttribute(rendererb, "text", 0);
         }
         #endregion
         /// It updates the images.
@@ -444,6 +455,7 @@ namespace BioGTK
             zBar.ButtonPressEvent += ZBar_ButtonPressEvent;
             tBar.ButtonPressEvent += TBar_ButtonPressEvent;
             cBar.ButtonPressEvent += CBar_ButtonPressEvent;
+
 
         }
         int bar = 0;
@@ -1330,17 +1342,6 @@ namespace BioGTK
             rBox.Model = store;
             gBox.Model = store;
             bBox.Model = store;
-            // Set the text column to display
-            var rendererr = new CellRendererText();
-            rBox.PackStart(rendererr, false);
-            rBox.AddAttribute(rendererr, "text", 0);
-            rBox.Active = 0;
-            var rendererg = new CellRendererText();
-            gBox.PackStart(rendererg, false);
-            gBox.AddAttribute(rendererg, "text", 0);
-            var rendererb = new CellRendererText();
-            bBox.PackStart(rendererb, false);
-            bBox.AddAttribute(rendererb, "text", 0);
 
             if (SelectedImage.Channels.Count > 2)
             {
@@ -1354,7 +1355,30 @@ namespace BioGTK
                 rBox.Active = 0;
                 gBox.Active = 1;
             }
+            imagesMenu = new Menu();
+            foreach (BioImage b in Images)
+            {
+                MenuItem mi = new MenuItem(b.Filename);
+                mi.ButtonPressEvent += Mi_ButtonPressEvent;
+                imagesMenu.Append(mi);
+            }
+            goToImageMenu.Submenu = imagesMenu;
+            goToImageMenu.ShowAll();
+        }
 
+        private void Mi_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            MenuItem menuItem = (MenuItem)o;
+            int i = 0;
+            foreach (BioImage b in Images)
+            {
+                if(b.Filename == menuItem.Label)
+                {
+                    GoToImage(i);
+                    return;
+                }
+                i++;
+            }
         }
 
         public void CopySelection()
