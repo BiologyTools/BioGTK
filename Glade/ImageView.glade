@@ -2,6 +2,55 @@
 <!-- Generated with glade 3.40.0 -->
 <interface>
   <requires lib="gtk+" version="3.20"/>
+  <object class="GtkMenu" id="barMenu">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <child>
+      <object class="GtkImageMenuItem" id="play">
+        <property name="label">Play</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="stop">
+        <property name="label">Stop</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="playSpeed">
+        <property name="label">Play Speed</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="setValueRange">
+        <property name="label">Set Value Range</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="loop">
+        <property name="label">Loop</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+  </object>
   <object class="GtkMenu" id="contextMenu">
     <property name="visible">True</property>
     <property name="can-focus">False</property>

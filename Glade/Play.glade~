@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with glade 3.40.0 -->
+<interface>
+  <requires lib="gtk+" version="3.24"/>
+  <object class="GtkWindow" id="play">
+    <property name="can-focus">False</property>
+    <property name="title" translatable="yes">Play Tool</property>
+    <child>
+      <object class="GtkFixed">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">Start Z</property>
+          </object>
+          <packing>
+            <property name="x">14</property>
+            <property name="y">13</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="width-request">43</property>
+            <property name="height-request">20</property>
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">Start C</property>
+          </object>
+          <packing>
+            <property name="x">10</property>
+            <property name="y">53</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="width-request">43</property>
+            <property name="height-request">20</property>
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">Start T</property>
+          </object>
+          <packing>
+            <property name="x">10</property>
+            <property name="y">92</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="startZ">
+            <property name="name">startZ</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="climb-rate">1</property>
+          </object>
+          <packing>
+            <property name="x">75</property>
+            <property name="y">5</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="startC">
+            <property name="width-request">118</property>
+            <property name="height-request">34</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="climb-rate">1</property>
+          </object>
+          <packing>
+            <property name="x">75</property>
+            <property name="y">45</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="startT">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="climb-rate">1</property>
+          </object>
+          <packing>
+            <property name="x">75</property>
+            <property name="y">85</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="width-request">29</property>
+            <property name="height-request">20</property>
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">End Z</property>
+          </object>
+          <packing>
+            <property name="x">207</property>
+            <property name="y">11</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="width-request">29</property>
+            <property name="height-request">20</property>
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">End T</property>
+          </object>
+          <packing>
+            <property name="x">207</property>
+            <property name="y">92</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="width-request">29</property>
+            <property name="height-request">20</property>
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">End C</property>
+          </object>
+          <packing>
+            <property name="x">208</property>
+            <property name="y">53</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="endT">
+            <property name="width-request">118</property>
+            <property name="height-request">34</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="climb-rate">1</property>
+          </object>
+          <packing>
+            <property name="x">251</property>
+            <property name="y">85</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="endC">
+            <property name="width-request">118</property>
+            <property name="height-request">34</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="climb-rate">1</property>
+          </object>
+          <packing>
+            <property name="x">251</property>
+            <property name="y">45</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="endZ">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="climb-rate">1</property>
+          </object>
+          <packing>
+            <property name="x">251</property>
+            <property name="y">5</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="fpsZ">
+            <property name="width-request">118</property>
+            <property name="height-request">34</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="climb-rate">1</property>
+          </object>
+          <packing>
+            <property name="x">428</property>
+            <property name="y">5</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="fpsC">
+            <property name="width-request">118</property>
+            <property name="height-request">34</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="climb-rate">1</property>
+          </object>
+          <packing>
+            <property name="x">427</property>
+            <property name="y">44</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="fpsT">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="climb-rate">1</property>
+          </object>
+          <packing>
+            <property name="x">428</property>
+            <property name="y">82</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="width-request">32</property>
+            <property name="height-request">20</property>
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">FPS Z</property>
+          </object>
+          <packing>
+            <property name="x">382</property>
+            <property name="y">12</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="width-request">29</property>
+            <property name="height-request">20</property>
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">FPS C</property>
+          </object>
+          <packing>
+            <property name="x">384</property>
+            <property name="y">53</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="width-request">28</property>
+            <property name="height-request">20</property>
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">FPS T</property>
+          </object>
+          <packing>
+            <property name="x">384</property>
+            <property name="y">90</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <OutputType>Library</OutputType>
-    <RuntimeIdentifiers>osx-x64;linux-x64;win7-x64</RuntimeIdentifiers>
+    <RuntimeIdentifiers>osx-x64;linux-x64;win7-x64;linux-arm64</RuntimeIdentifiers>
     <AssemblyVersion>2.2.0</AssemblyVersion>
     <FileVersion>2.2.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
@@ -59,6 +59,7 @@
     <None Remove="Glade\ImageView.glade" />
     <None Remove="Glade\Magic.glade" />
     <None Remove="Glade\NodeView.glade" />
+    <None Remove="Glade\Play.glade" />
     <None Remove="Glade\Progress.glade" />
     <None Remove="Glade\Recorder.glade" />
     <None Remove="Glade\Resolutions.glade" />
@@ -206,6 +207,7 @@
     <EmbeddedResource Include="Glade\ImageView.glade" />
     <EmbeddedResource Include="Glade\Magic.glade" />
     <EmbeddedResource Include="Glade\NodeView.glade" />
+    <EmbeddedResource Include="Glade\Play.glade" />
     <EmbeddedResource Include="Glade\Progress.glade" />
     <EmbeddedResource Include="Glade\Recorder.glade" />
     <EmbeddedResource Include="Glade\Resolutions.glade" />

@@ -61,8 +61,8 @@
                 <property name="valign">center</property>
               </object>
               <packing>
-                <property name="x">283</property>
-                <property name="y">29</property>
+                <property name="x">89</property>
+                <property name="y">14</property>
               </packing>
             </child>
             <child>
@@ -103,7 +103,6 @@
                 <property name="can-focus">True</property>
                 <property name="climb-rate">1</property>
                 <property name="digits">8</property>
-                <property name="numeric">True</property>
               </object>
               <packing>
                 <property name="x">38</property>
@@ -170,6 +169,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
               </object>
               <packing>
                 <property name="x">4</property>
@@ -182,6 +182,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
               </object>
               <packing>
                 <property name="x">135</property>
@@ -194,6 +195,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
               </object>
               <packing>
                 <property name="x">272</property>
@@ -234,6 +236,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
                 <property name="digits">1</property>
               </object>
               <packing>
@@ -260,6 +263,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
               </object>
               <packing>
                 <property name="x">269</property>
@@ -272,6 +276,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
               </object>
               <packing>
                 <property name="x">134</property>
@@ -284,6 +289,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
               </object>
               <packing>
                 <property name="x">3</property>
@@ -369,6 +375,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
               </object>
               <packing>
                 <property name="x">4</property>
@@ -512,6 +519,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
                 <property name="digits">1</property>
               </object>
               <packing>
@@ -538,7 +546,7 @@
                 <property name="can-focus">False</property>
               </object>
               <packing>
-                <property name="x">324</property>
+                <property name="x">39</property>
                 <property name="y">313</property>
               </packing>
             </child>

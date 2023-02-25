@@ -32,16 +32,19 @@ namespace BioGTK
         {
             if (SelectedImage == null)
                 return;
-            if (z >= SelectedImage.SizeZ)
+            if (z > SelectedImage.SizeZ - 1)
                 zBar.Value = zBar.Adjustment.Upper;
-            if (c >= SelectedImage.SizeC)
+            else
+                zBar.Value = z;
+            if (c > SelectedImage.SizeC - 1)
                 cBar.Value = cBar.Adjustment.Upper;
-            if (t >= SelectedImage.SizeT)
+            else
+                cBar.Value = c;
+            if (t > SelectedImage.SizeT - 1)
                 tBar.Value = tBar.Adjustment.Upper;
-            zBar.Value = z;
-            cBar.Value = c;
-            tBar.Value = t;
-            SelectedImage.Coordinate = new ZCT(z, c, t);
+            else
+                tBar.Value = t;
+            SelectedImage.Coordinate = new ZCT((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
             UpdateImage();
             UpdateView();
         }
@@ -156,6 +159,18 @@ namespace BioGTK
         private MenuItem draw;
         [Builder.Object]
         private MenuItem fill;
+        [Builder.Object]
+        private Menu barMenu;
+        [Builder.Object]
+        private MenuItem play;
+        [Builder.Object]
+        private MenuItem stop;
+        [Builder.Object]
+        private MenuItem playSpeed;
+        [Builder.Object]
+        private MenuItem setValueRange;
+        [Builder.Object]
+        private MenuItem loop;
 #pragma warning restore 649
 
         #endregion
@@ -296,6 +311,7 @@ namespace BioGTK
             {
                 UpdateGUI();
             }
+            
             ZCT c = GetCoordinate();
             AForge.Bitmap bitmap = null;
             BioImage b = SelectedImage;
@@ -350,6 +366,7 @@ namespace BioGTK
                 else
                     bitmap = b.GetEmission(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
             }
+            if(Bitmaps.Count> 0)
             if (Bitmaps[selectedIndex] != null)
                 Bitmaps[selectedIndex].Dispose();
             if (bitmap.PixelFormat == PixelFormat.Format16bppGrayScale || bitmap.PixelFormat == PixelFormat.Format48bppRgb)
@@ -417,7 +434,222 @@ namespace BioGTK
             paste.ButtonPressEvent += Paste_ButtonPressEvent;
             draw.ButtonPressEvent += Draw_ButtonPressEvent;
             fill.ButtonPressEvent += Fill_ButtonPressEvent;
-            
+
+            play.ButtonPressEvent += Play_ButtonPressEvent;
+            stop.ButtonPressEvent += Stop_ButtonPressEvent;
+            playSpeed.ButtonPressEvent += PlaySpeed_ButtonPressEvent;
+            setValueRange.ButtonPressEvent += SetValueRange_ButtonPressEvent;
+            loop.ButtonPressEvent += Loop_ButtonPressEvent;
+
+            zBar.ButtonPressEvent += ZBar_ButtonPressEvent;
+            tBar.ButtonPressEvent += TBar_ButtonPressEvent;
+            cBar.ButtonPressEvent += CBar_ButtonPressEvent;
+
+        }
+        int bar = 0;
+        System.Threading.Thread threadZ = null;
+        System.Threading.Thread threadC = null;
+        System.Threading.Thread threadT = null;
+        static bool playZ = false;
+        static bool playC = false;
+        static bool playT = false;
+        static bool loopZ = true;
+        static bool loopC = true;
+        static bool loopT = true;
+        public static int waitz = 1000;
+        public static int waitc = 1000;
+        public static int waitt = 1000;
+        public static int startz = 0;
+        public static int startc = 0;
+        public static int startt = 0;
+        public static int endz = 0;
+        public static int endc = 0;
+        public static int endt = 0;
+        private static void PlayZ()
+        {
+            do
+            {
+                ZCT coord = App.viewer.GetCoordinate();
+                //Update view on main UI thread
+                Application.Invoke(delegate
+                {
+                    App.viewer.SetCoordinate(coord.Z + 1, coord.C, coord.T);
+                });
+                if (coord.Z == endz)
+                {
+                    if (loopZ)
+                    {
+                        //Update view on main UI thread
+                        Application.Invoke(delegate
+                        {
+                            App.viewer.SetCoordinate(startz, coord.C, coord.T);
+                        });
+                    }
+                    else
+                        return;
+                }
+                System.Threading.Thread.Sleep(waitz);
+            } while (playZ);
+        }
+        private static void PlayC()
+        {
+            do
+            {
+                ZCT coord = App.viewer.GetCoordinate();
+                Application.Invoke(delegate
+                {
+                    App.viewer.SetCoordinate(coord.Z, coord.C + 1, coord.T);
+                });
+                if (coord.C == endc)
+                {
+                    if (loopC)
+                    {
+                        //Update view on main UI thread
+                        Application.Invoke(delegate
+                        {
+                            App.viewer.SetCoordinate(coord.Z, startc, coord.T);
+                        });
+                    }
+                    else
+                        return;
+                }
+                System.Threading.Thread.Sleep(waitc);
+            } while (playC);
+        }
+        private static void PlayT()
+        {
+            do
+            {
+                ZCT coord = App.viewer.GetCoordinate();
+                Application.Invoke(delegate
+                {
+                    App.viewer.SetCoordinate(coord.Z, coord.C, coord.T + 1);
+                });
+                if (coord.T == endt)
+                {
+                    if (loopT)
+                    {
+                        //Update view on main UI thread
+                        Application.Invoke(delegate
+                        {
+                            App.viewer.SetCoordinate(coord.Z, coord.C, startt);
+                        });
+                    }
+                    else
+                        return;
+                }
+                System.Threading.Thread.Sleep(waitt);
+            } while (playT);
+        }
+        private void CBar_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            bar = 2;
+            if (args.Event.Button == 3)
+                barMenu.Popup();
+        }
+
+        private void TBar_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            bar = 1;
+            if (args.Event.Button == 3)
+                barMenu.Popup();
+        }
+        
+        private void ZBar_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            bar = 0;
+            if (args.Event.Button == 3)
+                barMenu.Popup();
+        }
+
+        private void Loop_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            if (bar == 0)
+            {
+                if(loopZ)
+                    loopZ = false;
+                else
+                    loopZ = true;
+            }
+            else if (bar == 1)
+            {
+                if (loopC)
+                    loopC = false;
+                else
+                    loopC = true;
+            }
+            else if (bar == 2)
+            {
+                if (loopT)
+                    loopT = false;
+                else
+                    loopT = true;
+            }
+        }
+
+        private void SetValueRange_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Play play = Play.Create();
+            play.Show();
+        }
+
+        private void PlaySpeed_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Play play = Play.Create();
+            play.Show();
+        }
+
+        private void Stop_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            if (bar == 0)
+            {
+                if (playZ)
+                    playZ = false;
+                else
+                    playZ = true;
+            }
+            else if (bar == 1)
+            {
+                if (playT)
+                    playT = false;
+                else
+                    playT = true;
+            }
+            else if (bar == 2)
+            {
+                if (playC)
+                    playC = false;
+                else
+                    playC = true;
+            }
+        }
+
+        private void Play_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            if(bar == 0)
+            {
+                if (endz == 0)
+                    endz = selectedImage.SizeZ - 1;
+                playZ = true;
+                threadZ = new System.Threading.Thread(PlayZ);
+                threadZ.Start();
+            }
+            else if (bar == 1)
+            {
+                if (endt == 0)
+                    endt = selectedImage.SizeT - 1;
+                playT = true;
+                threadT = new System.Threading.Thread(PlayT);
+                threadT.Start();
+            }
+            else if (bar == 2)
+            {
+                if (endc == 0)
+                    endc = selectedImage.SizeC - 1;
+                playC = true;
+                threadC = new System.Threading.Thread(PlayC);
+                threadC.Start();
+            }
         }
 
         private void Fill_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -1083,8 +1315,12 @@ namespace BioGTK
             zBar.Adjustment.Upper = Images[selectedIndex].SizeZ - 1;
             tBar.Adjustment.Lower = 0;
             tBar.Adjustment.Upper = Images[selectedIndex].SizeT - 1;
-
-
+            if (endz == 0 || endz > Images[selectedIndex].SizeZ - 1)
+                endz = Images[selectedIndex].SizeZ - 1;
+            if (endc == 0 || endc > Images[selectedIndex].SizeC - 1)
+                endc = Images[selectedIndex].SizeC - 1;
+            if (endt == 0 || endt > Images[selectedIndex].SizeT - 1)
+                endt = Images[selectedIndex].SizeT - 1;
             var store = new ListStore(typeof(string));
             foreach (Channel c in SelectedImage.Channels)
             {
@@ -1592,6 +1828,7 @@ namespace BioGTK
                 {
                     selectedIndex = ind;
                     selectedImage = SelectedImage;
+                    UpdateGUI();
                     break;
                 }
                 ind++;

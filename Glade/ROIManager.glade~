@@ -170,6 +170,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
               </object>
               <packing>
                 <property name="x">4</property>
@@ -182,6 +183,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
               </object>
               <packing>
                 <property name="x">135</property>
@@ -194,6 +196,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
               </object>
               <packing>
                 <property name="x">272</property>
@@ -234,6 +237,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
                 <property name="digits">1</property>
               </object>
               <packing>
@@ -260,6 +264,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
               </object>
               <packing>
                 <property name="x">269</property>
@@ -272,6 +277,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
               </object>
               <packing>
                 <property name="x">134</property>
@@ -284,6 +290,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
               </object>
               <packing>
                 <property name="x">3</property>
@@ -369,6 +376,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
               </object>
               <packing>
                 <property name="x">4</property>
@@ -439,7 +447,6 @@
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="receives-default">False</property>
-                <property name="active">True</property>
                 <property name="draw-indicator">True</property>
               </object>
               <packing>
@@ -513,6 +520,7 @@
                 <property name="height-request">34</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
+                <property name="climb-rate">1</property>
                 <property name="digits">1</property>
               </object>
               <packing>
