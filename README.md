@@ -7,17 +7,25 @@ A .NET application & library for editing & annotating various microscopy image f
 
 - C# scripting with sample tool-script and other sample scripts in "/Scripts/" folder. [See samples](https://github.com/BioMicroscopy/BioImage-Scripts)
 
-- Supports running ImageJ macro commands on images open in Bio. Console to run ImageJ macro commands and Bio C# functions.
+- Supports running ImageJ macro commands on images open in Bio. Console to run ImageJ macro commands and Bio C# scripts.
 
-- Supports drawing shapes & colors onto 16 bit & 48 bit images, unlike System.Graphics.
+- Supports Pyramidal images with multiple resolutions. Like whole slide images.
+
+- Multiple view modes like Emission, and Filtered. ROI's shown for each channel can be configured in ROI Manager.
+
+- Supports drawing shapes & colors onto 16 bit & 48 bit images, unlike System.Drawing.Graphics.
 
 - Convenient viewing of image stacks with scroll wheel moving Z-plane and mouse side buttons scrolling C-planes.
 
 - Editing & saving ROI's in images to OME format image stacks.
 
-- Use AForge filters by opening filters tool window and right click to apply. Currently supports only some AForge filters as many of them do not support 16bit and 48bit images. Convert to 8bit image to make use of more filters. Applyed filters can be easily recorded and used in scripts. Bio impliments some filters like crop for 16 & 48 bit images.
+- Copy & Paste to quickly annotate images and name them easily by right click.
 
-- `Star this project on Github to help spread the word about Bio!`
+- Select multiple points by holding down control key, and move them by holding down control key. 
+
+- Exporting ROI's from each OME image in a folder of images to CSV.
+
+- Easy freeform annotation with magic select tool which selects based on blob detection.
 
 ## Dependencies
 - [BioFormats.Net](https://github.com/GDanovski/BioFormats.Net)
@@ -48,7 +56,8 @@ A .NET application & library for editing & annotating various microscopy image f
 - If you experience a crash when opening a new TabsView the fix is runnning the application via terminal, by opening the package contents by right click and then double clicking BioGTKApp. This will open the application via terminal and show any warnings or errors.
 
 ## Sample Tool Script
-```//css_reference BioGTK.dll; 
+```
+//css_reference BioGTK.dll; 
 using System; 
 using BioGTK;
 using System.Threading;
@@ -98,4 +107,5 @@ public string Load()
 	} while (true);
 	return "OK";
 }
-}```
+}
+```
