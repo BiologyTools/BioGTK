@@ -13,6 +13,7 @@ namespace BioGTK
         public static bool onTab = false;
         public static bool useBioformats = false;
         public static bool headless = false;
+        public static bool resultInNewTab = false;
         int line = 0;
 #pragma warning disable 649
         [Builder.Object]
@@ -67,10 +68,16 @@ namespace BioGTK
             imagejBut.Clicked += ImagejBut_Clicked;
             headlessBox.Clicked += HeadlessBox_Clicked;
             bioformatsBox.Clicked += BioformatsBox_Clicked;
+            resultsBox.Clicked += ResultsBox_Clicked;
             selRadioBut.Clicked += SelRadioBox_Clicked;
             tabRadioBut.Clicked += TabRadioBox_Clicked;
             this.KeyPressEvent += Console_KeyPressEvent;
             this.DeleteEvent += BioConsole_DeleteEvent;
+        }
+
+        private void ResultsBox_Clicked(object sender, EventArgs e)
+        {
+            throw new NotImplementedException();
         }
 
         private void BioConsole_DeleteEvent(object o, DeleteEventArgs args)
@@ -126,7 +133,7 @@ namespace BioGTK
         {
             if (ImageView.SelectedImage == null)
                 return;
-            ImageJ.RunOnImage(textBox.Buffer.Text, headless, onTab, useBioformats);
+            ImageJ.RunOnImage(textBox.Buffer.Text, headless, onTab, useBioformats, resultsBox.Active);
             consoleBox.Buffer.Text += textBox.Buffer.Text + Environment.NewLine;
             textBox.Buffer.Text = "";
         }

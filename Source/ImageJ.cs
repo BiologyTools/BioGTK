@@ -97,7 +97,7 @@ namespace BioGTK
         /// image is opened using the default imagej open command.
         /// 
         /// @return The image is being returned as a new tab.
-        public static void RunOnImage(string con, bool headless, bool onTab, bool bioformats)
+        public static void RunOnImage(string con, bool headless, bool onTab, bool bioformats, bool resultInNewTab)
         {
             if (ImageJPath == "")
             {
@@ -140,13 +140,13 @@ namespace BioGTK
             //If not in images we add it to a new tab.
             if (Images.GetImage(ffile) == null)
             {
-                BioImage.OpenFile(ffile, false);
+                BioImage.OpenFile(ffile, resultInNewTab);
             }
             else
             {
-                BioImage b = BioImage.OpenFile(ffile, false);
-                ImageView.SelectedImage.Buffers = b.Buffers;
-                Image
+                //BioImage b = BioImage.OpenFile(ffile, false);
+                Images.UpdateImage(ffile,BioImage.OpenFile(ffile));
+                Images.GetImage(ffile).Update();
             }
             App.viewer.UpdateImage();
             App.viewer.UpdateView();

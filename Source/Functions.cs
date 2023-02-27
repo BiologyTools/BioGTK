@@ -497,7 +497,7 @@ namespace BioGTK
             }
             if (FuncType == Function.FunctionType.ImageJ)
             {
-                ImageJ.RunOnImage(script, false, BioConsole.onTab, BioConsole.useBioformats);
+                ImageJ.RunOnImage(script, false, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
             }
             return null;
         }

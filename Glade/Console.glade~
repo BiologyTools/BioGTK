@@ -125,6 +125,7 @@
                 <property name="can-focus">True</property>
                 <property name="receives-default">False</property>
                 <property name="draw-indicator">True</property>
+                <property name="group">selRadioBut</property>
               </object>
               <packing>
                 <property name="x">110</property>

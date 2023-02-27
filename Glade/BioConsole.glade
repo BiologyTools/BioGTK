@@ -142,7 +142,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkCheckButton" id="resultBox">
+              <object class="GtkCheckButton" id="resultsBox">
                 <property name="label" translatable="yes">Open Result in New Tab</property>
                 <property name="width-request">100</property>
                 <property name="visible">True</property>
