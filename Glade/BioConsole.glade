@@ -141,6 +141,19 @@
                 <property name="y">10</property>
               </packing>
             </child>
+            <child>
+              <object class="GtkCheckButton" id="resultBox">
+                <property name="label" translatable="yes">Open Result in New Tab</property>
+                <property name="width-request">100</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">False</property>
+                <property name="draw-indicator">True</property>
+              </object>
+              <packing>
+                <property name="y">35</property>
+              </packing>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>

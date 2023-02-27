@@ -25,3 +25,6 @@ obj/BioGTK.csproj.nuget.dgspec.json
 *.jar
 *.properties
 *.TMP
+*.glade#
+*.glade~
+*.glade~

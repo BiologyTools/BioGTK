@@ -28,6 +28,8 @@ namespace BioGTK
         [Builder.Object]
         private CheckButton bioformatsBox;
         [Builder.Object]
+        private CheckButton resultsBox;
+        [Builder.Object]
         private RadioButton selRadioBut;
         [Builder.Object]
         private RadioButton tabRadioBut;
@@ -127,20 +129,6 @@ namespace BioGTK
             ImageJ.RunOnImage(textBox.Buffer.Text, headless, onTab, useBioformats);
             consoleBox.Buffer.Text += textBox.Buffer.Text + Environment.NewLine;
             textBox.Buffer.Text = "";
-            string filename = "";
-
-            if (ImageView.SelectedImage.ID.EndsWith(".ome.tif"))
-            {
-                filename = System.IO.Path.GetFileNameWithoutExtension(ImageView.SelectedImage.ID);
-                filename = filename.Remove(filename.Length - 4, 4);
-            }
-            else
-                filename = System.IO.Path.GetFileNameWithoutExtension(ImageView.SelectedImage.ID);
-            string file = System.IO.Path.GetDirectoryName(ImageView.SelectedImage.ID) + "/" + filename + ".ome.tif";
-            if (ImageView.SelectedImage.ID.EndsWith(".ome.tif"))
-                ImageView.SelectedImage.Update();
-            else
-               BioImage.OpenOME(file,true);
         }
 
         /// It runs the code in the textbox and prints the output to the console

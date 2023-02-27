@@ -142,6 +142,23 @@ namespace BioGTK
             GC.Collect();
             Recorder.AddLine("Bio.Table.RemoveImage(" + '"' + id + '"' + ");");
         }
+
+        /// It updates an image from the table
+        /// 
+        /// @param id The id of the image to update.
+        /// @param im The BioImage to update with.
+        /// @return The image is being returned.
+        public static void UpdateImage(string id, BioImage im)
+        {
+            for (int i = 0; i < images.Count; i++)
+            {
+                if (images[i].Filename == id)
+                {
+                    images[i] = im;
+                    return;
+                }
+            }
+        }
     }
     /* A struct that is used to store the resolution of an image. */
     public struct Resolution

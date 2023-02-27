@@ -590,7 +590,7 @@ namespace BioGTK
            "Save", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            BioImage.SaveFile(ImageView.SelectedImage.ID,filechooser.Filename);
+            BioImage.SaveFile(filechooser.Filename,ImageView.SelectedImage.ID);
             filechooser.Destroy();
         }
         /// This function saves the selected image in the OME-TIFF format
@@ -609,7 +609,7 @@ namespace BioGTK
           "Save", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            BioImage.SaveOME(ImageView.SelectedImage.ID, filechooser.Filename);
+            BioImage.SaveOME(filechooser.Filename, ImageView.SelectedImage.ID);
             filechooser.Destroy();
         }
         /// This function saves the current series of images to an OME-TIFF file

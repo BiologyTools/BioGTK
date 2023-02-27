@@ -121,10 +121,10 @@ namespace BioGTK
             "run(\"Bio-Formats Exporter\", \"save=" + file + " export compression=Uncompressed\"); " +
             "dir = getDir(\"startup\"); " +
             "File.saveString(\"done\", dir + \"/done.txt\");";
-            if (bioformats)
+            if (!bioformats)
                 st =
                 "open(getArgument); " + con +
-                "run(\"Bio-Formats Exporter\", \"save=" + file + " export compression=Uncompressed\"); " +
+                "saveAs(\"Tiff\",\"" + file + "\"); " +
                 "dir = getDir(\"startup\"); " +
                 "File.saveString(\"done\", dir + \"/done.txt\");";
             //We save the image as a temp image as otherwise imagej won't export due to file access error.
@@ -133,15 +133,25 @@ namespace BioGTK
             if (!File.Exists(file))
                 return;
 
-            string ffile = dir + "/" + filename + ".ome.tif";
+            string ffile = dir + "\\" + filename + ".ome.tif";
             File.Delete(ffile);
             File.Copy(file, ffile);
             File.Delete(file);
-            App.tabsView.AddTab(BioImage.OpenFile(ffile));
+            //If not in images we add it to a new tab.
+            if (Images.GetImage(ffile) == null)
+            {
+                BioImage.OpenFile(ffile, false);
+            }
+            else
+            {
+                BioImage b = BioImage.OpenFile(ffile, false);
+                ImageView.SelectedImage.Buffers = b.Buffers;
+                Image
+            }
             App.viewer.UpdateImage();
             App.viewer.UpdateView();
 
-            Recorder.AddLine("RunOnImage(\"" + con + "\"," + headless + "," + onTab + ");");
+            Recorder.AddLine("ImageJ.RunOnImage(\"" + con + "\"," + headless + "," + onTab + "," + bioformats + ");");
         }
         /// This function is used to initialize the path of the ImageJ.exe file
         /// 
