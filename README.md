@@ -53,7 +53,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - Install Mac package manager [homebrew.](https://brew.sh/)
 - From brew install [GTK3.](https://formulae.brew.sh/formula/gtk+3#default)
 - Download the BioGTK application for either OSX-x64 or OSX-Arm from releases.
-- If you experience a crash when opening a new TabsView the fix is runnning the application via terminal, by opening the package contents by right click and then double clicking BioGTKApp. This will open the application via terminal and show any warnings or errors.
+- Make the file executable by opening terminal in the extracted folder and running "chmod 755 BioGTKApp" 
 
 ## Sample Tool Script
 ```
