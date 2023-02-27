@@ -57,7 +57,7 @@
                 <property name="receives-default">True</property>
               </object>
               <packing>
-                <property name="x">381</property>
+                <property name="x">400</property>
                 <property name="y">7</property>
               </packing>
             </child>
@@ -70,7 +70,7 @@
                 <property name="receives-default">True</property>
               </object>
               <packing>
-                <property name="x">278</property>
+                <property name="x">293</property>
                 <property name="y">8</property>
               </packing>
             </child>
@@ -98,7 +98,7 @@
                 <property name="draw-indicator">True</property>
               </object>
               <packing>
-                <property name="x">110</property>
+                <property name="x">89</property>
                 <property name="y">6</property>
               </packing>
             </child>
@@ -120,7 +120,6 @@
             <child>
               <object class="GtkRadioButton" id="tabRadioBut">
                 <property name="label" translatable="yes">Tab</property>
-                <property name="width-request">100</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="receives-default">False</property>
@@ -128,7 +127,21 @@
                 <property name="group">selRadioBut</property>
               </object>
               <packing>
-                <property name="x">110</property>
+                <property name="x">81</property>
+                <property name="y">29</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="resultsBox">
+                <property name="label" translatable="yes">Open Result in New Tab</property>
+                <property name="width-request">100</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">False</property>
+                <property name="draw-indicator">True</property>
+              </object>
+              <packing>
+                <property name="x">134</property>
                 <property name="y">29</property>
               </packing>
             </child>

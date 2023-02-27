@@ -77,7 +77,7 @@ namespace BioGTK
 
         private void ResultsBox_Clicked(object sender, EventArgs e)
         {
-            throw new NotImplementedException();
+            resultInNewTab = resultsBox.Active;
         }
 
         private void BioConsole_DeleteEvent(object o, DeleteEventArgs args)
@@ -114,7 +114,12 @@ namespace BioGTK
 
         private void BioformatsBox_Clicked(object sender, EventArgs e)
         {
-            useBioformats = bioformatsBox.Active;
+            if(!OperatingSystem.IsMacOS())
+                useBioformats = bioformatsBox.Active;
+            else
+            {
+                BioImage.OMESupport();
+            }
         }
 
         private void HeadlessBox_Clicked(object sender, EventArgs e)
