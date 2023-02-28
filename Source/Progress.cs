@@ -26,7 +26,11 @@ namespace BioGTK
             }
             set 
             {
-                progressBar.Fraction = value;
+                // update progress bar on main UI thread
+                Application.Invoke(delegate
+                {
+                    progressBar.Fraction = value;
+                });
             }
         }
         public string Text

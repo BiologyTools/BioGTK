@@ -56,31 +56,37 @@ namespace BioGTK
             Process pr = new Process();
             pr.StartInfo.FileName = ImageJPath;
             string te = rng.Next(0, 9999999).ToString();
-            string p = Environment.CurrentDirectory + "\\" + te + ".txt";
-            p.Replace("/", "\\");
+            string p = Path.GetDirectoryName(Environment.ProcessPath) + "/" + te;
+            if (OperatingSystem.IsMacOS())
+            {
+                Console.WriteLine(p);
+                pr.StartInfo.UseShellExecute = true;
+            }
             File.WriteAllText(p, con);
             if (headless)
                 pr.StartInfo.Arguments = "--headless -macro " + p + " " + param;
             else
                 pr.StartInfo.Arguments = "-macro " + p + " " + param;
             pr.Start();
-            File.Delete(Path.GetDirectoryName(ImageJPath) + "/done.txt");
+            string donedir = Path.GetDirectoryName(Environment.ProcessPath);
+            donedir = donedir.Replace("\\", "/");
+            File.Delete(Path.GetDirectoryName(Environment.ProcessPath) + "/done.txt");
             processes.Add(pr);
             do
             {
-                if (File.Exists(Path.GetDirectoryName(ImageJPath) + "/done.txt"))
+                if (File.Exists(donedir + "/done.txt"))
                 {
                     do
                     {
                         try
                         {
-                            File.Delete(Path.GetDirectoryName(ImageJPath) + "/done.txt");
+                            File.Delete(donedir + "/done.txt");
                         }
                         catch (Exception)
                         {
 
                         }
-                    } while (File.Exists(Path.GetDirectoryName(ImageJPath) + "/done.txt"));
+                    } while (File.Exists(donedir + "/done.txt"));
                     pr.Kill();
                     break;
                 }
@@ -97,8 +103,10 @@ namespace BioGTK
         /// image is opened using the default imagej open command.
         /// 
         /// @return The image is being returned as a new tab.
-        public static void RunOnImage(string con, bool headless, bool onTab, bool bioformats, bool resultInNewTab)
+        public static void RunOnImage(string con, int index, bool headless, bool onTab, bool bioformats, bool resultInNewTab)
         {
+            if (OperatingSystem.IsMacOS())
+                bioformats = false;
             if (ImageJPath == "")
             {
                 if (!App.SetImageJPath())
@@ -106,7 +114,7 @@ namespace BioGTK
             }
             string filename = "";
             string dir = Path.GetDirectoryName(ImageView.SelectedImage.file);
-
+            dir = dir.Replace("\\", "/");
             if (ImageView.SelectedImage.ID.EndsWith(".ome.tif"))
             {
                 filename = Path.GetFileNameWithoutExtension(ImageView.SelectedImage.ID);
@@ -114,44 +122,72 @@ namespace BioGTK
             }
             else
                 filename = Path.GetFileNameWithoutExtension(ImageView.SelectedImage.ID);
-            string file = dir + "\\" + filename + "-temp" + ".ome.tif";
-            file = file.Replace("\\", "/");
+            string file = dir + "/" + filename + "-temp.ome.tif";
+            if(!bioformats)
+                file = dir + "/" + filename + ".tif";
+            string donepath = Path.GetDirectoryName(Environment.ProcessPath);
+            donepath = donepath.Replace("\\", "/");
             string st =
-            "run(\"Bio-Formats Importer\", \"open=\" + getArgument + \" autoscale color_mode=Default open_all_series display_rois rois_import=[ROI manager] view=Hyperstack stack_order=XYCZT\"); " + con +
+            "run(\"Bio-Formats Importer\", \"open=" + dir + "/" + ImageView.SelectedImage.ID + " autoscale color_mode=Default open_all_series display_rois rois_import=[ROI manager] view=Hyperstack stack_order=XYCZT\"); " + con +
             "run(\"Bio-Formats Exporter\", \"save=" + file + " export compression=Uncompressed\"); " +
-            "dir = getDir(\"startup\"); " +
+            "dir = \"" + donepath + "\"" +
             "File.saveString(\"done\", dir + \"/done.txt\");";
             if (!bioformats)
                 st =
                 "open(getArgument); " + con +
                 "saveAs(\"Tiff\",\"" + file + "\"); " +
-                "dir = getDir(\"startup\"); " +
+                "dir = \"" + donepath + "\"" +
                 "File.saveString(\"done\", dir + \"/done.txt\");";
-            //We save the image as a temp image as otherwise imagej won't export due to file access error.
-            RunString(st, ImageView.SelectedImage.file, headless);
-
+            if (File.Exists(file) && bioformats)
+                File.Delete(file);
+            RunString(st, dir + "/" + ImageView.SelectedImage.ID, headless);
             if (!File.Exists(file))
                 return;
-
-            string ffile = dir + "\\" + filename + ".ome.tif";
-            File.Delete(ffile);
-            File.Copy(file, ffile);
-            File.Delete(file);
             //If not in images we add it to a new tab.
-            if (Images.GetImage(ffile) == null)
+            string s = filename;
+            if (bioformats)
+                s += "-temp.ome.tif";
+            else
+                s += ".tif";
+            string f = dir + "/" + s;
+            f = f.Replace("\\", "/");
+            string fn = filename + ".tif";
+            if (bioformats)
+                fn = filename + ".ome.tif";
+            
+            if (Images.GetImage(fn) == null)
             {
-                BioImage.OpenFile(ffile, resultInNewTab);
+                BioImage bm = BioImage.OpenFile(f, index, false, false);
+                bm.Filename = fn;
+                bm.ID = fn;
+                bm.file = dir + "/" + fn;
+                Images.AddImage(bm,true);
             }
             else
             {
-                //BioImage b = BioImage.OpenFile(ffile, false);
-                Images.UpdateImage(ffile,BioImage.OpenFile(ffile));
-                Images.GetImage(ffile).Update();
+                BioImage b = BioImage.OpenFile(f, index, onTab, false);
+                b.ID = ImageView.SelectedImage.ID;
+                b.Filename = ImageView.SelectedImage.ID;
+                b.file = dir + "/" + fn;
+                Images.UpdateImage(b);
+                App.viewer.Images[App.viewer.selectedIndex] = b;
             }
-            App.viewer.UpdateImage();
-            App.viewer.UpdateView();
+            //If using bioformats we delete the temp file.
+            if(bioformats)
+            File.Delete(f);
+            // update progress bar on main UI thread
+            Application.Invoke(delegate
+            {
+                App.viewer.UpdateImage();
+                App.viewer.UpdateView();
+            });
+            Recorder.AddLine("ImageJ.RunOnImage(\"" + con + "\"," + headless + "," + onTab + "," + bioformats + "," + resultInNewTab + ");");
+        }
 
-            Recorder.AddLine("ImageJ.RunOnImage(\"" + con + "\"," + headless + "," + onTab + "," + bioformats + ");");
+        public static void RunOnImage(string con, bool headless, bool onTab, bool bioformats, bool resultInNewTab)
+        {
+            RunOnImage(con,0,headless,onTab,bioformats,resultInNewTab);
+            Recorder.AddLine("ImageJ.RunOnImage(\"" + con + "\"," + 0 + "," + headless + "," + onTab + "," + bioformats + "," + resultInNewTab + ");");
         }
         /// This function is used to initialize the path of the ImageJ.exe file
         /// 

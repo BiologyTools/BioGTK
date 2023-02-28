@@ -46,6 +46,7 @@
         </child>
         <child>
           <object class="GtkFixed">
+            <property name="height-request">64</property>
             <property name="visible">True</property>
             <property name="can-focus">False</property>
             <child>
@@ -58,7 +59,7 @@
               </object>
               <packing>
                 <property name="x">400</property>
-                <property name="y">7</property>
+                <property name="y">15</property>
               </packing>
             </child>
             <child>
@@ -71,7 +72,7 @@
               </object>
               <packing>
                 <property name="x">293</property>
-                <property name="y">8</property>
+                <property name="y">15</property>
               </packing>
             </child>
             <child>

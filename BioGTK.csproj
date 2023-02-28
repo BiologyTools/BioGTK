@@ -21,6 +21,7 @@
     <Version>2.3.0</Version>
     <Platforms>AnyCPU;x64;ARM64</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -72,11 +73,13 @@
     <None Remove="Glade\TextInput.glade" />
     <None Remove="Glade\Tolerance.glade" />
     <None Remove="Glade\Tools.glade" />
+    <None Remove="Info.plist" />
     <None Remove="Resources\polyline.png" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="bioformats_package.dll" />
+    <Content Include="Info.plist" />
     <Content Include="Resources\banner.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Pack>True</Pack>

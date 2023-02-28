@@ -36,7 +36,7 @@ namespace BioGTK
         {
             for (int i = 0; i < images.Count; i++)
             {
-                if (images[i].ID.Contains(ids) || images[i].file == ids)
+                if (images[i].ID == ids || images[i].file == ids)
                     return images[i];
             }
             return null;
@@ -80,7 +80,7 @@ namespace BioGTK
             string name = Path.GetFileNameWithoutExtension(s);
             for (int im = 0; im < images.Count; im++)
             {
-                if (images[im].ID.Contains(name))
+                if (images[im].ID == s)
                     i++;
             }
             return i;
@@ -148,11 +148,11 @@ namespace BioGTK
         /// @param id The id of the image to update.
         /// @param im The BioImage to update with.
         /// @return The image is being returned.
-        public static void UpdateImage(string id, BioImage im)
+        public static void UpdateImage(BioImage im)
         {
             for (int i = 0; i < images.Count; i++)
             {
-                if (images[i].Filename == id)
+                if (images[i].ID == im.ID)
                 {
                     images[i] = im;
                     return;
@@ -4076,28 +4076,27 @@ namespace BioGTK
         public static void SaveFile(string file, string ID)
         {
             string[] sts = new string[1];
-            sts[0] = file;
-            SaveSeries(sts, ID);
+            sts[0] = ID;
+            SaveSeries(sts, file);
         }
-        /// It takes a list of image files, and saves them as a single multi-page TIFF file
+        /// It takes a list of image IDs, and saves them as a single multi-page TIFF file.
         /// 
-        /// @param files an array of file paths to the images to be saved
-        /// @param ID The path to the file to save to.
-        public static void SaveSeries(string[] files, string ID)
+        /// @param An array of IDs of the images to save
+        /// @param The path to the file to save to.
+        public static void SaveSeries(string[] IDs, string file)
         {
             string desc = "";
             int stride = 0;
             ImageJDesc j = new ImageJDesc();
-            BioImage bi = Images.GetImage(files[0]);
+            BioImage bi = Images.GetImage(IDs[0]);
             j.FromImage(bi);
             desc = j.GetString();
-            for (int fi = 0; fi < files.Length; fi++)
+            for (int fi = 0; fi < IDs.Length; fi++)
             {
-                string file = files[fi];
-
-                BioImage b = Images.GetImage(file);
-                string fn = Path.GetFileNameWithoutExtension(ID);
-                string dir = Path.GetDirectoryName(ID);
+                string id = IDs[fi];
+                BioImage b = Images.GetImage(id);
+                string fn = Path.GetFileNameWithoutExtension(id);
+                string dir = Path.GetDirectoryName(file);
                 stride = b.Buffers[0].Stride;
 
                 //Save ROIs to CSV file.
@@ -4121,15 +4120,15 @@ namespace BioGTK
                 desc += "-ImageInfo:" + fi + ":" + json + NewLine;
             }
 
-            Tiff image = Tiff.Open(ID, "w");
-            for (int fi = 0; fi < files.Length; fi++)
+            Tiff image = Tiff.Open(file, "w");
+            for (int fi = 0; fi < IDs.Length; fi++)
             {
                 int im = 0;
-                string file = files[fi];
+                string id = IDs[fi];
                 //Progress pr = new //Progress(file, "Saving");
                 //pr.Show();
                 //Application.DoEvents();
-                BioImage b = Images.GetImage(file);
+                BioImage b = Images.GetImage(id);
                 int sizec = 1;
                 if (!b.isRGB)
                 {
@@ -4169,7 +4168,7 @@ namespace BioGTK
                             image.SetField(TiffTag.SUBFILETYPE, FileType.PAGE);
                             // specify the page number
                             buffer = b.Buffers[im].GetSaveBytes(true);
-                            image.SetField(TiffTag.PAGENUMBER, im + (b.Buffers.Count * fi), b.Buffers.Count * files.Length);
+                            image.SetField(TiffTag.PAGENUMBER, im + (b.Buffers.Count * fi), b.Buffers.Count * IDs.Length);
                             for (int i = 0, offset = 0; i < b.SizeY; i++)
                             {
                                 image.WriteScanline(buffer, offset, i, 0);
@@ -4552,6 +4551,7 @@ namespace BioGTK
             else
                 b.StackThreshold(false);
             Recorder.AddLine("Bio.BioImage.Open(" + '"' + file + '"' + ");");
+            if(addToImages)
             Images.AddImage(b,tab);
             //pr.Close();
             //pr.Dispose();
@@ -6610,15 +6610,6 @@ namespace BioGTK
             App.progress.Title = "Opening File";
             App.progress.Text = file;
             App.progress.Show();
-            // start a background task to update progress bar
-            System.Threading.Tasks.Task.Run(() =>
-            {
-                // update progress bar on main UI thread
-                Application.Invoke(delegate
-                {
-                    App.progress.ProgressValue = progressValue;
-                });
-            });
         }
         /// It opens a file asynchronously
         /// 

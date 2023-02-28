@@ -58,17 +58,22 @@ namespace BioGTK
         /// @return A boolean value.
         public static bool SetImageJPath()
         {
-            Gtk.FileChooserDialog filechooser =
-    new Gtk.FileChooserDialog("Select ImageJ Executable Location",Scripting.window,
-        FileChooserAction.Save,
-        "Cancel", ResponseType.Cancel,
-        "Save", ResponseType.Accept);
+            string title = "Select ImageJ Executable Location";
+            if (OperatingSystem.IsMacOS())
+                title = "Select ImageJ Executable Location (Fiji.app/Contents/MacOS/ImageJ-macosx)";
+                Gtk.FileChooserDialog filechooser =
+        new Gtk.FileChooserDialog(title, Scripting.window,
+            FileChooserAction.Open,
+            "Cancel", ResponseType.Cancel,
+            "Save", ResponseType.Accept);
             filechooser.SetCurrentFolder(System.IO.Path.GetDirectoryName(Environment.ProcessPath));
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return false;
             ImageJ.ImageJPath = filechooser.Filename;
+            filechooser.Destroy();
             Settings.AddSettings("ImageJPath", filechooser.Filename);
             Settings.Save();
+            
             return true;
         }
 

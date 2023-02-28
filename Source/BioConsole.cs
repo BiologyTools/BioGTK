@@ -11,7 +11,7 @@ namespace BioGTK
         /// <summary> Used to load in the glade file resource as a window. </summary>
         private Builder _builder;
         public static bool onTab = false;
-        public static bool useBioformats = false;
+        public static bool useBioformats = true;
         public static bool headless = false;
         public static bool resultInNewTab = false;
         int line = 0;
@@ -73,6 +73,8 @@ namespace BioGTK
             tabRadioBut.Clicked += TabRadioBox_Clicked;
             this.KeyPressEvent += Console_KeyPressEvent;
             this.DeleteEvent += BioConsole_DeleteEvent;
+            if (OperatingSystem.IsMacOS())
+                bioformatsBox.Active = false;
         }
 
         private void ResultsBox_Clicked(object sender, EventArgs e)
@@ -88,13 +90,13 @@ namespace BioGTK
 
         private void Console_KeyPressEvent(object o, KeyPressEventArgs args)
         {
-            if (args.Event.Key == Gdk.Key.Up)
+            if (args.Event.Key == Gdk.Key.w)
             {
                 line++;
                 string[] s = consoleBox.Buffer.Text.Split(Environment.NewLine);
                 textBox.Buffer.Text = s[s.Length - 1 - line];
             }
-            if (args.Event.Key == Gdk.Key.Down)
+            if (args.Event.Key == Gdk.Key.s)
             {
                 line--;
                 string[] s = consoleBox.Buffer.Text.Split(Environment.NewLine);
@@ -119,6 +121,7 @@ namespace BioGTK
             else
             {
                 BioImage.OMESupport();
+                bioformatsBox.Active = false;
             }
         }
 
