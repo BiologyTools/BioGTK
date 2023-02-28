@@ -143,7 +143,7 @@ namespace BioGTK
             RunString(st, dir + "/" + ImageView.SelectedImage.ID, headless);
             if (!File.Exists(file))
                 return;
-            //If not in images we add it to a new tab.
+            
             string s = filename;
             if (bioformats)
                 s += "-temp.ome.tif";
@@ -154,7 +154,7 @@ namespace BioGTK
             string fn = filename + ".tif";
             if (bioformats)
                 fn = filename + ".ome.tif";
-            
+            //If not in images we add it to a new tab.
             if (Images.GetImage(fn) == null)
             {
                 BioImage bm = BioImage.OpenFile(f, index, false, false);
@@ -175,7 +175,7 @@ namespace BioGTK
             //If using bioformats we delete the temp file.
             if(bioformats)
             File.Delete(f);
-            // update progress bar on main UI thread
+            // update image on main UI thread
             Application.Invoke(delegate
             {
                 App.viewer.UpdateImage();
