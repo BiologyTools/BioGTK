@@ -1,5 +1,6 @@
 *.suo
 *.user
+.vs
 bin/ 	# ignore bin directory 
 bin/Debug/
 bin/Release/

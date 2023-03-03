@@ -2,4 +2,62 @@
 <!-- Generated with glade 3.40.0 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
+  <object class="GtkWindow" id="resolutions">
+    <property name="can-focus">False</property>
+    <property name="modal">True</property>
+    <child>
+      <object class="GtkFixed">
+        <property name="width-request">186</property>
+        <property name="height-request">0</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <child>
+          <object class="GtkSpinButton" id="resolutionsBox">
+            <property name="width-request">118</property>
+            <property name="height-request">34</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+          </object>
+          <packing>
+            <property name="x">78</property>
+            <property name="y">8</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">Resolution</property>
+          </object>
+          <packing>
+            <property name="x">13</property>
+            <property name="y">16</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="label">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+          </object>
+          <packing>
+            <property name="x">11</property>
+            <property name="y">50</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton" id="okBut">
+            <property name="label" translatable="yes">OK</property>
+            <property name="width-request">100</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="receives-default">True</property>
+          </object>
+          <packing>
+            <property name="x">202</property>
+            <property name="y">79</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
 </interface>

@@ -10,22 +10,21 @@ using System.Runtime.CompilerServices;
 namespace BioGTK
 {
     
-    public class Resolutions : Gtk.Window
+    public class Resolutions : Gtk.Dialog
     {
         #region Properties
-
-        
         private Builder _builder;
-        internal int resolution;
+        public static int resolution;
+        Resolution[] ress;
 #pragma warning disable 649
 
-        
+
         [Builder.Object]
         private Gtk.Button okBut;
         [Builder.Object]
-        private Gtk.Button cancelBut;
+        private Gtk.Label label;
         [Builder.Object]
-        private Gtk.Entry resolutionsBox;
+        private Gtk.SpinButton resolutionsBox;
 
 #pragma warning restore 649
 
@@ -44,19 +43,22 @@ namespace BioGTK
         /// @param ress The array of resolutions to be displayed.
         /// 
         /// @return A new instance of the Resolutions class.
-        public static Resolutions Create(Resolution[] ress)
+        public static Resolutions Create(Resolution[] re)
         {
             Builder builder = new Builder(null, "BioGTK.Glade.Resolutions.glade", null);
-            Resolutions res = new Resolutions(builder, builder.GetObject("resolutions").Handle);
+            Resolutions res = new Resolutions(builder, builder.GetObject("resolutions").Handle, re);
             //TO DO res.resolutionsBox
             return res;
         }
 
         /* A constructor. */
-        protected Resolutions(Builder builder, IntPtr handle) : base(handle)
+        protected Resolutions(Builder builder, IntPtr handle, Resolution[] res) : base(handle)
         {
             _builder = builder;
             builder.Autoconnect(this);
+            resolutionsBox.Adjustment.Upper = res.Length - 1;
+            resolutionsBox.Adjustment.StepIncrement = 1;
+            resolutionsBox.Adjustment.PageIncrement = 1;
             SetupHandlers();
         }
 
@@ -68,25 +70,27 @@ namespace BioGTK
         /// It sets up the event handlers for the delete event and the ok and cancel buttons.
         protected void SetupHandlers()
         {
-            DeleteEvent += OnLocalDeleteEvent;
             okBut.Clicked += OkBut_Clicked;
-            cancelBut.Clicked += CancelBut_Clicked;
+            resolutionsBox.Changed += ResolutionsBox_Changed;
+            this.DeleteEvent += Resolutions_DeleteEvent;
         }
 
-        private void CancelBut_Clicked(object? sender, EventArgs e)
+        private void Resolutions_DeleteEvent(object o, DeleteEventArgs args)
         {
-           
+            Hide();
+            args.RetVal = true;
+        }
+
+        private void ResolutionsBox_Changed(object sender, EventArgs e)
+        {
+            resolution = resolutionsBox.ValueAsInt;
+            label.Text = ress[resolution].ToString();
         }
 
         private void OkBut_Clicked(object? sender, EventArgs e)
         {
-            
-        }
-
-        protected void OnLocalDeleteEvent(object sender, DeleteEventArgs a)
-        {
-            a.RetVal = true;
-            Hide();
+            this.DefaultResponse = ResponseType.Ok;
+            Destroy();
         }
 
         #endregion

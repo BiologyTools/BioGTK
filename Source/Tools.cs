@@ -626,6 +626,16 @@ namespace BioGTK
             }
             if (ImageView.SelectedImage == null)
                 return;
+            if (currentTool.type == Tool.Type.move && buts.Event.State == Gdk.ModifierType.Button1Mask)
+            {
+
+                for (int i = 0; i < selectedROI.PointsD.Count; i++)
+                {
+                    PointD pd = new PointD(ImageView.mouseDown.X - e.X, ImageView.mouseDown.Y - e.Y);
+                    selectedROI.UpdatePoint(new PointD(selectedROI.PointsD[i].X + pd.X, selectedROI.PointsD[i].Y + pd.Y), i);
+                }
+                UpdateView();
+            }
             if (currentTool.type == Tool.Type.line && buts.Event.State == Gdk.ModifierType.Button1Mask)
             {
                 selectedROI.UpdatePoint(new PointD(e.X, e.Y), 1);

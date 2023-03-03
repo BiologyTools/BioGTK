@@ -4,67 +4,58 @@
   <requires lib="gtk+" version="3.24"/>
   <object class="GtkWindow" id="resolutions">
     <property name="can-focus">False</property>
+    <property name="modal">True</property>
     <child>
-      <object class="GtkBox">
+      <object class="GtkFixed">
+        <property name="width-request">200</property>
+        <property name="height-request">0</property>
         <property name="visible">True</property>
         <property name="can-focus">False</property>
-        <property name="orientation">vertical</property>
+        <child>
+          <object class="GtkSpinButton" id="resolutionsBox">
+            <property name="width-request">118</property>
+            <property name="height-request">34</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+          </object>
+          <packing>
+            <property name="x">78</property>
+            <property name="y">8</property>
+          </packing>
+        </child>
         <child>
           <object class="GtkLabel">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
-            <property name="label" translatable="yes">Pick Resolution to open.</property>
+            <property name="label" translatable="yes">Resolution</property>
           </object>
           <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">0</property>
+            <property name="x">13</property>
+            <property name="y">16</property>
           </packing>
         </child>
         <child>
-          <object class="GtkComboBox" id="resolutionsBox">
+          <object class="GtkLabel" id="label">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
           </object>
           <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
+            <property name="x">11</property>
+            <property name="y">50</property>
           </packing>
         </child>
         <child>
-          <object class="GtkFixed">
+          <object class="GtkButton" id="okBut">
+            <property name="label" translatable="yes">OK</property>
+            <property name="width-request">100</property>
+            <property name="height-request">34</property>
             <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <child>
-              <object class="GtkButton" id="okBut">
-                <property name="label" translatable="yes">OK</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-              </object>
-              <packing>
-                <property name="x">249</property>
-                <property name="y">5</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="okBut1">
-                <property name="label" translatable="yes">Cancel</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-              </object>
-              <packing>
-                <property name="x">175</property>
-                <property name="y">5</property>
-              </packing>
-            </child>
+            <property name="can-focus">True</property>
+            <property name="receives-default">True</property>
           </object>
           <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">2</property>
+            <property name="x">177</property>
+            <property name="y">84</property>
           </packing>
         </child>
       </object>
