@@ -2862,7 +2862,6 @@ namespace BioGTK
                 }
             }
         }
-
         /// Convert a physical size to an image size
         /// 
         /// @param d the distance in microns
@@ -5579,94 +5578,22 @@ namespace BioGTK
             int z = 0;
             int c = 0;
             int t = 0;
-            if (file.EndsWith("ome.tif"))
+            for (int p = 0; p < pages; p++)
             {
-                //We can read this file faster without Bioformats.
-                reader.close();
-                Tiff image = Tiff.Open(file, "r");
-                pages = image.NumberOfDirectories() / b.seriesCount;
-                //int stride = image.ScanlineSize();
-                int str = image.ScanlineSize();
-                //We check to see if the bits per pixel is correct sometimes Bioformats will give the incorrect value.
-                if((float)str / (float)SizeX < RGBChannelCount)
+                Bitmap bf;
+                if (tile)
                 {
-                    if (b.bitsPerPixel > 8)
-                        b.bitsPerPixel = 8;
+                    b.Buffers.Add(GetTile(b, new ZCT(z, c, t), serie, tilex, tiley, tileSizeX, tileSizeY));
                 }
-                bool planes = false;
-                //If calculated stride and image scanline size is not the same it means the image is written in planes
-                if (stride != str)
-                    planes = true;
-                for (int p = serie * pages; p < (serie + 1) * pages; p++)
+                else
                 {
-                    image.SetDirectory((short)p);
-                    if (planes)
-                    {
-                        Bitmap[] bfs = new Bitmap[3];
-                        for (int pl = 0; pl < 3; pl++)
-                        {
-                            byte[] bytes = new byte[str * SizeY];
-                            for (int im = 0, offset = 0; im < SizeY; im++)
-                            {
-                                image.ReadScanline(bytes, offset, im, (short)pl);
-                                offset += str;
-                            }
-                            if (b.bitsPerPixel > 8)
-                                bfs[pl] = new Bitmap(file, SizeX, SizeY, PixelFormat.Format16bppGrayScale, bytes, new ZCT(0, 0, 0), p, b.littleEndian);
-                            else
-                                bfs[pl] = new Bitmap(file, SizeX, SizeY, PixelFormat.Format8bppIndexed, bytes, new ZCT(0, 0, 0), p, b.littleEndian);
-                        }
-                        Bitmap bf;
-                        if (b.bitsPerPixel > 8)
-                            bf = Bitmap.RGB16To48(bfs);
-                        else
-                            bf = Bitmap.RGB8To24(bfs);
-                        bf.SwitchRedBlue();
-                        Statistics.CalcStatistics(bf);
-                        b.Buffers.Add(bf);
-                    }
-                    else
-                    {
-                        byte[] bytes = new byte[stride * SizeY];
-                        for (int im = 0, offset = 0; im < SizeY; im++)
-                        {
-                            image.ReadScanline(bytes, offset, im, 0);
-                            offset += stride;
-                        }
-                        Bitmap inf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(0, 0, 0), p, b.littleEndian);
-                        if (inf.PixelFormat == PixelFormat.Format48bppRgb)
-                            inf.SwitchRedBlue();
-                        b.Buffers.Add(inf);
-                        Statistics.CalcStatistics(inf);
-                    }
-                    float prog = (float)p / ((float)(serie + 1) * pages);
-                    //pr.Update//ProgressF(prog);
-                }
-                image.Close();
-            } 
-            else
-            {
-                for (int p = 0; p < pages; p++)
-                {
-                    Bitmap bf;
-                    if (tile)
-                    {
-                        b.Buffers.Add(GetTile(b, new ZCT(z, c, t), serie, tilex, tiley, tileSizeX, tileSizeY));
-                    }
-                    else
-                    {
-                        progressValue = (float)p / (float)pages;
-                        byte[] bytes = reader.openBytes(p);
-                        bf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(z, c, t), p, b.littleEndian);
-                        b.Buffers.Add(bf);
-                    }
-                    //We add the buffers to thresholding image statistics calculation threads.
-                    //Statistics.CalcStatistics(bf);
-                    //if (//Progress)
-                    //    pr.Update//ProgressF(((float)p / (float)pages));
-                    //Application.DoEvents();
+                    progressValue = (float)p / (float)pages;
+                    byte[] bytes = reader.openBytes(p);
+                    bf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(z, c, t), p, b.littleEndian);
+                    b.Buffers.Add(bf);
                 }
             }
+            
             int pls;
             try
             {
@@ -5718,14 +5645,16 @@ namespace BioGTK
 
                 }
             } while (!stop);
-            
-            //We wait for threshold image statistics calculation
-            do
+            if (tile)
             {
-                Thread.Sleep(50);
-            } while (b.Buffers[b.Buffers.Count - 1].Stats == null);
-            Statistics.ClearCalcBuffer();
-
+                double dw = b.physicalSizeX * tilex;
+                double dh = b.physicalSizeY * tiley;
+                double dd = b.physicalSizeZ * b.Buffers.Count;
+                b.Volume.Location = new Point3D(dw + b.imageInfo.StageSizeX, dh + b.imageInfo.StageSizeY, dd + b.imageInfo.StageSizeZ);
+                b.Volume.Width = dw; 
+                b.Volume.Height = dh;
+                b.Volume.Depth = dd;
+            }
             AutoThreshold(b, false);
             if (b.bitsPerPixel > 8)
                 b.StackThreshold(true);
@@ -5743,574 +5672,6 @@ namespace BioGTK
         /// @param tiley the y coordinate of the tile
         /// @param tileSizeX the width of the tile in pixels
         /// @param tileSizeY the height of the tile in pixels
-        public static BioImage OpenOMETiled(string file, int serie, int tilex, int tiley, int tileSizeX, int tileSizeY)
-        {
-            if (!OMESupport())
-                return null;
-            bool tile = true;
-            //We wait incase OME has not initialized yet.
-            if (!initialized)
-            do
-            {
-                Thread.Sleep(100);
-                //Application.DoEvents();
-            } while (!Initialized);
-            if (file == null || file == "")
-                throw new InvalidDataException("File is empty or null");
-            BioImage b = new BioImage(file);
-            b.Loading = true;
-            if (b.imRead == null)
-            {
-                if (BioImage.reader == null)
-                {
-                    b.imRead = new ImageReader();
-                    b.meta = (IMetadata)((OMEXMLService)new ServiceFactory().getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
-                    b.imRead.setMetadataStore((MetadataStore)b.meta);
-                }
-                else
-                {
-                    b.imRead = BioImage.reader;
-                    b.meta = (IMetadata)b.imRead.getMetadataStore();
-                }
-            }
-            b.isPyramidal = true;
-            string str = b.imRead.getCurrentFile();
-            ImageReader reader = b.imRead;
-            if (str == null || str != file)
-                reader.setId(file);
-            if (reader.getSeries() != serie)
-                reader.setSeries(serie);
-            int RGBChannelCount = reader.getRGBChannelCount();
-            b.bitsPerPixel = reader.getBitsPerPixel();
-            if (b.bitsPerPixel > 16)
-            {
-                MessageDialog md = new MessageDialog(App.tabsView, DialogFlags.Modal, MessageType.Info, ButtonsType.Ok,"Image bit depth of " + b.bitsPerPixel + " is not supported." , null);
-                return null;
-            }
-            b.id = file;
-            b.file = file;
-            int SizeX, SizeY;
-            int imWidth = reader.getSizeX();
-            int imHeight = reader.getSizeY();
-            SizeX = reader.getSizeX();
-            SizeY = reader.getSizeY();
-            int SizeZ = reader.getSizeZ();
-            b.sizeC = reader.getSizeC();
-            b.sizeZ = reader.getSizeZ();
-            b.sizeT = reader.getSizeT();
-            b.littleEndian = reader.isLittleEndian();
-            b.seriesCount = reader.getSeriesCount();
-            b.imagesPerSeries = reader.getImageCount();
-            b.series = serie;
-
-            string order = reader.getDimensionOrder();
-            PixelFormat PixelFormat = GetPixelFormat(RGBChannelCount, b.bitsPerPixel);
-            int stride = 0;
-            if (RGBChannelCount == 1)
-            {
-                if (b.bitsPerPixel > 8)
-                    stride = SizeX * 2;
-                else
-                    stride = SizeX;
-            }
-            else
-            if (RGBChannelCount == 3)
-            {
-                b.sizeC = 1;
-                if (b.bitsPerPixel > 8)
-                    stride = SizeX * 2 * 3;
-                else
-                    stride = SizeX * 3;
-            }
-            else
-            {
-                b.sizeC = 1;
-                stride = SizeX * 4;
-            }
-
-            b.Coords = new int[b.SizeZ, b.SizeC, b.SizeT];
-            //Lets get the channels amd initialize them
-            int i = 0;
-            while (true)
-            {
-                Channel ch = new Channel(i, b.bitsPerPixel, 1);
-                bool def = false;
-                try
-                {
-                    if (b.meta.getChannelName(serie, i) != null)
-                        ch.Name = b.meta.getChannelName(serie, i);
-                    if (b.meta.getChannelSamplesPerPixel(serie, i) != null)
-                    {
-                        int s = b.meta.getChannelSamplesPerPixel(serie, i).getNumberValue().intValue();
-                        ch.SamplesPerPixel = s;
-                        def = true;
-                    }
-
-                    if (b.meta.getChannelAcquisitionMode(serie, i) != null)
-                        ch.AcquisitionMode = b.meta.getChannelAcquisitionMode(serie, i).ToString();
-                    if (b.meta.getChannelID(serie, i) != null)
-                        ch.info.ID = b.meta.getChannelID(serie, i);
-                    if (b.meta.getChannelFluor(serie, i) != null)
-                        ch.Fluor = b.meta.getChannelFluor(serie, i);
-                    if (b.meta.getChannelColor(serie, i) != null)
-                    {
-                        ome.xml.model.primitives.Color cc = b.meta.getChannelColor(serie, i);
-                        ch.Color = Color.FromArgb(cc.getRed(), cc.getGreen(), cc.getBlue());
-                    }
-                    if (b.meta.getChannelIlluminationType(serie, i) != null)
-                        ch.IlluminationType = b.meta.getChannelIlluminationType(serie, i).ToString();
-                    if (b.meta.getChannelContrastMethod(serie, i) != null)
-                        ch.ContrastMethod = b.meta.getChannelContrastMethod(serie, i).ToString();
-                    if (b.meta.getChannelEmissionWavelength(serie, i) != null)
-                        ch.Emission = b.meta.getChannelEmissionWavelength(serie, i).value().intValue();
-                    if (b.meta.getChannelExcitationWavelength(serie, i) != null)
-                        ch.Excitation = b.meta.getChannelExcitationWavelength(serie, i).value().intValue();
-                    if (b.meta.getLightEmittingDiodePower(serie, i) != null)
-                        ch.LightSourceIntensity = b.meta.getLightEmittingDiodePower(serie, i).value().doubleValue();
-                    if (b.meta.getLightEmittingDiodeID(serie, i) != null)
-                        ch.DiodeName = b.meta.getLightEmittingDiodeID(serie, i);
-                    if (b.meta.getChannelLightSourceSettingsAttenuation(serie, i) != null)
-                        ch.LightSourceAttenuation = b.meta.getChannelLightSourceSettingsAttenuation(serie, i).toString();
-
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                }
-                //If this channel is not defined we have loaded all the channels in the file.
-                if (!def)
-                    break;
-                else
-                    b.Channels.Add(ch);
-                if (i == 0)
-                {
-                    b.rgbChannels[0] = 0;
-                }
-                else
-                if (i == 1)
-                {
-                    b.rgbChannels[1] = 1;
-                }
-                else
-                if (i == 2)
-                {
-                    b.rgbChannels[2] = 2;
-                }
-                i++;
-            }
-
-            try
-            {
-                bool hasPhysical = false;
-                if (b.meta.getPixelsPhysicalSizeX(b.series) != null)
-                {
-                    b.physicalSizeX = b.meta.getPixelsPhysicalSizeX(b.series).value().doubleValue();
-                    hasPhysical = true;
-                }
-                if (b.meta.getPixelsPhysicalSizeY(b.series) != null)
-                {
-                    b.physicalSizeY = b.meta.getPixelsPhysicalSizeY(b.series).value().doubleValue();
-                }
-                if (b.meta.getPixelsPhysicalSizeZ(b.series) != null)
-                {
-                    b.physicalSizeZ = b.meta.getPixelsPhysicalSizeZ(b.series).value().doubleValue();
-                }
-                else
-                {
-                    b.physicalSizeZ = 1;
-                }
-
-                if (b.meta.getStageLabelX(b.series) != null)
-                    b.stageSizeX = b.meta.getStageLabelX(b.series).value().doubleValue();
-                if (b.meta.getStageLabelY(b.series) != null)
-                    b.stageSizeY = b.meta.getStageLabelY(b.series).value().doubleValue();
-                if (b.meta.getStageLabelZ(b.series) != null)
-                    b.stageSizeZ = b.meta.getStageLabelZ(b.series).value().doubleValue();
-                else
-                    b.stageSizeZ = 1;
-            }
-            catch (Exception e)
-            {
-                b.stageSizeX = 0;
-                b.stageSizeY = 0;
-                b.stageSizeZ = 1;
-                Console.WriteLine("No Stage Coordinates. PhysicalSize:(" + b.physicalSizeX + "," + b.physicalSizeY + "," + b.physicalSizeZ + ")");
-            }
-
-            b.Volume = new VolumeD(new Point3D(b.stageSizeX, b.stageSizeY, b.stageSizeZ), new Point3D(b.physicalSizeX * SizeX, b.physicalSizeY * SizeY, b.physicalSizeZ * SizeZ));
-
-            int rc = b.meta.getROICount();
-            for (int im = 0; im < rc; im++)
-            {
-                string roiID = b.meta.getROIID(im);
-                string roiName = b.meta.getROIName(im);
-                ZCT co = new ZCT(0, 0, 0);
-                int scount = 1;
-                try
-                {
-                    scount = b.meta.getShapeCount(im);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message.ToString());
-                }
-                for (int sc = 0; sc < scount; sc++)
-                {
-                    string type = b.meta.getShapeType(im, sc);
-                    ROI an = new ROI();
-                    an.roiID = roiID;
-                    an.roiName = roiName;
-                    an.shapeIndex = sc;
-                    if (type == "Point")
-                    {
-                        an.type = ROI.Type.Point;
-                        an.id = b.meta.getPointID(im, sc);
-                        double dx = b.meta.getPointX(im, sc).doubleValue();
-                        double dy = b.meta.getPointY(im, sc).doubleValue();
-                        an.AddPoint(b.ToStageSpace(new PointD(dx, dy)));
-                        an.coord = new ZCT();
-                        ome.xml.model.primitives.NonNegativeInteger nz = b.meta.getPointTheZ(im, sc);
-                        if (nz != null)
-                            an.coord.Z = nz.getNumberValue().intValue();
-                        ome.xml.model.primitives.NonNegativeInteger nc = b.meta.getPointTheC(im, sc);
-                        if (nc != null)
-                            an.coord.C = nc.getNumberValue().intValue();
-                        ome.xml.model.primitives.NonNegativeInteger nt = b.meta.getPointTheT(im, sc);
-                        if (nt != null)
-                            an.coord.T = nt.getNumberValue().intValue();
-                        an.Text = b.meta.getPointText(im, sc);
-                        ome.units.quantity.Length fl = b.meta.getPointFontSize(im, sc);
-                        if (fl != null)
-                            an.fontSize = fl.value().intValue();
-                        ome.xml.model.enums.FontFamily ff = b.meta.getPointFontFamily(im, sc);
-                        if (ff != null)
-                            an.family = ff.name();
-                        ome.xml.model.primitives.Color col = b.meta.getPointStrokeColor(im, sc);
-                        if (col != null)
-                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
-                        ome.units.quantity.Length fw = b.meta.getPointStrokeWidth(im, sc);
-                        if (fw != null)
-                            an.strokeWidth = (float)fw.value().floatValue();
-                        ome.xml.model.primitives.Color colf = b.meta.getPointStrokeColor(im, sc);
-                        if (colf != null)
-                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
-                        continue;
-                    }
-                    else
-                    if (type == "Line")
-                    {
-                        an.type = ROI.Type.Line;
-                        an.id = b.meta.getLineID(im, sc);
-                        double px1 = b.meta.getLineX1(im, sc).doubleValue();
-                        double py1 = b.meta.getLineY1(im, sc).doubleValue();
-                        double px2 = b.meta.getLineX2(im, sc).doubleValue();
-                        double py2 = b.meta.getLineY2(im, sc).doubleValue();
-                        an.AddPoint(b.ToStageSpace(new PointD(px1, py1)));
-                        an.AddPoint(b.ToStageSpace(new PointD(px2, py2)));
-                        ome.xml.model.primitives.NonNegativeInteger nz = b.meta.getLineTheZ(im, sc);
-                        if (nz != null)
-                            co.Z = nz.getNumberValue().intValue();
-                        ome.xml.model.primitives.NonNegativeInteger nc = b.meta.getLineTheC(im, sc);
-                        if (nc != null)
-                            co.C = nc.getNumberValue().intValue();
-                        ome.xml.model.primitives.NonNegativeInteger nt = b.meta.getLineTheT(im, sc);
-                        if (nt != null)
-                            co.T = nt.getNumberValue().intValue();
-                        an.coord = co;
-                        an.Text = b.meta.getLineText(im, sc);
-                        ome.units.quantity.Length fl = b.meta.getLineFontSize(im, sc);
-                        if (fl != null)
-                            an.fontSize = fl.value().intValue();
-                        ome.xml.model.enums.FontFamily ff = b.meta.getLineFontFamily(im, sc);
-                        if (ff != null)
-                            an.family = ff.name();
-                        ome.xml.model.primitives.Color col = b.meta.getLineStrokeColor(im, sc);
-                        if (col != null)
-                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
-                        ome.units.quantity.Length fw = b.meta.getLineStrokeWidth(im, sc);
-                        if (fw != null)
-                            an.strokeWidth = (float)fw.value().floatValue();
-                        ome.xml.model.primitives.Color colf = b.meta.getLineFillColor(im, sc);
-                        if (colf != null)
-                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
-                        continue;
-                    }
-                    else
-                    if (type == "Rectangle")
-                    {
-                        an.type = ROI.Type.Rectangle;
-                        an.id = b.meta.getRectangleID(im, sc);
-                        double px = b.meta.getRectangleX(im, sc).doubleValue();
-                        double py = b.meta.getRectangleY(im, sc).doubleValue();
-                        double pw = b.meta.getRectangleWidth(im, sc).doubleValue();
-                        double ph = b.meta.getRectangleHeight(im, sc).doubleValue();
-                        an.Rect = b.ToStageSpace(new RectangleD(px, py, pw, ph));
-                        ome.xml.model.primitives.NonNegativeInteger nz = b.meta.getRectangleTheZ(im, sc);
-                        if (nz != null)
-                            co.Z = nz.getNumberValue().intValue();
-                        ome.xml.model.primitives.NonNegativeInteger nc = b.meta.getRectangleTheC(im, sc);
-                        if (nc != null)
-                            co.C = nc.getNumberValue().intValue();
-                        ome.xml.model.primitives.NonNegativeInteger nt = b.meta.getRectangleTheT(im, sc);
-                        if (nt != null)
-                            co.T = nt.getNumberValue().intValue();
-                        an.coord = co;
-
-                        an.Text = b.meta.getRectangleText(im, sc);
-                        ome.units.quantity.Length fl = b.meta.getRectangleFontSize(im, sc);
-                        if (fl != null)
-                            an.fontSize = fl.value().intValue();
-                        ome.xml.model.enums.FontFamily ff = b.meta.getRectangleFontFamily(im, sc);
-                        if (ff != null)
-                            an.family = ff.name();
-                        ome.xml.model.primitives.Color col = b.meta.getRectangleStrokeColor(im, sc);
-                        if (col != null)
-                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
-                        ome.units.quantity.Length fw = b.meta.getRectangleStrokeWidth(im, sc);
-                        if (fw != null)
-                            an.strokeWidth = (float)fw.value().floatValue();
-                        ome.xml.model.primitives.Color colf = b.meta.getRectangleFillColor(im, sc);
-                        if (colf != null)
-                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
-                        ome.xml.model.enums.FillRule fr = b.meta.getRectangleFillRule(im, sc);
-                        continue;
-                    }
-                    else
-                    if (type == "Ellipse")
-                    {
-                        an.type = ROI.Type.Ellipse;
-                        an.id = b.meta.getEllipseID(im, sc);
-                        double px = b.meta.getEllipseX(im, sc).doubleValue();
-                        double py = b.meta.getEllipseY(im, sc).doubleValue();
-                        double ew = b.meta.getEllipseRadiusX(im, sc).doubleValue();
-                        double eh = b.meta.getEllipseRadiusY(im, sc).doubleValue();
-                        //We convert the ellipse radius to Rectangle
-                        double w = ew * 2;
-                        double h = eh * 2;
-                        double x = px - ew;
-                        double y = py - eh;
-                        an.Rect = b.ToStageSpace(new RectangleD(x, y, w, h));
-                        ome.xml.model.primitives.NonNegativeInteger nz = b.meta.getEllipseTheZ(im, sc);
-                        if (nz != null)
-                            co.Z = nz.getNumberValue().intValue();
-                        ome.xml.model.primitives.NonNegativeInteger nc = b.meta.getEllipseTheC(im, sc);
-                        if (nc != null)
-                            co.C = nc.getNumberValue().intValue();
-                        ome.xml.model.primitives.NonNegativeInteger nt = b.meta.getEllipseTheT(im, sc);
-                        if (nt != null)
-                            co.T = nt.getNumberValue().intValue();
-                        an.coord = co;
-                        an.Text = b.meta.getEllipseText(im, sc);
-                        ome.units.quantity.Length fl = b.meta.getEllipseFontSize(im, sc);
-                        if (fl != null)
-                            an.fontSize = fl.value().intValue();
-                        ome.xml.model.enums.FontFamily ff = b.meta.getEllipseFontFamily(im, sc);
-                        if (ff != null)
-                            an.family = ff.name();
-                        ome.xml.model.primitives.Color col = b.meta.getEllipseStrokeColor(im, sc);
-                        if (col != null)
-                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
-                        ome.units.quantity.Length fw = b.meta.getEllipseStrokeWidth(im, sc);
-                        if (fw != null)
-                            an.strokeWidth = (float)fw.value().floatValue();
-                        ome.xml.model.primitives.Color colf = b.meta.getEllipseFillColor(im, sc);
-                        if (colf != null)
-                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
-                    }
-                    else
-                    if (type == "Polygon")
-                    {
-                        an.type = ROI.Type.Polygon;
-                        an.id = b.meta.getPolygonID(im, sc);
-                        an.closed = true;
-                        string pxs = b.meta.getPolygonPoints(im, sc);
-                        PointD[] pts = an.stringToPoints(pxs);
-                        pts = b.ToStageSpace(pts);
-                        if (pts.Length > 100)
-                        {
-                            an.type = ROI.Type.Freeform;
-                        }
-                        an.AddPoints(pts);
-                        ome.xml.model.primitives.NonNegativeInteger nz = b.meta.getPolygonTheZ(im, sc);
-                        if (nz != null)
-                            co.Z = nz.getNumberValue().intValue();
-                        ome.xml.model.primitives.NonNegativeInteger nc = b.meta.getPolygonTheC(im, sc);
-                        if (nc != null)
-                            co.C = nc.getNumberValue().intValue();
-                        ome.xml.model.primitives.NonNegativeInteger nt = b.meta.getPolygonTheT(im, sc);
-                        if (nt != null)
-                            co.T = nt.getNumberValue().intValue();
-                        an.coord = co;
-                        an.Text = b.meta.getPolygonText(im, sc);
-                        ome.units.quantity.Length fl = b.meta.getPolygonFontSize(im, sc);
-                        if (fl != null)
-                            an.fontSize = fl.value().intValue();
-                        ome.xml.model.enums.FontFamily ff = b.meta.getPolygonFontFamily(im, sc);
-                        if (ff != null)
-                            an.family = ff.name();
-                        ome.xml.model.primitives.Color col = b.meta.getPolygonStrokeColor(im, sc);
-                        if (col != null)
-                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
-                        ome.units.quantity.Length fw = b.meta.getPolygonStrokeWidth(im, sc);
-                        if (fw != null)
-                            an.strokeWidth = (float)fw.value().floatValue();
-                        ome.xml.model.primitives.Color colf = b.meta.getPolygonFillColor(im, sc);
-                        if (colf != null)
-                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
-                    }
-                    else
-                    if (type == "Polyline")
-                    {
-                        an.type = ROI.Type.Polyline;
-                        an.id = b.meta.getPolylineID(im, sc);
-                        string pxs = b.meta.getPolylinePoints(im, sc);
-                        PointD[] pts = an.stringToPoints(pxs);
-                        for (int pi = 0; pi < pts.Length; pi++)
-                        {
-                            pts[pi] = b.ToStageSpace(pts[pi]);
-                        }
-                        an.AddPoints(an.stringToPoints(pxs));
-                        ome.xml.model.primitives.NonNegativeInteger nz = b.meta.getPolylineTheZ(im, sc);
-                        if (nz != null)
-                            co.Z = nz.getNumberValue().intValue();
-                        ome.xml.model.primitives.NonNegativeInteger nc = b.meta.getPolylineTheC(im, sc);
-                        if (nc != null)
-                            co.C = nc.getNumberValue().intValue();
-                        ome.xml.model.primitives.NonNegativeInteger nt = b.meta.getPolylineTheT(im, sc);
-                        if (nt != null)
-                            co.T = nt.getNumberValue().intValue();
-                        an.coord = co;
-                        an.Text = b.meta.getPolylineText(im, sc);
-                        ome.units.quantity.Length fl = b.meta.getPolylineFontSize(im, sc);
-                        if (fl != null)
-                            an.fontSize = fl.value().intValue();
-                        ome.xml.model.enums.FontFamily ff = b.meta.getPolylineFontFamily(im, sc);
-                        if (ff != null)
-                            an.family = ff.name();
-                        ome.xml.model.primitives.Color col = b.meta.getPolylineStrokeColor(im, sc);
-                        if (col != null)
-                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
-                        ome.units.quantity.Length fw = b.meta.getPolylineStrokeWidth(im, sc);
-                        if (fw != null)
-                            an.strokeWidth = (float)fw.value().floatValue();
-                        ome.xml.model.primitives.Color colf = b.meta.getPolylineFillColor(im, sc);
-                        if (colf != null)
-                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
-                    }
-                    else
-                    if (type == "Label")
-                    {
-                        an.type = ROI.Type.Label;
-                        an.id = b.meta.getLabelID(im, sc);
-
-                        ome.xml.model.primitives.NonNegativeInteger nz = b.meta.getLabelTheZ(im, sc);
-                        if (nz != null)
-                            co.Z = nz.getNumberValue().intValue();
-                        ome.xml.model.primitives.NonNegativeInteger nc = b.meta.getLabelTheC(im, sc);
-                        if (nc != null)
-                            co.C = nc.getNumberValue().intValue();
-                        ome.xml.model.primitives.NonNegativeInteger nt = b.meta.getLabelTheT(im, sc);
-                        if (nt != null)
-                            co.T = nt.getNumberValue().intValue();
-                        an.coord = co;
-
-                        ome.units.quantity.Length fl = b.meta.getLabelFontSize(im, sc);
-                        if (fl != null)
-                            an.fontSize = fl.value().intValue();
-                        ome.xml.model.enums.FontFamily ff = b.meta.getLabelFontFamily(im, sc);
-                        if (ff != null)
-                            an.family = ff.name();
-                        ome.xml.model.primitives.Color col = b.meta.getLabelStrokeColor(im, sc);
-                        if (col != null)
-                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
-                        ome.units.quantity.Length fw = b.meta.getLabelStrokeWidth(im, sc);
-                        if (fw != null)
-                            an.strokeWidth = (float)fw.value().floatValue();
-                        ome.xml.model.primitives.Color colf = b.meta.getLabelFillColor(im, sc);
-                        if (colf != null)
-                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
-                        PointD p = new PointD(b.meta.getLabelX(im, sc).doubleValue(), b.meta.getLabelY(im, sc).doubleValue());
-                        an.AddPoint(b.ToStageSpace(p));
-                        an.Text = b.meta.getLabelText(im, sc);
-                    }
-                    if (b.Volume.Intersects(new PointD(an.BoundingBox.X, an.BoundingBox.Y)))
-                        b.Annotations.Add(an);
-                }
-            }
-
-            List<string> serFiles = new List<string>();
-            serFiles.AddRange(reader.getSeriesUsedFiles());
-
-            b.Buffers = new List<Bitmap>();
-            // read the image data bytes
-            int pages = reader.getImageCount();
-            int z = 0;
-            int c = 0;
-            int t = 0;
-            /*
-            if(file.EndsWith(".tif"))
-            {
-                Bitmap bf = GetTiffTile(b, new ZCT(0, 0, 0), serie, tilex, tiley, tileSizeX, tileSizeY);
-            }
-            */
-            //else
-            for (int p = 0; p < pages; p++)
-            {
-                Bitmap bf;byte[] bytes;
-                if (tile)
-                {
-                    if (tilex < 0)
-                        tilex = 0;
-                    if (tiley < 0)
-                        tiley = 0;
-                    int sx = tileSizeX;
-                    if (tilex + tileSizeX > SizeX)
-                        sx -= (tilex + (tileSizeX - 1)) - (SizeX - 1);
-                    int sy = tileSizeY;
-                    if (tiley + tileSizeY > SizeY)
-                        sy -= (tiley + (tileSizeY - 1)) - (SizeY - 1);
-                    bytes = reader.openBytes(p, tilex, tiley, sx - 1, sy - 1);
-                    bf = new Bitmap(file, sx - 1, sy - 1, PixelFormat, bytes, new ZCT(z, c, t), p, b.littleEndian);
-                    //bf.SwitchRedBlue();
-                    //b.Buffers.Add(bf);
-                }
-                else
-                {
-                    bytes = reader.openBytes(p);
-                    bf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(z, c, t), p, b.littleEndian);
-                    //b.Buffers.Add(bf);
-                }
-                bool planes = false;
-                if (file.EndsWith(".tif"))
-                {
-                    Tiff im = Tiff.Open(file, "r");
-                    int strid = im.ScanlineSize();
-                    if (stride != strid)
-                        planes = true;
-                    im.Close();
-                }
-                else if (file.EndsWith("ndpi"))
-                    planes = true;
-                if (planes)
-                {
-                    b.Buffers.Add(GetTile(b, new ZCT(z, c, t), serie, tilex, tiley, tileSizeX, tileSizeY));
-                }
-                //We add the buffers to thresholding image statistics calculation threads.
-                Statistics.CalcStatistics(bf);
-                //Application.DoEvents();
-            }
-            
-            b.UpdateCoords(b.SizeZ, b.SizeC, b.SizeT, order);
-            AutoThreshold(b, false);
-            if (b.bitsPerPixel > 8)
-                b.StackThreshold(true);
-            else
-                b.StackThreshold(false);
-            //Recorder.AddLine("Bio.BioImage.OpenOMETiled(\"" + file + "\"," + serie + ");");
-            b.Loading = false;
-            return b;
-        }
-        /* Creating an instance of the ImageReader class. */
         ImageReader imRead;
         /// It reads a tile from a file, and returns a bitmap
         /// 
@@ -6341,8 +5702,8 @@ namespace BioGTK
             bool littleEndian = b.imRead.isLittleEndian();
             int RGBChannelCount = b.imRead.getRGBChannelCount();
             b.bitsPerPixel = b.imRead.getBitsPerPixel();
+
             PixelFormat PixelFormat = GetPixelFormat(RGBChannelCount, b.bitsPerPixel);
-            Bitmap bf;
             if (tilex < 0)
                 tilex = 0;
             if (tiley < 0)
@@ -6382,38 +5743,43 @@ namespace BioGTK
             {
                 strplane = sx * 4;
             }
-
-            bytes = b.imRead.openBytes(b.Coords[coord.Z, coord.C, coord.Z], tilex, tiley, sx, sy);
-            byte[] rb = new byte[strplane * sy];
-            byte[] gb = new byte[strplane * sy];
-            byte[] bb = new byte[strplane * sy];
-            Bitmap[] bfs = new Bitmap[3];
-            for (int y = 0; y < sy; y++)
-            {
-                for (int x = 0; x < strplane; x++)
-                {
-                    rb[((strplane) * y) + x] = bytes[((strplane) * y) + x];
-                    gb[((strplane) * y) + x] = bytes[((strplane) * y) + x];
-                    bb[((strplane) * y) + x] = bytes[((strplane) * y) + x];
-                }
-            }
-            Bitmap binf = null;
-            if (b.bitsPerPixel == 8)
-            {
-                bfs[0] = new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, rb, new ZCT(0, 0, 0), p, littleEndian);
-                bfs[1] = new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, gb, new ZCT(0, 0, 0), p, littleEndian);
-                bfs[2] = new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, bb, new ZCT(0, 0, 0), p, littleEndian);
-                binf = Bitmap.RGB8To24(bfs);
-            }
-            else
-            {
-                bfs[0] = new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, rb, new ZCT(0, 0, 0), p, littleEndian);
-                bfs[1] = new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, gb, new ZCT(0, 0, 0), p, littleEndian);
-                bfs[2] = new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, bb, new ZCT(0, 0, 0), p, littleEndian);
-                binf = Bitmap.RGB16To48(bfs);
-            }
-            return binf;
             
+            bytes = b.imRead.openBytes(b.Coords[coord.Z, coord.C, coord.Z], tilex, tiley, sx, sy);
+            if (b.file.EndsWith("tif") || b.file.EndsWith("ndpi"))
+            {
+                byte[] rb = new byte[strplane * sy];
+                byte[] gb = new byte[strplane * sy];
+                byte[] bb = new byte[strplane * sy];
+                Bitmap[] bfs = new Bitmap[3];
+                for (int y = 0; y < sy; y++)
+                {
+                    for (int x = 0; x < strplane; x++)
+                    {
+                        rb[((strplane) * y) + x] = bytes[((strplane) * y) + x];
+                        gb[((strplane) * y) + x] = bytes[((strplane) * y) + x];
+                        bb[((strplane) * y) + x] = bytes[((strplane) * y) + x];
+                    }
+                }
+                Bitmap binf = null;
+                if (b.bitsPerPixel == 8)
+                {
+                    bfs[0] = new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, rb, new ZCT(0, 0, 0), p, littleEndian);
+                    bfs[1] = new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, gb, new ZCT(0, 0, 0), p, littleEndian);
+                    bfs[2] = new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, bb, new ZCT(0, 0, 0), p, littleEndian);
+                    binf = Bitmap.RGB8To24(bfs);
+                }
+                else
+                {
+                    bfs[0] = new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, rb, new ZCT(0, 0, 0), p, littleEndian);
+                    bfs[1] = new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, gb, new ZCT(0, 0, 0), p, littleEndian);
+                    bfs[2] = new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, bb, new ZCT(0, 0, 0), p, littleEndian);
+                    binf = Bitmap.RGB16To48(bfs);
+                }
+                return binf;
+            }
+            Bitmap bm = new Bitmap(b.file, sx, sy, PixelFormat, bytes, coord, p, littleEndian);
+            bm.Stats = Statistics.FromBytes(bm);
+            return bm; 
             //else
             //    bytes = b.imRead.openBytes(b.Coords[coord.Z, coord.C, coord.Z], tilex, tiley, sx, sy);
             //bf = new Bitmap(b.file, sx, sy, PixelFormat, bytes, coord, p, littleEndian);
