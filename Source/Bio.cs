@@ -44,7 +44,6 @@ namespace BioGTK
         /// It adds an image to the list of images
         /// 
         /// @param BioImage A class that contains the image data and other information.
-        
         public static void AddImage(BioImage im, bool newtab)
         {
             im.Filename = GetImageName(im.ID);
@@ -67,7 +66,6 @@ namespace BioGTK
             //App.Image = im;
             //NodeView.viewer.AddTab(im);
         }
-
         /// It takes a string as an argument, and returns the number of times that string appears in the
         /// list of images
         /// 
@@ -319,7 +317,7 @@ namespace BioGTK
         /// @return The X, Y, W, and H values of the rectangle.
         public override string ToString()
         {
-            return X.ToString() + ", " + Y.ToString() + ", " + W.ToString() + ", " + H.ToString();
+            return X.ToString("{0:0.##}") + ", " + Y.ToString("{0:0.##}") + ", " + W.ToString("{0:0.##}") + ", " + H.ToString("{0:0.##}");
         }
 
     }
@@ -458,7 +456,11 @@ namespace BioGTK
             get { return resolution; }
             set { resolution = value; }
         }
-
+        public enum CoordinateSystem
+        {
+            pixel,
+            micron
+        }
         public Type type;
         public static float selectBoxSize = 8f;
         private List<PointD> Points = new List<PointD>();
@@ -499,6 +501,7 @@ namespace BioGTK
         public bool closed = false;
         public bool selected = false;
         public bool subPixel = false;
+        
         /*
         public Size TextSize
         {
@@ -1319,7 +1322,7 @@ namespace BioGTK
         {
             BioImage c = Images.GetImage(id);
             RectangleF r = c.ToImageSpace(new RectangleD(x, y, w, h));
-            Rectangle rec = new Rectangle((int)r.X, (int)r.Y, (int)r.Width, (int)r.Height);
+            Rectangle rec = new Rectangle((int)r.X, (int)r.Y, (int)Math.Abs(r.Width), (int)Math.Abs(r.Height));
             BioImage img = BioImage.Copy(c, false);
             for (int i = 0; i < img.Buffers.Count; i++)
             {
@@ -1330,7 +1333,6 @@ namespace BioGTK
                 img.StackThreshold(true);
             else
                 img.StackThreshold(false);
-            Images.AddImage(img, true);
             Recorder.AddLine("Bio.Filters.Crop(" + '"' + id + '"' + "," + x + "," + y + "," + w + "," + h + ");");
             //App.tabsView.AddTab(img);
             return img;
@@ -2888,6 +2890,8 @@ namespace BioGTK
         /// @return The return value is a double.
         public double ToImageSpaceX(double x)
         {
+            if (isPyramidal)
+                return x;
             return (float)((x - stageSizeX) / physicalSizeX);
         }
         /// > Convert a Y coordinate from stage space to image space
@@ -2897,6 +2901,8 @@ namespace BioGTK
         /// @return The return value is the y-coordinate of the image.
         public double ToImageSpaceY(double y)
         {
+            if (isPyramidal)
+                return y;
             return (float)((y - stageSizeY) / physicalSizeY);
         }
         /// Convert a point in the stage coordinate system to a point in the image coordinate system
@@ -4672,7 +4678,12 @@ namespace BioGTK
                 progFile = files[fi];
                 int serie = fi;
                 string file = files[fi];
+                
                 BioImage b = Images.GetImage(file);
+                if(b.isPyramidal)
+                {
+                    b = OpenOME(b.file, b.resolution, false, false, true, (int)App.viewer.PyramidalOrigin.X, (int)App.viewer.PyramidalOrigin.Y, App.viewer.AllocatedWidth, App.viewer.AllocatedHeight);
+                }
                 // create OME-XML metadata store
 
                 omexml.setImageID("Image:" + serie, serie);
@@ -5101,10 +5112,13 @@ namespace BioGTK
             st.Start();
             BioImage b = new BioImage(file);
             b.Loading = true;
+            if(b.meta == null)
             b.meta = (IMetadata)((OMEXMLService)new ServiceFactory().getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
             string f = file.Replace("\\", "/");
-            if (reader.getCurrentFile() != f)
+            string cf = reader.getCurrentFile();
+            if (cf != f)
             {
+                reader.setMetadataStore(b.meta);
                 reader.setId(file);
             }     
             reader.setSeries(serie);
@@ -5225,7 +5239,13 @@ namespace BioGTK
                 }
                 i++;
             }
-
+            if(b.Channels.Count == 0)
+            {
+                for (int r = 0; r < RGBChannelCount; r++)
+                {
+                    b.Channels.Add(new Channel(r, b.bitsPerPixel, 1));
+                }
+            }
             try
             {
                 bool hasPhysical = false;
@@ -5262,6 +5282,9 @@ namespace BioGTK
             }
             catch (Exception e)
             {
+                b.physicalSizeX = (96 / 2.54) / 1000;
+                b.physicalSizeY = (96 / 2.54) / 1000;
+                b.physicalSizeZ = 1;
                 b.stageSizeX = 0;
                 b.stageSizeY = 0;
                 b.stageSizeZ = 1;
@@ -5645,16 +5668,6 @@ namespace BioGTK
 
                 }
             } while (!stop);
-            if (tile)
-            {
-                double dw = b.physicalSizeX * tilex;
-                double dh = b.physicalSizeY * tiley;
-                double dd = b.physicalSizeZ * b.Buffers.Count;
-                b.Volume.Location = new Point3D(dw + b.imageInfo.StageSizeX, dh + b.imageInfo.StageSizeY, dd + b.imageInfo.StageSizeZ);
-                b.Volume.Width = dw; 
-                b.Volume.Height = dh;
-                b.Volume.Depth = dd;
-            }
             AutoThreshold(b, false);
             if (b.bitsPerPixel > 8)
                 b.StackThreshold(true);
@@ -5702,6 +5715,43 @@ namespace BioGTK
             bool littleEndian = b.imRead.isLittleEndian();
             int RGBChannelCount = b.imRead.getRGBChannelCount();
             b.bitsPerPixel = b.imRead.getBitsPerPixel();
+            b.physicalSizeX = (96 / 2.54) / 1000;
+            b.physicalSizeY = (96 / 2.54) / 1000;
+            b.physicalSizeZ = 1;
+            try
+            {
+                bool hasPhysical = false;
+                if (b.meta.getPixelsPhysicalSizeX(b.series) != null)
+                {
+                    b.physicalSizeX = b.meta.getPixelsPhysicalSizeX(b.series).value().doubleValue();
+                    hasPhysical = true;
+                }
+                if (b.meta.getPixelsPhysicalSizeY(b.series) != null)
+                {
+                    b.physicalSizeY = b.meta.getPixelsPhysicalSizeY(b.series).value().doubleValue();
+                }
+                if (b.meta.getPixelsPhysicalSizeZ(b.series) != null)
+                {
+                    b.physicalSizeZ = b.meta.getPixelsPhysicalSizeZ(b.series).value().doubleValue();
+                }
+                else
+                {
+                    b.physicalSizeZ = 1;
+                }
+
+                if (b.meta.getStageLabelX(b.series) != null)
+                    b.stageSizeX = b.meta.getStageLabelX(b.series).value().doubleValue();
+                if (b.meta.getStageLabelY(b.series) != null)
+                    b.stageSizeY = b.meta.getStageLabelY(b.series).value().doubleValue();
+                if (b.meta.getStageLabelZ(b.series) != null)
+                    b.stageSizeZ = b.meta.getStageLabelZ(b.series).value().doubleValue();
+                else
+                    b.stageSizeZ = 1;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("No Stage Coordinates. PhysicalSize:(" + b.physicalSizeX + "," + b.physicalSizeY + "," + b.physicalSizeZ + ")");
+            }
 
             PixelFormat PixelFormat = GetPixelFormat(RGBChannelCount, b.bitsPerPixel);
             if (tilex < 0)
@@ -5745,35 +5795,26 @@ namespace BioGTK
             }
             
             bytes = b.imRead.openBytes(b.Coords[coord.Z, coord.C, coord.Z], tilex, tiley, sx, sy);
+            
             if (b.file.EndsWith("tif") || b.file.EndsWith("ndpi"))
             {
                 byte[] rb = new byte[strplane * sy];
-                byte[] gb = new byte[strplane * sy];
-                byte[] bb = new byte[strplane * sy];
                 Bitmap[] bfs = new Bitmap[3];
                 for (int y = 0; y < sy; y++)
                 {
                     for (int x = 0; x < strplane; x++)
                     {
                         rb[((strplane) * y) + x] = bytes[((strplane) * y) + x];
-                        gb[((strplane) * y) + x] = bytes[((strplane) * y) + x];
-                        bb[((strplane) * y) + x] = bytes[((strplane) * y) + x];
                     }
                 }
                 Bitmap binf = null;
                 if (b.bitsPerPixel == 8)
                 {
-                    bfs[0] = new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, rb, new ZCT(0, 0, 0), p, littleEndian);
-                    bfs[1] = new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, gb, new ZCT(0, 0, 0), p, littleEndian);
-                    bfs[2] = new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, bb, new ZCT(0, 0, 0), p, littleEndian);
-                    binf = Bitmap.RGB8To24(bfs);
+                    return new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, rb, new ZCT(0, 0, 0), p, littleEndian);
                 }
                 else
                 {
-                    bfs[0] = new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, rb, new ZCT(0, 0, 0), p, littleEndian);
-                    bfs[1] = new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, gb, new ZCT(0, 0, 0), p, littleEndian);
-                    bfs[2] = new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, bb, new ZCT(0, 0, 0), p, littleEndian);
-                    binf = Bitmap.RGB16To48(bfs);
+                    return new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, rb, new ZCT(0, 0, 0), p, littleEndian);
                 }
                 return binf;
             }
@@ -5934,8 +5975,6 @@ namespace BioGTK
             if (tile)
             {
                 bs = new BioImage[1];
-                //For tiled images the series count is the count of pyramidal resolutions for CZI.
-                //This is why some programs fail to open these files.
                 int resCount = reader.getSeriesCount();
                 //OME TIFF resolution count is the actual resolution count.
                 if (resCount == 0)
@@ -6232,7 +6271,7 @@ namespace BioGTK
         private static ImageWriter writer;
         private loci.formats.meta.IMetadata meta;
 
-        //We use UNIX type line endings since they are supported by ImageJ & BioImage.
+        //We use UNIX type line endings since they are supported by ImageJ & Bio.
         public const char NewLine = '\n';
         public const string columns = "ROIID,ROINAME,TYPE,ID,SHAPEINDEX,TEXT,S,C,Z,T,X,Y,W,H,POINTS,STROKECOLOR,STROKECOLORW,FILLCOLOR,FONTSIZE\n";
 

@@ -1777,16 +1777,7 @@ namespace BioGTK
                 return;
             App.tools.ToolUp(pointer, e);
         }
-        public PointD ImageToViewSpace(double x,double y)
-        {
-            double dx = ToViewW(SelectedImage.Volume.Width);
-            double dy = ToViewH(SelectedImage.Volume.Height);
-            PointD orig = new PointD(Origin.X - SelectedImage.Volume.Location.X, Origin.Y - SelectedImage.Volume.Location.Y);
-            PointD diff = new PointD(ToViewW(orig.X), ToViewH(orig.Y));
-            PointD f = new PointD((((x + diff.X)/ dx) * SelectedImage.Volume.Width),(((y + diff.Y) / dy) * SelectedImage.Volume.Height));
-            PointD ff = new PointD(SelectedImage.Volume.Location.X + f.X, SelectedImage.Volume.Location.Y + f.Y);
-            return ff;
-        }
+        
         PointD pd;
         /// The function is called when the user clicks on the image. It checks if the user clicked on
         /// an annotation, and if so, it selects the annotation
@@ -1956,8 +1947,21 @@ namespace BioGTK
             UpdateStatus();
             App.tools.ToolDown(mouseDown, e);
         }
-
         List<ROI> copys = new List<ROI>();
+        public PointD ImageToViewSpace(double x,double y)
+        {
+            if(SelectedImage.isPyramidal)
+            {
+                return new PointD(PyramidalOrigin.X + x, PyramidalOrigin.Y + y);
+            }
+            double dx = ToViewW(SelectedImage.Volume.Width);
+            double dy = ToViewH(SelectedImage.Volume.Height);
+            PointD orig = new PointD(Origin.X - SelectedImage.Volume.Location.X, Origin.Y - SelectedImage.Volume.Location.Y);
+            PointD diff = new PointD(ToViewW(orig.X), ToViewH(orig.Y));
+            PointD f = new PointD((((x + diff.X)/ dx) * SelectedImage.Volume.Width),(((y + diff.Y) / dy) * SelectedImage.Volume.Height));
+            PointD ff = new PointD(SelectedImage.Volume.Location.X + f.X, SelectedImage.Volume.Location.Y + f.Y);
+            return ff;
+        }
         public RectangleD ToViewSpace(RectangleD p)
         {
             PointD d = ToViewSpace(p.X, p.Y);
@@ -1981,6 +1985,10 @@ namespace BioGTK
         }
         public PointD ToViewSpace(double x, double y)
         {
+            if (SelectedImage.isPyramidal)
+            {
+                return new PointD(x, y);
+            }
             double dx = (ToViewSizeW(Origin.X - x)) * Scale.Width;
             double dy = (ToViewSizeH(Origin.Y - y)) * Scale.Height;
             return new PointD(dx, dy);
@@ -1990,25 +1998,45 @@ namespace BioGTK
             PointD d = ToViewSpace(x, y);
             double dw = ToViewSizeW(w);
             double dh = ToViewSizeH(h);
+            if (SelectedImage.isPyramidal)
+            {
+                return new RectangleD(d.X - PyramidalOrigin.X, d.Y - PyramidalOrigin.Y, dw, dh);
+            }
             return new RectangleD(-d.X, -d.Y, dw, dh);
         }
         private double ToViewSizeW(double d)
         {
+            if (SelectedImage.isPyramidal)
+            {
+                return d;
+            }
             double x = (double)(d / PxWmicron) * Scale.Width;
             return x;
         }
         public double ToViewSizeH(double d)
         {
+            if (SelectedImage.isPyramidal)
+            {
+                return d;
+            }
             double y = (double)(d / PxHmicron) * Scale.Width;
             return y;
         }
         public double ToViewW(double d)
         {
+            if (SelectedImage.isPyramidal)
+            {
+                return d;
+            }
             double x = (double)(d / PxWmicron) * Scale.Width;
             return x;
         }
         public double ToViewH(double d)
         {
+            if (SelectedImage.isPyramidal)
+            {
+                return d;
+            }
             double y = (double)(d / PxHmicron) * Scale.Height;
             return y;
         }
@@ -2045,10 +2073,18 @@ namespace BioGTK
         }
         public double ToScreenScaleW(double x)
         {
+            if (SelectedImage.isPyramidal)
+            {
+                return (double)x;
+            }
             return (x * PxWmicron) * Scale.Width;
         }
         public double ToScreenScaleH(double y)
         {
+            if (SelectedImage.isPyramidal)
+            {
+                return (double)y;
+            }
             return (y * PxHmicron) * Scale.Height;
         }
         public PointF ToScreenScale(PointD p)
