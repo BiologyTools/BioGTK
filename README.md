@@ -29,7 +29,7 @@ A .NET application & library for editing & annotating various microscopy image f
 
 - Easy freeform annotation with magic select tool which selects based on blob detection.
 
-- Whole slide image supported formats: .ndpi, .czi, .ome.tif. 
+- Supports all Bioformats supported images including whole slide images.
 
 ## Dependencies
 - [BioFormats.Net](https://github.com/GDanovski/BioFormats.Net)
