@@ -765,6 +765,7 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Ok)
                 return;
             BioImage.ExportROIsCSV(filechooser.Filename, ImageView.SelectedImage.Annotations);
+            filechooser.Destroy();
         }
         /// This function is called when the user clicks on the "Import ROIs from CSV" menu item
         /// 

@@ -1550,7 +1550,7 @@ namespace BioGTK
         public void UpdateStatus()
         {
             statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
-                mousePoint + mouseColor + ", " + SelectedImage.Buffers[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X + ", " + SelectedImage.Volume.Location.Y + ") " + Origin.ToString();
+                mousePoint + mouseColor + ", " + SelectedImage.Buffers[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") " + Origin.ToString();
         }
         /// It updates the view.
         public void UpdateView()
@@ -1636,7 +1636,7 @@ namespace BioGTK
             PointD ip = new PointD((p.X - origin.X) / pxWmicron, (p.Y - origin.Y) / pxHmicron);
             App.tools.ToolMove(p, e);
             Tools.currentTool.Rectangle = new RectangleD(mouseDown.X, mouseDown.Y, p.X - mouseDown.X, p.Y - mouseDown.Y);
-            mousePoint = "(" + (p.X) + ", " + (p.Y) + ")";
+            mousePoint = "(" + (p.X.ToString("F")) + ", " + (p.Y.ToString("F")) + ")";
             //pd = p;
             if (Tools.currentTool.type == Tools.Tool.Type.pointSel && (e.Event.State.HasFlag(ModifierType.ControlMask) && e.Event.State.HasFlag(ModifierType.Button1Mask)))
             {

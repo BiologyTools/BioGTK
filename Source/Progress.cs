@@ -30,13 +30,33 @@ namespace BioGTK
                 Application.Invoke(delegate
                 {
                     progressBar.Fraction = value;
+                    statusLabel.Text = BioImage.status;
                 });
             }
         }
         public string Text
         {
             get { return progLabel.Text; }
-            set { progLabel.Text = value; }
+            set 
+            {
+                // update progress bar on main UI thread
+                Application.Invoke(delegate
+                {
+                    progLabel.Text = value;
+                });
+            }
+        }
+        public string Status
+        {
+            get { return statusLabel.Text; }
+            set
+            { 
+                // update progress bar on main UI thread
+                Application.Invoke(delegate
+                {
+                    statusLabel.Text = value;
+                });
+            }
         }
 #pragma warning disable 649
 
@@ -44,6 +64,8 @@ namespace BioGTK
         private ProgressBar progressBar;
         [Builder.Object]
         private Label progLabel;
+        [Builder.Object]
+        private Label statusLabel;
 #pragma warning restore 649
 
         #endregion

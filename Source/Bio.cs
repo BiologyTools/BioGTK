@@ -317,12 +317,16 @@ namespace BioGTK
         /// @return The X, Y, W, and H values of the rectangle.
         public override string ToString()
         {
-            return X.ToString("{0:0.##}") + ", " + Y.ToString("{0:0.##}") + ", " + W.ToString("{0:0.##}") + ", " + H.ToString("{0:0.##}");
+            double w = Math.Round(W, 2, MidpointRounding.ToZero);
+            double h = Math.Round(H, 2, MidpointRounding.ToZero);
+            double x = Math.Round(X, 2, MidpointRounding.ToZero);
+            double y = Math.Round(Y, 2, MidpointRounding.ToZero);
+            return x + ", " + y + ", " + w + ", " + h;
         }
 
     }
 
-/* The ROI class is a class that contains a list of points, a bounding box, and a type */
+    /* The ROI class is a class that contains a list of points, a bounding box, and a type */
     public class ROI
     {
         /* Defining an enum. */
@@ -892,7 +896,11 @@ namespace BioGTK
         
         public override string ToString()
         {
-            return type.ToString() + ", " + Text + " (" + W + ", " + H + "); " + " (" + Point.X + ", " + Point.Y + ") " + coord.ToString();
+            double w = Math.Round(W, 2, MidpointRounding.ToZero);
+            double h = Math.Round(H, 2, MidpointRounding.ToZero);
+            double x = Math.Round(Point.X, 2, MidpointRounding.ToZero);
+            double y = Math.Round(Point.Y, 2, MidpointRounding.ToZero);
+            return type.ToString() + ", " + Text + " (" + w + ", " + h + ") " + " (" + x + ", " + y + ") " + coord.ToString();
         }
     }
     
@@ -3475,7 +3483,6 @@ namespace BioGTK
         private static ExtractChannel extractR = new ExtractChannel(AForge.Imaging.RGB.R);
         private static ExtractChannel extractG = new ExtractChannel(AForge.Imaging.RGB.G);
         private static ExtractChannel extractB = new ExtractChannel(AForge.Imaging.RGB.B);
-        public static bool headless = false;
 
         /// > Get the image at the specified coordinates
         /// 
@@ -4672,7 +4679,7 @@ namespace BioGTK
                 File.Delete(f);
             loci.formats.meta.IMetadata omexml = service.createOMEXMLMetadata();
             progressValue = 0;
-            status = "Saving OME Image";
+            status = "Saving OME Image Metadata.";
             for (int fi = 0; fi < files.Length; fi++)
             {
                 progFile = files[fi];
@@ -4983,6 +4990,7 @@ namespace BioGTK
             }
             writer.setMetadataRetrieve(omexml);
             writer.setId(f);
+            status = "Saving OME Image Planes.";
             for (int i = 0; i < files.Length; i++)
             {
                 string file = files[i];
@@ -5015,6 +5023,7 @@ namespace BioGTK
 
             } while (!stop);
         }
+
         public static BioImage OpenOME(string file, bool tab)
         {
             if (!OMESupport())
@@ -5108,7 +5117,6 @@ namespace BioGTK
                 throw new InvalidDataException("File is empty or null");
             progressValue = 0;
             progFile = file;
-            status = "Opening OME Image";
             st.Start();
             BioImage b = new BioImage(file);
             b.Loading = true;
@@ -5116,11 +5124,15 @@ namespace BioGTK
             b.meta = (IMetadata)((OMEXMLService)new ServiceFactory().getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
             string f = file.Replace("\\", "/");
             string cf = reader.getCurrentFile();
+            if(cf != null)
+            cf = cf.Replace("\\", "/");
             if (cf != f)
             {
+                status = "Opening OME Image.";
                 reader.setMetadataStore(b.meta);
                 reader.setId(file);
-            }     
+            }
+            status = "Reading OME Metadata.";
             reader.setSeries(serie);
             int RGBChannelCount = reader.getRGBChannelCount();
             b.bitsPerPixel = reader.getBitsPerPixel();
@@ -5601,6 +5613,7 @@ namespace BioGTK
             int z = 0;
             int c = 0;
             int t = 0;
+            status = "Reading OME Image Planes";
             for (int p = 0; p < pages; p++)
             {
                 Bitmap bf;
@@ -5646,6 +5659,7 @@ namespace BioGTK
                         zc = b.meta.getPlaneTheZ(serie, bi).getNumberValue().intValue();
                     if (b.meta.getPlaneTheC(serie, bi) != null)
                         tc = b.meta.getPlaneTheT(serie, bi).getNumberValue().intValue();
+                    pl.Coordinate = new ZCT(zc, cc, tc);
                     if (b.meta.getPlaneDeltaT(serie, bi) != null)
                         pl.Delta = b.meta.getPlaneDeltaT(serie, bi).value().doubleValue();
                     if (b.meta.getPlaneExposureTime(serie, bi) != null)
@@ -5772,7 +5786,6 @@ namespace BioGTK
                 return null;
             if (sy <= 0)
                 return null;
-            byte[] bytes = null;
             int strplane = 0;
             if (RGBChannelCount == 1)
             {
@@ -5794,38 +5807,64 @@ namespace BioGTK
                 strplane = sx * 4;
             }
             
-            bytes = b.imRead.openBytes(b.Coords[coord.Z, coord.C, coord.Z], tilex, tiley, sx, sy);
-            
-            if (b.file.EndsWith("tif") || b.file.EndsWith("ndpi"))
+            byte[] bytesr = b.imRead.openBytes(b.Coords[coord.Z, coord.C, coord.T], tilex, tiley, sx, sy);
+            bool interleaved = b.imRead.isInterleaved();
+            if (!interleaved)
             {
                 byte[] rb = new byte[strplane * sy];
-                Bitmap[] bfs = new Bitmap[3];
+                byte[] gb = new byte[strplane * sy];
+                byte[] bb = new byte[strplane * sy];
+                int ind = 0;
                 for (int y = 0; y < sy; y++)
                 {
-                    for (int x = 0; x < strplane; x++)
+                    for (int st = 0; st < strplane; st++)
                     {
-                        rb[((strplane) * y) + x] = bytes[((strplane) * y) + x];
+                        rb[((strplane) * y) + st] = bytesr[((strplane) * y) + st];
+                        ind++;
                     }
                 }
-                Bitmap binf = null;
+                byte[] bytes = new byte[ind];
+                Array.Copy(bytesr, ind, bytes, 0, ind);
+                for (int y = 0; y < sy; y++)
+                {
+                    int x = 0;
+                    for (int st = 0; st < strplane; st++)
+                    {
+                        int i = ((strplane) * y) + x;
+                        gb[i] = bytes[((strplane) * y) + st];
+                        x++;
+                    }
+                }
+                Array.Copy(bytesr, ind * 2, bytes, 0, ind);
+                for (int y = 0; y < sy; y++)
+                {
+                    int x = 0;
+                    for (int st = 0; st < strplane; st++)
+                    {
+                        int i = ((strplane) * y) + x;
+                        bb[i] = bytes[((strplane) * y) + st];
+                        x++;
+                    }
+                }
+                Bitmap[] bms = new Bitmap[3];
                 if (b.bitsPerPixel == 8)
                 {
-                    return new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, rb, new ZCT(0, 0, 0), p, littleEndian);
+                    bms[2] = new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, rb, new ZCT(0, 0, 0), p, littleEndian);
+                    bms[1] = new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, gb, new ZCT(0, 0, 0), p, littleEndian);
+                    bms[0] = new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, bb, new ZCT(0, 0, 0), p, littleEndian);
+                    return Bitmap.RGB8To24(bms);
                 }
                 else
                 {
-                    return new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, rb, new ZCT(0, 0, 0), p, littleEndian);
+                    bms[2] = new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, rb, new ZCT(0, 0, 0), p, littleEndian);
+                    bms[1] = new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, gb, new ZCT(0, 0, 0), p, littleEndian);
+                    bms[0] = new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, bb, new ZCT(0, 0, 0), p, littleEndian);
+                    return Bitmap.RGB16To48(bms);
                 }
-                return binf;
             }
-            Bitmap bm = new Bitmap(b.file, sx, sy, PixelFormat, bytes, coord, p, littleEndian);
+            Bitmap bm = new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, littleEndian);
             bm.Stats = Statistics.FromBytes(bm);
             return bm; 
-            //else
-            //    bytes = b.imRead.openBytes(b.Coords[coord.Z, coord.C, coord.Z], tilex, tiley, sx, sy);
-            //bf = new Bitmap(b.file, sx, sy, PixelFormat, bytes, coord, p, littleEndian);
-            //bf.SwitchRedBlue();
-            //return bf;
         }
         /// This function sets the minimum and maximum values of the image to the minimum and maximum
         /// values of the stack
@@ -5965,8 +6004,11 @@ namespace BioGTK
             var meta = (IMetadata)((OMEXMLService)new ServiceFactory().getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
             reader.setMetadataStore((MetadataStore)meta);
             file = file.Replace("\\", "/");
-            if(reader.getCurrentFile() != file)
-            reader.setId(file);
+            if (reader.getCurrentFile() != file)
+            {
+                status = "Opening OME Image.";
+                reader.setId(file);
+            }
             bool tile = false;
             if (reader.getOptimalTileWidth() != reader.getSizeX())
                 tile = true;
@@ -6973,7 +7015,7 @@ namespace BioGTK
                     for (int t = 0; t < b.SizeT; t++)
                     {
                         int ind = 0;
-                        if (b.RGBChannelCount > 1)
+                        if (b.RGBChannelCount >= 1)
                             ind = b.Coords[z, 0, t];
                         else
                             ind = b.Coords[z, c, t];
