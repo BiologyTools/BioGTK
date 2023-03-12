@@ -5136,7 +5136,6 @@ namespace BioGTK
             reader.setSeries(serie);
             int RGBChannelCount = reader.getRGBChannelCount();
             b.bitsPerPixel = reader.getBitsPerPixel();
-            //Sometimes getBitsPerPixel will return an incorrect value
             if (b.bitsPerPixel > 16)
             {
                 //pr.Close();
@@ -5729,44 +5728,6 @@ namespace BioGTK
             bool littleEndian = b.imRead.isLittleEndian();
             int RGBChannelCount = b.imRead.getRGBChannelCount();
             b.bitsPerPixel = b.imRead.getBitsPerPixel();
-            b.physicalSizeX = (96 / 2.54) / 1000;
-            b.physicalSizeY = (96 / 2.54) / 1000;
-            b.physicalSizeZ = 1;
-            try
-            {
-                bool hasPhysical = false;
-                if (b.meta.getPixelsPhysicalSizeX(b.series) != null)
-                {
-                    b.physicalSizeX = b.meta.getPixelsPhysicalSizeX(b.series).value().doubleValue();
-                    hasPhysical = true;
-                }
-                if (b.meta.getPixelsPhysicalSizeY(b.series) != null)
-                {
-                    b.physicalSizeY = b.meta.getPixelsPhysicalSizeY(b.series).value().doubleValue();
-                }
-                if (b.meta.getPixelsPhysicalSizeZ(b.series) != null)
-                {
-                    b.physicalSizeZ = b.meta.getPixelsPhysicalSizeZ(b.series).value().doubleValue();
-                }
-                else
-                {
-                    b.physicalSizeZ = 1;
-                }
-
-                if (b.meta.getStageLabelX(b.series) != null)
-                    b.stageSizeX = b.meta.getStageLabelX(b.series).value().doubleValue();
-                if (b.meta.getStageLabelY(b.series) != null)
-                    b.stageSizeY = b.meta.getStageLabelY(b.series).value().doubleValue();
-                if (b.meta.getStageLabelZ(b.series) != null)
-                    b.stageSizeZ = b.meta.getStageLabelZ(b.series).value().doubleValue();
-                else
-                    b.stageSizeZ = 1;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("No Stage Coordinates. PhysicalSize:(" + b.physicalSizeX + "," + b.physicalSizeY + "," + b.physicalSizeZ + ")");
-            }
-
             PixelFormat PixelFormat = GetPixelFormat(RGBChannelCount, b.bitsPerPixel);
             if (tilex < 0)
                 tilex = 0;
@@ -5786,84 +5747,68 @@ namespace BioGTK
                 return null;
             if (sy <= 0)
                 return null;
-            int strplane = 0;
+            int stride;
             if (RGBChannelCount == 1)
             {
                 if (b.bitsPerPixel > 8)
-                    strplane = sx * 2;
+                    stride = sx * 2;
                 else
-                    strplane = sx;
+                    stride = sx;
             }
             else
             if (RGBChannelCount == 3)
             {
                 if (b.bitsPerPixel > 8)
-                    strplane = sx * 2;
+                    stride = sx * 2 * 3;
                 else
-                    strplane = sx;
+                    stride = sx * 3;
             }
             else
             {
-                strplane = sx * 4;
+                stride = sx * 4;
             }
-            
             byte[] bytesr = b.imRead.openBytes(b.Coords[coord.Z, coord.C, coord.T], tilex, tiley, sx, sy);
             bool interleaved = b.imRead.isInterleaved();
             if (!interleaved)
             {
-                byte[] rb = new byte[strplane * sy];
-                byte[] gb = new byte[strplane * sy];
-                byte[] bb = new byte[strplane * sy];
-                int ind = 0;
-                for (int y = 0; y < sy; y++)
+                int strplane;
+                if (b.bitsPerPixel > 8)
+                    strplane = sx * 2;
+                else
+                    strplane = sx;
+                int ind = strplane * sy;
+                byte[] bytes = new byte[stride * sy];
+                if (RGBChannelCount == 1)
                 {
-                    for (int st = 0; st < strplane; st++)
+                    for (int y = 0; y < sy; y++)
                     {
-                        rb[((strplane) * y) + st] = bytesr[((strplane) * y) + st];
-                        ind++;
+                        for (int st = 0; st < strplane; st++)
+                        {
+                            bytes[((strplane) * y) + st] = bytesr[((strplane) * y) + st];
+                        }
                     }
-                }
-                byte[] bytes = new byte[ind];
-                Array.Copy(bytesr, ind, bytes, 0, ind);
-                for (int y = 0; y < sy; y++)
-                {
-                    int x = 0;
-                    for (int st = 0; st < strplane; st++)
-                    {
-                        int i = ((strplane) * y) + x;
-                        gb[i] = bytes[((strplane) * y) + st];
-                        x++;
-                    }
-                }
-                Array.Copy(bytesr, ind * 2, bytes, 0, ind);
-                for (int y = 0; y < sy; y++)
-                {
-                    int x = 0;
-                    for (int st = 0; st < strplane; st++)
-                    {
-                        int i = ((strplane) * y) + x;
-                        bb[i] = bytes[((strplane) * y) + st];
-                        x++;
-                    }
-                }
-                Bitmap[] bms = new Bitmap[3];
-                if (b.bitsPerPixel == 8)
-                {
-                    bms[2] = new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, rb, new ZCT(0, 0, 0), p, littleEndian);
-                    bms[1] = new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, gb, new ZCT(0, 0, 0), p, littleEndian);
-                    bms[0] = new Bitmap(b.file, sx, sy, PixelFormat.Format8bppIndexed, bb, new ZCT(0, 0, 0), p, littleEndian);
-                    return Bitmap.RGB8To24(bms);
                 }
                 else
                 {
-                    bms[2] = new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, rb, new ZCT(0, 0, 0), p, littleEndian);
-                    bms[1] = new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, gb, new ZCT(0, 0, 0), p, littleEndian);
-                    bms[0] = new Bitmap(b.file, sx, sy, PixelFormat.Format16bppGrayScale, bb, new ZCT(0, 0, 0), p, littleEndian);
-                    return Bitmap.RGB16To48(bms);
+                    int indg = strplane * sy;
+                    int indb = ind * 2;
+                    for (int y = 0; y < sy; y++)
+                    {
+                        int x = 0;
+                        int str1 = stride * y;
+                        int str2 = strplane * y;
+                        for (int st = 0; st < strplane; st++)
+                        {
+                            bytes[str1 + x + 2] = bytesr[str2 + st];
+                            bytes[str1 + x + 1] = bytesr[indg + str2 + st];
+                            bytes[str1 + x] = bytesr[indb + str2 + st];
+                            x += 3;
+                        }
+                    }
                 }
+                return new Bitmap(b.file, sx, sy, PixelFormat, bytes, coord, p, littleEndian);
             }
             Bitmap bm = new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, littleEndian);
-            bm.Stats = Statistics.FromBytes(bm);
             return bm; 
         }
         /// This function sets the minimum and maximum values of the image to the minimum and maximum

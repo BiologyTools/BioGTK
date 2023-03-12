@@ -212,6 +212,7 @@ namespace BioGTK
                 viewStack.VisibleChild = viewStack.Children[1];
                 scrollH.HeightRequest = im.SizeY;
                 scrollV.WidthRequest = im.SizeX;
+                InitPreview();
             }
             SetupHandlers();
             //pictureBox.WidthRequest = im.SizeX;
@@ -386,7 +387,49 @@ namespace BioGTK
             Pixbuf pixbuf = new Pixbuf(bm.RGBBytes, true, 8, bm.Width, bm.Height, bm.Stride);
             Bitmaps.Add(pixbuf);
         }
-
+        bool showOverview;
+        Rectangle overview;
+        Pixbuf overviewBitmap;
+        public bool ShowOverview
+        {
+            get { return showOverview; }
+            set
+            {
+                showOverview = value;
+                UpdateView();
+            }
+        }
+        private int GetPreviewResolution()
+        {
+            //We will find the first Resolution small enough in bytes to use as a preview image.
+            int i = 0;
+            PixelFormat format = SelectedImage.Resolutions[0].PixelFormat;
+            foreach (Resolution res in SelectedImage.Resolutions)
+            {
+                if (res.PixelFormat == format)
+                {
+                    if (res.SizeInBytes < 1e+9 * 0.05f)
+                        return i;
+                }//Also the macro && label resolutions are often in a different pixel format
+                else
+                    return i - 1;
+                i++;
+            }
+            return 0;
+        }
+        public void InitPreview()
+        {
+            if (SelectedImage.Resolutions.Count == 1)
+                return;
+            overview = new Rectangle(0, 0, 200, 80);
+            int r = GetPreviewResolution();
+            BioImage b = BioImage.OpenOME(SelectedImage.file, r, false, false, true, 0, 0, SelectedImage.Resolutions[r].SizeX, SelectedImage.Resolutions[r].SizeY);
+            AForge.Imaging.Filters.ResizeBilinear re = new AForge.Imaging.Filters.ResizeBilinear(200, 80);
+            Bitmap bm = re.Apply((Bitmap)b.Buffers[0].ImageRGB);
+            overviewBitmap = new Pixbuf(bm.Bytes,true,8,bm.Width,bm.Height,bm.Stride);
+            b.Dispose();
+            showOverview = true;
+        }
         #region Handlers
 
         /// <summary> Sets up the handlers. </summary>
@@ -419,7 +462,6 @@ namespace BioGTK
                 imageBox.ButtonPressEvent += ImageView_ButtonPressEvent;
                 imageBox.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
                 imageBox.ScrollEvent += ImageView_ScrollEvent;
-                
                 imageBox.Drawn += PictureBox_Drawn;
                 imageBox.SizeAllocated += PictureBox_SizeAllocated;
                 imageBox.AddEvents((int)
@@ -897,19 +939,37 @@ namespace BioGTK
                 if (Bitmaps[i] == null)
                     UpdateImages();
                 RectangleD r = ToViewSpace(im.Volume.Location.X, im.Volume.Location.Y, im.Volume.Width, im.Volume.Height);
-
+                e.Cr.LineWidth = 1;
                 if (SelectedImage.isPyramidal)
                 {
                     e.Cr.Restore(); //g.ResetTransform();   
                     Gdk.CairoHelper.SetSourcePixbuf(e.Cr, Bitmaps[i], 0, 0);
+                    e.Cr.Paint();
+                    if(ShowOverview)
+                    {
+                        Gdk.CairoHelper.SetSourcePixbuf(e.Cr, overviewBitmap, 0, 0);
+                        e.Cr.Paint();
+                        e.Cr.SetSourceColor(FromColor(Color.Gray));
+                        e.Cr.Rectangle(overview.X, overview.Y, overview.Width, overview.Height);
+                        e.Cr.Stroke();
+                        Resolution rs = SelectedImage.Resolutions[Resolution];
+                        double dx = ((double)PyramidalOrigin.X / rs.SizeX) * overview.Width;
+                        double dy = ((double)PyramidalOrigin.Y / rs.SizeY) * overview.Height;
+                        double dw = Math.Ceiling((double)((double)imageBox.AllocatedWidth / rs.SizeX) * overview.Width);
+                        double dh = Math.Ceiling((double)((double)imageBox.AllocatedHeight / rs.SizeY) * overview.Height);
+                        e.Cr.SetSourceColor(FromColor(Color.Red));
+                        e.Cr.Rectangle((int)dx, (int)dy, (int)dw, (int)dh);
+                        e.Cr.Stroke();
+                    }
                 }
                 else
                 {
                     Pixbuf pf = Bitmaps[i].ScaleSimple((int)r.W,(int)r.H, InterpType.Bilinear);
                     Gdk.CairoHelper.SetSourcePixbuf(e.Cr, pf, (int)r.X, (int)r.Y);
                     pf.Dispose();
+                    e.Cr.Paint();
                 }
-                e.Cr.Paint();
+                
                 foreach (ROI an in im.Annotations)
                 {
                     if (Mode == ViewMode.RGBImage)
@@ -1132,7 +1192,6 @@ namespace BioGTK
                         }
                     }
                     rects.Clear();
-                    
                 }
                 if (Tools.currentTool.type == Tools.Tool.Type.select)
                 {
@@ -1521,16 +1580,14 @@ namespace BioGTK
             {
                 if (SelectedImage.Resolutions.Count <= value || value < 0)
                     return;
-                double x = PyramidalOrigin.X * ((double)SelectedImage.Resolutions[resolution].SizeX / (double)SelectedImage.Resolutions[value].SizeX);
-                double y = PyramidalOrigin.Y * ((double)SelectedImage.Resolutions[resolution].SizeY / (double)SelectedImage.Resolutions[value].SizeY);
+                double x = ((double)PyramidalOrigin.X / (double)SelectedImage.Resolutions[resolution].SizeX) * (double)SelectedImage.Resolutions[value].SizeX;
+                double y = ((double)PyramidalOrigin.Y / (double)SelectedImage.Resolutions[resolution].SizeY) * (double)SelectedImage.Resolutions[value].SizeY;
                 scrollH.Adjustment.Upper = SelectedImage.Resolutions[value].SizeX;
                 scrollV.Adjustment.Upper = SelectedImage.Resolutions[value].SizeY;
                 PyramidalOrigin = new Point((int)x, (int)y);
-                SelectedImage.Resolution = value;
                 resolution = value;
                 UpdateImage();
                 UpdateView();
-
             }
         }
         SizeF scale = new SizeF(1, 1);
@@ -1890,7 +1947,6 @@ namespace BioGTK
                 }
                 UpdateView();
             }
-
             if (e.Event.Button == 1)
             {
                 Point s = new Point(SelectedImage.SizeX, SelectedImage.SizeY);
@@ -1942,6 +1998,14 @@ namespace BioGTK
                             mouseColor = ", " + r;
                         }
                     }
+                }
+
+                if(SelectedImage.isPyramidal && overview.IntersectsWith(e.Event.X,e.Event.Y))
+                {
+                    Resolution rs = SelectedImage.Resolutions[Resolution];
+                    double dx = ((e.Event.X) / overview.Width) * rs.SizeX;
+                    double dy = ((e.Event.Y) / overview.Height) * rs.SizeY;
+                    PyramidalOrigin = new Point((int)dx, (int)dy);
                 }
             }
             UpdateStatus();
@@ -2040,8 +2104,6 @@ namespace BioGTK
             double y = (double)(d / PxHmicron) * Scale.Height;
             return y;
         }
-
-
         public PointD ToScreenSpace(double x, double y)
         {
             double fx = ToScreenScaleW(Origin.X - x);
