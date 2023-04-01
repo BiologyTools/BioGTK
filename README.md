@@ -1,10 +1,10 @@
 # BioGTK
 ![alt text](https://github.com/BiologyTools/Bio/blob/master/banner.jpg)
 
-A .NET application & library for editing & annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters & macro functions.Check out the new wiki for [library usage.](https://github.com/BiologyTools/Bio/wiki/Library-Usage) or check out the [documentation.](https://biologytools.github.io/) Supports Windows, Linux and Mac. For Windows & Mac see installation instructions. For Discussion check out the new Discord Server. https://discord.gg/tdeyc6fgpv
+A .NET application & library for editing & annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters & macro functions. Check out the new wiki for [library usage.](https://github.com/BiologyTools/Bio/wiki/Library-Usage) or check out the [documentation.](https://biologytools.github.io/) Supports Windows, Linux and Mac. For Windows & Mac see installation instructions. For Discussion check out the new Discord Server. https://discord.gg/tdeyc6fgpv
 
-[![NuGet version (BioGTK)](https://img.shields.io/nuget/v/BioGTK.svg?style=flat-square)](https://www.nuget.org/packages/BioGTK/2.4.0)
-[![NuGet version (BioGTK)](https://img.shields.io/nuget/dt/BioGTK?color=g)](https://www.nuget.org/packages/BioGTK/2.4.0)
+[![NuGet version (BioGTK)](https://img.shields.io/nuget/v/BioGTK.svg?style=flat-square)](https://www.nuget.org/packages/BioGTK/2.6.0)
+[![NuGet version (BioGTK)](https://img.shields.io/nuget/dt/BioGTK?color=g)](https://www.nuget.org/packages/BioGTK/2.6.0)
 ## Features
 
 - C# scripting with sample tool-script and other sample scripts in "/Scripts/" folder. [See samples](https://github.com/BioMicroscopy/BioImage-Scripts)
@@ -28,8 +28,6 @@ A .NET application & library for editing & annotating various microscopy image f
 - Exporting ROI's from each OME image in a folder of images to CSV.
 
 - Easy freeform annotation with magic select tool which selects based on blob detection.
-
-- Supports all Bioformats supported images including whole slide images.
 
 ## Dependencies
 - [BioFormats.Net](https://github.com/GDanovski/BioFormats.Net)
