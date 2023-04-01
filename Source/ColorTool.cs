@@ -10,12 +10,11 @@ using System.Threading.Tasks;
 
 namespace BioGTK
 {
-    /// <summary> Example Test Form for GTKSharp and Glade. </summary>
+
     public class ColorTool : Gtk.Dialog
     {
         #region Properties
 
-        /// <summary> Used to load in the glade file resource as a window. </summary>
         private Builder _builder;
         bool color1 = false;
 
@@ -120,18 +119,32 @@ namespace BioGTK
             this.DeleteEvent += ColorTool_DeleteEvent;
         }
 
+        /// The OkBut_Clicked function is called when the Ok button is clicked
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void OkBut_Clicked(object sender, EventArgs e)
         {
             this.DefaultResponse = ResponseType.Ok;
             this.Destroy();
         }
 
+        /// When the Cancel button is clicked, the default response is set to cancel and the window is
+        /// destroyed
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void CancelBut_Clicked(object sender, EventArgs e)
         {
             this.DefaultResponse = ResponseType.Cancel;
             this.Destroy();
         }
 
+        /// The function is called when the user clicks the close button on the window. It sets the
+        /// default response to cancel and hides the window
+        /// 
+        /// @param o The object that triggered the event.
+        /// @param DeleteEventArgs This is the event arguments that are passed to the event handler.
         private void ColorTool_DeleteEvent(object o, DeleteEventArgs args)
         {
             DefaultResponse = ResponseType.Cancel;

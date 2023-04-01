@@ -73,6 +73,14 @@ namespace BioGTK
             Hide();
         }
         #endregion
+        /// If the user selects the same image for both A and B, then display a message box and reset
+        /// the B selection to nothing
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs EventArgs is a class that contains no event data. It is used by events that
+        /// do not pass state information to an event handler when an event is raised.
+        /// 
+        /// @return The stackABox.Active and stackBBox.Active are being returned.
         private void StackBBox_Changed(object sender, EventArgs e)
         {
             if (stackABox.Active == -1)
@@ -94,6 +102,13 @@ namespace BioGTK
             }
         }
 
+       /// If the user selects the same image for both A and B, then the program will display a message
+       /// box telling the user to select a different image for either A or B
+       /// 
+       /// @param sender The object that raised the event.
+       /// @param EventArgs System.EventArgs
+       /// 
+       /// @return The image stack.
         private void StackABox_Changed(object sender, EventArgs e)
         {
             if (stackABox.Active == -1)
@@ -119,6 +134,13 @@ namespace BioGTK
             tEndBox.Value = ImageA.SizeT;
         }
 
+/// If the user has selected an image in each stack, then merge the two images and add the result to the
+/// tabsView
+/// 
+/// @param sender The object that raised the event.
+/// @param EventArgs e
+/// 
+/// @return The return type is void.
         private void MergeBut_Clicked(object sender, EventArgs e)
         {
              if (stackABox.Active == -1)
@@ -130,12 +152,20 @@ namespace BioGTK
             UpdateStacks();
         }
 
+        // MergeTBut_Clicked() is a function that is called when the MergeTBut button is clicked
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs This is a class that contains the event data.
         private void MergeTBut_Clicked(object sender, EventArgs e)
         {
             if (ImageA != null)
                 App.tabsView.AddTab(BioImage.MergeT(ImageA));
         }
 
+        /// MergeZBut_Clicked() is a function that is called when the MergeZBut button is clicked
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs This is a class that contains the event data.
         private void MergeZBut_Clicked(object sender, EventArgs e)
         {
             if (ImageA != null)
@@ -143,6 +173,13 @@ namespace BioGTK
             
         }
 
+        /// This function takes the image in the active tab, and creates a new image from a subset of
+        /// the original image's Z, C, and T dimensions
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs 
+        /// 
+        /// @return A new BioImage object.
         private void SubstackBut_Clicked(object sender, EventArgs e)
         {
              if (stackABox.Active == -1)
@@ -152,6 +189,13 @@ namespace BioGTK
             UpdateStacks();
         }
 
+        /// It takes the image in the active tab, splits it into its component channels, and creates a
+        /// new tab for each channel
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs 
+        /// 
+        /// @return The SplitChannels() method returns an array of BioImage objects.
         private void SplitChannelsBut_Clicked(object sender, EventArgs e)
         {
             if (stackABox.Active == -1)
@@ -164,6 +208,7 @@ namespace BioGTK
             UpdateStacks();
         }
 
+        /// It takes a list of images and adds them to a dropdown menu
         public void UpdateStacks()
         {
             var imgs = new ListStore(typeof(string));

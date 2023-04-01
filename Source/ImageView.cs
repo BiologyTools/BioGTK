@@ -48,10 +48,16 @@ namespace BioGTK
             UpdateImage();
             UpdateView();
         }
+        /// It returns the coordinate of the selected image
+        /// 
+        /// @return The Coordinate property of the SelectedImage object.
         public ZCT GetCoordinate()
         {
             return SelectedImage.Coordinate;
         }
+        /// It adds an image to the list of images, and then updates the GUI and the images
+        /// 
+        /// @param BioImage a class that contains the image data and metadata
         public void AddImage(BioImage im)
         {
             Images.Add(im);
@@ -69,6 +75,7 @@ namespace BioGTK
 
         double pxWmicron = 5;
         double pxHmicron = 5;
+       /* A property of the class. */
         public double PxWmicron
         {
             get
@@ -91,6 +98,7 @@ namespace BioGTK
                 pxHmicron = value;
             }
         }
+       /* Getting the selected buffer from the selected image. */
         public static AForge.Bitmap SelectedBuffer
         {
             get
@@ -390,6 +398,7 @@ namespace BioGTK
         bool showOverview;
         Rectangle overview;
         Pixbuf overviewBitmap;
+        /* A property that is used to set the value of the showOverview variable. */
         public bool ShowOverview
         {
             get { return showOverview; }
@@ -399,6 +408,9 @@ namespace BioGTK
                 UpdateView();
             }
         }
+        /// We will find the first Resolution small enough in bytes to use as a preview image
+        /// 
+        /// @return The index of the resolution that is small enough to use as a preview image.
         private int GetPreviewResolution()
         {
             //We will find the first Resolution small enough in bytes to use as a preview image.
@@ -417,6 +429,9 @@ namespace BioGTK
             }
             return 0;
         }
+        /// It takes a large image, resizes it to a small image, and then displays it in a Gtk.Image
+        /// 
+        /// @return A Bitmap
         public void InitPreview()
         {
             if (SelectedImage.Resolutions.Count == 1)
@@ -519,6 +534,9 @@ namespace BioGTK
         public static int endz = 0;
         public static int endc = 0;
         public static int endt = 0;
+        /// It plays the Z-stack of the image in the viewer.
+        /// 
+        /// @return The method is returning a ZCT object.
         private static void PlayZ()
         {
             do
@@ -545,6 +563,10 @@ namespace BioGTK
                 System.Threading.Thread.Sleep(waitz);
             } while (playZ);
         }
+       /// It increments the C coordinate of the image by 1, waits for a specified amount of time, and
+       /// then repeats until the user stops it.
+       /// 
+       /// @return The method is returning a string.
         private static void PlayC()
         {
             do
@@ -570,6 +592,10 @@ namespace BioGTK
                 System.Threading.Thread.Sleep(waitc);
             } while (playC);
         }
+        /// This function is called when the user clicks the play button. It will play the movie in the
+        /// T dimension, and will loop if the user has selected the loop option.
+        /// 
+        /// @return The method is returning a string.
         private static void PlayT()
         {
             do
@@ -595,6 +621,10 @@ namespace BioGTK
                 System.Threading.Thread.Sleep(waitt);
             } while (playT);
         }
+        /// If the user right clicks on the bar, the barMenu pops up
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ButtonPressEventArgs The event that is triggered when a button is pressed.
         private void CBar_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             bar = 2;
@@ -602,6 +632,10 @@ namespace BioGTK
                 barMenu.Popup();
         }
 
+       /// If the user right clicks on the toolbar, the toolbar menu pops up
+       /// 
+       /// @param o The object that the event is being called from.
+       /// @param ButtonPressEventArgs The event that is triggered when a button is pressed.
         private void TBar_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             bar = 1;
@@ -609,6 +643,10 @@ namespace BioGTK
                 barMenu.Popup();
         }
         
+        /// If the user right clicks on the ZBar, the ZBar menu pops up
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ButtonPressEventArgs The event that is triggered when a button is pressed.
         private void ZBar_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             bar = 0;
@@ -616,6 +654,10 @@ namespace BioGTK
                 barMenu.Popup();
         }
 
+        /// If the user clicks on the loop button, then the loop variable for the current bar is toggled
+        /// 
+        /// @param o the object that the event is attached to
+        /// @param ButtonPressEventArgs args
         private void Loop_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             if (bar == 0)
@@ -641,18 +683,31 @@ namespace BioGTK
             }
         }
 
+       /// It creates a new instance of the Play class, and then calls the Show() method on that
+       /// instance
+       /// 
+       /// @param o The object that the event is being called from.
+       /// @param ButtonPressEventArgs The event arguments that are passed to the event handler.
         private void SetValueRange_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Play play = Play.Create();
             play.Show();
         }
 
+        /// This function creates a new instance of the Play class and shows it
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ButtonPressEventArgs The event arguments that are passed to the event handler.
         private void PlaySpeed_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Play play = Play.Create();
             play.Show();
         }
 
+        /// If the bar is 0, then if playZ is true, set playZ to false, else set playZ to true.
+        /// 
+        /// @param o the object that the event is being called on
+        /// @param ButtonPressEventArgs args
         private void Stop_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             if (bar == 0)
@@ -678,6 +733,11 @@ namespace BioGTK
             }
         }
 
+       /// When the play button is pressed, the program checks which bar is selected and then starts a
+       /// thread that will play the selected bar
+       /// 
+       /// @param o the object that called the event
+       /// @param ButtonPressEventArgs args
         private void Play_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             if(bar == 0)
@@ -706,6 +766,10 @@ namespace BioGTK
             }
         }
 
+        /// It takes the selected ROI's and draws them on the image
+        /// 
+        /// @param o the object that called the event
+        /// @param ButtonPressEventArgs 
         private void Fill_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(SelectedBuffer);
@@ -741,6 +805,10 @@ namespace BioGTK
             UpdateView();
         }
 
+        /// Draws the selected annotations on the image
+        /// 
+        /// @param o the object that the event is being called from
+        /// @param ButtonPressEventArgs args
         private void Draw_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(SelectedBuffer);
@@ -797,21 +865,45 @@ namespace BioGTK
             UpdateView();
         }
 
+        /// It pastes the selection.
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk3/stable/GtkWidget.html#GtkWidget-button-press-event
         private void Paste_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             PasteSelection();
         }
 
+        /// It copies the selected text from the textview to the clipboard
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-events-button.html.en
         private void Copy_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             CopySelection();
         }
 
+        /// When the user closes the image tab, the tab is removed from the tab view
+        /// 
+        /// @param o The object that triggered the event
+        /// @param DeleteEventArgs
+        /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-events-delete.html.en
         private void ImageView_DeleteEvent(object o, DeleteEventArgs args)
         {
             App.tabsView.RemoveTab(Images[0].Filename);
         }
 
+        /// When the user clicks on the "ID" button, a text input dialog is created and displayed. If
+        /// the user clicks "OK", the ID of the selected annotation is set to the text entered by the
+        /// user
+        /// 
+        /// @param o the object that the event is being called from
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
+        /// 
+        /// @return The response type of the dialog.
         private void RoiID_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             TextInput ti = TextInput.Create();
@@ -821,6 +913,11 @@ namespace BioGTK
             UpdateView();
         }
 
+       /// This function removes the selected annotations from the image
+       /// 
+       /// @param o The object that the event is being called on.
+       /// @param ButtonPressEventArgs
+       /// https://developer.gnome.org/gtk3/stable/GtkButton.html#GtkButton-clicked
         private void RoiDelete_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             foreach (var item in selectedAnnotations)
@@ -830,11 +927,22 @@ namespace BioGTK
             UpdateView();
         }
 
+        /// When the user clicks the "Go to Origin" button, the viewer's origin is set to the negative
+        /// of the image's location
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-events-button.html.en
         private void GoToOriginMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             App.viewer.Origin = new PointD(-SelectedImage.Volume.Location.X, -SelectedImage.Volume.Location.Y);
         }
 
+        /// This function is called when the user clicks on the "Go to Image" button in the menu
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk3/stable/GtkButton.html#GtkButton-clicked
         private void GoToImageMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             App.viewer.GoToImage();
@@ -842,35 +950,67 @@ namespace BioGTK
 
         #endregion
 
+        /// When the combobox is changed, the third channel of the image is set to the value of the
+        /// combobox
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void BBox_Changed(object sender, EventArgs e)
         {
             SelectedImage.rgbChannels[2] = bBox.Active;
             UpdateView();
         }
 
+        /// When the combobox is changed, the green channel is set to the value of the combobox
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void GBox_Changed(object sender, EventArgs e)
         {
             SelectedImage.rgbChannels[1] = gBox.Active;
             UpdateView();
         }
 
+        /// When the user clicks on the combobox, the function will update the rgbChannels array to
+        /// reflect the new state of the combobox
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         private void RBox_Changed(object sender, EventArgs e)
         {
             SelectedImage.rgbChannels[0] = rBox.Active;
             UpdateView();
         }
 
+        /// When the user releases the mouse button, the scrollbar's value is used to set the origin of
+        /// the pyramidal image
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ButtonReleaseEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonReleaseEventArgs.html
         private void ScrollV_ButtonReleaseEvent(object o, ButtonReleaseEventArgs args)
         {
             PyramidalOrigin = new Point((int)scrollH.Value, (int)scrollV.Value);
         }
 
+        /// When the user releases the scrollbar, the origin of the pyramidal image is updated to the
+        /// scrollbar's current value
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ButtonReleaseEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonReleaseEventArgs.html
         private void ScrollH_ButtonReleaseEvent(object o, ButtonReleaseEventArgs args)
         {
             PyramidalOrigin = new Point((int)scrollH.Value, (int)scrollV.Value);
         }
 
         bool initialized = false;
+       /// If the image is pyramidal, update the image. If the image is not initialized, go to the
+       /// image. Update the view
+       /// 
+       /// @param o The object that the event is being called on.
+       /// @param SizeAllocatedArgs
+       /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-size-allocation.html.en
         private void PictureBox_SizeAllocated(object o, SizeAllocatedArgs args)
         {
             if (SelectedImage.isPyramidal)
@@ -885,6 +1025,13 @@ namespace BioGTK
             UpdateView();
         }
 
+       /// > Draw an ellipse by drawing a circle and then scaling it
+       /// 
+       /// @param g The Cairo.Context object
+       /// @param x The x-coordinate of the upper-left corner of the rectangle that defines the ellipse.
+       /// @param y The y-coordinate of the center of the ellipse.
+       /// @param width The width of the ellipse.
+       /// @param height The height of the ellipse.
         private static void DrawEllipse(Cairo.Context g, double x, double y, double width, double height)
         {
             g.Save();
@@ -896,6 +1043,11 @@ namespace BioGTK
             g.Stroke();
             g.Stroke();
         }
+        /// It takes a System.Drawing.Color and returns a Cairo.Color
+        /// 
+        /// @param Color The color to convert
+        /// 
+        /// @return A Cairo.Color object.
         public static Cairo.Color FromColor(Color color)
         {
             return new Cairo.Color((double)color.R / 255, (double)color.G / 255, (double)color.B / 255);
@@ -1204,6 +1356,12 @@ namespace BioGTK
 
         }
 
+        /// If the scroll direction is up, and the value of the scrollbar is less than the upper limit,
+        /// then increment the value of the scrollbar. If the scroll direction is down, and the value of
+        /// the scrollbar is greater than the lower limit, then decrement the value of the scrollbar
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ScrollEventArgs This is the event that is passed to the event handler.
         private void TBar_ScrollEvent(object o, ScrollEventArgs args)
         {
             if (args.Event.Direction == ScrollDirection.Up)
@@ -1217,6 +1375,12 @@ namespace BioGTK
                     zBar.Value -= 1;
             }
         }
+       /// If the scroll direction is up, and the value of the scrollbar is less than the upper limit,
+       /// then increment the value of the scrollbar. If the scroll direction is down, and the value of
+       /// the scrollbar is greater than the lower limit, then decrement the value of the scrollbar
+       /// 
+       /// @param o The object that the event is being called from.
+       /// @param ScrollEventArgs The event arguments for the scroll event.
         private void CBar_ScrollEvent(object o, ScrollEventArgs args)
         {
             if (args.Event.Direction == ScrollDirection.Up)
@@ -1230,6 +1394,12 @@ namespace BioGTK
                     cBar.Value -= 1;
             }
         }
+        /// If the scroll direction is up, and the value of the scrollbar is less than the upper limit,
+        /// then increment the value of the scrollbar. If the scroll direction is down, and the value of
+        /// the scrollbar is greater than the lower limit, then decrement the value of the scrollbar
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ScrollEventArgs This is the event that is passed to the event handler.
         private void ZBar_ScrollEvent(object o, ScrollEventArgs args)
         {
             if (args.Event.Direction == ScrollDirection.Up)
@@ -1245,6 +1415,14 @@ namespace BioGTK
         }
 
         public static Gdk.Key keyDown = Gdk.Key.Key_3270_Test;
+        /// This function is called when a key is pressed. It checks if the key is a function key, and
+        /// if so, it performs the function
+        /// 
+        /// @param o The object that the event is being called on
+        /// @param KeyPressEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.KeyPressEventArgs.html
+        /// 
+        /// @return The key that was pressed.
         private void ImageView_KeyPressEvent(object o, KeyPressEventArgs e)
         {
             keyDown = e.Event.Key;
@@ -1325,10 +1503,22 @@ namespace BioGTK
             }
             UpdateView();
         }
+        /// The function is called when the user presses a key on the keyboard
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param KeyPressEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.KeyPressEventArgs.html
         private void ImageView_KeyUpEvent(object o, KeyPressEventArgs e)
         {
             keyDown = Gdk.Key.Key_3270_Test;
         }
+        /// The function is called when the user scrolls the mouse wheel. If the user is holding down
+        /// the control key, the function will change the resolution of the image. If the user is not
+        /// holding down the control key, the function will change the z-slice of the image
+        /// 
+        /// @param o the object that the event is being called on
+        /// @param ScrollEventArgs
+        /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-scroll-events.html.en
         private void ImageView_ScrollEvent(object o, ScrollEventArgs args)
         {
             float dx = Scale.Width / 50;
@@ -1372,6 +1562,10 @@ namespace BioGTK
                 }
         }
 
+        /// The function ValueChanged is called when the value of the trackbar is changed.
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void ValueChanged(object? sender, EventArgs e)
         {
             SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
@@ -1425,6 +1619,14 @@ namespace BioGTK
             goToImageMenu.ShowAll();
         }
 
+       /// When a menu item is clicked, find the image that matches the menu item's label, and go to
+       /// that image
+       /// 
+       /// @param o The object that the event is being called on.
+       /// @param ButtonPressEventArgs
+       /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-event-handling.html.en
+       /// 
+       /// @return The return value is the index of the image in the list.
         private void Mi_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             MenuItem menuItem = (MenuItem)o;
@@ -1440,6 +1642,7 @@ namespace BioGTK
             }
         }
 
+       /// It takes the selected ROIs and copies them to the clipboard
         public void CopySelection()
         {
             copys.Clear();
@@ -1455,6 +1658,8 @@ namespace BioGTK
             Clipboard clipboard = Clipboard.Get(Gdk.Selection.Clipboard);
             clipboard.Text = s;
         }
+        /// The function takes the text from the clipboard and splits it into lines. Each line is then
+        /// converted into an ROI object and added to the list of annotations
         public void PasteSelection()
         {
             Clipboard clipboard = Clipboard.Get(Gdk.Selection.Clipboard);
@@ -1494,6 +1699,7 @@ namespace BioGTK
             }
         }
         private ViewMode viewMode = ViewMode.Filtered;
+        /* Setting the view mode of the application. */
         public ViewMode Mode
         {
             get
@@ -1525,6 +1731,7 @@ namespace BioGTK
                 UpdateView();
             }
         }
+        /* A property that returns the R channel of the selected image. */
         public Channel RChannel
         {
             get
@@ -1532,6 +1739,7 @@ namespace BioGTK
                 return SelectedImage.Channels[SelectedImage.rgbChannels[0]];
             }
         }
+        /* A property that returns the G channel of the selected image. */
         public Channel GChannel
         {
             get
@@ -1539,6 +1747,7 @@ namespace BioGTK
                 return SelectedImage.Channels[SelectedImage.rgbChannels[1]];
             }
         }
+/* A property that returns the B channel of the selected image. */
         public Channel BChannel
         {
             get
@@ -1548,6 +1757,7 @@ namespace BioGTK
         }
         PointD origin = new PointD(0, 0);
         Point pyramidalOrigin = new Point(0, 0);
+        /* Origin of the viewer in microns */
         public PointD Origin
         {
             get { return origin; }
@@ -1556,6 +1766,7 @@ namespace BioGTK
                 origin = value;
             }
         }
+        /* Setting the origin of a pyramidal image. */
         public Point PyramidalOrigin
         {
             get { return pyramidalOrigin; }
@@ -1573,6 +1784,7 @@ namespace BioGTK
             }
         }
         int resolution = 0;
+        /* Setting the resolution of the image. */
         public int Resolution
         {
             get { return resolution; }
@@ -1591,6 +1803,7 @@ namespace BioGTK
             }
         }
         SizeF scale = new SizeF(1, 1);
+        /* A property that is used to set the scale of the view. */
         public new SizeF Scale
         {
             get
@@ -1834,7 +2047,6 @@ namespace BioGTK
                 return;
             App.tools.ToolUp(pointer, e);
         }
-        
         PointD pd;
         /// The function is called when the user clicks on the image. It checks if the user clicked on
         /// an annotation, and if so, it selects the annotation
@@ -2012,6 +2224,12 @@ namespace BioGTK
             App.tools.ToolDown(mouseDown, e);
         }
         List<ROI> copys = new List<ROI>();
+        /// It takes a point in the image space and returns the point in the view space
+        /// 
+        /// @param x the x coordinate of the point in the image
+        /// @param y the y coordinate of the point in the image
+        /// 
+        /// @return The point in the image space that corresponds to the point in the view space.
         public PointD ImageToViewSpace(double x,double y)
         {
             if(SelectedImage.isPyramidal)
@@ -2184,10 +2402,17 @@ namespace BioGTK
             }
             return rs;
         }
+        /// This function is used to go to the image at the specified index
         public void GoToImage()
         {
             GoToImage(0);
         }
+        /// It takes an image index and sets the origin and physical size of the image to the values of
+        /// the image at that index
+        /// 
+        /// @param i the index of the image in the list
+        /// 
+        /// @return The method is returning the value of the variable "i"
         public void GoToImage(int i)
         {
             if(pictureBox.AllocatedWidth == 1 || pictureBox.AllocatedHeight== 1) { return; }

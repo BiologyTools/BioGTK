@@ -44,6 +44,7 @@ namespace BioGTK
             Builder builder = new Builder(null, "BioGTK.Glade.Play.glade", null);
             return new Play(builder, builder.GetObject("play").Handle);
         }
+        /* The constructor for the Play class. */
         protected Play(Builder builder, IntPtr handle) : base(handle)
         {
             _builder = builder;

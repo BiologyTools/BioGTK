@@ -75,18 +75,33 @@ namespace BioGTK
             this.DeleteEvent += Resolutions_DeleteEvent;
         }
 
+       /// The function is called when the user clicks the close button on the window. The function
+       /// hides the window and returns true
+       /// 
+       /// @param o The object that the event is being fired from.
+       /// @param DeleteEventArgs
+       /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-events-delete.html.en
         private void Resolutions_DeleteEvent(object o, DeleteEventArgs args)
         {
             Hide();
             args.RetVal = true;
         }
 
+        /// When the user changes the value of the dropdown box, the resolution variable is set to the
+        /// value of the dropdown box, and the label is set to the value of the resolution variable.
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void ResolutionsBox_Changed(object sender, EventArgs e)
         {
             resolution = resolutionsBox.ValueAsInt;
             label.Text = ress[resolution].ToString();
         }
 
+        /// The OkBut_Clicked function is called when the Ok button is clicked
+        /// 
+        /// @param sender The object that sent the event.
+        /// @param EventArgs The event arguments.
         private void OkBut_Clicked(object? sender, EventArgs e)
         {
             this.DefaultResponse = ResponseType.Ok;

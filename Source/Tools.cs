@@ -76,6 +76,7 @@ namespace BioGTK
         public static Rectangle selectionRectangle;
         public static Dictionary<string,Tool> tools = new Dictionary<string, Tool>();
         private AbstractFloodFiller floodFiller = null;
+        /* It's a class that defines a tool */
         public class Tool
         {
             /* Defining an enum. */
@@ -762,6 +763,10 @@ namespace BioGTK
             view.Drawn += View_Drawn;
         }
 
+        /// The function View_DeleteEvent is called when the user clicks the close button on the window
+        /// 
+        /// @param o The object that emitted the signal.
+        /// @param DeleteEventArgs The event arguments.
         private void View_DeleteEvent(object o, DeleteEventArgs args)
         {
             Destroy();
@@ -772,6 +777,10 @@ namespace BioGTK
         static int w = 33;
         static int h = 33;
         static List<Rectangle> rects = new List<Rectangle>();
+        /// It draws the tools in the toolbox
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param DrawnArgs This is a class that contains the Cairo Context and the Gdk Window.
         private void View_Drawn(object o, DrawnArgs e)
         {
             int x = 0;

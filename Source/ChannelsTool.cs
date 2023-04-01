@@ -59,6 +59,7 @@ namespace BioGTK
             Builder builder = new Builder(null, "BioGTK.Glade.ChannelsTool.glade", null);
             return new ChannelsTool(builder, builder.GetObject("chanTool").Handle);
         }
+        /* Creating a new window and populating it with the values from the channels. */
         protected ChannelsTool(Builder builder, IntPtr handle) : base(handle)
         {
             _builder = builder;
@@ -129,22 +130,41 @@ namespace BioGTK
             ShowAll();
         }
 
+        /// The function is called when the user changes the value of the sample box
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void SampleBox_Changed(object sender, EventArgs e)
         {
             UpdateValues();
         }
 
+        /// The function is called when the user clicks the close button on the window. It sets the
+        /// return value of the event to true, which tells the window to close
+        /// 
+        /// @param o The object that the event is being fired from.
+        /// @param DeleteEventArgs The event arguments.
         private void ChannelsTool_DeleteEvent(object o, DeleteEventArgs args)
         {
             args.RetVal = true;
             Hide();
         }
 
+       /// When the user clicks the checkbox, the program will set the histogram's stack histogram
+       /// property to the value of the checkbox
+       /// 
+       /// @param sender The object that raised the event.
+       /// @param EventArgs The event arguments.
         private void MeanStackBox_Clicked(object sender, EventArgs e)
         {
             hist.StackHistogram = meanStackBox.Active;
         }
 
+        /// When the user changes the value of the dropdown box, the value of the graphMax slider is
+        /// changed to the value of the dropdown box
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void MaxUintBox2_Changed(object sender, EventArgs e)
         {
             int selectedIndex = maxUintBox2.Active;
@@ -158,6 +178,11 @@ namespace BioGTK
             }
         }
 
+       /// When the user selects a value from the dropdown list, the value is parsed to an integer and
+       /// then the value of the spin button is set to the integer
+       /// 
+       /// @param sender The object that raised the event.
+       /// @param EventArgs The event arguments.
         private void MaxUintBox_Changed(object sender, EventArgs e)
         {
             int selectedIndex = maxUintBox.Active;
@@ -171,11 +196,18 @@ namespace BioGTK
             }
         }
 
+        /// This function is called when the user changes the number of channels in the dropdown box
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void ChannelsBox_Changed(object sender, EventArgs e)
         {
             UpdateValues();
         }
 
+        /// It updates the values of the GUI elements to reflect the current state of the program
+        /// 
+        /// @return The value of the selected channel.
         private void UpdateValues()
         {
             if (channelsBox.Active == -1)
@@ -216,6 +248,7 @@ namespace BioGTK
             excitationBox.Value = SelectedChannel.Excitation;
         }
 
+        /// It updates the GUI to reflect the current state of the program
         private void UpdateGUI()
         {
             if (SelectedChannel.BitsPerPixel > 8)
@@ -266,6 +299,12 @@ namespace BioGTK
             sampleBox.Adjustment.PageIncrement = 1;
         }
 
+       /// If the image is 8-bit, then the image is thresholded using the 8-bit thresholding algorithm.
+       /// If the image is 16-bit, then the image is thresholded using the 16-bit thresholding algorithm
+       /// 
+       /// @param o The object that the event is being called from.
+       /// @param ButtonPressEventArgs
+       /// https://developer.gnome.org/gtk3/stable/GtkButton.html#GtkButton-clicked
         private void ResetButton_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             if (ImageView.SelectedImage.bitsPerPixel > 8)
@@ -330,6 +369,7 @@ namespace BioGTK
                 sampleBox.Value = value;
             }
         }
+        /// It takes the list of channels and adds them to the ComboBox
         public void UpdateItems()
         {
             channelsBox.Model = null;
@@ -348,6 +388,13 @@ namespace BioGTK
 
         }
 
+        /// When the user changes the minimum value of the histogram, the histogram is updated and the
+        /// image is updated
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs e
+        /// 
+        /// @return The value of the minBox.Value
         private void minBox_ValueChanged(object sender, EventArgs e)
         {
             if (channelsBox.Active == -1)
@@ -362,6 +409,13 @@ namespace BioGTK
             App.viewer.UpdateImage();
             App.viewer.UpdateView();
         }
+        /// When the user changes the value of the maxBox, the histogram is updated and the image is
+        /// updated
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs e
+        /// 
+        /// @return The value of the maxBox.Value
         private void maxBox_ValueChanged(object sender, EventArgs e)
         {
             if (channelsBox.Active == -1)
@@ -376,6 +430,11 @@ namespace BioGTK
             App.viewer.UpdateImage();
             App.viewer.UpdateView();
         }
+        /// When the user changes the value of the dropdown box, the value of the spin button is changed
+        /// to the value of the dropdown box
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void maxUintBox_ActiveChanged(object sender, EventArgs e)
         {
             TreeIter it;
@@ -388,6 +447,11 @@ namespace BioGTK
 
         }
 
+        /// This function sets the maximum value of all the channels to the value in the maxBox
+        /// 
+        /// @param o the object that called the event
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void setMaxAllBut_Click(object o, ButtonPressEventArgs args)
         {
             foreach (Channel c in Channels)
@@ -400,6 +464,11 @@ namespace BioGTK
             App.viewer.UpdateView();
         }
 
+        /// This function sets the minimum value of all channels to the value in the minBox
+        /// 
+        /// @param o the object that called the event
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void setMinAllBut_Click(object o, ButtonPressEventArgs args)
         {
             foreach (Channel c in Channels)
@@ -412,6 +481,12 @@ namespace BioGTK
             App.viewer.UpdateView();
         }
 
+        /// This function is called when the user clicks on the Channels tab. It sets the maximum value
+        /// of the sampleBox to the number of samples per pixel, and then sets the minimum and maximum
+        /// values of the minBox and maxBox to the minimum and maximum values of the selected channel
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs e
         private void ChannelsTool_Activated(object? sender, EventArgs e)
         {
             sampleBox.Adjustment.Upper = SelectedChannel.SamplesPerPixel - 1;
@@ -426,6 +501,11 @@ namespace BioGTK
 
         }
 
+        /// When the user changes the value of the dropdown box, the value of the spin button is changed
+        /// to the value of the dropdown box
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs e
         private void maxUintBox2_ActiveChanged(object sender, EventArgs e)
         {
             TreeIter it;
@@ -441,6 +521,11 @@ namespace BioGTK
             }
         }
 
+        /// When the user changes the value of the graphMinBox, the histogram's GraphMin property is set
+        /// to the new value and the histogram is updated.
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void minGraphBox_ValueChanged(object sender, EventArgs e)
         {
             if (hist != null)
@@ -450,6 +535,11 @@ namespace BioGTK
             }
         }
 
+        /// When the user changes the value of the graphMax NumericUpDown, the value of the histogram's
+        /// GraphMax property is set to the new value and the histogram is updated
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void maxGraphBox_ValueChanged(object sender, EventArgs e)
         {
             if (hist != null)
@@ -458,6 +548,11 @@ namespace BioGTK
                 hist.UpdateView();
             }
         }
+        /// When the value of the binBox changes, the value of the binBox is assigned to the Bin
+        /// property of the histogram object
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         private void binBox_ValueChanged(object sender, EventArgs e)
         {
             if (hist != null)
@@ -467,63 +562,138 @@ namespace BioGTK
             }
         }
 
+        /// This function is called when the user clicks on the Channels Tool
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param ButtonPressEventArgs 
         private void ChannelsTool_MouseDown(object sender, ButtonPressEventArgs e)
         {
             
         }
+        /// This function is called when the user clicks on the "Set Min" menu item in the context menu.
+        /// It sets the value of the minBox to the value of the mouse's x position
+        /// 
+        /// @param o the object that called the event
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void setMinToolStripMenuItem_Click(object o, ButtonPressEventArgs args)
         {
             minBox.Value = (int)hist.MouseValX;
         }
 
+        /// This function is called when the user clicks on the "Set Max" menu item in the context menu.
+        /// It sets the maxBox value to the value of the histogram at the mouse's current position
+        /// 
+        /// @param o the object that called the event
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void setMaxToolStripMenuItem_Click(object o, ButtonPressEventArgs args)
         {
             maxBox.Value = (int)hist.MouseValX;
         }
 
+        /// The function applies the current range of the R, G, and B channels to the image
+        /// 
+        /// @param o The object that called the event
+        /// @param ButtonPressEventArgs This is the event that is triggered when the button is pressed.
         private void applyBut_Click(object o, ButtonPressEventArgs args)
         {
             ImageView.SelectedImage.Bake(ImageView.SelectedImage.RChannel.RangeR, ImageView.SelectedImage.GChannel.RangeG, ImageView.SelectedImage.BChannel.RangeB);
         }
 
+        /// This function is called when the user clicks on the "Min" menu item in the "Statistics"
+        /// menu. It sets the value of the "Min" spin button to the minimum value of the selected
+        /// channel
+        /// 
+        /// @param o The object that the event is being called from
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void minToolStripMenuItem_Click(object o, ButtonPressEventArgs args)
         {
             minBox.Value = SelectedChannel.stats[channelsBox.Active].StackMin;
         }
 
+        /// This function is called when the user clicks on the "Max" button in the "Stack" menu. It
+        /// sets the value of the "Min" box to the maximum value of the selected channel
+        /// 
+        /// @param o The object that the event is being called from
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void maxToolStripMenuItem_Click(object o, ButtonPressEventArgs args)
         {
             minBox.Value = SelectedChannel.stats[channelsBox.Active].StackMax;
         }
 
+        /// This function is called when the user clicks on the "Median" button in the "Statistics"
+        /// menu. It sets the value of the "Min" text box to the median value of the currently selected
+        /// channel
+        /// 
+        /// @param o the object that the event is being called from
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void medianToolStripMenuItem_Click(object o, ButtonPressEventArgs args)
         {
             minBox.Value = SelectedChannel.stats[channelsBox.Active].StackMedian;
         }
 
+        /// When the user clicks on the "Mean" button in the "Statistics" menu, the value of the
+        /// "minBox" textbox is set to the mean value of the currently selected channel
+        /// 
+        /// @param o
+        /// @param ButtonPressEventArgs
+        /// https://docs.microsoft.com/en-us/dotnet/api/system.windows.forms.buttonpresseventargs?view=netframework-4.8
         private void meanToolStripMenuItem_Click(object o, ButtonPressEventArgs args)
         {
             minBox.Value = SelectedChannel.stats[channelsBox.Active].StackMean;
         }
 
+        /// This function is called when the user clicks on the "Set Max" menu item in the context menu.
+        /// It sets the max value of the selected channel to the minimum value of the stack
+        /// 
+        /// @param o The object that the event is being called from
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void toolStripMenuItem1_Click(object o, ButtonPressEventArgs args)
         {
             maxBox.Value = SelectedChannel.stats[channelsBox.Active].StackMin;
         }
 
+        /// This function is called when the user clicks on the "Set Max" menu item in the context menu.
+        /// It sets the max value of the selected channel to the maximum value of the stack
+        /// 
+        /// @param o The object that the event is being called from
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void toolStripMenuItem2_Click(object o, ButtonPressEventArgs args)
         {
             maxBox.Value = SelectedChannel.stats[channelsBox.Active].StackMax;
         }
+        /// When the user clicks on the "Set Max to Median" menu item, the maximum value of the selected
+        /// channel is set to the median value of the selected channel
+        /// 
+        /// @param o the object that the event is attached to
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void toolStripMenuItem3_Click(object o, ButtonPressEventArgs args)
         {
             maxBox.Value = SelectedChannel.stats[channelsBox.Active].StackMedian;
         }
+        /// This function is called when the user clicks on the "Set Max to Mean" menu item in the
+        /// "Edit" menu.
+        /// 
+        /// @param o the object that the event is attached to
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void toolStripMenuItem4_Click(object o, ButtonPressEventArgs args)
         {
             maxBox.Value = SelectedChannel.stats[channelsBox.Active].StackMean;
         }
 
+        /// The function updates the threshold values of the image
+        /// 
+        /// @param o the object that called the event
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtkmm/stable/classGtk_1_1Button.html#a8f9bfe6fc3de2e58f343b8242316c0d6
         private void updateBut_Click(object o, ButtonPressEventArgs args)
         {
             if (ImageView.SelectedImage.bitsPerPixel > 8)
@@ -547,6 +717,11 @@ namespace BioGTK
             App.viewer.UpdateImage();
         }
 
+        /// When the user changes the value of the sampleBox, the histogram is updated to reflect the
+        /// change
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs e
         private void sampleBox_ValueChanged(object sender, EventArgs e)
         {
             if (channelsBox.Active == -1)
@@ -561,16 +736,31 @@ namespace BioGTK
             App.viewer.UpdateView();
         }
 
+        /// When the value of the excitationBox is changed, the value of the excitationBox is assigned
+        /// to the excitation property of the SelectedChannel object
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs System.EventArgs
         private void excitationBox_ValueChanged(object sender, EventArgs e)
         {
             SelectedChannel.Excitation = (int)excitationBox.Value;
         }
 
+        /// When the value of the emission box is changed, the emission value of the selected channel is
+        /// changed to the value of the emission box
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs System.EventArgs
         private void emissionBox_ValueChanged(object sender, EventArgs e)
         {
             SelectedChannel.Emission = (int)emissionBox.Value;
         }
 
+        /// When the text in the fluorBox changes, the SelectedChannel's fluor is set to the text in the
+        /// fluorBox
+        /// 
+        /// @param sender
+        /// @param EventArgs System.EventArgs
         private void fluorBox_TextChanged(object sender, EventArgs e)
         {
             SelectedChannel.Fluor = fluorBox.Text;

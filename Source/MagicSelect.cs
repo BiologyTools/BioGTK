@@ -67,6 +67,7 @@ namespace Bio
 
         private bool numeric = false;
 
+        /* A property that returns the value of the checkbox. */
         public bool Numeric
         {
             get

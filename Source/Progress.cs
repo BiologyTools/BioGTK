@@ -10,14 +10,13 @@ using System.Threading.Tasks;
 
 namespace BioGTK
 {
-    /// <summary> Example Test Form for GTKSharp and Glade. </summary>
+    
     public class Progress : Gtk.Dialog
     {
         #region Properties
-
-        /// <summary> Used to load in the glade file resource as a window. </summary>
         private Builder _builder;
         
+        /* A property that is used to update the progress bar. */
         public double ProgressValue
         {
             get
@@ -34,6 +33,7 @@ namespace BioGTK
                 });
             }
         }
+        /* A property that is used to update the progress bar. */
         public string Text
         {
             get { return progLabel.Text; }
@@ -46,6 +46,7 @@ namespace BioGTK
                 });
             }
         }
+        /* A property that is used to update the progress bar. */
         public string Status
         {
             get { return statusLabel.Text; }
@@ -93,6 +94,12 @@ namespace BioGTK
             this.DeleteEvent += Progress_DeleteEvent;
         }
 
+        /// The function Progress_DeleteEvent is called when the user clicks the close button on the
+        /// progress window. The function sets the return value of the event to true, which tells the
+        /// program to continue running. The function then hides the progress window
+        /// 
+        /// @param o The object that the event is being fired from.
+        /// @param DeleteEventArgs The event arguments.
         private void Progress_DeleteEvent(object o, DeleteEventArgs args)
         {
             args.RetVal = true;

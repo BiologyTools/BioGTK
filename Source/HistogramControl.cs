@@ -55,6 +55,7 @@ namespace BioGTK
         #endregion
 
         public Channel channel = null;
+        /// This function initializes the histogram control
         public void Init()
         {
             if (ImageView.SelectedImage.bitsPerPixel == 8)
@@ -83,6 +84,13 @@ namespace BioGTK
                 | EventMask.PointerMotionMask | EventMask.ScrollMask));
         }
 
+        /// The function is called when the user clicks the close button on the Histogram window. The
+        /// function sets the return value to true, which tells the program to hide the window instead
+        /// of closing it
+        /// 
+        /// @param o The object that the event is being called on.
+        /// @param DeleteEventArgs
+        /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-events-delete.html.en
         private void HistogramControl_DeleteEvent(object o, DeleteEventArgs args)
         {
             args.RetVal = true;

@@ -39,8 +39,13 @@ namespace BioGTK
         #endregion
 
         #region Constructors / Destructors
-        /// <summary> Default Shared Constructor. </summary>
-        /// <returns> A TestForm1. </returns>
+      
+        /// > Create a new BioConsole object using the Glade file "BioGTK.Glade.Console.glade"
+        /// 
+        /// The first line of the function is a comment. Comments are ignored by the compiler. They are
+        /// used to document the code
+        /// 
+        /// @return A new instance of the BioConsole class.
         public static BioConsole Create()
         {
             Builder builder = new Builder(null, "BioGTK.Glade.Console.glade", null);
@@ -77,17 +82,35 @@ namespace BioGTK
                 bioformatsBox.Active = false;
         }
 
+        /// If the user clicks the checkbox, then the resultInNewTab variable is set to the value of the
+        /// checkbox
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void ResultsBox_Clicked(object sender, EventArgs e)
         {
             resultInNewTab = resultsBox.Active;
         }
 
+        /// The BioConsole_DeleteEvent function is called when the user clicks the close button on the
+        /// BioConsole window. The function hides the BioConsole window and returns true to the
+        /// DeleteEventArgs object
+        /// 
+        /// @param o The object that fired the event.
+        /// @param DeleteEventArgs This is the event that is being passed to the event handler.
         private void BioConsole_DeleteEvent(object o, DeleteEventArgs args)
         {
             Hide();
             args.RetVal = true;
         }
 
+        /// If the user presses the "w" key, the line variable is incremented and the textBox is set to
+        /// the last line of the consoleBox.
+        /// If the user presses the "s" key, the line variable is decremented and the textBox is set to
+        /// the last line of the consoleBox
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param KeyPressEventArgs This is the event that is triggered when a key is pressed.
         private void Console_KeyPressEvent(object o, KeyPressEventArgs args)
         {
             if (args.Event.Key == Gdk.Key.w)
@@ -104,16 +127,31 @@ namespace BioGTK
             }
         }
 
+       /// If the tabRadioBut is active, then onTab is true
+       /// 
+       /// @param sender The object that raised the event.
+       /// @param EventArgs The event arguments.
         private void TabRadioBox_Clicked(object sender, EventArgs e)
         {
             onTab = tabRadioBut.Active;
         }
 
+        /// If the user clicks on the "Select" radio button, the variable "onTab" is set to true
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void SelRadioBox_Clicked(object sender, EventArgs e)
         {
             onTab = selRadioBut.Active;
         }
 
+        /// If the operating system is not MacOS, then the user's choice of whether or not to use
+        /// Bioformats is stored in the variable useBioformats. If the operating system is MacOS, then
+        /// the user is informed that Bioformats is not supported on MacOS and the checkbox is
+        /// automatically unchecked
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void BioformatsBox_Clicked(object sender, EventArgs e)
         {
             if(!OperatingSystem.IsMacOS())

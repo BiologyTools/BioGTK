@@ -66,12 +66,21 @@ namespace BioGTK
             this.DeleteEvent += Recorder_DeleteEvent;
         }
 
+        /// The function is called when the user clicks the close button on the recorder window. It
+        /// hides the recorder window instead of closing it
+        /// 
+        /// @param o The object that raised the event.
+        /// @param DeleteEventArgs The event arguments.
         private void Recorder_DeleteEvent(object o, DeleteEventArgs args)
         {
             args.RetVal = true;
             Hide();
         }
 
+       /// When the user clicks on the textbox, the textbox is populated with the log
+       /// 
+       /// @param sender The object that raised the event.
+       /// @param EventArgs The event arguments.
         private void Recorder_FocusActivated(object sender, EventArgs e)
         {
             textBox.Buffer.Text = log;

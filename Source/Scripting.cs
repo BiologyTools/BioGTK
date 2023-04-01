@@ -92,6 +92,12 @@ namespace BioGTK
             scriptLabel.Text = "NewScript.cs";
         }
 
+        /// When the user switches tabs, the text in the textview is updated to the current log, error,
+        /// or output
+        /// 
+        /// @param o The object that called the event
+        /// @param SwitchPageArgs
+        /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-notebook-switch-page.html.en
         private void TabsView_SwitchPage(object o, SwitchPageArgs args)
         {
             logBox.Buffer.Text = log;
@@ -99,6 +105,11 @@ namespace BioGTK
             outputBox.Buffer.Text = output;
         }
 
+        /// This function is called when the button is pressed. It sets the text of the textview to the
+        /// text of the string
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ButtonPressEventArgs The event arguments for the button press event.
         private void OutputBox_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             logBox.Buffer.Text = log;
@@ -106,16 +117,29 @@ namespace BioGTK
             outputBox.Buffer.Text = output;
         }
 
+        /// > When the user clicks on the ScriptView, refresh the items
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void ScriptView_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             RefreshItems();
         }
 
+        /// The SaveBut_ButtonPressEvent function is called when the Save button is pressed
+        /// 
+        /// @param o The object that the event is being called from.
+        /// @param ButtonPressEventArgs The event arguments for the button press event.
         private void SaveBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Save();
         }
 
+        /// It hides the window when the user clicks the close button.
+        /// 
+        /// @param o The object that triggered the event.
+        /// @param DeleteEventArgs The event arguments.
         private void Scripting_DeleteEvent(object o, DeleteEventArgs args)
         {
             args.RetVal = true;
@@ -174,6 +198,7 @@ namespace BioGTK
         {
             log += s + Environment.NewLine;
         }
+        /* It takes a string, adds using statements, wraps it in a class, and then runs it */
         public class Script
         {
             public string name;
@@ -325,6 +350,7 @@ namespace BioGTK
             }
         }
         /* It's a class that represents a mouse event */
+        /* It's a class that holds the state of the mouse */
         public class State
         {
             public Event type;

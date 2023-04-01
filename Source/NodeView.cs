@@ -48,6 +48,8 @@ namespace BioGTK
             InitItems();
         }
 
+        /// It takes a list of images, and for each image, it takes a list of bitmaps, and for each
+        /// bitmap, it adds a row to the treeview with the bitmap's coordinate, exposure, and delta
         public void InitItems()
         {
             Gtk.TreeViewColumn coordCol = new Gtk.TreeViewColumn();
@@ -87,6 +89,8 @@ namespace BioGTK
             tree.Model = store;
             
         }
+        /// It takes a list of images, and for each image, it takes a list of bitmaps, and for each
+        /// bitmap, it adds a row to the treeview
         public void UpdateItems()
         {
             Gtk.TreeStore store = new Gtk.TreeStore(typeof(string), typeof(string), typeof(string));

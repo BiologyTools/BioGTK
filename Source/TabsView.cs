@@ -160,6 +160,13 @@ namespace BioGTK
             rotateFlipMenu.ShowAll();
         }
 
+        /// When the user clicks on a menu item, the selected image is rotated or flipped according to
+        /// the menu item's label
+        /// 
+        /// @param o The object that called the event
+        /// @param ButtonPressEventArgs The event arguments for the button press event.
+        /// 
+        /// @return The return type is void.
         private void RotateFlip_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             if(ImageView.SelectedImage==null) return;
@@ -234,12 +241,23 @@ namespace BioGTK
             this.WindowStateEvent += TabsView_WindowStateEvent;
         }
 
+       /// When the user clicks on the Script Recorder menu item, the Script Recorder window is shown
+       /// 
+       /// @param o The object that the event is being called on.
+       /// @param ButtonPressEventArgs
+       /// https://developer.gnome.org/gtk3/stable/GtkButton.html#GtkButton-clicked
         private void ScriptRecorderMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             App.recorder.Show();
             App.recorder.Present();
         }
 
+        /// It saves all the ROIs in the current image to a file
+        /// 
+        /// @param o The object that triggered the event.
+        /// @param ButtonPressEventArgs This is the event that is triggered when the button is pressed.
+        /// 
+        /// @return The response type of the filechooser dialog.
         private void ExportROIsFromImageJMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Gtk.FileChooserDialog filechooser =
@@ -259,6 +277,13 @@ namespace BioGTK
             filechooser.Destroy();
         }
 
+        /// It opens a file chooser dialog, and when the user selects a file, it opens the file as an
+        /// ROI, and adds it to the selected image
+        /// 
+        /// @param o The object that triggered the event.
+        /// @param ButtonPressEventArgs This is the event that is triggered when the button is pressed.
+        /// 
+        /// @return A ROI object.
         private void ImportROIsFromImageJMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Gtk.FileChooserDialog filechooser =

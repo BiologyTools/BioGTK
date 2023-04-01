@@ -50,15 +50,23 @@ namespace BioGTK
             }
         }
         public int moveWait = 250;
+        /// It waits for a certain amount of time before moving on to the next line of code
         private void MoveWait()
         {
             Thread.Sleep(moveWait);
         }
+/// This function sets the position of the object to the given coordinates
+/// 
+/// @param px The x position of the object
+/// @param py The y-coordinate of the point.
         public void SetPosition(double px, double py)
         {
             x = px;
             y = py;
         }
+        /// This function sets the position of the object to the given x and y coordinates
+        /// 
+        /// @param px The new x position of the object
         public void SetPositionX(double px)
         {
             x = px;

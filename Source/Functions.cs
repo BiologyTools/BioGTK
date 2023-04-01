@@ -108,22 +108,39 @@ namespace BioGTK
             this.DeleteEvent += Functions_DeleteEvent;
         }
 
+        /// This function is called when the user clicks the close button on the window
+        /// 
+        /// @param o The object that the event is being fired from.
+        /// @param DeleteEventArgs The event arguments.
         private void Functions_DeleteEvent(object o, DeleteEventArgs args)
         {
             args.RetVal = true;
             Hide();
         }
 
+        /// The function is called when the user clicks on the BioRadioBut button
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs Contains the event data.
         private void BioRadioBut_Clicked(object sender, EventArgs e)
         {
             func.FuncType = Function.FunctionType.Script;
         }
 
+       /// When the user clicks on the ImageJ radio button, the function type is set to ImageJ
+       /// 
+       /// @param sender The object that raised the event.
+       /// @param EventArgs Contains the event data.
         private void ImagejRadioBut_Clicked(object sender, EventArgs e)
         {
             func.FuncType = Function.FunctionType.ImageJ;
         }
 
+        /// When the text in the textbox changes, the function's script is updated to the text in the
+        /// textbox
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs System.EventArgs
         private void Buffer_Changed(object sender, EventArgs e)
         {
             func.Script = textBox.Buffer.Text;
@@ -133,11 +150,23 @@ namespace BioGTK
                 func.FuncType = Function.FunctionType.ImageJ;
         }
 
+        /// When the value of the text box changes, the value of the function is changed to the value of
+        /// the text box
+        /// 
+        /// @param o The object that called the event
+        /// @param ChangeValueArgs This is a class that contains the new value of the textbox.
         private void ValBox_ChangeValue(object o, ChangeValueArgs args)
         {
             Func.Value = valBox.Value;
         }
 
+        /// It opens a file chooser dialog, and if the user selects a file, it sets the file name to the
+        /// label and sets the function type to script
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
+        /// 
+        /// @return The file name of the file that was selected.
         private void SetScriptFileBut_Clicked(object sender, EventArgs e)
         {
             Gtk.FileChooserDialog filechooser =
@@ -153,6 +182,13 @@ namespace BioGTK
             func.FuncType = Function.FunctionType.Script;
         }
 
+        /// This function opens a file chooser dialog and sets the file name to the file chosen by the
+        /// user
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
+        /// 
+        /// @return The file name of the file that was selected.
         private void SetMacroFileBut_Clicked(object sender, EventArgs e)
         {
             Gtk.FileChooserDialog filechooser =
@@ -168,11 +204,19 @@ namespace BioGTK
             func.FuncType = Function.FunctionType.ImageJ;
         }
 
+        /// The Cancel button closes the form
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs This is a class that contains the event data.
         private void CancelBut_Clicked(object sender, EventArgs e)
         {
             Close();
         }
 
+        /// It saves the function
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void OkBut_Clicked(object sender, EventArgs e)
         {
             func.Name = nameBox.Text;
@@ -208,24 +252,43 @@ namespace BioGTK
             Close();
         }
 
+       /// When the user changes the modifier box, the function type is set to key and the modifier is
+       /// set to the active modifier in the modifier box
+       /// 
+       /// @param sender The object that called the event
+       /// @param EventArgs e
         private void ModifiersBox_Changed(object sender, EventArgs e)
         {
             Func.Modifier = (Gdk.ModifierType)modifierBox.Active;
             Func.FuncType = Function.FunctionType.Key;
         }
 
+       /// When the state of the function changes, the state of the function is changed to the state of
+       /// the state box
+       /// 
+       /// @param sender The object that called the event
+       /// @param EventArgs e
         private void StateBox_Changed(object sender, EventArgs e)
         {
             Func.State = (Function.ButtonState)stateBox.Active;
             Func.FuncType = Function.FunctionType.Key;
         }
 
+        /// When the user changes the value of the dropdown box, the function's key is set to the value
+        /// of the dropdown box
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void KeysBox_Changed(object sender, EventArgs e)
         {
             Func.Key = (Gdk.Key)keysBox.Active;
             Func.FuncType = Function.FunctionType.Key;
         }
 
+        /// When the user changes the function, the function is updated and the items are updated
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs The event arguments.
         private void FuncsBox_Changed(object sender, EventArgs e)
         {
             func = Function.Functions[funcsBox.ActiveId];
@@ -234,6 +297,8 @@ namespace BioGTK
 
         #endregion
 
+        /// We add items to the ListStore, set the model for the ComboBox, set the text column to
+        /// display, and set the active item in the ComboBox
         private void Init()
         {
             textBox.Buffer.Text = func.Script;
@@ -292,6 +357,7 @@ namespace BioGTK
             menuPath.Text = func.MenuPath;
             contextMenuPath.Text = func.ContextPath;
         }
+        /// It updates the GUI with the values of the current function
         private void UpdateItems()
         {
             textBox.Buffer.Text = func.Script;
@@ -313,6 +379,7 @@ namespace BioGTK
     public class Function
     {
         public static Dictionary<string, Function> Functions = new Dictionary<string, Function>();
+        /* Defining an enum. */
         public enum FunctionType
         {
             Key,
@@ -329,6 +396,7 @@ namespace BioGTK
             Script,
             None
         }
+        /* Defining an enumeration. */
         public enum ButtonState
         {
             Pressed = 0,
@@ -336,6 +404,7 @@ namespace BioGTK
         }
 
         private ButtonState buttonState = ButtonState.Pressed;
+        /* A property. */
         public ButtonState State
         {
             get
@@ -471,6 +540,11 @@ namespace BioGTK
         {
             return name + ", " + MenuPath;
         }
+        /// It converts a string to a function.
+        /// 
+        /// @param s The string to parse
+        /// 
+        /// @return A function object.
         public static Function Parse(string s)
         {
             if (s == "")
@@ -478,10 +552,21 @@ namespace BioGTK
             return JsonConvert.DeserializeObject<Function>(s);
         }
 
+/// It takes the current object and converts it to a JSON string.
+/// 
+/// @return The object is being serialized into a JSON string.
         public string Serialize()
         {
             return JsonConvert.SerializeObject(this);
         }
+        /// If the function type is a key, and the script is not empty, then if the imagej flag is true,
+        /// set the function type to imagej, otherwise set the function type to script. If the function
+        /// type is a script, run the script. If the function type is imagej, run the script on the
+        /// image
+        /// 
+        /// @param imagej boolean, whether to run the function as an ImageJ macro or not
+        /// 
+        /// @return The return value is the result of the function.
         public object PerformFunction(bool imagej)
         {
             if (FuncType == FunctionType.Key && Script != "")
@@ -502,6 +587,8 @@ namespace BioGTK
             return null;
         }
 
+        /// It reads all the files in the Functions folder, parses them into Function objects, and adds
+        /// them to the Functions dictionary
         public static void InitializeMainMenu()
         {
             string st = Environment.CurrentDirectory + "/Functions";
@@ -517,6 +604,8 @@ namespace BioGTK
                 App.AddMenu(f.MenuPath);
             }
         }
+        /// It reads all the files in the Functions folder, parses them into Function objects, and adds
+        /// them to the Functions dictionary
         public static void InitializeContextMenu()
         {
             string st = Environment.CurrentDirectory + "/Functions";
@@ -532,6 +621,7 @@ namespace BioGTK
                 App.AddContextMenu(f.ContextPath);
             }
         }
+        /// It saves all the functions in the Functions dictionary to a file
         public static void SaveAll()
         {
             string st = Environment.CurrentDirectory;
@@ -545,6 +635,7 @@ namespace BioGTK
                 System.IO.File.WriteAllText(st + "/Functions/" + f.Name + ".func", f.Serialize());
             }
         }
+        /// It saves the function to a file
         public void Save()
         {
             string st = Environment.CurrentDirectory;
