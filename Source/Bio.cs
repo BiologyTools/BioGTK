@@ -5126,11 +5126,14 @@ namespace BioGTK
             b.series = serie;
             string order = reader.getDimensionOrder();
             PixelFormat PixelFormat = GetPixelFormat(RGBChannelCount, b.bitsPerPixel);
-            ome.xml.model.enums.PixelType ppx = b.meta.getPixelsType(serie);
-            if (ppx == ome.xml.model.enums.PixelType.UINT8 && RGBChannelCount == 3)
+            if (RGBChannelCount == 3)
             {
-                PixelFormat = PixelFormat.Format24bppRgb;
-                b.bitsPerPixel = 8;
+                ome.xml.model.enums.PixelType ppx = b.meta.getPixelsType(serie);
+                if (ppx == ome.xml.model.enums.PixelType.UINT8)
+                {
+                    PixelFormat = PixelFormat.Format24bppRgb;
+                    b.bitsPerPixel = 8;
+                }
             }
             int stride = 0;
             if (RGBChannelCount == 1)
