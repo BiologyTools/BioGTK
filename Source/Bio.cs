@@ -4483,52 +4483,21 @@ namespace BioGTK
                 int pages = image.NumberOfDirectories() / b.seriesCount;
                 //int stride = image.ScanlineSize();
                 int str = image.ScanlineSize();
-                bool planes = false;
-                //If calculated stride and image scanline size is not the same it means the image is written in planes
+                bool inter = true;
                 if (stride != str)
-                    planes = true;
+                    inter = false;
                 for (int p = series * pages; p < (series + 1) * pages; p++)
                 {
                     image.SetDirectory((short)p);
-                    if (planes)
+                    byte[] bytes = new byte[stride * SizeY];
+                    for (int im = 0, offset = 0; im < SizeY; im++)
                     {
-                        Bitmap[] bfs = new Bitmap[3];
-                        for (int pl = 0; pl < 3; pl++)
-                        {
-                            byte[] bytes = new byte[str * SizeY];
-                            for (int im = 0, offset = 0; im < SizeY; im++)
-                            {
-                                image.ReadScanline(bytes, offset, im, (short)pl);
-                                offset += str;
-                            }
-                            if (b.bitsPerPixel > 8)
-                                bfs[pl] = new Bitmap(file, SizeX, SizeY, PixelFormat.Format16bppGrayScale, bytes, new ZCT(0, 0, 0), p, b.littleEndian);
-                            else
-                                bfs[pl] = new Bitmap(file, SizeX, SizeY, PixelFormat.Format8bppIndexed, bytes, new ZCT(0, 0, 0), p, b.littleEndian);
-                        }
-                        Bitmap bf;
-                        if (b.bitsPerPixel > 8)
-                            bf = Bitmap.RGB16To48(bfs);
-                        else
-                            bf = Bitmap.RGB8To24(bfs);
-                        bf.SwitchRedBlue();
-                        Statistics.CalcStatistics(bf);
-                        b.Buffers.Add(bf);
+                        image.ReadScanline(bytes, offset, im, 0);
+                        offset += stride;
                     }
-                    else
-                    {
-                        byte[] bytes = new byte[stride * SizeY];
-                        for (int im = 0, offset = 0; im < SizeY; im++)
-                        {
-                            image.ReadScanline(bytes, offset, im, 0);
-                            offset += stride;
-                        }
-                        Bitmap inf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(0, 0, 0), p, b.littleEndian);
-                        if (inf.PixelFormat == PixelFormat.Format48bppRgb)
-                            inf.SwitchRedBlue();
-                        b.Buffers.Add(inf);
-                        Statistics.CalcStatistics(inf);
-                    }
+                    Bitmap inf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(0, 0, 0), p, b.littleEndian, inter);
+                    b.Buffers.Add(inf);
+                    Statistics.CalcStatistics(inf);
                     progressValue = (float)p / (float)(series + 1) * pages;
                 }
                 image.Close();
@@ -5117,7 +5086,6 @@ namespace BioGTK
                 throw new InvalidDataException("File is empty or null");
             progressValue = 0;
             progFile = file;
-            st.Start();
             BioImage b = new BioImage(file);
             b.Loading = true;
             if(b.meta == null)
@@ -5158,6 +5126,12 @@ namespace BioGTK
             b.series = serie;
             string order = reader.getDimensionOrder();
             PixelFormat PixelFormat = GetPixelFormat(RGBChannelCount, b.bitsPerPixel);
+            ome.xml.model.enums.PixelType ppx = b.meta.getPixelsType(serie);
+            if (ppx == ome.xml.model.enums.PixelType.UINT8 && RGBChannelCount == 3)
+            {
+                PixelFormat = PixelFormat.Format24bppRgb;
+                b.bitsPerPixel = 8;
+            }
             int stride = 0;
             if (RGBChannelCount == 1)
             {
@@ -5609,6 +5583,7 @@ namespace BioGTK
             b.Buffers = new List<Bitmap>();
             // read the image data bytes
             int pages = reader.getImageCount();
+            bool inter = reader.isInterleaved();
             int z = 0;
             int c = 0;
             int t = 0;
@@ -5624,7 +5599,7 @@ namespace BioGTK
                 {
                     progressValue = (float)p / (float)pages;
                     byte[] bytes = reader.openBytes(p);
-                    bf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(z, c, t), p, b.littleEndian);
+                    bf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(z, c, t), p, b.littleEndian, inter);
                     b.Buffers.Add(bf);
                 }
             }
@@ -5806,9 +5781,9 @@ namespace BioGTK
                         }
                     }
                 }
-                return new Bitmap(b.file, sx, sy, PixelFormat, bytes, coord, p, littleEndian);
+                return new Bitmap(b.file, sx, sy, PixelFormat, bytes, coord, p, littleEndian, true);
             }
-            Bitmap bm = new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, littleEndian);
+            Bitmap bm = new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, littleEndian, true);
             return bm; 
         }
         /// This function sets the minimum and maximum values of the image to the minimum and maximum
@@ -6007,10 +5982,6 @@ namespace BioGTK
             Thread t = new Thread(OpenThread);
             t.Name = file;
             t.Start();
-            App.progress.ProgressValue = 0;
-            App.progress.Title = "Opening File";
-            App.progress.Text = file;
-            App.progress.Show();
         }
         /// It opens a file asynchronously
         /// 
