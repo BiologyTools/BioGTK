@@ -6900,44 +6900,21 @@ namespace BioGTK
 
             for (int c = 0; c < b.Channels.Count; c++)
             {
-                Statistics[] sts;
-                if (b.RGBChannelCount == 1)
+                Statistics[] sts = new Statistics[b.Buffers[0].RGBChannelsCount];
+                for (int i = 0; i < b.Buffers[0].RGBChannelsCount; i++)
                 {
-                    sts = new Statistics[1];
                     if (b.bitsPerPixel > 8)
                     {
-                        sts[0] = new Statistics(true);
+                        sts[i] = new Statistics(true);
                     }
                     else
-                        sts[0] = new Statistics(false);
+                        sts[i] = new Statistics(false);
                 }
-                else
-                {
-                    sts = new Statistics[b.Buffers[0].RGBChannelsCount];
-                    if (b.RGBChannelCount == 3)
-                    {
-                        sts[0] = new Statistics(true);
-                        sts[1] = new Statistics(true);
-                        sts[2] = new Statistics(true);
-                    }
-                    else
-                    {
-                        sts[0] = new Statistics(false);
-                        sts[1] = new Statistics(false);
-                        sts[2] = new Statistics(false);
-                        sts[3] = new Statistics(false);
-                    }
-                }
-
                 for (int z = 0; z < b.SizeZ; z++)
                 {
                     for (int t = 0; t < b.SizeT; t++)
                     {
-                        int ind = 0;
-                        if (b.RGBChannelCount >= 1)
-                            ind = b.Coords[z, 0, t];
-                        else
-                            ind = b.Coords[z, c, t];
+                        int ind = b.Coords[z, c, t];
                         if (b.Buffers[ind].RGBChannelsCount == 1)
                             sts[0].AddStatistics(b.Buffers[ind].Stats[0]);
                         else
