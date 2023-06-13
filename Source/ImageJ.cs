@@ -170,7 +170,7 @@ namespace BioGTK
                 b.Filename = ImageView.SelectedImage.ID;
                 b.file = dir + "/" + fn;
                 Images.UpdateImage(b);
-                App.viewer.Images[App.viewer.selectedIndex] = b;
+                App.viewer.Images[App.viewer.SelectedIndex] = b;
             }
             //If using bioformats we delete the temp file.
             if(bioformats)

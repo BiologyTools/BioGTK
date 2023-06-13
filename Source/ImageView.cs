@@ -107,7 +107,12 @@ namespace BioGTK
                 return selectedImage.Buffers[ind];
             }
         }
-        internal int selectedIndex = 0;
+        int selectedIndex = 0;
+        public int SelectedIndex
+        {
+            get { return selectedIndex; }
+            set { selectedIndex = value; }
+        }
         Menu imagesMenu;
         public static List<ROI> selectedAnnotations = new List<ROI>();
 
@@ -2111,7 +2116,7 @@ namespace BioGTK
                 if (r.IntersectsWith(pointer))
                 {
                     selectedIndex = ind;
-                    selectedImage = SelectedImage;
+                    selectedImage = Images[selectedIndex];
                     UpdateGUI();
                     break;
                 }

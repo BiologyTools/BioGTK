@@ -65,6 +65,20 @@ namespace BioGTK
             mergeTBut.Clicked += MergeTBut_Clicked;
             mergeBut.Clicked += MergeBut_Clicked;
             this.DeleteEvent += StackTools_DeleteEvent;
+            this.FocusInEvent += StackTools_FocusInEvent;
+            // Set the text column to display
+            var renderer = new CellRendererText();
+            stackABox.PackStart(renderer, false);
+            stackABox.AddAttribute(renderer, "text", 0);
+            // Set the text column to display
+            var renderer2 = new CellRendererText();
+            stackBBox.PackStart(renderer2, false);
+            stackBBox.AddAttribute(renderer2, "text", 0);
+        }
+
+        private void StackTools_FocusInEvent(object o, FocusInEventArgs args)
+        {
+            UpdateStacks();
         }
 
         private void StackTools_DeleteEvent(object o, DeleteEventArgs args)
@@ -134,7 +148,7 @@ namespace BioGTK
             tEndBox.Value = ImageA.SizeT;
         }
 
-/// If the user has selected an image in each stack, then merge the two images and add the result to the
+        /// If the user has selected an image in each stack, then merge the two images and add the result to the
 /// tabsView
 /// 
 /// @param sender The object that raised the event.
@@ -220,14 +234,7 @@ namespace BioGTK
             // Set the model for the ComboBox
             stackABox.Model = imgs;
             stackBBox.Model = imgs;
-            // Set the text column to display
-            var renderer = new CellRendererText();
-            stackABox.PackStart(renderer, false);
-            stackABox.AddAttribute(renderer, "text", 0);
-            // Set the text column to display
-            var renderer2 = new CellRendererText();
-            stackABox.PackStart(renderer2, false);
-            stackABox.AddAttribute(renderer2, "text", 0);
+
         }
         public BioImage ImageA
         {

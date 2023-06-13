@@ -337,7 +337,7 @@ namespace BioGTK
         private void TabsView_SwitchPage(object o, SwitchPageArgs args)
         {
             if(viewers.Count == 0) return;
-            viewers[(int)args.PageNum].Present();
+            viewers[(int)args.PageNum].Show();
         }
 
         /// If the emission menu is active, then deactivate it. Otherwise, activate it
@@ -408,6 +408,7 @@ namespace BioGTK
         {
             ImageView v = ImageView.Create(im);
             viewers.Add(v);
+            v.Show();
             Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file) + "/" + im.Filename);
             dummy.Visible = false;
             tabsView.AppendPage(dummy, new Gtk.Label(im.Filename));

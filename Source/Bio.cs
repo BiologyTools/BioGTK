@@ -58,8 +58,6 @@ namespace BioGTK
                     App.nodeView.UpdateItems();
                     if (newtab)
                         App.tabsView.AddTab(im);
-                    else
-                        App.viewer.AddImage(im);
                     App.progress.Hide();
                 });
             });
@@ -984,10 +982,8 @@ namespace BioGTK
                 if (!inPlace)
                 {
                     Images.AddImage(img,true);
-                    ImageView iv = ImageView.Create(img);
-                    iv.Show();
                 }
-                Recorder.AddLine("Bio.Filters.Base(" + '"' + id +
+                Recorder.AddLine("Filters.Base(" + '"' + id +
                     '"' + "," + '"' + name + '"' + "," + inPlace.ToString().ToLower() + ");");
             }
             catch (Exception e)
@@ -1025,10 +1021,8 @@ namespace BioGTK
                 if (!inPlace)
                 {
                     Images.AddImage(img, true);
-                    ImageView iv = ImageView.Create(img);
-                    iv.Show();
                 }
-                Recorder.AddLine("Bio.Filters.Base2(" + '"' + id + '"' + "," +
+                Recorder.AddLine("Filters.Base2(" + '"' + id + '"' + "," +
                    '"' + id2 + '"' + "," + '"' + name + '"' + "," + inPlace.ToString().ToLower() + ");");
                 return img;
             }
@@ -1063,10 +1057,8 @@ namespace BioGTK
                 if (!inPlace)
                 {
                     Images.AddImage(img, true);
-                    ImageView iv = ImageView.Create(img);
-                    iv.Show();
                 }
-                Recorder.AddLine("Bio.Filters.InPlace(" + '"' + id +
+                Recorder.AddLine("Filters.InPlace(" + '"' + id +
                     '"' + "," + '"' + name + '"' + "," + inPlace.ToString().ToLower() + ");");
                 return img;
             }
@@ -1103,10 +1095,8 @@ namespace BioGTK
                 if (!inPlace)
                 {
                     Images.AddImage(img, true);
-                    ImageView iv = ImageView.Create(img);
-                    iv.Show();
                 }
-                Recorder.AddLine("Bio.Filters.InPlace2(" + '"' + id + '"' + "," +
+                Recorder.AddLine("Filters.InPlace2(" + '"' + id + '"' + "," +
                    '"' + id2 + '"' + "," + '"' + name + '"' + "," + inPlace.ToString().ToLower() + ");");
                 return img;
             }
@@ -1141,10 +1131,8 @@ namespace BioGTK
                 if (!inPlace)
                 {
                     Images.AddImage(img, true);
-                    ImageView iv = ImageView.Create(img);
-                    iv.Show();
                 }
-                Recorder.AddLine("Bio.Filters.InPlacePartial(" + '"' + id +
+                Recorder.AddLine("Filters.InPlacePartial(" + '"' + id +
                     '"' + "," + '"' + name + '"' + "," + inPlace.ToString().ToLower() + ");");
                 return img;
             }
@@ -1183,10 +1171,8 @@ namespace BioGTK
                 if (!inPlace)
                 {
                     Images.AddImage(img, true);
-                    ImageView iv = ImageView.Create(img);
-                    iv.Show();
                 }
-                Recorder.AddLine("Bio.Filters.Resize(" + '"' + id +
+                Recorder.AddLine("Filters.Resize(" + '"' + id +
                     '"' + "," + '"' + name + '"' + "," + inPlace.ToString().ToLower() + "," + w + "," + h + ");");
             }
             catch (Exception e)
@@ -1226,10 +1212,8 @@ namespace BioGTK
                 if (!inPlace)
                 {
                     Images.AddImage(img, true);
-                    ImageView iv = ImageView.Create(img);
-                    iv.Show();
                 }
-                Recorder.AddLine("Bio.Filters.Rotate(" + '"' + id +
+                Recorder.AddLine("Filters.Rotate(" + '"' + id +
                     '"' + "," + '"' + name + '"' + "," + inPlace.ToString().ToLower() + "," + angle.ToString() + "," +
                     a + "," + r + "," + g + "," + b + ");");
             }
@@ -1267,10 +1251,8 @@ namespace BioGTK
                 if (!inPlace)
                 {
                     Images.AddImage(img, true);
-                    ImageView iv = ImageView.Create(img);
-                    iv.Show();
                 }
-                Recorder.AddLine("Bio.Filters.Transformation(" + '"' + id +
+                Recorder.AddLine("Filters.Transformation(" + '"' + id +
                         '"' + "," + '"' + name + '"' + "," + inPlace.ToString().ToLower() + "," + angle + ");");
             }
             catch (Exception e)
@@ -1303,11 +1285,9 @@ namespace BioGTK
                 }
                 if (!inPlace)
                 {
-                    Images.AddImage(img, true);
-                    ImageView iv = ImageView.Create(img);
-                    iv.Show();
+                    Images.AddImage(img,true);
                 }
-                Recorder.AddLine("Bio.Filters.Copy(" + '"' + id +
+                Recorder.AddLine("Filters.Copy(" + '"' + id +
                         '"' + "," + '"' + name + '"' + "," + inPlace.ToString().ToLower() + ");");
             }
             catch (Exception e)
@@ -1341,7 +1321,7 @@ namespace BioGTK
                 img.StackThreshold(true);
             else
                 img.StackThreshold(false);
-            Recorder.AddLine("Bio.Filters.Crop(" + '"' + id + '"' + "," + x + "," + y + "," + w + "," + h + ");");
+            Recorder.AddLine("Filters.Crop(" + '"' + id + '"' + "," + x + "," + y + "," + w + "," + h + ");");
             //App.tabsView.AddTab(img);
             return img;
         }
@@ -3483,7 +3463,7 @@ namespace BioGTK
         private static ExtractChannel extractR = new ExtractChannel(AForge.Imaging.RGB.R);
         private static ExtractChannel extractG = new ExtractChannel(AForge.Imaging.RGB.G);
         private static ExtractChannel extractB = new ExtractChannel(AForge.Imaging.RGB.B);
-
+        
         /// > Get the image at the specified coordinates
         /// 
         /// @param z the z-stack index

@@ -291,36 +291,36 @@ namespace BioGTK
         {
             if (filt.type == Filt.Type.Base)
             {
-                ImageView.SelectedImage = Filters.Base(ImageA.ID, filt.name, false);
+                ImageView.SelectedImage = Filters.Base(ImageA.ID, filt.name, inPlace);
             }
             if (filt.type == Filt.Type.Base2)
             {
-                ImageView.SelectedImage = Filters.Base2(ImageA.ID, ImageB.ID, filt.name, false);
+                ImageView.SelectedImage = Filters.Base2(ImageA.ID, ImageB.ID, filt.name, inPlace);
             }
             else
             if (filt.type == Filt.Type.InPlace)
             {
-                ImageView.SelectedImage = Filters.InPlace(ImageA.ID, filt.name, false);
+                ImageView.SelectedImage = Filters.InPlace(ImageA.ID, filt.name, inPlace);
             }
             else
             if (filt.type == Filt.Type.InPlace2)
             {
-                ImageView.SelectedImage = Filters.InPlace2(ImageA.ID, ImageB.ID, filt.name, false);
+                ImageView.SelectedImage = Filters.InPlace2(ImageA.ID, ImageB.ID, filt.name, inPlace);
             }
             else
             if (filt.type == Filt.Type.InPlacePartial)
             {
-                ImageView.SelectedImage = Filters.InPlacePartial(ImageA.ID, filt.name, false);
+                ImageView.SelectedImage = Filters.InPlacePartial(ImageA.ID, filt.name, inPlace);
             }
             else
             if (filt.type == Filt.Type.Resize)
             {
-                ImageView.SelectedImage = Filters.Resize(ImageA.ID, filt.name, false, W, H);
+                ImageView.SelectedImage = Filters.Resize(ImageA.ID, filt.name, inPlace, W, H);
             }
             else
             if (filt.type == Filt.Type.Rotate)
             {
-                ImageView.SelectedImage = Filters.Rotate(ImageA.ID, filt.name, false, Angle, Color.A, Color.R, Color.G, Color.B);
+                ImageView.SelectedImage = Filters.Rotate(ImageA.ID, filt.name, inPlace, Angle, Color.A, Color.R, Color.G, Color.B);
             }
             else
             if (filt.type == Filt.Type.Transformation)
@@ -332,13 +332,13 @@ namespace BioGTK
                 }
                 else
                 {
-                    ImageView.SelectedImage = Filters.Transformation(ImageA.ID, filt.name, false, Angle);
+                    ImageView.SelectedImage = Filters.Transformation(ImageA.ID, filt.name, inPlace, Angle);
                 }
             }
             else
             if (filt.type == Filt.Type.Copy)
             {
-                ImageView.SelectedImage = Filters.Copy(ImageA.ID, filt.name, false);
+                ImageView.SelectedImage = Filters.Copy(ImageA.ID, filt.name, inPlace);
             }
             App.viewer.UpdateView();
         }

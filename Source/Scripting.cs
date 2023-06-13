@@ -293,7 +293,6 @@ namespace BioGTK
                   @"//css_reference " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Name + @".dll
                     using System;
                     using Gtk;
-                    
                     using System.Threading;
                     using BioGTK;
                     using AForge;";

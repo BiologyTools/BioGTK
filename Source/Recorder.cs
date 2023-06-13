@@ -62,7 +62,7 @@ namespace BioGTK
         {
             DeleteEvent += OnLocalDeleteEvent;
             clearBut.Clicked += ClearBut_Clicked;
-            this.FocusActivated += Recorder_FocusActivated;
+            this.FocusInEvent += Recorder_FocusActivated;
             this.DeleteEvent += Recorder_DeleteEvent;
         }
 
