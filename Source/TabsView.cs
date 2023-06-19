@@ -90,7 +90,8 @@ namespace BioGTK
         private MenuItem rotateFlipMenu;
         [Builder.Object]
         private MenuItem stackToolMenu;
-
+        [Builder.Object]
+        private MenuItem focusMenu;
 
         [Builder.Object]
         private MenuItem to8BitMenu;
@@ -217,6 +218,7 @@ namespace BioGTK
             switchRedBlueMenu.ButtonPressEvent += switchRedBlueMenuClick;
 
             stackToolMenu.ButtonPressEvent += stackToolMenuClick;
+            focusMenu.ButtonPressEvent += FocusMenu_ButtonPressEvent;
 
             to8BitMenu.ButtonPressEvent += to8BitMenuClick;
             to16BitMenu.ButtonPressEvent += to16BitMenuClick;
@@ -241,11 +243,20 @@ namespace BioGTK
             this.WindowStateEvent += TabsView_WindowStateEvent;
         }
 
-       /// When the user clicks on the Script Recorder menu item, the Script Recorder window is shown
-       /// 
-       /// @param o The object that the event is being called on.
-       /// @param ButtonPressEventArgs
-       /// https://developer.gnome.org/gtk3/stable/GtkButton.html#GtkButton-clicked
+        private void FocusMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            if (ImageView.SelectedImage == null) return;
+            ZCT co = SelectedViewer.GetCoordinate();
+            int f = BioImage.FindFocus(ImageView.SelectedImage, co.C, co.T);
+            ZCT z = ImageView.SelectedImage.Buffers[f].Coordinate;
+            SelectedViewer.SetCoordinate(z.Z, z.C, z.T);
+        }
+
+        /// When the user clicks on the Script Recorder menu item, the Script Recorder window is shown
+        /// 
+        /// @param o The object that the event is being called on.
+        /// @param ButtonPressEventArgs
+        /// https://developer.gnome.org/gtk3/stable/GtkButton.html#GtkButton-clicked
         private void ScriptRecorderMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             App.recorder.Show();

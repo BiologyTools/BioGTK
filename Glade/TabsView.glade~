@@ -357,6 +357,14 @@
                         <property name="use-stock">False</property>
                       </object>
                     </child>
+                    <child>
+                      <object class="GtkImageMenuItem" id="focus">
+                        <property name="label" translatable="yes">Find Focus</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="use-stock">False</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>
@@ -455,7 +463,7 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkMenuItem">
+                      <object class="GtkMenuItem" id="scriptRecorderMenu">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="label" translatable="yes">Script Recorder</property>

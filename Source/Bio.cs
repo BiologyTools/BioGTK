@@ -6937,6 +6937,75 @@ namespace BioGTK
             Thread th = new Thread(AutoThreshold);
             th.Start();
         }
+        /// The function finds the focus of a given BioImage at a specific channel and time by
+        /// calculating the focus quality of each Z-plane and returning the coordinate with the highest
+        /// focus quality.
+        /// 
+        /// @param BioImage A BioImage object that contains the image data.
+        /// @param Channel The channel of the BioImage to analyze. A BioImage can have multiple
+        /// channels, each representing a different fluorescent label or imaging modality.
+        /// @param Time The time point at which the focus is being calculated.
+        /// 
+        /// @return an integer value which represents the coordinate of the image with the highest focus
+        /// quality in a given channel and time.
+        public static int FindFocus(BioImage im, int Channel, int Time)
+        {
+
+            long mf = 0;
+            int fr = 0;
+            List<double> dt = new List<double>();
+            ZCT c = new ZCT(0, 0, 0);
+            for (int i = 0; i < im.SizeZ; i++)
+            {
+                long f = CalculateFocusQuality(im.Buffers[im.Coords[i, Channel, Time]]);
+                dt.Add(f);
+                if (f > mf)
+                {
+                    mf = f;
+                    fr = im.Coords[i, Channel, Time];
+                }
+            }
+            Plot pl = Plot.Create(dt.ToArray(), "Focus");
+            pl.Show();
+            return fr;
+        }
+        /// The function calculates the focus quality of a given bitmap image.
+        /// 
+        /// @param Bitmap A class representing a bitmap image, which contains information about the
+        /// image's size, pixel data, and color channels.
+        /// 
+        /// @return The method is returning a long value which represents the calculated focus quality
+        /// of the input Bitmap image.
+        static long CalculateFocusQuality(Bitmap b)
+        {
+            if (b.RGBChannelsCount == 1)
+            {
+                long sum = 0;
+                long sumOfSquaresR = 0;
+                for (int y = 0; y < b.SizeY; y++)
+                    for (int x = 0; x < b.SizeX; x++)
+                    {
+                        ColorS pixel = b.GetPixel(x, y);
+                        sum += pixel.R;
+                        sumOfSquaresR += pixel.R * pixel.R;
+                    }
+                return sumOfSquaresR * b.SizeX * b.SizeY - sum * sum;
+            }
+            else
+            {
+                long sum = 0;
+                long sumOfSquares = 0;
+                for (int y = 0; y < b.SizeY; y++)
+                    for (int x = 0; x < b.SizeX; x++)
+                    {
+                        ColorS pixel = b.GetPixel(x, y);
+                        int p = (pixel.R + pixel.G + pixel.B) / 3;
+                        sum += p;
+                        sumOfSquares += p * p;
+                    }
+                return sumOfSquares * b.SizeX * b.SizeY - sum * sum;
+            }
+        }
         /// It disposes of all the buffers and channels in the image, removes the image from the Images
         /// list, and then forces the garbage collector to run
         public void Dispose()

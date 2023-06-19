@@ -644,6 +644,7 @@ namespace BioGTK
                 return;
             //We stop this script
             SelectedItem.Stop();
+            RefreshItems();
         }
         /// It runs the program.
         /// 
@@ -752,6 +753,7 @@ namespace BioGTK
                 scripts.Add(scriptLabel.Text,new Script(filechooser.Filename, view.Buffer.Text));
             }
             RefreshItems();
+            filechooser.Destroy();
         }
 
         /// It stops the timer and resets the timer to 0

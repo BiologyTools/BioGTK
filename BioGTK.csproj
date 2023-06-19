@@ -22,7 +22,7 @@
     <Platforms>AnyCPU;x64;ARM64</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>x64</PlatformTarget>
-    <PackageReleaseNotes>Updated Bioformats to 6.13.0.</PackageReleaseNotes>
+    <PackageReleaseNotes>GUI bug fixes.</PackageReleaseNotes>
     <Authors>ErikRepo</Authors>
   </PropertyGroup>
 
@@ -53,6 +53,7 @@
   <ItemGroup>
     <Content Remove="C:\Users\Erikr\.nuget\packages\bioformats.net6\6.12.0\contentFiles\any\net6.0\bioformats_package.dll" />
     <Content Remove="C:\Users\Erikr\.nuget\packages\bioformats.net6\6.13.0\contentFiles\any\net6.0\bioformats_package.dll" />
+    <Content Remove="C:\Users\Erikr\.nuget\packages\bioformats.net6\6.13.1\contentFiles\any\net6.0\bioformats_package.dll" />
   </ItemGroup>
   <ItemGroup>
     <None Remove="bioformats_package.dll" />
@@ -70,6 +71,8 @@
     <None Remove="Glade\Magic.glade" />
     <None Remove="Glade\NodeView.glade" />
     <None Remove="Glade\Play.glade" />
+    <None Remove="Glade\Plot.glade" />
+    <None Remove="Glade\Plot.glade~RF53a42aa.TMP" />
     <None Remove="Glade\Progress.glade" />
     <None Remove="Glade\Recorder.glade" />
     <None Remove="Glade\Resolutions.glade" />
@@ -224,6 +227,7 @@
     <EmbeddedResource Include="Glade\Magic.glade" />
     <EmbeddedResource Include="Glade\NodeView.glade" />
     <EmbeddedResource Include="Glade\Play.glade" />
+    <EmbeddedResource Include="Glade\Plot.glade" />
     <EmbeddedResource Include="Glade\Progress.glade" />
     <EmbeddedResource Include="Glade\Recorder.glade" />
     <EmbeddedResource Include="Glade\Resolutions.glade" />
@@ -253,6 +257,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="ScottPlot" Version="4.1.64" />
   </ItemGroup>
 
   <ItemGroup>
@@ -270,12 +275,6 @@
     <Reference Include="bioformats_package">
       <HintPath>bioformats_package.dll</HintPath>
     </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Update="C:\Users\Erikr\.nuget\packages\bioformats.net6\6.13.1\contentFiles\any\net6.0\bioformats_package.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 
 </Project>
