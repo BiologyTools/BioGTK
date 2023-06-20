@@ -620,7 +620,7 @@ namespace BioGTK
         protected void saveSelectedTiffClick(object sender, EventArgs a)
         {
             Gtk.FileChooserDialog filechooser =
-       new Gtk.FileChooserDialog("Choose the file to open",
+       new Gtk.FileChooserDialog("Save File",
            this,
            FileChooserAction.Save,
            "Cancel", ResponseType.Cancel,
