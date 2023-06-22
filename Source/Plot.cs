@@ -52,6 +52,11 @@ namespace BioGTK
             get { return bitmap; }
             set { bitmap = value; }
         }
+        public PlotModel Model
+        {
+            get { return model; }
+            set { model = value; UpdateImage(); }
+        }
         public void UpdateImage()
         {
             OxyPlot.SkiaSharp.PngExporter.Export(model, file, AllocatedWidth, AllocatedHeight);
