@@ -36,7 +36,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - [LibTiff.Net](https://bitmiracle.com/libtiff/)
 - [Cs-script](https://github.com/oleg-shilo/cs-script/blob/master/LICENSE)
 - [ImageJ](https://imagej.nih.gov/ij/) (Only needed when running ImageJ macro commands)
-- [ScottPlot](https://scottplot.net/)
+- [Oxyplot](https://oxyplot.github.io/)
 
 ## Licenses
 - BioGTK [GPL3](https://www.gnu.org/licenses/gpl-3.0.en.html)
@@ -45,7 +45,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - [IKVM](https://github.com/gluck/ikvm/blob/master/LICENSE)
 - LibTiff.Net [BSD](https://bitmiracle.com/libtiff/)
 - Cs-script [MIT](https://github.com/oleg-shilo/cs-script/blob/master/LICENSE)
-- ScottPlot[MIT](https://github.com/ScottPlot/ScottPlot/blob/main/LICENSE)
+- Oxyplot [MIT](https://github.com/oxyplot/oxyplot/blob/develop/LICENSE)
   
 ## Scripting
 -  Save scripts into "StartupPath/Scripts" with ".cs" ending.
