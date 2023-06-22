@@ -19,8 +19,8 @@
             </child>
           </object>
           <packing>
-            <property name="expand">True</property>
-            <property name="fill">True</property>
+            <property name="expand">False</property>
+            <property name="fill">False</property>
             <property name="position">0</property>
           </packing>
         </child>
@@ -57,6 +57,8 @@
                     <property name="shadow-type">in</property>
                     <child>
                       <object class="GtkTextView" id="view">
+                        <property name="width-request">600</property>
+                        <property name="height-request">700</property>
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                       </object>
@@ -71,7 +73,6 @@
                 <child>
                   <object class="GtkNotebook" id="tabsView">
                     <property name="width-request">13</property>
-                    <property name="height-request">171</property>
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <child>
@@ -156,7 +157,7 @@
                     </child>
                   </object>
                   <packing>
-                    <property name="expand">False</property>
+                    <property name="expand">True</property>
                     <property name="fill">True</property>
                     <property name="position">1</property>
                   </packing>
@@ -236,19 +237,21 @@
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
+                    <property name="pack-type">end</property>
                     <property name="position">2</property>
                   </packing>
                 </child>
               </object>
               <packing>
-                <property name="expand">False</property>
+                <property name="expand">True</property>
                 <property name="fill">True</property>
+                <property name="pack-type">end</property>
                 <property name="position">1</property>
               </packing>
             </child>
           </object>
           <packing>
-            <property name="expand">False</property>
+            <property name="expand">True</property>
             <property name="fill">True</property>
             <property name="position">1</property>
           </packing>

@@ -72,7 +72,7 @@
                 </child>
                 <child>
                   <object class="GtkNotebook" id="tabsView">
-                    <property name="width-request">13</property>
+                    <property name="height-request">40</property>
                     <property name="visible">True</property>
                     <property name="can-focus">True</property>
                     <child>

@@ -9,16 +9,17 @@ using AForge;
 using Gdk;
 using GLib;
 using Gtk;
-using org.checkerframework.checker.units.qual;
-using ScottPlot;
+using OxyPlot;
 using System.Threading;
 using System.IO;
+using OxyPlot.Series;
+using OxyPlot.Axes;
 
 namespace BioGTK
 {
     public class Plot : Gtk.Window
     {
-        public ScottPlot.Plot plot;
+        PlotModel model;
         string file;
         string name;
         Bitmap bitmap;
@@ -53,15 +54,7 @@ namespace BioGTK
         }
         public void UpdateImage()
         {
-            plot = new ScottPlot.Plot(AllocatedWidth, AllocatedHeight);
-            foreach (double[] val in data) 
-            {
-                if(type == PlotType.Bar)
-                    plot.AddBar(val);
-                else
-                    plot.AddSignal(val);
-            }
-            file = plot.SaveFig(name + ".png");
+            OxyPlot.SkiaSharp.PngExporter.Export(model, file, AllocatedWidth, AllocatedHeight);
             this.Title = name;
             pixbuf = new Pixbuf(file);
             image.QueueDraw();
@@ -112,6 +105,37 @@ namespace BioGTK
         {
             _builder = builder;
             builder.Autoconnect(this);
+            model = new PlotModel { Title = name };
+            data.Add(vals);
+            double maxy = 0;
+            double maxx = 0;
+            for (int s = 0; s < data.Count; s++)
+            {
+                var ser = new LineSeries()
+                {
+                    Color = OxyColors.Blue,
+                    MarkerType = MarkerType.Circle,
+                    MarkerSize = 4,
+                    MarkerStroke = OxyColors.Black,
+                    MarkerFill = OxyColors.Black,
+                    MarkerStrokeThickness = 1.0
+                };
+                ser.Title = name;
+                for (int i = 0; i < data.Count; i++)
+                {
+                    if (data[i].Length > maxy)
+                        maxy = data[i].Length;
+                    for (int x = 0; x < data[i].Length; x++)
+                    {
+                        ser.Points.Add(new DataPoint(x, data[i][x]));
+                        if(data[i][x] > maxx)
+                            maxx = data[i][x];
+                    }
+                }
+                model.Series.Add(ser);
+            }
+            if (!name.EndsWith(".png") || !name.EndsWith(".PNG"))
+            file = name + ".png";
             this.Title = name;
             image.Drawn += Image_Drawn;
             image.SizeAllocated += Image_SizeAllocated;
@@ -122,7 +146,6 @@ namespace BioGTK
             saveImageMenu.ButtonPressEvent += SaveImageMenu_ButtonPressEvent;
             saveCSVMenu.ButtonPressEvent += SaveCSVMenu_ButtonPressEvent;
             this.DeleteEvent += About_DeleteEvent;
-            data.Add(vals);
             this.name = name;
             selected = this;
             if(plots.ContainsKey(name))
