@@ -3,8 +3,8 @@
 
 A .NET application & library for editing & annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters & macro functions. Check out the new wiki for [library usage.](https://github.com/BiologyTools/Bio/wiki/Library-Usage) or check out the [documentation.](https://biologytools.github.io/) Supports Windows, Linux and Mac. For Windows & Mac see installation instructions. For Discussion check out the new Discord Server. https://discord.gg/tdeyc6fgpv
 
-[![NuGet version (BioGTK)](https://img.shields.io/nuget/v/BioGTK.svg?style=flat-square)](https://www.nuget.org/packages/BioGTK/2.7.1)
-[![NuGet version (BioGTK)](https://img.shields.io/nuget/dt/BioGTK?color=g)](https://www.nuget.org/packages/BioGTK/2.7.1)
+[![NuGet version (BioGTK)](https://img.shields.io/nuget/v/BioGTK.svg?style=flat-square)](https://www.nuget.org/packages/BioGTK/3.1.0)
+[![NuGet version (BioGTK)](https://img.shields.io/nuget/dt/BioGTK?color=g)](https://www.nuget.org/packages/BioGTK/3.1.0)
 ## Features
 
 - C# scripting with sample tool-script and other sample scripts in "/Scripts/" folder. [See samples](https://github.com/BioMicroscopy/BioImage-Scripts)
@@ -36,6 +36,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - [LibTiff.Net](https://bitmiracle.com/libtiff/)
 - [Cs-script](https://github.com/oleg-shilo/cs-script/blob/master/LICENSE)
 - [ImageJ](https://imagej.nih.gov/ij/) (Only needed when running ImageJ macro commands)
+- [Oxyplot](https://oxyplot.github.io/)
 
 ## Licenses
 - BioGTK [GPL3](https://www.gnu.org/licenses/gpl-3.0.en.html)
@@ -44,6 +45,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - [IKVM](https://github.com/gluck/ikvm/blob/master/LICENSE)
 - LibTiff.Net [BSD](https://bitmiracle.com/libtiff/)
 - Cs-script [MIT](https://github.com/oleg-shilo/cs-script/blob/master/LICENSE)
+- Oxyplot [MIT](https://github.com/oxyplot/oxyplot/blob/develop/LICENSE)
 
 ## Scripting
 -  Save scripts into "StartupPath/Scripts" with ".cs" ending.
@@ -60,6 +62,9 @@ A .NET application & library for editing & annotating various microscopy image f
 ## Windows Installation
 - Install package manager [MSYS2.](https://github.com/GtkSharp/GtkSharp/wiki/Installing-Gtk-on-Windows) to install package GTK3. (Required for GTK Apps.)
 - Download the BioGTK Windows installer from releases.
+
+## Linux Installation
+- Just download the latest tarball(tar.gz) from Releases as linux already includes GTK3 package.
 
 ## Sample Tool Script
 ```
