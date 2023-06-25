@@ -45,6 +45,10 @@ namespace BioGTK
             App.Initialize();
             App.nodeView = this;
             SetupHandlers();
+            foreach (string item in args)
+            {
+                BioImage.OpenFile(item);
+            }
             InitItems();
         }
 

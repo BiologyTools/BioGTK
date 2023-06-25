@@ -9,17 +9,16 @@ using AForge;
 using Gdk;
 using GLib;
 using Gtk;
-using OxyPlot;
 using System.Threading;
 using System.IO;
-using OxyPlot.Series;
-using OxyPlot.Axes;
+using ScottPlot;
 
 namespace BioGTK
 {
     public class Plot : Gtk.Window
     {
-        PlotModel model;
+        ScottPlot.Plot model;
+        //PlotModel model;
         string file;
         string name;
         Bitmap bitmap;
@@ -29,7 +28,6 @@ namespace BioGTK
         public enum PlotType
         {
             Bar,
-            Signal,
             Scatter
         }
         PlotType type;
@@ -52,19 +50,53 @@ namespace BioGTK
             get { return bitmap; }
             set { bitmap = value; }
         }
-        public PlotModel Model
+        public ScottPlot.Plot Model
         {
             get { return model; }
             set { model = value; UpdateImage(); }
         }
         public void UpdateImage()
         {
-            OxyPlot.SkiaSharp.PngExporter.Export(model, file, AllocatedWidth, AllocatedHeight);
+            model.SavePng(file, AllocatedWidth, AllocatedHeight);
             this.Title = name;
             pixbuf = new Pixbuf(file);
             image.QueueDraw();
         }
-
+        private void InitScatter()
+        {
+            model.Clear();
+            List<Coordinates> cs = new List<Coordinates>();
+            for (int i = 0; i < data.Count; i++)
+            {
+                for (int x = 0; x < data[i].Length; x++)
+                {
+                    cs.Add(new ScottPlot.Coordinates(x, data[i][x]));
+                }
+            }
+            model.Add.Scatter(cs);
+        }
+        private void InitBars()
+        {
+            model.Clear();
+            int i = 0;
+            List<ScottPlot.Plottables.BarSeries> seriesList = new List<ScottPlot.Plottables.BarSeries>();
+            foreach (double[] items in data)
+            {
+                List<ScottPlot.Plottables.Bar> bars = new List<ScottPlot.Plottables.Bar>();
+                foreach (double item in items)
+                {
+                    bars.Add(new ScottPlot.Plottables.Bar(i, item));
+                }
+                ScottPlot.Plottables.BarSeries series1 = new()
+                {
+                    Bars = bars,
+                    Label = i.ToString(),
+                };
+                seriesList.Add(series1);
+                i++;
+            }
+            model.Add.Bar(seriesList);
+        }
         #region Properties
         Pixbuf pixbuf;
         private Builder _builder;
@@ -79,8 +111,6 @@ namespace BioGTK
         [Builder.Object]
         private Gtk.CheckMenuItem barMenu;
         [Builder.Object]
-        private Gtk.CheckMenuItem signalMenu;
-        [Builder.Object]
         private Gtk.CheckMenuItem scatterMenu;
 
 #pragma warning restore 649
@@ -94,7 +124,7 @@ namespace BioGTK
         public static Plot Create(double[] vals, string name)
         {
             Builder builder = new Builder(null, "BioGTK.Glade.Plot.glade", null);
-            return new Plot(builder, builder.GetObject("plot").Handle, vals, name, PlotType.Bar);
+            return new Plot(builder, builder.GetObject("plot").Handle, vals, name, PlotType.Scatter);
         }
         /// It creates a new instance of the Plot class.
         /// 
@@ -110,35 +140,13 @@ namespace BioGTK
         {
             _builder = builder;
             builder.Autoconnect(this);
-            model = new PlotModel { Title = name };
+            model = new ScottPlot.Plot();
             data.Add(vals);
-            double maxy = 0;
-            double maxx = 0;
-            for (int s = 0; s < data.Count; s++)
-            {
-                var ser = new LineSeries()
-                {
-                    Color = OxyColors.Blue,
-                    MarkerType = MarkerType.Circle,
-                    MarkerSize = 4,
-                    MarkerStroke = OxyColors.Black,
-                    MarkerFill = OxyColors.Black,
-                    MarkerStrokeThickness = 1.0
-                };
-                ser.Title = name;
-                for (int i = 0; i < data.Count; i++)
-                {
-                    if (data[i].Length > maxy)
-                        maxy = data[i].Length;
-                    for (int x = 0; x < data[i].Length; x++)
-                    {
-                        ser.Points.Add(new DataPoint(x, data[i][x]));
-                        if(data[i][x] > maxx)
-                            maxx = data[i][x];
-                    }
-                }
-                model.Series.Add(ser);
-            }
+            if (typ == PlotType.Scatter)
+                InitScatter();
+            else
+            if (typ == PlotType.Bar)
+                InitBars();
             if (!name.EndsWith(".png") || !name.EndsWith(".PNG"))
             file = name + ".png";
             this.Title = name;
@@ -146,7 +154,6 @@ namespace BioGTK
             image.SizeAllocated += Image_SizeAllocated;
             image.ButtonPressEvent += Image_ButtonPressEvent;
             barMenu.ButtonPressEvent += BarMenu_ButtonPressEvent;
-            signalMenu.ButtonPressEvent += SignalMenu_ButtonPressEvent;
             scatterMenu.ButtonPressEvent += ScatterMenu_ButtonPressEvent;
             saveImageMenu.ButtonPressEvent += SaveImageMenu_ButtonPressEvent;
             saveCSVMenu.ButtonPressEvent += SaveCSVMenu_ButtonPressEvent;
@@ -205,25 +212,17 @@ namespace BioGTK
 
         private void ScatterMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            signalMenu.Active = false;
             barMenu.Active = false;
             type = PlotType.Scatter;
-            UpdateImage();
-        }
-
-        private void SignalMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
-        {
-            scatterMenu.Active = false;
-            barMenu.Active = false;
-            type = PlotType.Signal;
+            InitScatter();
             UpdateImage();
         }
 
         private void BarMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            signalMenu.Active = false;
             scatterMenu.Active = false;
             type = PlotType.Bar;
+            InitBars();
             UpdateImage();
         }
 
@@ -264,6 +263,7 @@ namespace BioGTK
             e.Cr.Stroke();
         }
 
+        
         #endregion
 
     }

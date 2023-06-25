@@ -49,6 +49,7 @@ namespace BioGTK
             im.Filename = GetImageName(im.ID);
             im.ID = im.Filename;
             images.Add(im);
+            
             // start a background task to update progress bar
             System.Threading.Tasks.Task.Run(() =>
             {
@@ -58,9 +59,9 @@ namespace BioGTK
                     App.nodeView.UpdateItems();
                     if (newtab)
                         App.tabsView.AddTab(im);
-                    App.progress.Hide();
                 });
             });
+            
             //App.Image = im;
             //NodeView.viewer.AddTab(im);
         }
@@ -837,8 +838,8 @@ namespace BioGTK
                     sints = ints[i].Split('\t');
                 else
                     sints = ints[i].Split(',');
-                double x = double.Parse(sints[0]);
-                double y = double.Parse(sints[1]);
+                double x = double.Parse(sints[0], CultureInfo.InvariantCulture);
+                double y = double.Parse(sints[1], CultureInfo.InvariantCulture);
                 pts.Add(new PointD(x, y));
             }
             return pts.ToArray();
@@ -856,9 +857,9 @@ namespace BioGTK
             for (int j = 0; j < ps.Length; j++)
             {
                 if (j == ps.Length - 1)
-                    pts += ps[j].X.ToString() + "," + ps[j].Y.ToString();
+                    pts += ps[j].X.ToString(CultureInfo.InvariantCulture) + "," + ps[j].Y.ToString(CultureInfo.InvariantCulture);
                 else
-                    pts += ps[j].X.ToString() + "," + ps[j].Y.ToString() + " ";
+                    pts += ps[j].X.ToString(CultureInfo.InvariantCulture) + "," + ps[j].Y.ToString(CultureInfo.InvariantCulture) + " ";
             }
             return pts;
         }
@@ -2449,27 +2450,6 @@ namespace BioGTK
                 {
                     Buffers[i].Image = AForge.Imaging.Image.Convert16bppTo8bpp(Buffers[i]);
                 }
-                if (Channels[0].SamplesPerPixel == 3)
-                {
-                    Channel c = Channels[0].Copy();
-                    c.SamplesPerPixel = 1;
-                    c.range = new IntRange[1];
-                    Channels.Clear();
-                    Channels.Add(c);
-                    Channels.Add(c.Copy());
-                    Channels.Add(c.Copy());
-                    Channels[1].Index = 1;
-                    Channels[2].Index = 2;
-                }
-                for (int c = 0; c < Channels.Count; c++)
-                {
-                    for (int i = 0; i < Channels[c].range.Length; i++)
-                    {
-                        Channels[c].range[i].Min = (int)(((float)Channels[c].range[i].Min / (float)ushort.MaxValue) * byte.MaxValue);
-                        Channels[c].range[i].Max = (int)(((float)Channels[c].range[i].Max / (float)ushort.MaxValue) * byte.MaxValue);
-                    }
-                    Channels[c].BitsPerPixel = 8;
-                }
             }
             else
             if (Buffers[0].PixelFormat == PixelFormat.Format16bppGrayScale || Buffers[0].PixelFormat == PixelFormat.Format8bppIndexed)
@@ -2598,7 +2578,13 @@ namespace BioGTK
                 GC.Collect();
                 Buffers = bfs;
                 UpdateCoords(SizeZ, 1, SizeT);
-
+                Channel c = Channels[0].Copy();
+                c.SamplesPerPixel = 3;
+                rgbChannels[0] = 0;
+                rgbChannels[1] = 0;
+                rgbChannels[2] = 0;
+                Channels.Clear();
+                Channels.Add(c);
             }
             else
             if (Buffers[0].PixelFormat == PixelFormat.Format24bppRgb)
@@ -5907,11 +5893,20 @@ namespace BioGTK
             var meta = (IMetadata)((OMEXMLService)new ServiceFactory().getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
             reader.setMetadataStore((MetadataStore)meta);
             file = file.Replace("\\", "/");
-            if (reader.getCurrentFile() != file)
+            try
             {
-                status = "Opening OME Image.";
-                reader.setId(file);
+                if (reader.getCurrentFile() != file)
+                {
+                    status = "Opening OME Image.";
+                    reader.setId(file);
+                }
             }
+            catch (Exception e)
+            {
+                Scripting.LogLine(e.Message);
+                return null;
+            }
+           
             bool tile = false;
             if (reader.getOptimalTileWidth() != reader.getSizeX())
                 tile = true;
@@ -6607,17 +6602,17 @@ namespace BioGTK
             for (int j = 0; j < points.Length; j++)
             {
                 if (j == points.Length - 1)
-                    pts += points[j].X.ToString() + "," + points[j].Y.ToString();
+                    pts += points[j].X.ToString(CultureInfo.InvariantCulture) + "," + points[j].Y.ToString(CultureInfo.InvariantCulture);
                 else
-                    pts += points[j].X.ToString() + "," + points[j].Y.ToString() + " ";
+                    pts += points[j].X.ToString(CultureInfo.InvariantCulture) + "," + points[j].Y.ToString(CultureInfo.InvariantCulture) + " ";
             }
             char sep = (char)34;
             string sColor = sep.ToString() + an.strokeColor.A.ToString() + ',' + an.strokeColor.R.ToString() + ',' + an.strokeColor.G.ToString() + ',' + an.strokeColor.B.ToString() + sep.ToString();
             string bColor = sep.ToString() + an.fillColor.A.ToString() + ',' + an.fillColor.R.ToString() + ',' + an.fillColor.G.ToString() + ',' + an.fillColor.B.ToString() + sep.ToString();
 
             string line = an.roiID + ',' + an.roiName + ',' + an.type.ToString() + ',' + an.id + ',' + an.shapeIndex.ToString() + ',' +
-                an.Text + ',' + an.serie + ',' + an.coord.Z.ToString() + ',' + an.coord.C.ToString() + ',' + an.coord.T.ToString() + ',' + an.X.ToString() + ',' + an.Y.ToString() + ',' +
-                an.W.ToString() + ',' + an.H.ToString() + ',' + sep.ToString() + pts + sep.ToString() + ',' + sColor + ',' + an.strokeWidth.ToString() + ',' + bColor + ',' + an.fontSize.ToString() + ',' + NewLine;
+                an.Text + ',' + an.serie + ',' + an.coord.Z.ToString() + ',' + an.coord.C.ToString() + ',' + an.coord.T.ToString() + ',' + an.X.ToString(CultureInfo.InvariantCulture) + ',' + an.Y.ToString(CultureInfo.InvariantCulture) + ',' +
+                an.W.ToString(CultureInfo.InvariantCulture) + ',' + an.H.ToString(CultureInfo.InvariantCulture) + ',' + sep.ToString() + pts + sep.ToString() + ',' + sColor + ',' + an.strokeWidth.ToString(CultureInfo.InvariantCulture) + ',' + bColor + ',' + an.fontSize.ToString(CultureInfo.InvariantCulture) + ',' + NewLine;
             return line;
         }
         /// It takes a string and returns an ROI object
@@ -6674,6 +6669,8 @@ namespace BioGTK
                     {
                         //TYPE
                         an.type = (ROI.Type)Enum.Parse(typeof(ROI.Type), val);
+                        if (an.type == ROI.Type.Freeform || an.type == ROI.Type.Polygon)
+                            an.closed = true;
                     }
                     else
                     if (col == 3)
@@ -6716,22 +6713,22 @@ namespace BioGTK
                     else
                     if (col == 10)
                     {
-                        x = double.Parse(val);
+                        x = double.Parse(val, CultureInfo.InvariantCulture);
                     }
                     else
                     if (col == 11)
                     {
-                        y = double.Parse(val);
+                        y = double.Parse(val, CultureInfo.InvariantCulture);
                     }
                     else
                     if (col == 12)
                     {
-                        w = double.Parse(val);
+                        w = double.Parse(val, CultureInfo.InvariantCulture);
                     }
                     else
                     if (col == 13)
                     {
-                        h = double.Parse(val);
+                        h = double.Parse(val, CultureInfo.InvariantCulture);
                     }
                     else
                     if (col == 14)
@@ -6752,7 +6749,7 @@ namespace BioGTK
                     if (col == 16)
                     {
                         //STROKECOLORW
-                        an.strokeWidth = double.Parse(val);
+                        an.strokeWidth = double.Parse(val,CultureInfo.InvariantCulture);
                     }
                     else
                     if (col == 17)
@@ -6765,7 +6762,7 @@ namespace BioGTK
                     if (col == 18)
                     {
                         //FONTSIZE
-                        double s = double.Parse(val);
+                        double s = double.Parse(val, CultureInfo.InvariantCulture);
                         an.fontSize = (float)s;
                         an.family = "Times New Roman";
                     }

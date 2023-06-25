@@ -115,6 +115,8 @@ namespace BioGTK
             /// It adds all the tools to the tools list
             public static void Init()
             {
+                int w = 33;
+                int h = 33;
                 string s = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/";
                 tools.Clear();
                 if (tools.Count == 0)
@@ -318,7 +320,7 @@ namespace BioGTK
             else
             if (currentTool.type == Tool.Type.polygon && buts.Event.Button == 1)
             {
-                if (selectedROI.GetPointCount() == 0)
+                if (selectedROI.GetPointCount() == 0 || selectedROI.type != ROI.Type.Polygon)
                 {
                     selectedROI = new ROI();
                     selectedROI.type = ROI.Type.Polygon;
@@ -361,6 +363,7 @@ namespace BioGTK
             else
             if (currentTool.type == Tool.Type.rect && buts.Event.Button == 1)
             {
+                selectedROI = new ROI();
                 selectedROI.type = ROI.Type.Rectangle;
                 selectedROI.Rect = new RectangleD(e.X, e.Y, 1, 1);
                 selectedROI.coord = App.viewer.GetCoordinate();
@@ -369,6 +372,7 @@ namespace BioGTK
             else
             if (currentTool.type == Tool.Type.ellipse && buts.Event.Button == 1)
             {
+                selectedROI = new ROI();
                 selectedROI.type = ROI.Type.Ellipse;
                 selectedROI.Rect = new RectangleD(e.X, e.Y, 1, 1);
                 selectedROI.coord = App.viewer.GetCoordinate();
@@ -412,10 +416,14 @@ namespace BioGTK
             else
             if (currentTool.type == Tool.Type.text && buts.Event.Button == 1)
             {
-                //ROI an = new ROI();
+                selectedROI = new ROI();
                 selectedROI.type = ROI.Type.Label;
-                selectedROI.AddPoint(new PointD(e.X, e.Y));
+                if (selectedROI.PointsD.Count == 0)
+                    selectedROI.AddPoint(new PointD(e.X, e.Y));
+                else
+                    selectedROI.UpdatePoint(new PointD(e.X, e.Y), 0);
                 selectedROI.coord = App.viewer.GetCoordinate();
+                ti = TextInput.Create();
                 ti.ShowAll();
                 ti.Run();
             }
@@ -477,33 +485,6 @@ namespace BioGTK
             if (currentTool.type == Tool.Type.freeform && selectedROI.type == ROI.Type.Freeform && buts.Event.Button == 1)
             {
                 selectedROI = new ROI();
-            }
-            else
-            if (currentTool.type == Tool.Type.select && buts.Event.Button == 1)
-            {
-                ImageView.selectedAnnotations.Clear();
-                RectangleD r = new RectangleD(ImageView.mouseDown.X,ImageView.mouseDown.Y, Math.Abs(e.X - ImageView.mouseDown.X),Math.Abs(e.Y - ImageView.mouseDown.Y));
-                foreach (ROI an in App.viewer.AnnotationsRGB)
-                {
-                    if (an.GetSelectBound(App.viewer.GetScale()).IntersectsWith(r))
-                    {
-                        if(!buts.Event.State.HasFlag(ModifierType.ControlMask))
-                        an.selectedPoints.Clear();
-                        ImageView.selectedAnnotations.Add(an);
-                        an.selected = true;
-                        RectangleD[] sels = an.GetSelectBoxes(App.viewer.Scale.Width);
-                        for (int i = 0; i < sels.Length; i++)
-                        {
-                            if (sels[i].IntersectsWith(r))
-                            {
-                                an.selectedPoints.Add(i);
-                            }
-                        }
-                    }
-                    else
-                        an.selected = false;
-                }
-                //Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(0, 0, 0, 0);
             }
             else
             if (Tools.currentTool.type == Tools.Tool.Type.magic && buts.Event.Button == 1)
@@ -588,11 +569,12 @@ namespace BioGTK
                     DrawColor = ImageView.SelectedBuffer.GetPixel((int)mouseU.X, (int)mouseU.Y);
                 }
             }
-
+            /*
             if(Tools.currentTool.type == Tool.Type.select)
             {
                 currentTool.Rectangle = new RectangleD(0, 0, 0, 0);
             }
+            */
             UpdateView();
         }
         /// This function is called when the mouse is moved. It is used to update the view when the user
@@ -629,7 +611,6 @@ namespace BioGTK
                 return;
             if (currentTool.type == Tool.Type.move && buts.Event.State == Gdk.ModifierType.Button1Mask)
             {
-
                 for (int i = 0; i < selectedROI.PointsD.Count; i++)
                 {
                     PointD pd = new PointD(ImageView.mouseDown.X - e.X, ImageView.mouseDown.Y - e.Y);
@@ -774,8 +755,7 @@ namespace BioGTK
 
         static int gridW = 2;
         static int gridH = 11;
-        static int w = 33;
-        static int h = 33;
+
         static List<Rectangle> rects = new List<Rectangle>();
         /// It draws the tools in the toolbox
         /// 
@@ -783,6 +763,8 @@ namespace BioGTK
         /// @param DrawnArgs This is a class that contains the Cairo Context and the Gdk Window.
         private void View_Drawn(object o, DrawnArgs e)
         {
+            int w = 33;
+            int h = 33;
             int x = 0;
             int y = 0;
             foreach (Tool item in tools.Values)

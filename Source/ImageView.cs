@@ -912,9 +912,7 @@ namespace BioGTK
         private void RoiID_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             TextInput ti = TextInput.Create();
-            if (ti.Run() != (int)ResponseType.Ok)
-                return;
-            selectedAnnotations[0].id = ti.Text;
+            ti.Show();
             UpdateView();
         }
 
@@ -1350,7 +1348,8 @@ namespace BioGTK
                     }
                     rects.Clear();
                 }
-                if (Tools.currentTool.type == Tools.Tool.Type.select)
+
+                if (Tools.currentTool.type == Tools.Tool.Type.select && Modifiers == ModifierType.Button1Mask)
                 {
                     RectangleD rrf = ToViewSpace(Tools.currentTool.Rectangle.X, Tools.currentTool.Rectangle.Y, Math.Abs(Tools.currentTool.Rectangle.W),Math.Abs(Tools.currentTool.Rectangle.H));
                     e.Cr.SetSourceColor(FromColor(Color.Magenta));
@@ -1912,13 +1911,16 @@ namespace BioGTK
             App.tools.ToolMove(p, e);
             Tools.currentTool.Rectangle = new RectangleD(mouseDown.X, mouseDown.Y, p.X - mouseDown.X, p.Y - mouseDown.Y);
             mousePoint = "(" + (p.X.ToString("F")) + ", " + (p.Y.ToString("F")) + ")";
-            //pd = p;
-            if (Tools.currentTool.type == Tools.Tool.Type.pointSel && (e.Event.State.HasFlag(ModifierType.ControlMask) && e.Event.State.HasFlag(ModifierType.Button1Mask)))
+            
+            //If point selection tool is clicked we  
+            if (Tools.currentTool.type == Tools.Tool.Type.pointSel && e.Event.State.HasFlag(ModifierType.Button1Mask))
             {
-                foreach (ROI an in selectedAnnotations)
+                foreach (ROI an in SelectedImage.Annotations)
                 {
+                    if(an.selected)
                     if (an.selectedPoints.Count > 0 && an.selectedPoints.Count < an.GetPointCount())
                     {
+                        //If the selection is rectangle or ellipse we resize the annotation based on corners
                         if (an.type == ROI.Type.Rectangle || an.type == ROI.Type.Ellipse)
                         {
                             RectangleD d = an.Rect;
@@ -1962,13 +1964,13 @@ namespace BioGTK
                         else
                         {
                             PointD pod = new PointD(p.X - pd.X, p.Y - pd.Y);
+                            //PointD dif = new PointD((e.Event.X - ed.X) * PxWmicron, (e.Event.Y - ed.Y) * PxHmicron);
                             for (int i = 0; i < an.selectedPoints.Count; i++)
                             {
                                 PointD poid = an.GetPoint(an.selectedPoints[i]);
                                 an.UpdatePoint(new PointD(poid.X + pod.X, poid.Y + pod.Y), an.selectedPoints[i]);
                             }
                         }
-                        UpdateView();
                     }
                     else
                     {
@@ -1991,7 +1993,6 @@ namespace BioGTK
                     g.pen = new Bio.Graphics.Pen(Tools.DrawColor, (int)Tools.StrokeWidth, ImageView.SelectedImage.bitsPerPixel);
                     g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)Tools.StrokeWidth, (int)Tools.StrokeWidth), g.pen.color);
                     UpdateImage();
-                    UpdateView();
                 }
                 else
                 if (Tools.currentTool.type == Tools.Tool.Type.eraser && Modifiers == ModifierType.Button1Mask)
@@ -2005,7 +2006,6 @@ namespace BioGTK
             }
             UpdateStatus();
             pd = p;
-            if(Tools.currentTool.type == Tools.Tool.Type.select && Modifiers == ModifierType.Button1Mask)
             UpdateView();
         }
         public static PointD mouseDown;
@@ -2053,6 +2053,7 @@ namespace BioGTK
             App.tools.ToolUp(pointer, e);
         }
         PointD pd;
+        PointD ed;
         /// The function is called when the user clicks on the image. It checks if the user clicked on
         /// an annotation, and if so, it selects the annotation
         /// 
@@ -2070,6 +2071,7 @@ namespace BioGTK
                 mouseLeftState = false;
             App.viewer = this;
             PointD pointer = ImageToViewSpace(e.Event.X, e.Event.Y);
+            ed = new PointD(e.Event.X, e.Event.Y);
             pd = pointer;
             mouseDown = pd;
             mouseD = new PointD(((pointer.X - Origin.X) / SelectedImage.Volume.Width)*SelectedImage.SizeX,((pointer.Y - Origin.Y) / SelectedImage.Volume.Height) * SelectedImage.SizeY);
@@ -2110,6 +2112,7 @@ namespace BioGTK
             if (e.Event.State != ModifierType.Button5Mask)
                 x2State = false;
 
+            //We select the image that has been clicked
             foreach (BioImage b in Images)
             {
                 RectangleD r = new RectangleD(b.Volume.Location.X, b.Volume.Location.Y, b.Volume.Width, b.Volume.Height);
@@ -2122,22 +2125,11 @@ namespace BioGTK
                 }
                 ind++;
             }
-            if (Modifiers != ModifierType.ControlMask && e.Event.Button == 1)
-            {
-                foreach (ROI item in selectedAnnotations)
-                {
-                    if (item.selected)
-                    {
-                        item.selectedPoints.Clear();
-                        item.selected = false;
-                    }
-                }
-                selectedAnnotations.Clear();
-            }
 
+            //Lets handle point selection & move tool clicks.
             if (Tools.currentTool.type == Tools.Tool.Type.pointSel || Tools.currentTool.type == Tools.Tool.Type.move && e.Event.Button == 1)
             {
-                //float width = (float)ToViewSizeW(ROI.selectBoxSize / Scale.Width);
+                bool clearSel = true;
                 float width = (float)ToScreenScaleW(ROI.selectBoxSize);
                 foreach (BioImage bi in Images)
                 {
@@ -2145,8 +2137,11 @@ namespace BioGTK
                     {
                         if (an.Rect.ToRectangleF().IntersectsWith(new RectangleF((float)pointer.X, (float)pointer.Y,1,1)))
                         {
+                            //We clicked inside an ROI so selection should not be cleared.
+                            clearSel = false;
                             selectedAnnotations.Add(an);
                             an.selected = true;
+                            Tools.selectedROI = an;
                             RectangleD[] sels = an.GetSelectBoxes(width);
                             RectangleD r = new RectangleD((float)pointer.X, (float)pointer.Y, (float)sels[0].W, (float)sels[0].H);
                             for (int i = 0; i < sels.Length; i++)
@@ -2160,6 +2155,19 @@ namespace BioGTK
                         else
                             if (Modifiers != ModifierType.ControlMask)
                             an.selected = false;
+                    }
+                }
+                //Clear selection if clicked outside all ROI's.
+                if (clearSel)
+                {
+                    selectedAnnotations.Clear();
+                    foreach (BioImage bi in Images)
+                    {
+                        foreach (ROI an in bi.Annotations)
+                        {
+                            an.selected = false;
+                            an.selectedPoints.Clear();
+                        }
                     }
                 }
                 UpdateView();

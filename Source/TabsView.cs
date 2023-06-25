@@ -285,7 +285,7 @@ namespace BioGTK
                 ImageJ.RoiEncoder.save(item,filechooser.Filename + "-" + i);
                 i++;
             }
-            filechooser.Destroy();
+            filechooser.Hide();
         }
 
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file as an
@@ -311,7 +311,7 @@ namespace BioGTK
                 ROI roi = ImageJ.RoiDecoder.open(item);
                 ImageView.SelectedImage.Annotations.Add(roi);
             }
-            filechooser.Destroy();
+            filechooser.Hide();
         }
 
         /// If the window is minimized, hide all the image viewers. If the window is restored, show all
@@ -454,11 +454,11 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             string[] sts = filechooser.Filenames;
-            filechooser.Destroy();
             foreach (string item in sts)
             {
                 BioImage.OpenAsync(item);
             }
+            filechooser.Hide();
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file and adds
         /// it to the list of open images
@@ -490,7 +490,7 @@ namespace BioGTK
                 view.Present();
             }
             this.ShowAll();
-            filechooser.Destroy();
+            filechooser.Hide();
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file as a
         /// BioImage, creates an ImageView for it, and adds the ImageView to the notebook
@@ -510,6 +510,7 @@ namespace BioGTK
             filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
+            filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
                 BioImage[] bm = BioImage.OpenOMESeries(item,true, true);
@@ -522,7 +523,7 @@ namespace BioGTK
                 }
             }
             tabsView.ShowAll();
-            filechooser.Destroy();
+            
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file as a
         /// series of images, and adds each image to the notebook
@@ -542,6 +543,7 @@ namespace BioGTK
             filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
+            filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
                 BioImage[] bm = BioImage.OpenSeries(item, true);
@@ -554,7 +556,6 @@ namespace BioGTK
                 }
             }
             tabsView.ShowAll();
-            filechooser.Destroy();
         }
 
         /// It opens a file chooser dialog, and then adds the selected images to the currently selected
@@ -573,6 +574,7 @@ namespace BioGTK
             "Cancel", ResponseType.Cancel,
             "Open", ResponseType.Accept);
             filechooser.SelectMultiple = true;
+            filechooser.Hide();
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             foreach (string item in filechooser.Filenames)
@@ -581,7 +583,7 @@ namespace BioGTK
                 SelectedViewer.AddImage(b);
             }
             this.ShowAll();
-            filechooser.Destroy();
+            
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file as an
         /// OME image, and adds it to the currently selected viewer
@@ -601,13 +603,13 @@ namespace BioGTK
             filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
+            filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
                 BioImage b = BioImage.OpenOME(item, false);
                 SelectedViewer.AddImage(b);
             }
             this.ShowAll();
-            filechooser.Destroy();
         }
 
         /// It creates a file chooser dialog, and if the user selects a file, it saves the selected
@@ -628,7 +630,7 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             BioImage.SaveFile(filechooser.Filename,ImageView.SelectedImage.ID);
-            filechooser.Destroy();
+            filechooser.Hide();
         }
         /// This function saves the selected image in the OME-TIFF format
         /// 
@@ -647,7 +649,7 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             BioImage.SaveOME(filechooser.Filename, ImageView.SelectedImage.ID);
-            filechooser.Destroy();
+            filechooser.Hide();
         }
         /// This function saves the current series of images to an OME-TIFF file
         /// 
@@ -671,7 +673,7 @@ namespace BioGTK
                 list.Add(b.ID);
             }
             BioImage.SaveOMESeries(list.ToArray(), filechooser.Filename, true);
-            filechooser.Destroy();
+            filechooser.Hide();
         }
         /// It saves the current tab as a tiff file
         /// 
@@ -695,7 +697,7 @@ namespace BioGTK
                 list.Add(b.ID);
             }
             BioImage.SaveSeries(list.ToArray(), filechooser.Filename);
-            filechooser.Destroy();
+            filechooser.Hide();
         }
         /// This function is called when the user clicks the "Save Series" menu item
         /// 
@@ -802,7 +804,7 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Ok)
                 return;
             BioImage.ExportROIsCSV(filechooser.Filename, ImageView.SelectedImage.Annotations);
-            filechooser.Destroy();
+            filechooser.Hide();
         }
         /// This function is called when the user clicks on the "Import ROIs from CSV" menu item
         /// 
@@ -822,7 +824,7 @@ namespace BioGTK
             {
                 ImageView.SelectedImage.Annotations.AddRange(BioImage.ImportROIsCSV(item));
             }
-            filechooser.Destroy();
+            filechooser.Hide();
         }
         /// This function is called when the user clicks on the "Export ROIs of Folder of Images" menu
         /// item
@@ -850,7 +852,7 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Ok)
                 return;
             string file = filechooser.Filename;
-            filechooser.Destroy();
+            filechooser.Hide();
             BioImage.ExportROIFolder(folder, file);
         }
 

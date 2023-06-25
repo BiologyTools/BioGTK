@@ -46,7 +46,14 @@ namespace BioGTK
             _builder = builder;
             builder.Autoconnect(this);
             okBut.ButtonPressEvent += OkBut_ButtonPressEvent;
-            cancelBut.ButtonPressEvent += CancelBut_ButtonPressEvent;
+            textinputBox.Activated += TextinputBox_Activated;
+        }
+
+        private void TextinputBox_Activated(object sender, EventArgs e)
+        {
+            SetText();
+            Hide();
+            Respond(ResponseType.Ok);
         }
 
         /// When the Cancel button is pressed, the dialog box is closed
@@ -68,6 +75,13 @@ namespace BioGTK
         /// @param ButtonPressEventArgs 
         private void OkBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
+            SetText();
+            Hide();
+            Respond(ResponseType.Ok);
+        }
+
+        void SetText()
+        {
             Tools.selectedROI.Text = textinputBox.Text;
             string s = fontBut.Font;
             s = s.Replace(",", "");
@@ -75,9 +89,6 @@ namespace BioGTK
             s = s.Replace(sts[sts.Length-1],"");
             Tools.selectedROI.family = fontBut.FontFamily.Name;
             Tools.selectedROI.fontSize = float.Parse(sts[sts.Length - 1]);
-            ImageView.SelectedImage.Annotations.Add(Tools.selectedROI);
-            Respond(ResponseType.Ok);
-            Hide();
         }
 
         /* A property that returns the Text value of the text input textbox. */
