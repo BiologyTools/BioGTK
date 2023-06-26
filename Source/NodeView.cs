@@ -40,15 +40,24 @@ namespace BioGTK
         /// <param name="handle">  The handle. </param>
         protected NodeView(Builder builder, IntPtr handle, string[] args) : base(handle)
         {
+            Console.WriteLine("Creating Nodeview.");
             _builder = builder;
             builder.Autoconnect(this);
+            string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath);
+            //Let's make sure the directories we need for startup exist.
+            Console.WriteLine("Reading start up folders.");
+            System.IO.Directory.CreateDirectory(st + "/Scripts");
+            System.IO.Directory.CreateDirectory(st + "/Functions");
+            System.IO.Directory.CreateDirectory(st + "/Tools");
             App.Initialize();
             App.nodeView = this;
             SetupHandlers();
+            Console.WriteLine("Parsing arguments.");
             foreach (string item in args)
             {
                 BioImage.OpenFile(item);
             }
+            Console.WriteLine("Initializing nodes.");    
             InitItems();
         }
 

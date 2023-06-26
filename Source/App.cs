@@ -34,6 +34,7 @@ namespace BioGTK
         /// Initialize() is a function that initializes the BioImage Suite Web
         public static void Initialize()
         {
+            Console.WriteLine("Initializing components.");
             BioImage.Initialize();
             tools = Tools.Create();
             filters = FiltersView.Create();
@@ -48,6 +49,7 @@ namespace BioGTK
             setTool = SetTool.Create();
             recorder = Recorder.Create();
             //color = ColorTool.Create();
+            Console.WriteLine("Loading settings.");
             Settings.Load();
             ImageJ.ImageJPath = Settings.GetSettings("ImageJPath");
         }
