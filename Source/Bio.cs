@@ -158,13 +158,13 @@ namespace BioGTK
         }
     }
     /* A struct that is used to store the resolution of an image. */
+    /* A struct that is used to store the resolution of an image. */
     public struct Resolution
     {
         int x;
         int y;
         PixelFormat format;
-        double px;
-        double py;
+        double px, py, pz, sx, sy, sz;
         public int SizeX
         {
             get { return x; }
@@ -175,34 +175,66 @@ namespace BioGTK
             get { return y; }
             set { y = value; }
         }
-        public double PhysicalX
+        public double PhysicalSizeX
         {
             get { return px; }
             set { px = value; }
         }
-        public double PhysicalY
+        public double PhysicalSizeY
         {
             get { return py; }
             set { py = value; }
+        }
+        public double PhysicalSizeZ
+        {
+            get { return pz; }
+            set { pz = value; }
+        }
+        public double StageSizeX
+        {
+            get { return sx; }
+            set { sx = value; }
+        }
+        public double StageSizeY
+        {
+            get { return sy; }
+            set { sy = value; }
+        }
+        public double StageSizeZ
+        {
+            get { return sz; }
+            set { sz = value; }
         }
         public double VolumeWidth
         {
             get
             {
-                return PhysicalX * SizeX;
+                return PhysicalSizeX * SizeX;
             }
         }
         public double VolumeHeight
         {
             get
             {
-                return PhysicalY * SizeY;
+                return PhysicalSizeY * SizeY;
             }
         }
         public PixelFormat PixelFormat
         {
             get { return format; }
             set { format = value; }
+        }
+        public int RGBChannelsCount
+        {
+            get
+            {
+                if (PixelFormat == PixelFormat.Format8bppIndexed || PixelFormat == PixelFormat.Format16bppGrayScale)
+                    return 1;
+                else if (PixelFormat == PixelFormat.Format24bppRgb || PixelFormat == PixelFormat.Format48bppRgb)
+                    return 3;
+                else
+                    return 4;
+            }
         }
         public long SizeInBytes
         {
@@ -221,23 +253,34 @@ namespace BioGTK
                 throw new NotSupportedException(format + " is not supported.");
             }
         }
-        public Resolution(int w, int h, int omePx, int bitsPerPixel, double physX, double physY)
+        public Resolution(int w, int h, int omePx, int bitsPerPixel, double physX, double physY, double physZ, double stageX, double stageY, double stageZ)
         {
             x = w;
             y = h;
+            sx = stageX;
+            sy = stageY;
+            sz = stageZ;
             format = BioImage.GetPixelFormat(omePx, bitsPerPixel);
             px = physX;
             py = physY;
+            pz = physZ;
         }
-        public Resolution(int w, int h, PixelFormat f, double physX, double physY)
+        public Resolution(int w, int h, PixelFormat f, double physX, double physY, double physZ, double stageX, double stageY, double stageZ)
         {
             x = w;
             y = h;
             format = f;
+            sx = stageX;
+            sy = stageY;
+            sz = stageZ;
             px = physX;
             py = physY;
+            pz = physZ;
         }
-        
+        public Resolution Copy()
+        {
+            return new Resolution(x, y, format, px, py, pz, sx, sy, sz);
+        }
         public override string ToString()
         {
             return "(" + x + ", " + y + ") " + format.ToString() + " " + (SizeInBytes / 1000) + " KB";
@@ -2951,8 +2994,8 @@ namespace BioGTK
             PointD pp = new PointD();
             if (isPyramidal)
             {
-                pp.X = ((p.X * Resolutions[resolution].PhysicalX) + Volume.Location.X);
-                pp.Y = ((p.Y * Resolutions[resolution].PhysicalY) + Volume.Location.Y);
+                pp.X = ((p.X * Resolutions[resolution].PhysicalSizeX) + Volume.Location.X);
+                pp.Y = ((p.Y * Resolutions[resolution].PhysicalSizeY) + Volume.Location.Y);
                 return pp;
             }
             else
@@ -2971,8 +3014,8 @@ namespace BioGTK
         public PointD ToStageSpace(PointD p, int resolution)
         {
             PointD pp = new PointD();
-            pp.X = ((p.X * Resolutions[resolution].PhysicalX) + Volume.Location.X);
-            pp.Y = ((p.Y * Resolutions[resolution].PhysicalY) + Volume.Location.Y);
+            pp.X = ((p.X * Resolutions[resolution].PhysicalSizeX) + Volume.Location.X);
+            pp.Y = ((p.Y * Resolutions[resolution].PhysicalSizeY) + Volume.Location.Y);
             return pp;
         }
         /// > The function takes a point in the volume space and converts it to a point in the stage
@@ -5173,49 +5216,66 @@ namespace BioGTK
                     b.Channels.Add(new Channel(r, b.bitsPerPixel, 1));
                 }
             }
-            try
+            int resc = reader.getResolutionCount();
+            for (int s = 0; s < b.seriesCount; s++)
             {
-                if (b.meta.getPixelsPhysicalSizeX(b.series) != null)
+                reader.setSeries(s);
+                for (int r = 0; r < reader.getResolutionCount(); r++)
                 {
-                    b.physicalSizeX = b.meta.getPixelsPhysicalSizeX(b.series).value().doubleValue();
+                    Resolution res = new Resolution();
+                    try
+                    {
+                        int rgbc = reader.getRGBChannelCount();
+                        int bps = reader.getBitsPerPixel();
+                        PixelFormat px;
+                        try
+                        {
+                            px = GetPixelFormat(rgbc, b.meta.getPixelsType(s));
+                        }
+                        catch (Exception)
+                        {
+                            px = GetPixelFormat(rgbc, bps);
+                        }
+                        res.PixelFormat = px;
+                        res.SizeX = reader.getSizeX();
+                        res.SizeY = reader.getSizeY();
+                        if (b.meta.getPixelsPhysicalSizeX(s) != null)
+                        {
+                            res.PhysicalSizeX = b.meta.getPixelsPhysicalSizeX(s).value().doubleValue();
+                        }
+                        else
+                            res.PhysicalSizeX = (96 / 2.54) / 1000;
+                        if (b.meta.getPixelsPhysicalSizeY(s) != null)
+                        {
+                            res.PhysicalSizeY = b.meta.getPixelsPhysicalSizeY(s).value().doubleValue();
+                        }
+                        else
+                            res.PhysicalSizeY = (96 / 2.54) / 1000;
+                    
+                        if (b.meta.getStageLabelX(s) != null)
+                            res.StageSizeX = b.meta.getStageLabelX(s).value().doubleValue();
+                        if (b.meta.getStageLabelY(s) != null)
+                            res.StageSizeY = b.meta.getStageLabelY(s).value().doubleValue();
+                        if (b.meta.getStageLabelZ(s) != null)
+                            res.StageSizeZ = b.meta.getStageLabelZ(s).value().doubleValue();
+                        else
+                            res.StageSizeZ = 1;
+                        if (b.meta.getPixelsPhysicalSizeZ(s) != null)
+                        {
+                            res.PhysicalSizeZ = b.meta.getPixelsPhysicalSizeZ(s).value().doubleValue();
+                        }
+                        else
+                        {
+                            res.PhysicalSizeZ = 1;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("No Stage Coordinates. PhysicalSize:(" + res.PhysicalSizeX + "," + res.PhysicalSizeY + "," + res.PhysicalSizeZ + ")");
+                    }
+                    b.Resolutions.Add(res);
                 }
-                else
-                    b.physicalSizeX = (96 / 2.54) / 1000;
-                if (b.meta.getPixelsPhysicalSizeY(b.series) != null)
-                {
-                    b.physicalSizeY = b.meta.getPixelsPhysicalSizeY(b.series).value().doubleValue();
-                }
-                else
-                    b.physicalSizeY = (96 / 2.54) / 1000;
-                if (b.meta.getPixelsPhysicalSizeZ(b.series) != null)
-                {
-                    b.physicalSizeZ = b.meta.getPixelsPhysicalSizeZ(b.series).value().doubleValue();
-                }
-                else
-                {
-                    b.physicalSizeZ = 1;
-                }
-
-                if (b.meta.getStageLabelX(b.series) != null)
-                    b.stageSizeX = b.meta.getStageLabelX(b.series).value().doubleValue();
-                if (b.meta.getStageLabelY(b.series) != null)
-                    b.stageSizeY = b.meta.getStageLabelY(b.series).value().doubleValue();
-                if (b.meta.getStageLabelZ(b.series) != null)
-                    b.stageSizeZ = b.meta.getStageLabelZ(b.series).value().doubleValue();
-                else
-                    b.stageSizeZ = 1;
             }
-            catch (Exception e)
-            {
-                b.physicalSizeX = (96 / 2.54) / 1000;
-                b.physicalSizeY = (96 / 2.54) / 1000;
-                b.physicalSizeZ = 1;
-                b.stageSizeX = 0;
-                b.stageSizeY = 0;
-                b.stageSizeZ = 1;
-                Console.WriteLine("No Stage Coordinates. PhysicalSize:(" + b.physicalSizeX + "," + b.physicalSizeY + "," + b.physicalSizeZ + ")");
-            }
-
             b.Volume = new VolumeD(new Point3D(b.stageSizeX, b.stageSizeY, b.stageSizeZ), new Point3D(b.physicalSizeX * SizeX, b.physicalSizeY * SizeY, b.physicalSizeZ * SizeZ));
 
             int rc = b.meta.getROICount();
@@ -5838,28 +5898,7 @@ namespace BioGTK
             if (tile)
             {
                 bs = new BioImage[1];
-                int resCount = reader.getSeriesCount();
-                //OME TIFF resolution count is the actual resolution count.
-                if (resCount == 0)
-                    resCount = reader.getResolutionCount();
-                List<Resolution> ress = new List<Resolution>();
-                for (int r = 0; r < resCount; r++)
-                {
-                    reader.setSeries(r);
-                    int i = reader.getRGBChannelCount();
-                    int w = reader.getSizeX();
-                    int h = reader.getSizeY();
-                    ome.units.quantity.Length x = meta.getPixelsPhysicalSizeX(r);
-                    ome.units.quantity.Length y = meta.getPixelsPhysicalSizeY(r);
-                    if (x != null && y != null)
-                    {
-                        Resolution re = new Resolution(w, h, i, reader.getBitsPerPixel(), x.value().doubleValue(), y.value().doubleValue());
-                        ress.Add(re);
-                    }
-                }
-                int res = resCount - 1;
-                bs[0] = OpenOME(file, res, tab, addToImages,true, 0, 0, 1920, 1080);
-                bs[0].Resolutions = ress;
+                bs[0] = OpenOME(file, 0, tab, addToImages,true, 0, 0, 1920, 1080);
                 bs[0].isPyramidal = true;
                 Images.AddImage(bs[0],tab);
                 return bs;
