@@ -5069,14 +5069,20 @@ namespace BioGTK
             status = "Reading OME Metadata.";
             reader.setSeries(serie);
             int RGBChannelCount = reader.getRGBChannelCount();
-            b.bitsPerPixel = reader.getBitsPerPixel();
-            if (b.bitsPerPixel > 16)
+
+
+            //OME reader.getBitsPerPixel(); sometimes returns incorrect bits per pixel, like when opening ImageJ images.
+            //So we check the pixel type from xml metadata and if it fails we use the readers value.
+            PixelFormat PixelFormat;
+            try
             {
-                //pr.Close();
-                Gtk.MessageDialog md = new Gtk.MessageDialog(App.tabsView, Gtk.DialogFlags.Modal, Gtk.MessageType.Info,Gtk.ButtonsType.Ok,"Image bit depth of " + b.bitsPerPixel + " is not supported.", null);
-                md.Show();
-                return null;
+                PixelFormat = GetPixelFormat(RGBChannelCount, b.meta.getPixelsType(serie));
             }
+            catch (Exception)
+            {
+                PixelFormat = GetPixelFormat(RGBChannelCount, reader.getBitsPerPixel());
+            }
+            
             b.id = file;
             b.file = file;
             int SizeX, SizeY;
@@ -5091,41 +5097,8 @@ namespace BioGTK
             b.imagesPerSeries = reader.getImageCount();
             b.series = serie;
             string order = reader.getDimensionOrder();
-            PixelFormat PixelFormat = GetPixelFormat(RGBChannelCount, b.bitsPerPixel);
-            if (RGBChannelCount == 3)
-            {
-                ome.xml.model.enums.PixelType ppx = b.meta.getPixelsType(serie);
-                if (ppx == ome.xml.model.enums.PixelType.UINT8)
-                {
-                    PixelFormat = PixelFormat.Format24bppRgb;
-                    b.bitsPerPixel = 8;
-                }
-            }
-            int stride = 0;
-            if (RGBChannelCount == 1)
-            {
-                if (b.bitsPerPixel > 8)
-                    stride = SizeX * 2;
-                else
-                    stride = SizeX;
-            }
-            else
-            if (RGBChannelCount == 3)
-            {
-                b.sizeC = 1;
-                if (b.bitsPerPixel > 8)
-                    stride = SizeX * 2 * 3;
-                else
-                    stride = SizeX * 3;
-            }
-            else
-            {
-                b.sizeC = 1;
-                stride = SizeX * 4;
-            }
-
             b.Coords = new int[b.SizeZ, b.SizeC, b.SizeT];
-            //Lets get the channels amd initialize them
+            //Lets get the channels and initialize them
             int i = 0;
             while (true)
             {
@@ -5202,11 +5175,9 @@ namespace BioGTK
             }
             try
             {
-                bool hasPhysical = false;
                 if (b.meta.getPixelsPhysicalSizeX(b.series) != null)
                 {
                     b.physicalSizeX = b.meta.getPixelsPhysicalSizeX(b.series).value().doubleValue();
-                    hasPhysical = true;
                 }
                 else
                     b.physicalSizeX = (96 / 2.54) / 1000;
@@ -5635,13 +5606,6 @@ namespace BioGTK
             b.Loading = false;
             return b;
         }
-        /// 
-        /// @param file the path to the file
-        /// @param serie the serie number of the image to open
-        /// @param tilex the x coordinate of the tile you want to open
-        /// @param tiley the y coordinate of the tile
-        /// @param tileSizeX the width of the tile in pixels
-        /// @param tileSizeY the height of the tile in pixels
         ImageReader imRead;
         /// It reads a tile from a file, and returns a bitmap
         /// 
@@ -5691,68 +5655,9 @@ namespace BioGTK
                 return null;
             if (sy <= 0)
                 return null;
-            int stride;
-            if (RGBChannelCount == 1)
-            {
-                if (b.bitsPerPixel > 8)
-                    stride = sx * 2;
-                else
-                    stride = sx;
-            }
-            else
-            if (RGBChannelCount == 3)
-            {
-                if (b.bitsPerPixel > 8)
-                    stride = sx * 2 * 3;
-                else
-                    stride = sx * 3;
-            }
-            else
-            {
-                stride = sx * 4;
-            }
             byte[] bytesr = b.imRead.openBytes(b.Coords[coord.Z, coord.C, coord.T], tilex, tiley, sx, sy);
             bool interleaved = b.imRead.isInterleaved();
-            if (!interleaved)
-            {
-                int strplane;
-                if (b.bitsPerPixel > 8)
-                    strplane = sx * 2;
-                else
-                    strplane = sx;
-                int ind = strplane * sy;
-                byte[] bytes = new byte[stride * sy];
-                if (RGBChannelCount == 1)
-                {
-                    for (int y = 0; y < sy; y++)
-                    {
-                        for (int st = 0; st < strplane; st++)
-                        {
-                            bytes[((strplane) * y) + st] = bytesr[((strplane) * y) + st];
-                        }
-                    }
-                }
-                else
-                {
-                    int indg = strplane * sy;
-                    int indb = ind * 2;
-                    for (int y = 0; y < sy; y++)
-                    {
-                        int x = 0;
-                        int str1 = stride * y;
-                        int str2 = strplane * y;
-                        for (int st = 0; st < strplane; st++)
-                        {
-                            bytes[str1 + x + 2] = bytesr[str2 + st];
-                            bytes[str1 + x + 1] = bytesr[indg + str2 + st];
-                            bytes[str1 + x] = bytesr[indb + str2 + st];
-                            x += 3;
-                        }
-                    }
-                }
-                return new Bitmap(b.file, sx, sy, PixelFormat, bytes, coord, p, littleEndian, true);
-            }
-            Bitmap bm = new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, littleEndian, true);
+            Bitmap bm = new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, littleEndian, interleaved);
             return bm; 
         }
         /// This function sets the minimum and maximum values of the image to the minimum and maximum
@@ -5874,6 +5779,24 @@ namespace BioGTK
             }
             throw new NotSupportedException("Not supported pixel format.");
         }
+        public static PixelFormat GetPixelFormat(int rgbChannelCount, ome.xml.model.enums.PixelType px)
+        {
+            if (rgbChannelCount == 1)
+            {
+                if (px == ome.xml.model.enums.PixelType.INT8 || px == ome.xml.model.enums.PixelType.UINT8)
+                    return PixelFormat.Format8bppIndexed;
+                else if (px == ome.xml.model.enums.PixelType.INT16 || px == ome.xml.model.enums.PixelType.UINT16)
+                    return PixelFormat.Format16bppGrayScale;
+            }
+            else
+            {
+                if (px == ome.xml.model.enums.PixelType.INT8 || px == ome.xml.model.enums.PixelType.UINT8)
+                    return PixelFormat.Format24bppRgb;
+                else if (px == ome.xml.model.enums.PixelType.INT16 || px == ome.xml.model.enums.PixelType.UINT16)
+                    return PixelFormat.Format48bppRgb;
+            }
+            throw new NotSupportedException("Not supported pixel format.");
+        }
         /// It opens a file, checks if it's tiled, if it is, it opens it as a tiled image, if not, it
         /// opens it as a normal image
         /// 
@@ -5938,7 +5861,7 @@ namespace BioGTK
                 bs[0] = OpenOME(file, res, tab, addToImages,true, 0, 0, 1920, 1080);
                 bs[0].Resolutions = ress;
                 bs[0].isPyramidal = true;
-                Images.AddImage(bs[0],addToImages);
+                Images.AddImage(bs[0],tab);
                 return bs;
             }
             else

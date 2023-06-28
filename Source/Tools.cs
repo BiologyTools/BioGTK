@@ -602,14 +602,25 @@ namespace BioGTK
             if (buts.Event.State == ModifierType.None)
                 Scripting.UpdateState(Scripting.State.GetMove(e, 0));
 
-            if ((Tools.currentTool.type == Tools.Tool.Type.pan && buts.Event.State == Gdk.ModifierType.Button1Mask) || buts.Event.State == Gdk.ModifierType.Button2Mask && !ImageView.SelectedImage.isPyramidal)
+            if ((Tools.currentTool.type == Tools.Tool.Type.pan && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask)) || buts.Event.State.HasFlag(Gdk.ModifierType.Button2Mask))
             {
-                App.viewer.Origin = new PointD(App.viewer.Origin.X + (ImageView.mouseDown.X - e.X), App.viewer.Origin.Y + (ImageView.mouseDown.Y - e.Y));
+                if (ImageView.SelectedImage.isPyramidal)
+                {
+                    if (App.viewer.MouseMoveInt.X != 0 || App.viewer.MouseMoveInt.Y != 0)
+                    {
+                        PointD pd = new PointD(App.viewer.MouseDownInt.X - App.viewer.MouseMoveInt.X, App.viewer.MouseDownInt.Y - App.viewer.MouseMoveInt.Y);
+                        App.viewer.PyramidalOrigin = new AForge.Point(App.viewer.PyramidalOrigin.X - (int)pd.X, App.viewer.PyramidalOrigin.Y - (int)pd.Y);
+                    }
+                }
+                else
+                {
+                    App.viewer.Origin = new PointD(App.viewer.Origin.X + (ImageView.mouseDown.X - e.X), App.viewer.Origin.Y + (ImageView.mouseDown.Y - e.Y));
+                }
                 UpdateView();
             }
             if (ImageView.SelectedImage == null)
                 return;
-            if (currentTool.type == Tool.Type.move && buts.Event.State == Gdk.ModifierType.Button1Mask)
+            if (currentTool.type == Tool.Type.move && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
             {
                 for (int i = 0; i < selectedROI.PointsD.Count; i++)
                 {
@@ -618,13 +629,13 @@ namespace BioGTK
                 }
                 UpdateView();
             }
-            if (currentTool.type == Tool.Type.line && buts.Event.State == Gdk.ModifierType.Button1Mask)
+            if (currentTool.type == Tool.Type.line && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
             {
                 selectedROI.UpdatePoint(new PointD(e.X, e.Y), 1);
                 UpdateView();
             }
             else
-            if (currentTool.type == Tool.Type.freeform && buts.Event.State == Gdk.ModifierType.Button1Mask)
+            if (currentTool.type == Tool.Type.freeform && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
             {
                 if (selectedROI.GetPointCount() == 0)
                 {
@@ -660,7 +671,7 @@ namespace BioGTK
                 }
             }
             else
-            if (currentTool.type == Tool.Type.select && buts.Event.State == Gdk.ModifierType.Button1Mask)
+            if (currentTool.type == Tool.Type.select && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
             {
                 PointD d = new PointD(e.X - ImageView.mouseDown.X, e.Y - ImageView.mouseDown.Y);
                 Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(ImageView.mouseDown.X, ImageView.mouseDown.Y,Math.Abs(d.X),Math.Abs(d.Y));
@@ -718,7 +729,7 @@ namespace BioGTK
                 UpdateView();
             }
 
-            if (Tools.currentTool.type == Tools.Tool.Type.magic && buts.Event.State != Gdk.ModifierType.Button1Mask)
+            if (Tools.currentTool.type == Tools.Tool.Type.magic && !buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
             {
                 //First we draw the selection rectangle
                 PointD d = new PointD(e.X - ImageView.mouseDown.X, e.Y - ImageView.mouseDown.Y);

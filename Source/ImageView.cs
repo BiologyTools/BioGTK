@@ -1906,6 +1906,8 @@ namespace BioGTK
         private void ImageView_MotionNotifyEvent(object o, MotionNotifyEventArgs e)
         {
             Modifiers = e.Event.State;
+            MouseMoveInt = new PointD((int)e.Event.X, (int)e.Event.Y);
+
             PointD p = ImageToViewSpace(e.Event.X, e.Event.Y);
             PointD ip = new PointD((p.X - origin.X) / pxWmicron, (p.Y - origin.Y) / pxHmicron);
             App.tools.ToolMove(p, e);
@@ -2008,8 +2010,7 @@ namespace BioGTK
             pd = p;
             UpdateView();
         }
-        public static PointD mouseDown;
-        public static PointD mouseUp;
+        
         /// The function is called when the mouse button is released. It checks if the mouse button is
         /// the left button, and if it is, it sets the mouseLeftState to false. It then sets the viewer
         /// to the current viewer, and converts the mouse coordinates to view space. It then sets the
@@ -2034,17 +2035,11 @@ namespace BioGTK
             mouseUp = pointer;
             if (e.Event.State == ModifierType.Button2Mask)
             {
-                if (SelectedImage != null)
-                    if (SelectedImage.isPyramidal)
-                    {
-                        PointD pf = new PointD(e.Event.X - mouseD.X, e.Event.Y - mouseD.Y);
-                        PyramidalOrigin = new Point(PyramidalOrigin.X - (int)pf.X, PyramidalOrigin.Y - (int)pf.Y);
-                    }
-                    else
-                    {
-                        PointD pd = new PointD(pointer.X - mouseDown.X, pointer.Y - mouseDown.Y);
-                        origin = new PointD(origin.X + pd.X, origin.Y + pd.Y);
-                    }
+                if (SelectedImage != null && !SelectedImage.isPyramidal)
+                {
+                    PointD pd = new PointD(pointer.X - mouseDown.X, pointer.Y - mouseDown.Y);
+                    origin = new PointD(origin.X + pd.X, origin.Y + pd.Y);
+                }
                 UpdateImage();
                 UpdateView();
             }
@@ -2053,7 +2048,32 @@ namespace BioGTK
             App.tools.ToolUp(pointer, e);
         }
         PointD pd;
-        PointD ed;
+        PointD mouseDownInt = new PointD(0, 0);
+        PointD mouseMoveInt = new PointD(0, 0);
+        PointD mouseMove = new PointD(0, 0);
+        public static PointD mouseDown;
+        public static PointD mouseUp;
+        /* A property that returns the value of the mouseDownInt variable. */
+        public PointD MouseDownInt
+        {
+            get { return mouseDownInt; }
+            set { mouseDownInt = value; }
+        }
+        public PointD MouseMoveInt
+        {
+            get { return mouseMoveInt; }
+            set { mouseMoveInt = value; }
+        }
+        public PointD MouseDown
+        {
+            get { return mouseDown; }
+            set { mouseDown = value; }
+        }
+        public PointD MouseMove
+        {
+            get { return mouseMove; }
+            set { mouseMove = value; }
+        }
         /// The function is called when the user clicks on the image. It checks if the user clicked on
         /// an annotation, and if so, it selects the annotation
         /// 
@@ -2071,7 +2091,7 @@ namespace BioGTK
                 mouseLeftState = false;
             App.viewer = this;
             PointD pointer = ImageToViewSpace(e.Event.X, e.Event.Y);
-            ed = new PointD(e.Event.X, e.Event.Y);
+            MouseDownInt = new PointD(e.Event.X, e.Event.Y);
             pd = pointer;
             mouseDown = pd;
             mouseD = new PointD(((pointer.X - Origin.X) / SelectedImage.Volume.Width)*SelectedImage.SizeX,((pointer.Y - Origin.Y) / SelectedImage.Volume.Height) * SelectedImage.SizeY);
