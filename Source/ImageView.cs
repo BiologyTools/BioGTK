@@ -211,8 +211,8 @@ namespace BioGTK
             builder.Autoconnect(this);
             roi.Submenu = roiMenu;
             roi.ShowAll();
-            pxWmicron = SelectedImage.physicalSizeX;
-            pxHmicron = SelectedImage.physicalSizeY;
+            pxWmicron = SelectedImage.PhysicalSizeX;
+            pxHmicron = SelectedImage.PhysicalSizeY;
             if (im.SizeY >= 1080)
             {
                 pictureBox.SetSizeRequest(800, 600 - 130);
@@ -2474,8 +2474,8 @@ namespace BioGTK
             double dx = Images[i].Volume.Width / 2;
             double dy = Images[i].Volume.Height / 2;
             Origin = new PointD((Images[i].Volume.Location.X), (Images[i].Volume.Location.Y));
-            PxWmicron = Images[i].physicalSizeX;
-            PxHmicron = Images[i].physicalSizeY;
+            PxWmicron = Images[i].PhysicalSizeX;
+            PxHmicron = Images[i].PhysicalSizeY;
             if (Images[i].SizeX > 1080)
             {
                 double w = (double)SelectedImage.SizeX / (double)pictureBox.AllocatedWidth;

@@ -1947,34 +1947,34 @@ namespace BioGTK
                 return Buffers.Count;
             }
         }
-        public double physicalSizeX
+        public double PhysicalSizeX
         {
-            get { return imageInfo.PhysicalSizeX; }
-            set { imageInfo.PhysicalSizeX = value; }
+            get { return Resolutions[Resolution].PhysicalSizeX; }
         }
-        public double physicalSizeY
+        public double PhysicalSizeY
         {
-            get { return imageInfo.PhysicalSizeY; }
-            set { imageInfo.PhysicalSizeY = value; }
+            get { return Resolutions[Resolution].PhysicalSizeY; }
         }
-        public double physicalSizeZ
+        public double PhysicalSizeZ
         {
-            get { return imageInfo.PhysicalSizeZ; }
-            set { imageInfo.PhysicalSizeZ = value; }
+            get { return Resolutions[Resolution].PhysicalSizeZ; }
         }
-        public double stageSizeX
+        public double StageSizeX
         {
-            get { return imageInfo.StageSizeX; }
+            get 
+            {
+                return Resolutions[Resolution].StageSizeX;
+            }
             set { imageInfo.StageSizeX = value; }
         }
-        public double stageSizeY
+        public double StageSizeY
         {
-            get { return imageInfo.StageSizeY; }
+            get { return Resolutions[Resolution].StageSizeX; }
             set { imageInfo.StageSizeY = value; }
         }
-        public double stageSizeZ
+        public double StageSizeZ
         {
-            get { return imageInfo.StageSizeZ; }
+            get { return Resolutions[Resolution].StageSizeX; }
             set { imageInfo.StageSizeZ = value; }
         }
 
@@ -2051,7 +2051,7 @@ namespace BioGTK
                 mode = "grayscale";
                 unit = "micron";
                 finterval = b.frameInterval;
-                spacing = b.physicalSizeZ;
+                spacing = b.PhysicalSizeZ;
                 loop = false;
                 /*
                 double dmax = double.MinValue;
@@ -2692,7 +2692,7 @@ namespace BioGTK
             {
                 Buffers[i].RotateFlip(rot);
             }
-            Volume = new VolumeD(new Point3D(stageSizeX, stageSizeY, stageSizeZ), new Point3D(physicalSizeX * SizeX, physicalSizeY * SizeY, physicalSizeZ * SizeZ));
+            Volume = new VolumeD(new Point3D(StageSizeX, StageSizeY, StageSizeZ), new Point3D(PhysicalSizeX * SizeX, PhysicalSizeY * SizeY, PhysicalSizeZ * SizeZ));
         }
         /// Bake(int rmin, int rmax, int gmin, int gmax, int bmin, int bmax)
         /// 
@@ -2888,7 +2888,7 @@ namespace BioGTK
         /// @return The value of d divided by the physicalSizeX.
         public double ToImageSizeX(double d)
         {
-            return d / physicalSizeX;
+            return d / PhysicalSizeX;
         }
         /// Convert a physical size in Y direction to an image size in Y direction
         /// 
@@ -2898,7 +2898,7 @@ namespace BioGTK
         /// physicalSizeY field.
         public double ToImageSizeY(double d)
         {
-            return d / physicalSizeY;
+            return d / PhysicalSizeY;
         }
         /// > Convert a stage coordinate to an image coordinate
         /// 
@@ -2909,7 +2909,7 @@ namespace BioGTK
         {
             if (isPyramidal)
                 return x;
-            return (float)((x - stageSizeX) / physicalSizeX);
+            return (float)((x - StageSizeX) / PhysicalSizeX);
         }
         /// > Convert a Y coordinate from stage space to image space
         /// 
@@ -2920,7 +2920,7 @@ namespace BioGTK
         {
             if (isPyramidal)
                 return y;
-            return (float)((y - stageSizeY) / physicalSizeY);
+            return (float)((y - StageSizeY) / PhysicalSizeY);
         }
         /// Convert a point in the stage coordinate system to a point in the image coordinate system
         /// 
@@ -2930,8 +2930,8 @@ namespace BioGTK
         public PointD ToImageSpace(PointD p)
         {
             PointD pp = new PointD();
-            pp.X = (float)((p.X - stageSizeX) / physicalSizeX);
-            pp.Y = (float)((p.Y - stageSizeY) / physicalSizeY);
+            pp.X = (float)((p.X - StageSizeX) / PhysicalSizeX);
+            pp.Y = (float)((p.Y - StageSizeY) / PhysicalSizeY);
             return pp;
         }
         /// Convert a list of points from stage space to image space
@@ -2945,8 +2945,8 @@ namespace BioGTK
             for (int i = 0; i < p.Count; i++)
             {
                 PointD pp = new PointD();
-                pp.X = ((p[i].X - stageSizeX) / physicalSizeX);
-                pp.Y = ((p[i].Y - stageSizeY) / physicalSizeY);
+                pp.X = ((p[i].X - StageSizeX) / PhysicalSizeX);
+                pp.Y = ((p[i].Y - StageSizeY) / PhysicalSizeY);
                 ps[i] = pp;
             }
             return ps;
@@ -2963,8 +2963,8 @@ namespace BioGTK
             for (int i = 0; i < p.Length; i++)
             {
                 PointF pp = new PointF();
-                pp.X = (float)((p[i].X - stageSizeX) / physicalSizeX);
-                pp.Y = (float)((p[i].Y - stageSizeY) / physicalSizeY);
+                pp.X = (float)((p[i].X - StageSizeX) / PhysicalSizeX);
+                pp.Y = (float)((p[i].Y - StageSizeY) / PhysicalSizeY);
                 ps[i] = pp;
             }
             return ps;
@@ -2978,10 +2978,10 @@ namespace BioGTK
         {
             RectangleF r = new RectangleF();
             Point pp = new Point();
-            r.X = (int)((p.X - stageSizeX) / physicalSizeX);
-            r.Y = (int)((p.Y - stageSizeY) / physicalSizeY);
-            r.Width = (int)(p.W / physicalSizeX);
-            r.Height = (int)(p.H / physicalSizeY);
+            r.X = (int)((p.X - StageSizeX) / PhysicalSizeX);
+            r.Y = (int)((p.Y - StageSizeY) / PhysicalSizeY);
+            r.Width = (int)(p.W / PhysicalSizeX);
+            r.Height = (int)(p.H / PhysicalSizeY);
             return r;
         }
         /// > This function converts a point in the image space to a point in the stage space
@@ -3000,8 +3000,8 @@ namespace BioGTK
             }
             else
             {
-                pp.X = ((p.X * physicalSizeX) + Volume.Location.X);
-                pp.Y = ((p.Y * physicalSizeY) + Volume.Location.Y);
+                pp.X = ((p.X * PhysicalSizeX) + Volume.Location.X);
+                pp.Y = ((p.Y * PhysicalSizeY) + Volume.Location.Y);
                 return pp;
             }
         }
@@ -3044,10 +3044,10 @@ namespace BioGTK
         public RectangleD ToStageSpace(RectangleD p)
         {
             RectangleD r = new RectangleD();
-            r.X = ((p.X * physicalSizeX) + Volume.Location.X);
-            r.Y = ((p.Y * physicalSizeY) + Volume.Location.Y);
-            r.W = (p.W * physicalSizeX);
-            r.H = (p.H * physicalSizeY);
+            r.X = ((p.X * PhysicalSizeX) + Volume.Location.X);
+            r.Y = ((p.Y * PhysicalSizeY) + Volume.Location.Y);
+            r.W = (p.W * PhysicalSizeX);
+            r.H = (p.H * PhysicalSizeY);
             return r;
         }
         /// > This function takes a rectangle in the coordinate space of the image and converts it to
@@ -3081,8 +3081,8 @@ namespace BioGTK
             for (int i = 0; i < p.Length; i++)
             {
                 PointD pp = new PointD();
-                pp.X = ((p[i].X * physicalSizeX) + Volume.Location.X);
-                pp.Y = ((p[i].Y * physicalSizeY) + Volume.Location.Y);
+                pp.X = ((p[i].X * PhysicalSizeX) + Volume.Location.X);
+                pp.Y = ((p[i].Y * PhysicalSizeY) + Volume.Location.Y);
                 ps[i] = pp;
             }
             return ps;
@@ -4171,10 +4171,10 @@ namespace BioGTK
                             image.SetField(TiffTag.PLANARCONFIG, PlanarConfig.CONTIG);
                             image.SetField(TiffTag.PHOTOMETRIC, Photometric.MINISBLACK);
                             image.SetField(TiffTag.ROWSPERSTRIP, image.DefaultStripSize(0));
-                            if (b.physicalSizeX != -1 && b.physicalSizeY != -1)
+                            if (b.PhysicalSizeX != -1 && b.PhysicalSizeY != -1)
                             {
-                                image.SetField(TiffTag.XRESOLUTION, (b.physicalSizeX * b.SizeX) / ((b.physicalSizeX * b.SizeX) * b.physicalSizeX));
-                                image.SetField(TiffTag.YRESOLUTION, (b.physicalSizeY * b.SizeY) / ((b.physicalSizeY * b.SizeY) * b.physicalSizeY));
+                                image.SetField(TiffTag.XRESOLUTION, (b.PhysicalSizeX * b.SizeX) / ((b.PhysicalSizeX * b.SizeX) * b.PhysicalSizeX));
+                                image.SetField(TiffTag.YRESOLUTION, (b.PhysicalSizeY * b.SizeY) / ((b.PhysicalSizeY * b.SizeY) * b.PhysicalSizeY));
                                 image.SetField(TiffTag.RESOLUTIONUNIT, ResUnit.NONE);
                             }
                             else
@@ -4321,9 +4321,9 @@ namespace BioGTK
                         else
                             b.frameInterval = 1;
                         if (imDesc.spacing != 0)
-                            b.physicalSizeZ = imDesc.spacing;
+                            b.imageInfo.PhysicalSizeZ = imDesc.spacing;
                         else
-                            b.physicalSizeZ = 1;
+                            b.imageInfo.PhysicalSizeZ = 1;
                     }
                 }
                 int stride = 0;
@@ -4367,12 +4367,12 @@ namespace BioGTK
                     if (image.GetField(TiffTag.XRESOLUTION) != null)
                     {
                         double x = image.GetField(TiffTag.XRESOLUTION)[0].ToDouble();
-                        b.physicalSizeX = (1000 / x);
+                        b.imageInfo.PhysicalSizeX = (1000 / x);
                     }
                     if (image.GetField(TiffTag.YRESOLUTION) != null)
                     {
                         double y = image.GetField(TiffTag.YRESOLUTION)[0].ToDouble();
-                        b.physicalSizeY = (1000 / y);
+                        b.imageInfo.PhysicalSizeY = (1000 / y);
                     }
                 }
                 else
@@ -4381,12 +4381,12 @@ namespace BioGTK
                     if (image.GetField(TiffTag.XRESOLUTION) != null)
                     {
                         double x = image.GetField(TiffTag.XRESOLUTION)[0].ToDouble();
-                        b.physicalSizeX = (2.54 / x) / 2.54;
+                        b.imageInfo.PhysicalSizeX = (2.54 / x) / 2.54;
                     }
                     if (image.GetField(TiffTag.YRESOLUTION) != null)
                     {
                         double y = image.GetField(TiffTag.YRESOLUTION)[0].ToDouble();
-                        b.physicalSizeY = (2.54 / y) / 2.54;
+                        b.imageInfo.PhysicalSizeY = (2.54 / y) / 2.54;
                     }
                 }
                 else
@@ -4397,12 +4397,12 @@ namespace BioGTK
                         if (image.GetField(TiffTag.XRESOLUTION) != null)
                         {
                             double x = image.GetField(TiffTag.XRESOLUTION)[0].ToDouble();
-                            b.physicalSizeX = (2.54 / x) / 2.54;
+                            b.imageInfo.PhysicalSizeX = (2.54 / x) / 2.54;
                         }
                         if (image.GetField(TiffTag.YRESOLUTION) != null)
                         {
                             double y = image.GetField(TiffTag.YRESOLUTION)[0].ToDouble();
-                            b.physicalSizeY = (2.54 / y) / 2.54;
+                            b.imageInfo.PhysicalSizeY = (2.54 / y) / 2.54;
                         }
                     }
                 }
@@ -4466,10 +4466,7 @@ namespace BioGTK
                         }
                     }
                 }
-                if (b.imageInfo == null)
-                {
-                    b.imageInfo = new ImageInfo();
-                }
+                b.Resolutions.Add(new Resolution(b.SizeX,b.SizeY,PixelFormat, b.imageInfo.PhysicalSizeX, b.imageInfo.PhysicalSizeY, b.imageInfo.PhysicalSizeZ, b.imageInfo.StageSizeX, b.imageInfo.StageSizeY, b.imageInfo.StageSizeZ));
                 b.Coords = new int[b.SizeZ, b.SizeC, b.SizeT];
 
                 //If this is a tiff file not made by Bio we init channels based on RGBChannels.
@@ -4504,7 +4501,7 @@ namespace BioGTK
                         image.ReadScanline(bytes, offset, im, 0);
                         offset += stride;
                     }
-                    Bitmap inf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(0, 0, 0), p, b.littleEndian, inter);
+                    Bitmap inf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(0, 0, 0), p, null, b.littleEndian, inter);
                     b.Buffers.Add(inf);
                     Statistics.CalcStatistics(inf);
                     progressValue = (float)p / (float)(series + 1) * pages;
@@ -4518,15 +4515,14 @@ namespace BioGTK
                 md.Show();
                 return null;
             }
-            if (b.stageSizeX == -1)
+            if (b.StageSizeX == -1)
             {
                 b.imageInfo.Series = 0;
-                b.stageSizeX = 0;
-                b.stageSizeY = 0;
-                b.stageSizeZ = 0;
-                b.physicalSizeZ = 1;
+                b.StageSizeX = 0;
+                b.StageSizeY = 0;
+                b.StageSizeZ = 0;
             }
-            b.Volume = new VolumeD(new Point3D(b.stageSizeX, b.stageSizeY, b.stageSizeZ), new Point3D(b.physicalSizeX * b.SizeX, b.physicalSizeY * b.SizeY, b.physicalSizeZ * b.SizeZ));
+            b.Volume = new VolumeD(new Point3D(b.StageSizeX, b.StageSizeY, b.StageSizeZ), new Point3D(b.PhysicalSizeX * b.SizeX, b.PhysicalSizeY * b.SizeY, b.PhysicalSizeZ * b.SizeZ));
             //We wait for histogram image statistics calculation
             do
             {
@@ -4691,11 +4687,11 @@ namespace BioGTK
                     omexml.setPixelsBigEndian(java.lang.Boolean.FALSE, serie);
                 else
                     omexml.setPixelsBigEndian(java.lang.Boolean.TRUE, serie);
-                ome.units.quantity.Length p1 = new ome.units.quantity.Length(java.lang.Double.valueOf(b.physicalSizeX), ome.units.UNITS.MICROMETER);
+                ome.units.quantity.Length p1 = new ome.units.quantity.Length(java.lang.Double.valueOf(b.PhysicalSizeX), ome.units.UNITS.MICROMETER);
                 omexml.setPixelsPhysicalSizeX(p1, serie);
-                ome.units.quantity.Length p2 = new ome.units.quantity.Length(java.lang.Double.valueOf(b.physicalSizeY), ome.units.UNITS.MICROMETER);
+                ome.units.quantity.Length p2 = new ome.units.quantity.Length(java.lang.Double.valueOf(b.PhysicalSizeY), ome.units.UNITS.MICROMETER);
                 omexml.setPixelsPhysicalSizeY(p2, serie);
-                ome.units.quantity.Length p3 = new ome.units.quantity.Length(java.lang.Double.valueOf(b.physicalSizeZ), ome.units.UNITS.MICROMETER);
+                ome.units.quantity.Length p3 = new ome.units.quantity.Length(java.lang.Double.valueOf(b.PhysicalSizeZ), ome.units.UNITS.MICROMETER);
                 omexml.setPixelsPhysicalSizeZ(p3, serie);
                 ome.units.quantity.Length s1 = new ome.units.quantity.Length(java.lang.Double.valueOf(b.Volume.Location.X), ome.units.UNITS.MICROMETER);
                 omexml.setStageLabelX(s1, serie);
@@ -5138,9 +5134,10 @@ namespace BioGTK
             b.littleEndian = reader.isLittleEndian();
             b.seriesCount = reader.getSeriesCount();
             b.imagesPerSeries = reader.getImageCount();
+            b.bitsPerPixel = reader.getBitsPerPixel();
             b.series = serie;
             string order = reader.getDimensionOrder();
-            b.Coords = new int[b.SizeZ, b.SizeC, b.SizeT];
+            
             //Lets get the channels and initialize them
             int i = 0;
             while (true)
@@ -5149,14 +5146,14 @@ namespace BioGTK
                 bool def = false;
                 try
                 {
-                    if (b.meta.getChannelName(serie, i) != null)
-                        ch.Name = b.meta.getChannelName(serie, i);
                     if (b.meta.getChannelSamplesPerPixel(serie, i) != null)
                     {
                         int s = b.meta.getChannelSamplesPerPixel(serie, i).getNumberValue().intValue();
                         ch.SamplesPerPixel = s;
                         def = true;
                     }
+                    if (b.meta.getChannelName(serie, i) != null)
+                        ch.Name = b.meta.getChannelName(serie, i);
                     if (b.meta.getChannelAcquisitionMode(serie, i) != null)
                         ch.AcquisitionMode = b.meta.getChannelAcquisitionMode(serie, i).ToString();
                     if (b.meta.getChannelID(serie, i) != null)
@@ -5209,13 +5206,20 @@ namespace BioGTK
                 }
                 i++;
             }
+
+            //If the file doens't have channels we initialize them.
             if(b.Channels.Count == 0)
             {
-                for (int r = 0; r < RGBChannelCount; r++)
-                {
-                    b.Channels.Add(new Channel(r, b.bitsPerPixel, 1));
-                }
+                b.Channels.Add(new Channel(0, b.bitsPerPixel, RGBChannelCount));
             }
+
+            //Bioformats gives a size of 3 for C when saved in ImageJ as RGB. We need to correct for this as C should be 1 for RGB.
+            if ((PixelFormat == PixelFormat.Format24bppRgb || PixelFormat == PixelFormat.Format32bppArgb || PixelFormat == PixelFormat.Format48bppRgb) && b.SizeC == 3)
+            {
+                b.sizeC = 1;
+            }
+            b.Coords = new int[b.SizeZ, b.SizeC, b.SizeT];
+
             int resc = reader.getResolutionCount();
             for (int s = 0; s < b.seriesCount; s++)
             {
@@ -5276,7 +5280,7 @@ namespace BioGTK
                     b.Resolutions.Add(res);
                 }
             }
-            b.Volume = new VolumeD(new Point3D(b.stageSizeX, b.stageSizeY, b.stageSizeZ), new Point3D(b.physicalSizeX * SizeX, b.physicalSizeY * SizeY, b.physicalSizeZ * SizeZ));
+            b.Volume = new VolumeD(new Point3D(b.StageSizeX, b.StageSizeY, b.StageSizeZ), new Point3D(b.PhysicalSizeX * SizeX, b.PhysicalSizeY * SizeY, b.PhysicalSizeZ * SizeZ));
 
             int rc = b.meta.getROICount();
             for (int im = 0; im < rc; im++)
@@ -5599,7 +5603,7 @@ namespace BioGTK
                 {
                     progressValue = (float)p / (float)pages;
                     byte[] bytes = reader.openBytes(p);
-                    bf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(z, c, t), p, b.littleEndian, inter);
+                    bf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(z, c, t), p, null, b.littleEndian, inter);
                     b.Buffers.Add(bf);
                 }
             }
@@ -5694,9 +5698,7 @@ namespace BioGTK
             int SizeY = b.imRead.getSizeY();
             int p = b.Coords[coord.Z, coord.C, coord.T];
             bool littleEndian = b.imRead.isLittleEndian();
-            int RGBChannelCount = b.imRead.getRGBChannelCount();
-            b.bitsPerPixel = b.imRead.getBitsPerPixel();
-            PixelFormat PixelFormat = GetPixelFormat(RGBChannelCount, b.bitsPerPixel);
+            PixelFormat PixelFormat = b.Resolutions[serie].PixelFormat;
             if (tilex < 0)
                 tilex = 0;
             if (tiley < 0)
@@ -5717,7 +5719,7 @@ namespace BioGTK
                 return null;
             byte[] bytesr = b.imRead.openBytes(b.Coords[coord.Z, coord.C, coord.T], tilex, tiley, sx, sy);
             bool interleaved = b.imRead.isInterleaved();
-            Bitmap bm = new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, littleEndian, interleaved);
+            Bitmap bm = new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, null, littleEndian, interleaved);
             return bm; 
         }
         /// This function sets the minimum and maximum values of the image to the minimum and maximum
@@ -6020,7 +6022,7 @@ namespace BioGTK
                 }
             }
             b.UpdateCoords(z + 1, c + 1, t + 1);
-            b.Volume = new VolumeD(bs[0].Volume.Location, new Point3D(bs[0].SizeX * bs[0].physicalSizeX, bs[0].SizeY * bs[0].physicalSizeY, (z + 1) * bs[0].physicalSizeZ));
+            b.Volume = new VolumeD(bs[0].Volume.Location, new Point3D(bs[0].SizeX * bs[0].PhysicalSizeX, bs[0].SizeY * bs[0].PhysicalSizeY, (z + 1) * bs[0].PhysicalSizeZ));
             return b;
         }
         /// The function takes a BioImage object, opens the file, and returns a updated BioImage object
