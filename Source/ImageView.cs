@@ -1553,15 +1553,13 @@ namespace BioGTK
                     if (zBar.Value - 1 >= zBar.Adjustment.Lower)
                         zBar.Value -= 1;
                 }
-            if (args.Event.State == ModifierType.ControlMask && SelectedImage.isPyramidal)
+            if (args.Event.State.HasFlag(ModifierType.ControlMask) && SelectedImage.isPyramidal)
                 if (args.Event.Direction == ScrollDirection.Up)
                 {
-                    if (resolution - 1 > 0)
                         Resolution--;
                 }
                 else
                 {
-                    if (resolution + 1 < SelectedImage.Resolutions.Count)
                         Resolution++;
                 }
         }
@@ -1777,12 +1775,15 @@ namespace BioGTK
             set
             {
                 if (scrollH.Adjustment.Upper > value.X && value.X > -1)
+                {
                     scrollH.Adjustment.Value = value.X;
+                    pyramidalOrigin = value;
+                }
                 if (scrollV.Adjustment.Upper > value.Y && value.Y > -1)
+                {
                     scrollV.Adjustment.Value = value.Y;
-                pyramidalOrigin = value;
-                PointD p = SelectedImage.ToStageSpace(new PointD(pyramidalOrigin.X, pyramidalOrigin.Y), resolution);
-                origin = new PointD(p.X, p.Y);
+                    pyramidalOrigin = value;
+                }
                 UpdateImage();
                 UpdateView();
             }
@@ -1796,12 +1797,31 @@ namespace BioGTK
             {
                 if (SelectedImage.Resolutions.Count <= value || value < 0)
                     return;
-                double x = ((double)PyramidalOrigin.X / (double)SelectedImage.Resolutions[resolution].SizeX) * (double)SelectedImage.Resolutions[value].SizeX;
-                double y = ((double)PyramidalOrigin.Y / (double)SelectedImage.Resolutions[resolution].SizeY) * (double)SelectedImage.Resolutions[value].SizeY;
-                scrollH.Adjustment.Upper = SelectedImage.Resolutions[value].SizeX;
-                scrollV.Adjustment.Upper = SelectedImage.Resolutions[value].SizeY;
-                PyramidalOrigin = new Point((int)x, (int)y);
-                resolution = value;
+                double x, y;
+                if(value > resolution)
+                {
+                    //++resolution zoom out
+                    x = ((double)PyramidalOrigin.X / (double)SelectedImage.Resolutions[resolution].SizeX) * (double)SelectedImage.Resolutions[value].SizeX;
+                    y = ((double)PyramidalOrigin.Y / (double)SelectedImage.Resolutions[resolution].SizeY) * (double)SelectedImage.Resolutions[value].SizeY;
+                    scrollH.Adjustment.Upper = SelectedImage.Resolutions[value].SizeX;
+                    scrollV.Adjustment.Upper = SelectedImage.Resolutions[value].SizeY;
+                    float w = AllocatedWidth / 4;
+                    float h = AllocatedHeight / 4;
+                    resolution = value;
+                    PyramidalOrigin = new Point((int)x - w, (int)y - h);
+                }
+                else
+                {
+                    //--resolution zoom in
+                    x = ((double)PyramidalOrigin.X / (double)SelectedImage.Resolutions[resolution].SizeX) * (double)SelectedImage.Resolutions[value].SizeX;
+                    y = ((double)PyramidalOrigin.Y / (double)SelectedImage.Resolutions[resolution].SizeY) * (double)SelectedImage.Resolutions[value].SizeY;
+                    scrollH.Adjustment.Upper = SelectedImage.Resolutions[value].SizeX;
+                    scrollV.Adjustment.Upper = SelectedImage.Resolutions[value].SizeY;
+                    float w = AllocatedWidth / 2;
+                    float h = AllocatedHeight / 2;
+                    resolution = value;
+                    PyramidalOrigin = new Point((int)x + w, (int)y + h);
+                }
                 UpdateImage();
                 UpdateView();
             }
