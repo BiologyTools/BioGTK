@@ -136,7 +136,7 @@ namespace BioGTK
             images.Remove(im);
             im.Dispose();
             im = null;
-            GC.Collect();
+            //GC.Collect();
             Recorder.AddLine("Bio.Table.RemoveImage(" + '"' + id + '"' + ");");
         }
 
@@ -4251,7 +4251,6 @@ namespace BioGTK
         {
             return OpenFile(file, 0, tab, true);
         }
-
         /// It opens a TIFF file and returns a BioImage object
         /// 
         /// @param file the file path
@@ -4260,14 +4259,103 @@ namespace BioGTK
         /// @return A BioImage object.
         public static BioImage OpenFile(string file, int series, bool tab, bool addToImages)
         {
-            if (isOME(file))
+            return OpenFile(file, series, tab, addToImages, false, 0, 0, 0, 0);
+        }
+        static bool IsTiffTiled(string imagePath)
+        {
+            using (Tiff tiff = Tiff.Open(imagePath, "r"))
             {
-                if (!OMESupport())
-                    return null;
-                //We open with OME series incase this is a pyramidal image.
-                return OpenOMESeries(file, tab, addToImages)[series];
-            }
+                if (tiff == null)
+                {
+                    throw new Exception("Failed to open TIFF image.");
+                }
 
+                return tiff.IsTiled();
+            }
+        }
+        static void InitDirectoryResolution(BioImage b, Tiff image, ImageJDesc jdesc = null)
+        {
+            Resolution res = new Resolution();
+            FieldValue[] rs = image.GetField(TiffTag.RESOLUTIONUNIT);
+            string unit = "NONE";
+            if (rs != null)
+                unit = rs[0].ToString();
+            if (jdesc != null)
+                res.PhysicalSizeZ = jdesc.finterval;
+            else
+                res.PhysicalSizeZ = 2.54 / 96;
+            if (unit == "CENTIMETER")
+            {
+                if (image.GetField(TiffTag.XRESOLUTION) != null)
+                {
+                    double x = image.GetField(TiffTag.XRESOLUTION)[0].ToDouble();
+                    res.PhysicalSizeX = (1000 / x);
+                }
+                if (image.GetField(TiffTag.YRESOLUTION) != null)
+                {
+                    double y = image.GetField(TiffTag.YRESOLUTION)[0].ToDouble();
+                    res.PhysicalSizeY = (1000 / y);
+                }
+            }
+            else
+            if (unit == "INCH")
+            {
+                if (image.GetField(TiffTag.XRESOLUTION) != null)
+                {
+                    double x = image.GetField(TiffTag.XRESOLUTION)[0].ToDouble();
+                    res.PhysicalSizeX = (2.54 / x) / 2.54;
+                }
+                if (image.GetField(TiffTag.YRESOLUTION) != null)
+                {
+                    double y = image.GetField(TiffTag.YRESOLUTION)[0].ToDouble();
+                    res.PhysicalSizeY = (2.54 / y) / 2.54;
+                }
+            }
+            else
+            if (unit == "NONE")
+            {
+                if (jdesc != null)
+                {
+                    if (jdesc.unit == "micron")
+                    {
+                        if (image.GetField(TiffTag.XRESOLUTION) != null)
+                        {
+                            double x = image.GetField(TiffTag.XRESOLUTION)[0].ToDouble();
+                            res.PhysicalSizeX = (2.54 / x) / 2.54;
+                        }
+                        if (image.GetField(TiffTag.YRESOLUTION) != null)
+                        {
+                            double y = image.GetField(TiffTag.YRESOLUTION)[0].ToDouble();
+                            res.PhysicalSizeY = (2.54 / y) / 2.54;
+                        }
+                    }
+                }
+                else
+                {
+                    res.PhysicalSizeX = 2.54 / 96;
+                    res.PhysicalSizeY = 2.54 / 96;
+                    res.PhysicalSizeZ = 2.54 / 96;
+                }
+            }
+            res.SizeX = image.GetField(TiffTag.IMAGEWIDTH)[0].ToInt();
+            res.SizeY = image.GetField(TiffTag.IMAGELENGTH)[0].ToInt();
+            int bitsPerPixel = image.GetField(TiffTag.BITSPERSAMPLE)[0].ToInt();
+            int RGBChannelCount = image.GetField(TiffTag.SAMPLESPERPIXEL)[0].ToInt();
+            res.PixelFormat = GetPixelFormat(RGBChannelCount, bitsPerPixel);
+            b.Resolutions.Add(res);
+        }
+        /// It opens a TIFF file and returns a BioImage object
+        /// 
+        /// @param file the file path
+        /// @param series the series number of the image to open
+        /// 
+        /// @return A BioImage object.
+        public static BioImage OpenFile(string file, int series, bool tab, bool addToImages, bool tile, int tileX, int tileY, int tileSizeX, int tileSizeY)
+        {
+            bool ome = isOME(file);
+            bool sup = OMESupport();
+            bool tiled = IsTiffTiled(file);
+            tile = tiled;
             Stopwatch st = new Stopwatch();
             st.Start();
             status = "Opening Image";
@@ -4276,6 +4364,7 @@ namespace BioGTK
             BioImage b = new BioImage(file);
             b.series = series;
             b.file = file;
+            b.ispyramidal = tiled;
             string fn = Path.GetFileNameWithoutExtension(file);
             string dir = Path.GetDirectoryName(file);
             if (File.Exists(fn + ".csv"))
@@ -4286,6 +4375,7 @@ namespace BioGTK
             if (file.EndsWith("tif") || file.EndsWith("tiff") || file.EndsWith("TIF") || file.EndsWith("TIFF"))
             {
                 Tiff image = Tiff.Open(file, "r");
+                b.tifRead = image;
                 int SizeX = image.GetField(TiffTag.IMAGEWIDTH)[0].ToInt();
                 int SizeY = image.GetField(TiffTag.IMAGELENGTH)[0].ToInt();
                 b.bitsPerPixel = image.GetField(TiffTag.BITSPERSAMPLE)[0].ToInt();
@@ -4294,12 +4384,13 @@ namespace BioGTK
                 string desc = "";
 
                 FieldValue[] f = image.GetField(TiffTag.IMAGEDESCRIPTION);
-                ImageJDesc imDesc = new ImageJDesc();
+                ImageJDesc imDesc = null;
                 b.sizeC = 1;
                 b.sizeT = 1;
                 b.sizeZ = 1;
-                if (f != null)
+                if (f != null && !tile)
                 {
+                    imDesc = new ImageJDesc();
                     desc = f[0].ToString();
                     if (desc.StartsWith("ImageJ"))
                     {
@@ -4361,51 +4452,7 @@ namespace BioGTK
                     PixelFormat = PixelFormat.Format32bppArgb;
                     stride = SizeX * 4;
                 }
-                string unit = (string)image.GetField(TiffTag.RESOLUTIONUNIT)[0].ToString();
-                if (unit == "CENTIMETER")
-                {
-                    if (image.GetField(TiffTag.XRESOLUTION) != null)
-                    {
-                        double x = image.GetField(TiffTag.XRESOLUTION)[0].ToDouble();
-                        b.imageInfo.PhysicalSizeX = (1000 / x);
-                    }
-                    if (image.GetField(TiffTag.YRESOLUTION) != null)
-                    {
-                        double y = image.GetField(TiffTag.YRESOLUTION)[0].ToDouble();
-                        b.imageInfo.PhysicalSizeY = (1000 / y);
-                    }
-                }
-                else
-                if (unit == "INCH")
-                {
-                    if (image.GetField(TiffTag.XRESOLUTION) != null)
-                    {
-                        double x = image.GetField(TiffTag.XRESOLUTION)[0].ToDouble();
-                        b.imageInfo.PhysicalSizeX = (2.54 / x) / 2.54;
-                    }
-                    if (image.GetField(TiffTag.YRESOLUTION) != null)
-                    {
-                        double y = image.GetField(TiffTag.YRESOLUTION)[0].ToDouble();
-                        b.imageInfo.PhysicalSizeY = (2.54 / y) / 2.54;
-                    }
-                }
-                else
-                if (unit == "NONE")
-                {
-                    if (imDesc.unit == "micron")
-                    {
-                        if (image.GetField(TiffTag.XRESOLUTION) != null)
-                        {
-                            double x = image.GetField(TiffTag.XRESOLUTION)[0].ToDouble();
-                            b.imageInfo.PhysicalSizeX = (2.54 / x) / 2.54;
-                        }
-                        if (image.GetField(TiffTag.YRESOLUTION) != null)
-                        {
-                            double y = image.GetField(TiffTag.YRESOLUTION)[0].ToDouble();
-                            b.imageInfo.PhysicalSizeY = (2.54 / y) / 2.54;
-                        }
-                    }
-                }
+                
                 string[] sts = desc.Split('\n');
                 int index = 0;
                 for (int i = 0; i < sts.Length; i++)
@@ -4466,8 +4513,14 @@ namespace BioGTK
                         }
                     }
                 }
-                b.Resolutions.Add(new Resolution(b.SizeX,b.SizeY,PixelFormat, b.imageInfo.PhysicalSizeX, b.imageInfo.PhysicalSizeY, b.imageInfo.PhysicalSizeZ, b.imageInfo.StageSizeX, b.imageInfo.StageSizeY, b.imageInfo.StageSizeZ));
+
+                Resolution r = new Resolution(SizeX, SizeY, PixelFormat, b.imageInfo.PhysicalSizeX, b.imageInfo.PhysicalSizeY, b.imageInfo.PhysicalSizeZ, b.imageInfo.StageSizeX, b.imageInfo.StageSizeY, b.imageInfo.StageSizeZ);
                 b.Coords = new int[b.SizeZ, b.SizeC, b.SizeT];
+                if (tileSizeX == 0 && tileSizeY == 0)
+                {
+                    tileSizeX = 1920;
+                    tileSizeY = 1080;
+                }
 
                 //If this is a tiff file not made by Bio we init channels based on RGBChannels.
                 if (b.Channels.Count == 0)
@@ -4482,31 +4535,47 @@ namespace BioGTK
                     }
                 }
 
-                int z = 0;
-                int c = 0;
-                int t = 0;
                 b.Buffers = new List<Bitmap>();
                 int pages = image.NumberOfDirectories() / b.seriesCount;
-                //int stride = image.ScanlineSize();
                 int str = image.ScanlineSize();
                 bool inter = true;
                 if (stride != str)
                     inter = false;
+
+                if(!tile)
+                InitDirectoryResolution(b, image, imDesc);
+
                 for (int p = series * pages; p < (series + 1) * pages; p++)
                 {
                     image.SetDirectory((short)p);
-                    byte[] bytes = new byte[stride * SizeY];
-                    for (int im = 0, offset = 0; im < SizeY; im++)
+                    if (!tile)
                     {
-                        image.ReadScanline(bytes, offset, im, 0);
-                        offset += stride;
+                        byte[] bytes = new byte[stride * SizeY];
+                        for (int im = 0, offset = 0; im < SizeY; im++)
+                        {
+                            image.ReadScanline(bytes, offset, im, 0);
+                            offset += stride;
+                        }
+                        Bitmap inf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(0, 0, 0), p, null, b.littleEndian, inter);
+                        b.Buffers.Add(inf);
+                        Statistics.CalcStatistics(inf);
                     }
-                    Bitmap inf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(0, 0, 0), p, null, b.littleEndian, inter);
-                    b.Buffers.Add(inf);
-                    Statistics.CalcStatistics(inf);
+                    else
+                    {
+                        InitDirectoryResolution(b, image);
+                    }
                     progressValue = (float)p / (float)(series + 1) * pages;
                 }
+
+                //We keep the reader open if this is a tile
+                if(!tile)
                 image.Close();
+                else
+                {
+                    Bitmap bm = ExtractRegionFromTiledTiff(b, tileX, tileY, tileSizeX, tileSizeY, series);
+                    b.Buffers.Add(bm);
+                    Statistics.CalcStatistics(bm);
+                }
                 b.UpdateCoords();
             }
             else
@@ -4523,11 +4592,18 @@ namespace BioGTK
                 b.StageSizeZ = 0;
             }
             b.Volume = new VolumeD(new Point3D(b.StageSizeX, b.StageSizeY, b.StageSizeZ), new Point3D(b.PhysicalSizeX * b.SizeX, b.PhysicalSizeY * b.SizeY, b.PhysicalSizeZ * b.SizeZ));
+            
+            //If file is ome and we have OME support then check for annotation in metadata.
+            if (ome && sup)
+            {
+                b.Annotations.AddRange(OpenOMEROIs(file, series));
+            }
             //We wait for histogram image statistics calculation
             do
             {
+                Thread.Sleep(50);
             } while (b.Buffers[b.Buffers.Count - 1].Stats == null);
-
+            
             Statistics.ClearCalcBuffer();
             AutoThreshold(b, false);
             if (b.bitsPerPixel > 8)
@@ -4587,7 +4663,9 @@ namespace BioGTK
         public static bool isOME(string file)
         {
             if (file.EndsWith("ome.tif") || file.EndsWith("ome.tiff"))
+            {
                 return true;
+            }
             if (file.EndsWith(".tif") || file.EndsWith(".TIF") || file.EndsWith("tiff") || file.EndsWith("TIFF"))
             {
                 Tiff image = Tiff.Open(file, "r");
@@ -5082,13 +5160,69 @@ namespace BioGTK
             Recorder.AddLine("BioImage.FolderToStack(\"" + path + "\");");
             return b;
         }
+
+        public static Bitmap ExtractRegionFromTiledTiff(BioImage b, int x, int y, int width, int height, int res)
+        {
+            b.tifRead.SetDirectory((short)res);
+            int imageWidth = width;
+            int imageHeight = height;
+            // Calculate the tile coordinates and sizes based on pixel coordinates
+            int tileX = x;//x / b.tifRead.GetField(TiffTag.TILEWIDTH)[0].ToInt();
+            int tileY = y;// b.tifRead.GetField(TiffTag.TILELENGTH)[0].ToInt();
+                
+            int tileWidth = b.tifRead.GetField(TiffTag.TILEWIDTH)[0].ToInt();
+            int tileHeight = b.tifRead.GetField(TiffTag.TILELENGTH)[0].ToInt();
+            int tileSize = b.tifRead.TileSize();
+            // Calculate the number of tiles required to cover the specified region
+            int tilesX = (int)Math.Ceiling((double)imageWidth / tileWidth);
+            int tilesY = (int)Math.Ceiling((double)imageHeight / tileHeight);
+
+            // Create a bitmap to hold the final region image
+            Bitmap regionImage = new Bitmap(imageWidth, imageHeight, PixelFormat.Format24bppRgb);
+            BitmapData bitmapData = regionImage.LockBits(new Rectangle(0, 0, imageWidth, imageHeight),ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+            // Iterate over the tiles in the specified region and compose the final image
+            for (int ty = tileY; ty < tileY + tilesY; ty++)
+            {
+                for (int tx = tileX; tx < tileX + tilesX; tx++)
+                {
+                    // Calculate the position to write the tile in the final image
+                    int destX = (tx - tileX) * tileWidth;
+                    int destY = (ty - tileY) * tileHeight;
+
+                    // Calculate the dimensions of the tile to copy
+                    int copyWidth = Math.Min(tileWidth, imageWidth - destX);
+                    int copyHeight = Math.Min(tileHeight, imageHeight - destY);
+
+                    // Read the tile data
+                    byte[] tileData = new byte[tileSize];
+                    b.tifRead.ReadTile(tileData, 0, tx, ty, res, 0);
+
+                    // Copy the tile data to the final image
+                    IntPtr scan0 = bitmapData.Scan0;
+                    for (int row = 0; row < copyHeight; row++)
+                    {
+                        int sourceOffset = row * tileWidth * 3;
+                        int destOffset = (destY + row) * bitmapData.Stride + destX * 3;
+                        int copyLength = copyWidth * 3;
+                        Marshal.Copy(tileData, sourceOffset, scan0 + destOffset, copyLength);
+                    }
+                }
+            }
+            regionImage.UnlockBits(bitmapData);
+            regionImage.ID = Bitmap.CreateID(b.file, res);
+            regionImage.File = b.file;
+            return regionImage;
+        }
         /* Reading the OME-XML metadata and creating a BioImage object. */
         public static BioImage OpenOME(string file, int serie, bool tab, bool addToImages, bool tile, int tilex, int tiley, int tileSizeX, int tileSizeY)
         {
-            if (!OMESupport())
-                return null;
             if (file == null || file == "")
                 throw new InvalidDataException("File is empty or null");
+            if (!OMESupport() || file.EndsWith(".tif"))
+            {
+                OpenFile(file, serie, tab, addToImages, tile, tilex, tiley, tileSizeX, tileSizeY);
+            }
+            
             progressValue = 0;
             progFile = file;
             BioImage b = new BioImage(file);
@@ -5670,7 +5804,8 @@ namespace BioGTK
             b.Loading = false;
             return b;
         }
-        ImageReader imRead;
+        public ImageReader imRead;
+        public Tiff tifRead;
         /// It reads a tile from a file, and returns a bitmap
         /// 
         /// @param BioImage This is a class that contains the image file name, the image reader, and the
@@ -5685,8 +5820,12 @@ namespace BioGTK
         /// @return A Bitmap object.
         public static Bitmap GetTile(BioImage b, ZCT coord, int serie, int tilex, int tiley, int tileSizeX, int tileSizeY)
         {
-            if (!OMESupport())
-                return null;
+            if (!OMESupport() || b.file.EndsWith(".tif"))
+            {
+                //We can get a tile faster with libtiff rather than bioformats.
+                //and incase we are on mac we can't use bioformats due to IKVM not supporting mac.
+                return ExtractRegionFromTiledTiff(b,tilex,tiley,tileSizeX,tileSizeY, serie);
+            }
             if (b.imRead == null)
                 b.imRead = new ImageReader();
             string s = b.imRead.getCurrentFile();
@@ -6980,7 +7119,7 @@ namespace BioGTK
                 Channels[i].Dispose();
             }
             Images.RemoveImage(this);
-            GC.Collect();
+            //GC.Collect();
         }
         /// This function returns the filename of the object, and the location of the object in the 3D
         /// space

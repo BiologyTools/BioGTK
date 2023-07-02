@@ -254,7 +254,6 @@ namespace BioGTK
             {
                 Bitmaps[i] = null;
             }
-            GC.Collect();
             Bitmaps.Clear();
             if (zBar.Adjustment.Upper != SelectedImage.SizeZ - 1 || tBar.Adjustment.Upper != SelectedImage.SizeT - 1)
             {
@@ -274,8 +273,7 @@ namespace BioGTK
                     {
                         AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
                         bitmap = bf.ImageRGB;
-                        SelectedImage.Buffers[index].Dispose();
-                        SelectedImage.Buffers[index] = bf;
+                        SelectedImage.Buffers[0] = bf;
                     }
                     else
                     {
@@ -347,8 +345,8 @@ namespace BioGTK
                 {
                     AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
                     bitmap = bf.ImageRGB;
-                    SelectedImage.Buffers[index].Dispose();
-                    SelectedImage.Buffers[index] = bf;
+                    SelectedImage.Buffers[0].Dispose();
+                    SelectedImage.Buffers[0] = bf;
                 }
                 else
                 {
@@ -421,18 +419,19 @@ namespace BioGTK
             //We will find the first Resolution small enough in bytes to use as a preview image.
             int i = 0;
             PixelFormat format = SelectedImage.Resolutions[0].PixelFormat;
+            int ires = 0;
             foreach (Resolution res in SelectedImage.Resolutions)
             {
                 if (res.PixelFormat == format)
                 {
-                    if (res.SizeInBytes < 1e+9 * 0.05f)
-                        return i;
+                    if (res.SizeInBytes < 1e+9 * 2)
+                        ires = i;
                 }//Also the macro && label resolutions are often in a different pixel format
                 else
                     return i - 1;
                 i++;
             }
-            return 0;
+            return ires;
         }
         /// It takes a large image, resizes it to a small image, and then displays it in a Gtk.Image
         /// 
@@ -443,11 +442,22 @@ namespace BioGTK
                 return;
             overview = new Rectangle(0, 0, 200, 80);
             int r = GetPreviewResolution();
-            BioImage b = BioImage.OpenOME(SelectedImage.file, r, false, false, true, 0, 0, SelectedImage.Resolutions[r].SizeX, SelectedImage.Resolutions[r].SizeY);
+            Bitmap bm;
             AForge.Imaging.Filters.ResizeBilinear re = new AForge.Imaging.Filters.ResizeBilinear(200, 80);
-            Bitmap bm = re.Apply((Bitmap)b.Buffers[0].ImageRGB);
-            overviewBitmap = new Pixbuf(bm.Bytes,true,8,bm.Width,bm.Height,bm.Stride);
-            b.Dispose();
+            if (BioImage.OMESupport() && !SelectedImage.file.EndsWith(".tif"))
+            {
+                BioImage b = BioImage.OpenOME(SelectedImage.file, r, false, false, true, 0, 0, SelectedImage.Resolutions[r].SizeX, SelectedImage.Resolutions[r].SizeY);
+                bm = re.Apply((Bitmap)b.Buffers[0].ImageRGB);
+                overviewBitmap = new Pixbuf(bm.Bytes, true, 8, bm.Width, bm.Height, bm.Stride);
+                b.Dispose();
+            }
+            else
+            {
+                Resolution res = SelectedImage.Resolutions[r];
+                Bitmap bmp = BioImage.GetTile(SelectedImage, GetCoordinate(), r, 0, 0, res.SizeX, res.SizeY);
+                bm = re.Apply(bmp);
+                overviewBitmap = new Pixbuf(bm.Bytes, true, 8, bm.Width, bm.Height, bm.Stride);
+            }
             showOverview = true;
         }
         #region Handlers
