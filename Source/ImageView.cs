@@ -434,8 +434,6 @@ namespace BioGTK
             return ires;
         }
         /// It takes a large image, resizes it to a small image, and then displays it in a Gtk.Image
-        /// 
-        /// @return A Bitmap
         public void InitPreview()
         {
             if (SelectedImage.Resolutions.Count == 1)
@@ -448,15 +446,15 @@ namespace BioGTK
             {
                 BioImage b = BioImage.OpenOME(SelectedImage.file, r, false, false, true, 0, 0, SelectedImage.Resolutions[r].SizeX, SelectedImage.Resolutions[r].SizeY);
                 bm = re.Apply((Bitmap)b.Buffers[0].ImageRGB);
-                overviewBitmap = new Pixbuf(bm.Bytes, true, 8, bm.Width, bm.Height, bm.Stride);
+                overviewBitmap = new Pixbuf(bm.Bytes, false, 8, bm.Width, bm.Height, bm.Stride);
                 b.Dispose();
             }
             else
             {
                 Resolution res = SelectedImage.Resolutions[r];
-                Bitmap bmp = BioImage.GetTile(SelectedImage, GetCoordinate(), r, 0, 0, res.SizeX, res.SizeY);
-                bm = re.Apply(bmp);
-                overviewBitmap = new Pixbuf(bm.Bytes, true, 8, bm.Width, bm.Height, bm.Stride);
+                Bitmap bmp = BioImage.GetTile(SelectedImage, new ZCT(), r, 0, 0, res.SizeX, res.SizeY);
+                overviewBitmap = new Pixbuf(bmp.Bytes, false, 8, bmp.SizeX, bmp.SizeY, bmp.SizeX * 3);
+                //overview = new Rectangle(0, 0, bmp.SizeX, bmp.SizeY);
             }
             showOverview = true;
         }
@@ -1112,7 +1110,9 @@ namespace BioGTK
                     e.Cr.Paint();
                     if(ShowOverview)
                     {
-                        Gdk.CairoHelper.SetSourcePixbuf(e.Cr, overviewBitmap, 0, 0);
+                        Pixbuf pf = overviewBitmap.ScaleSimple((int)overview.Width, (int)overview.Height, InterpType.Bilinear);
+                        Gdk.CairoHelper.SetSourcePixbuf(e.Cr, pf, 0, 0);
+                        
                         e.Cr.Paint();
                         e.Cr.SetSourceColor(FromColor(Color.Gray));
                         e.Cr.Rectangle(overview.X, overview.Y, overview.Width, overview.Height);

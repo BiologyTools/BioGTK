@@ -251,6 +251,14 @@
     <PackageReference Include="Dotnet.Bundle" Version="0.9.13" />
     <PackageReference Include="GtkSharp" Version="3.24.24.95" />
     <PackageReference Include="IKVM" Version="8.5.0" />
+    <PackageReference Include="NetVips" Version="2.3.1" />
+    <PackageReference Include="NetVips.Native" Version="8.14.2" />
+    <PackageReference Include="NetVips.Native.linux-arm64" Version="8.14.2" />
+    <PackageReference Include="NetVips.Native.linux-x64" Version="8.14.2" />
+    <PackageReference Include="NetVips.Native.osx-arm64" Version="8.14.2" />
+    <PackageReference Include="NetVips.Native.osx-x64" Version="8.14.2" />
+    <PackageReference Include="NetVips.Native.win-x64" Version="8.14.2" />
+    <PackageReference Include="NetVips.Native.win-x86" Version="8.14.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="NuGet.Build.Tasks.Pack" Version="6.6.1">
       <PrivateAssets>all</PrivateAssets>

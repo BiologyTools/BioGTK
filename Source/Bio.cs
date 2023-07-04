@@ -23,6 +23,7 @@ using Color = AForge.Color;
 using loci.formats.@in;
 using Gtk;
 using System.Linq;
+using NetVips;
 
 namespace BioGTK
 {
@@ -1778,6 +1779,7 @@ namespace BioGTK
         public List<Channel> Channels = new List<Channel>();
         public List<Resolution> Resolutions = new List<Resolution>();
         public List<AForge.Bitmap> Buffers = new List<AForge.Bitmap>();
+        public List<NetVips.Image> vipPages = new List<NetVips.Image>();
         public int Resolution
         {
             get { return resolution; } 
@@ -4352,9 +4354,10 @@ namespace BioGTK
         /// @return A BioImage object.
         public static BioImage OpenFile(string file, int series, bool tab, bool addToImages, bool tile, int tileX, int tileY, int tileSizeX, int tileSizeY)
         {
+            Console.WriteLine("Opening BioImage: " + file);
             bool ome = isOME(file);
-            bool sup = OMESupport();
             bool tiled = IsTiffTiled(file);
+            Console.WriteLine("IsTiled=" + tiled.ToString());
             tile = tiled;
             Stopwatch st = new Stopwatch();
             st.Start();
@@ -4384,6 +4387,7 @@ namespace BioGTK
                 string desc = "";
 
                 FieldValue[] f = image.GetField(TiffTag.IMAGEDESCRIPTION);
+                desc = f[0].ToString();
                 ImageJDesc imDesc = null;
                 b.sizeC = 1;
                 b.sizeT = 1;
@@ -4544,11 +4548,10 @@ namespace BioGTK
 
                 if(!tile)
                 InitDirectoryResolution(b, image, imDesc);
-
                 for (int p = series * pages; p < (series + 1) * pages; p++)
                 {
                     image.SetDirectory((short)p);
-                    if (!tile)
+                    if (!tile && !tiled)
                     {
                         byte[] bytes = new byte[stride * SizeY];
                         for (int im = 0, offset = 0; im < SizeY; im++)
@@ -4566,23 +4569,27 @@ namespace BioGTK
                     }
                     progressValue = (float)p / (float)(series + 1) * pages;
                 }
-
-                //We keep the reader open if this is a tile
-                if(!tile)
                 image.Close();
-                else
+                if (tiled)
                 {
-                    Bitmap bm = ExtractRegionFromTiledTiff(b, tileX, tileY, tileSizeX, tileSizeY, series);
-                    b.Buffers.Add(bm);
-                    Statistics.CalcStatistics(bm);
+                    //We check to see if libvips is working/installed.
+                    if (Settings.GetSettings("VipsSupport") == "true")
+                        vips = true;
+                    else
+                        vips = VipsSupport(b);
+                    if (vips)
+                    {
+                        OpenVips(b, pages);
+                    }
+                    if (tiled && vips)
+                    {
+                        Bitmap bm = ExtractRegionFromTiledTiff(b, tileX, tileY, tileSizeX, tileSizeY, series);
+                        b.Buffers.Add(bm);
+                        Console.WriteLine("Calculating statisitics.");
+                        Statistics.CalcStatistics(bm);
+                    }
                 }
                 b.UpdateCoords();
-            }
-            else
-            {
-                MessageDialog md = new MessageDialog(App.tabsView, DialogFlags.Modal, MessageType.Info, ButtonsType.Ok, "Bio supports TIFF and OME images.", null);
-                md.Show();
-                return null;
             }
             if (b.StageSizeX == -1)
             {
@@ -4594,16 +4601,17 @@ namespace BioGTK
             b.Volume = new VolumeD(new Point3D(b.StageSizeX, b.StageSizeY, b.StageSizeZ), new Point3D(b.PhysicalSizeX * b.SizeX, b.PhysicalSizeY * b.SizeY, b.PhysicalSizeZ * b.SizeZ));
             
             //If file is ome and we have OME support then check for annotation in metadata.
-            if (ome && sup)
+            if (ome && OmeSupport)
             {
                 b.Annotations.AddRange(OpenOMEROIs(file, series));
             }
+
+            if(!vips && !tiled)
             //We wait for histogram image statistics calculation
             do
             {
                 Thread.Sleep(50);
             } while (b.Buffers[b.Buffers.Count - 1].Stats == null);
-            
             Statistics.ClearCalcBuffer();
             AutoThreshold(b, false);
             if (b.bitsPerPixel > 8)
@@ -4617,6 +4625,7 @@ namespace BioGTK
             //pr.Dispose();
             st.Stop();
             b.loadTimeMS = st.ElapsedMilliseconds;
+            Console.WriteLine("BioImage loaded " + b.ToString());
             return b;
         }
         /// > The function checks if the image is a Tiff image and if it is, it checks if the image is a
@@ -5161,57 +5170,27 @@ namespace BioGTK
             return b;
         }
 
+        static bool vips = false;
+        public static void OpenVips(BioImage b,int pagecount)
+        {
+            for (int i = 0; i < pagecount; i++)
+            {
+                b.vipPages.Add(NetVips.Image.Tiffload(b.file, i));
+            }
+        }
         public static Bitmap ExtractRegionFromTiledTiff(BioImage b, int x, int y, int width, int height, int res)
         {
-            b.tifRead.SetDirectory((short)res);
-            int imageWidth = width;
-            int imageHeight = height;
-            // Calculate the tile coordinates and sizes based on pixel coordinates
-            int tileX = x;//x / b.tifRead.GetField(TiffTag.TILEWIDTH)[0].ToInt();
-            int tileY = y;// b.tifRead.GetField(TiffTag.TILELENGTH)[0].ToInt();
-                
-            int tileWidth = b.tifRead.GetField(TiffTag.TILEWIDTH)[0].ToInt();
-            int tileHeight = b.tifRead.GetField(TiffTag.TILELENGTH)[0].ToInt();
-            int tileSize = b.tifRead.TileSize();
-            // Calculate the number of tiles required to cover the specified region
-            int tilesX = (int)Math.Ceiling((double)imageWidth / tileWidth);
-            int tilesY = (int)Math.Ceiling((double)imageHeight / tileHeight);
-
-            // Create a bitmap to hold the final region image
-            Bitmap regionImage = new Bitmap(imageWidth, imageHeight, PixelFormat.Format24bppRgb);
-            BitmapData bitmapData = regionImage.LockBits(new Rectangle(0, 0, imageWidth, imageHeight),ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
-            // Iterate over the tiles in the specified region and compose the final image
-            for (int ty = tileY; ty < tileY + tilesY; ty++)
+            try
             {
-                for (int tx = tileX; tx < tileX + tilesX; tx++)
-                {
-                    // Calculate the position to write the tile in the final image
-                    int destX = (tx - tileX) * tileWidth;
-                    int destY = (ty - tileY) * tileHeight;
-
-                    // Calculate the dimensions of the tile to copy
-                    int copyWidth = Math.Min(tileWidth, imageWidth - destX);
-                    int copyHeight = Math.Min(tileHeight, imageHeight - destY);
-
-                    // Read the tile data
-                    byte[] tileData = new byte[tileSize];
-                    b.tifRead.ReadTile(tileData, 0, tx, ty, res, 0);
-
-                    // Copy the tile data to the final image
-                    IntPtr scan0 = bitmapData.Scan0;
-                    for (int row = 0; row < copyHeight; row++)
-                    {
-                        int sourceOffset = row * tileWidth * 3;
-                        int destOffset = (destY + row) * bitmapData.Stride + destX * 3;
-                        int copyLength = copyWidth * 3;
-                        Marshal.Copy(tileData, sourceOffset, scan0 + destOffset, copyLength);
-                    }
-                }
+                NetVips.Image subImage = b.vipPages[res].Crop(x, y, width, height);
+                byte[] imageData = subImage.WriteToMemory();
+                return new Bitmap(width, height, PixelFormat.Format24bppRgb, imageData, new ZCT(), b.file);
             }
-            regionImage.UnlockBits(bitmapData);
-            regionImage.ID = Bitmap.CreateID(b.file, res);
-            regionImage.File = b.file;
-            return regionImage;
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                return null;
+            }
         }
         /* Reading the OME-XML metadata and creating a BioImage object. */
         public static BioImage OpenOME(string file, int serie, bool tab, bool addToImages, bool tile, int tilex, int tiley, int tileSizeX, int tileSizeY)
@@ -5822,7 +5801,7 @@ namespace BioGTK
         {
             if (!OMESupport() || b.file.EndsWith(".tif"))
             {
-                //We can get a tile faster with libtiff rather than bioformats.
+                //We can get a tile faster with libvips rather than bioformats.
                 //and incase we are on mac we can't use bioformats due to IKVM not supporting mac.
                 return ExtractRegionFromTiledTiff(b,tilex,tiley,tileSizeX,tileSizeY, serie);
             }
@@ -6283,26 +6262,47 @@ namespace BioGTK
         {
             SaveOME(saveOMEfile, saveOMEID);
         }
-
+        public static bool OmeSupport = false;
+        static bool supportDialog = false;
         public static bool OMESupport()
         {
             bool isMacOS = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
-            if (isMacOS)
+            if (isMacOS && !supportDialog)
             {
                 MessageDialog md = new MessageDialog(
                 null,
                 DialogFlags.DestroyWithParent,
                 MessageType.Info,
-                ButtonsType.Ok, "BioGTK currently doens't support OME images on MacOS. On MacOS only ImageJ Tiff files and BioGTK Tiff files are supported."
-            );
+                ButtonsType.Ok, "BioGTK currently doens't support OME images on MacOS due to dependency IKVM not supporting Mac. " +
+                "On MacOS ImageJ Tiff files, LibVips supported whole-slide images, and BioGTK Tiff files are supported.");
                 md.Run();
                 md.Destroy();
+                OmeSupport = false;
+                supportDialog = true;
                 return false;
             }
             else
+            {
+                OmeSupport = true;
                 return true;
+            }
         }
-
+        public static bool VipsSupport(BioImage bi)
+        {
+            NetVips.Image im;
+            try
+            {
+                im = NetVips.Image.Tiffload(bi.file);
+                Settings.AddSettings("VipsSupport", "true");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+                return false;
+            }
+            im.Dispose();
+            return true;
+        }
         private static Stopwatch st = new Stopwatch();
         private static ServiceFactory factory;
         private static OMEXMLService service;
