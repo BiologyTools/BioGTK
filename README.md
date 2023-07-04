@@ -37,6 +37,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - [Cs-script](https://github.com/oleg-shilo/cs-script/blob/master/LICENSE)
 - [ImageJ](https://imagej.nih.gov/ij/) (Only needed when running ImageJ macro commands)
 - [ScottPlot](https://oxyplot.github.io/)
+- [LibVips](https://www.libvips.org/install.html) (Optional)
 
 ## Licenses
 - BioGTK [GPL3](https://www.gnu.org/licenses/gpl-3.0.en.html)
@@ -46,6 +47,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - LibTiff.Net [BSD](https://bitmiracle.com/libtiff/)
 - Cs-script [MIT](https://github.com/oleg-shilo/cs-script/blob/master/LICENSE)
 - ScottPlot [MIT](https://github.com/ScottPlot/ScottPlot/blob/main/LICENSE)
+- LibVips [LGPL]([https://www.libvips.org/install.html](https://github.com/libvips/libvips/blob/master/LICENSE))
 
 ## Scripting
 -  Save scripts into "StartupPath/Scripts" with ".cs" ending.
@@ -57,15 +59,17 @@ A .NET application & library for editing & annotating various microscopy image f
 - Install Mac package manager [homebrew.](https://brew.sh/)
 - From brew install [GTK3.](https://formulae.brew.sh/formula/gtk+3#default)
 - Download the BioGTK application for either OSX-x64 or OSX-Arm from releases.
-- Make the file executable by opening terminal in the extracted folder and running "chmod 755 BioGTKApp" 
+- Make the file executable by opening terminal in the extracted folder and running "chmod 755 BioGTKApp"
+- Optionally install [LibVips](https://www.libvips.org/install.html) package for whole-slide support with homebrew.
 
 ## Windows Installation
 - Install package manager [MSYS2.](https://github.com/GtkSharp/GtkSharp/wiki/Installing-Gtk-on-Windows) to install package GTK3. (Required for GTK Apps.)
 - Download the BioGTK Windows installer from releases.
+- Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance when opening pyramidal images.
 
 ## Linux Installation
 - Just download the latest tarball(tar.gz) from Releases as linux already includes GTK3 package.
-
+- Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance when opening pyramidal images.
 ## Sample Tool Script
 ```
 //css_reference BioGTK.dll; 
