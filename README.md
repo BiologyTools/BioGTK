@@ -65,7 +65,7 @@ A .NET application & library for editing & annotating various microscopy image f
 ## Windows Installation
 - Install package manager [MSYS2.](https://github.com/GtkSharp/GtkSharp/wiki/Installing-Gtk-on-Windows) to install package GTK3. (Required for GTK Apps.)
 - Download the BioGTK Windows installer from releases.
-- Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance when opening pyramidal images.
+- Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance when opening pyramidal images. Make sure to define environmental variable $VIPS_HOME as instructed [here.](https://github.com/kleisauke/net-vips/issues/3)
 
 ## Linux Installation
 - Just download the latest tarball(tar.gz) from Releases as linux already includes GTK3 package.

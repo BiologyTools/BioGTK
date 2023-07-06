@@ -47,10 +47,11 @@ namespace BioGTK
         /// @param BioImage A class that contains the image data and other information.
         public static void AddImage(BioImage im, bool newtab)
         {
+            if (images.Contains(im)) return;
             im.Filename = GetImageName(im.ID);
             im.ID = im.Filename;
             images.Add(im);
-            
+
             // start a background task to update progress bar
             System.Threading.Tasks.Task.Run(() =>
             {
@@ -62,7 +63,7 @@ namespace BioGTK
                         App.tabsView.AddTab(im);
                 });
             });
-            
+
             //App.Image = im;
             //NodeView.viewer.AddTab(im);
         }
@@ -548,7 +549,7 @@ namespace BioGTK
         public bool closed = false;
         public bool selected = false;
         public bool subPixel = false;
-        
+
         /*
         public Size TextSize
         {
@@ -681,7 +682,7 @@ namespace BioGTK
         /// @param PointD X,Y
         /// 
         /// @return A new ROI object.
-        
+
         public static ROI CreateLine(ZCT coord, PointD x1, PointD x2)
         {
             ROI an = new ROI();
@@ -888,7 +889,7 @@ namespace BioGTK
             }
             return pts.ToArray();
         }
-        
+
         /// This function takes a BioImage object and returns a string of the points in the image space
         /// 
         /// @param BioImage The image that the ROI is on
@@ -936,7 +937,7 @@ namespace BioGTK
                 r.H = 1;
             BoundingBox = r;
         }
-        
+
         public override string ToString()
         {
             double w = Math.Round(W, 2, MidpointRounding.ToZero);
@@ -946,7 +947,7 @@ namespace BioGTK
             return type.ToString() + ", " + Text + " (" + w + ", " + h + ") " + " (" + x + ", " + y + ") " + coord.ToString();
         }
     }
-    
+
     /* It's a class that holds a string, an IFilter, and a Type */
     public class Filt
     {
@@ -985,7 +986,7 @@ namespace BioGTK
         {
             foreach (Filt item in filters)
             {
-                if(item.name == name)
+                if (item.name == name)
                     return item;
             }
             return null;
@@ -1026,7 +1027,7 @@ namespace BioGTK
                 }
                 if (!inPlace)
                 {
-                    Images.AddImage(img,true);
+                    Images.AddImage(img, true);
                 }
                 Recorder.AddLine("Filters.Base(" + '"' + id +
                     '"' + "," + '"' + name + '"' + "," + inPlace.ToString().ToLower() + ");");
@@ -1211,7 +1212,7 @@ namespace BioGTK
                 fi.NewWidth = w;
                 for (int i = 0; i < img.Buffers.Count; i++)
                 {
-                    img.Buffers[i]= fi.Apply(img.Buffers[i]);
+                    img.Buffers[i] = fi.Apply(img.Buffers[i]);
                 }
                 if (!inPlace)
                 {
@@ -1330,7 +1331,7 @@ namespace BioGTK
                 }
                 if (!inPlace)
                 {
-                    Images.AddImage(img,true);
+                    Images.AddImage(img, true);
                 }
                 Recorder.AddLine("Filters.Copy(" + '"' + id +
                         '"' + "," + '"' + name + '"' + "," + inPlace.ToString().ToLower() + ");");
@@ -1380,12 +1381,12 @@ namespace BioGTK
         {
             return Crop(id, r.X, r.Y, r.W, r.H);
         }
-        
+
         /// It creates a dictionary of filters and their names
         public static void Init()
         {
             //Base Filters
-            indexs = new int[9,32];
+            indexs = new int[9, 32];
             indexs[0, 0] = filters.Count;
             Filt f = new Filt("AdaptiveSmoothing", new AdaptiveSmoothing(), Filt.Type.Base);
             filters.Add(f);
@@ -1442,7 +1443,7 @@ namespace BioGTK
             f = new Filt("BradleyLocalThresholding", new BradleyLocalThresholding(), Filt.Type.InPlace);
             filters.Add(f);
             indexs[2, 4] = filters.Count;
-            f = new Filt("CanvasCrop", new CanvasCrop(new Rectangle(0,0,0,0)), Filt.Type.InPlace);
+            f = new Filt("CanvasCrop", new CanvasCrop(new Rectangle(0, 0, 0, 0)), Filt.Type.InPlace);
             filters.Add(f);
             indexs[2, 5] = filters.Count;
             f = new Filt("CanvasFill", new CanvasFill(new Rectangle(0, 0, 0, 0)), Filt.Type.InPlace);
@@ -1512,7 +1513,7 @@ namespace BioGTK
             indexs[4, 6] = filters.Count;
             f = new Filt("ContrastStretch", new ContrastStretch(), Filt.Type.InPlacePartial);
             filters.Add(f);
-            
+
             //f = new Filt("ErrorDiffusionDithering", new ErrorDiffusionDithering(), Filt.Type.InPlacePartial);
             //filters.Add(f);
             indexs[4, 7] = filters.Count;
@@ -1626,7 +1627,7 @@ namespace BioGTK
 
             //Transformation
             indexs[7, 0] = filters.Count;
-            f = new Filt("Crop", new Crop(new Rectangle(0,0,0,0)), Filt.Type.Transformation);
+            f = new Filt("Crop", new Crop(new Rectangle(0, 0, 0, 0)), Filt.Type.Transformation);
             filters.Add(f);
             indexs[7, 1] = filters.Count;
             f = new Filt("QuadrilateralTransformation", new QuadrilateralTransformation(), Filt.Type.Transformation);
@@ -1782,8 +1783,8 @@ namespace BioGTK
         public List<NetVips.Image> vipPages = new List<NetVips.Image>();
         public int Resolution
         {
-            get { return resolution; } 
-            set { resolution = value; } 
+            get { return resolution; }
+            set { resolution = value; }
         }
         public VolumeD Volume;
         public List<ROI> Annotations = new List<ROI>();
@@ -1880,11 +1881,11 @@ namespace BioGTK
         {
             return Copy(b, true);
         }
-       /// Copy the image and optionally the ROIs
-       /// 
-       /// @param rois Boolean value indicating whether to copy the ROIs or not.
-       /// 
-       /// @return A copy of the BioImage object.
+        /// Copy the image and optionally the ROIs
+        /// 
+        /// @param rois Boolean value indicating whether to copy the ROIs or not.
+        /// 
+        /// @return A copy of the BioImage object.
         public BioImage Copy(bool rois)
         {
             return BioImage.Copy(this, rois);
@@ -1963,7 +1964,7 @@ namespace BioGTK
         }
         public double StageSizeX
         {
-            get 
+            get
             {
                 return Resolutions[Resolution].StageSizeX;
             }
@@ -2609,7 +2610,7 @@ namespace BioGTK
                         bs[0] = new Bitmap(ID, SizeX, SizeY, Buffers[i].PixelFormat, Buffers[i].Bytes, new ZCT(Buffers[i].Coordinate.Z, 0, Buffers[i].Coordinate.T), i, Buffers[i].Plane);
                         bs[1] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 1].PixelFormat, Buffers[i + 1].Bytes, new ZCT(Buffers[i + 1].Coordinate.Z, 0, Buffers[i + 1].Coordinate.T), i + 1, Buffers[i + 1].Plane);
                         if (Channels.Count > 2)
-                            bs[2] = new Bitmap(ID, SizeX, SizeY, Buffers[i+2].PixelFormat, Buffers[i + 2].Bytes, new ZCT(Buffers[i + 2].Coordinate.Z, 0, Buffers[i + 2].Coordinate.T), i + 2, Buffers[i + 2].Plane);
+                            bs[2] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 2].PixelFormat, Buffers[i + 2].Bytes, new ZCT(Buffers[i + 2].Coordinate.Z, 0, Buffers[i + 2].Coordinate.T), i + 2, Buffers[i + 2].Plane);
                         Bitmap bbs = Bitmap.RGB16To48(bs);
                         for (int b = 0; b < 3; b++)
                         {
@@ -3116,6 +3117,7 @@ namespace BioGTK
         public BioImage(string file)
         {
             id = file;
+            this.file = file;
             filename = Images.GetImageName(id);
             Coordinate = new ZCT();
             rgbChannels[0] = 0;
@@ -3494,7 +3496,7 @@ namespace BioGTK
         private static ExtractChannel extractR = new ExtractChannel(AForge.Imaging.RGB.R);
         private static ExtractChannel extractG = new ExtractChannel(AForge.Imaging.RGB.G);
         private static ExtractChannel extractB = new ExtractChannel(AForge.Imaging.RGB.B);
-        
+
         /// > Get the image at the specified coordinates
         /// 
         /// @param z the z-stack index
@@ -3621,7 +3623,7 @@ namespace BioGTK
         public ushort GetValueRGB(ZCTXY coord, int index)
         {
             int ind = 0;
-            if(coord.C >= SizeC)
+            if (coord.C >= SizeC)
             {
                 coord.C = 0;
             }
@@ -4085,7 +4087,7 @@ namespace BioGTK
         {
             factory = new ServiceFactory();
             service = (OMEXMLService)factory.getInstance(typeof(OMEXMLService));
-            reader = new ImageReader(); 
+            reader = new ImageReader();
             writer = new ImageWriter();
             initialized = true;
         }
@@ -4265,15 +4267,18 @@ namespace BioGTK
         }
         static bool IsTiffTiled(string imagePath)
         {
-            using (Tiff tiff = Tiff.Open(imagePath, "r"))
+            if (imagePath.EndsWith(".tif") || imagePath.EndsWith(".tiff"))
             {
-                if (tiff == null)
+                using (Tiff tiff = Tiff.Open(imagePath, "r"))
                 {
-                    throw new Exception("Failed to open TIFF image.");
+                    if (tiff == null)
+                    {
+                        throw new Exception("Failed to open TIFF image.");
+                    }
+                    return tiff.IsTiled();
                 }
-
-                return tiff.IsTiled();
             }
+            else return false;
         }
         static void InitDirectoryResolution(BioImage b, Tiff image, ImageJDesc jdesc = null)
         {
@@ -4356,15 +4361,22 @@ namespace BioGTK
         {
             Console.WriteLine("Opening BioImage: " + file);
             bool ome = isOME(file);
+            if (ome) return OpenOME(file, series, tab, addToImages, tile, tileX, tileY, tileSizeX, tileSizeY);
             bool tiled = IsTiffTiled(file);
             Console.WriteLine("IsTiled=" + tiled.ToString());
             tile = tiled;
+            
             Stopwatch st = new Stopwatch();
             st.Start();
             status = "Opening Image";
             progFile = file;
             progressValue = 0;
             BioImage b = new BioImage(file);
+            if(tiled && file.EndsWith(".tif") && !file.EndsWith(".ome.tif"))
+            {
+                //To open this we need libvips
+                vips = VipsSupport(b);
+            }
             b.series = series;
             b.file = file;
             b.ispyramidal = tiled;
@@ -4456,7 +4468,7 @@ namespace BioGTK
                     PixelFormat = PixelFormat.Format32bppArgb;
                     stride = SizeX * 4;
                 }
-                
+
                 string[] sts = desc.Split('\n');
                 int index = 0;
                 for (int i = 0; i < sts.Length; i++)
@@ -4517,8 +4529,6 @@ namespace BioGTK
                         }
                     }
                 }
-
-                Resolution r = new Resolution(SizeX, SizeY, PixelFormat, b.imageInfo.PhysicalSizeX, b.imageInfo.PhysicalSizeY, b.imageInfo.PhysicalSizeZ, b.imageInfo.StageSizeX, b.imageInfo.StageSizeY, b.imageInfo.StageSizeZ);
                 b.Coords = new int[b.SizeZ, b.SizeC, b.SizeT];
                 if (tileSizeX == 0 && tileSizeY == 0)
                 {
@@ -4545,50 +4555,45 @@ namespace BioGTK
                 bool inter = true;
                 if (stride != str)
                     inter = false;
-
-                if(!tile)
                 InitDirectoryResolution(b, image, imDesc);
-                for (int p = series * pages; p < (series + 1) * pages; p++)
+                if (tiled)
                 {
-                    image.SetDirectory((short)p);
-                    if (!tile && !tiled)
+                    Console.WriteLine("Opening tiles.");
+                    if (vips)
+                        OpenVips(b, b.Resolutions.Count);
+                    for (int t = 0; t < b.SizeT; t++)
                     {
+                        for (int c = 0; c < b.SizeC; c++)
+                        {
+                            for (int z = 0; z < b.SizeZ; z++)
+                            {
+                                Bitmap bmp = GetTile(b, new ZCT(z, c, t), series, tileX, tileY, tileSizeX, tileSizeY);
+                                b.Buffers.Add(bmp);
+                                Statistics.CalcStatistics(bmp);
+                            }
+                        }
+                    }
+                    Console.WriteLine("Calculating statisitics.");
+                }
+                else
+                {
+                    for (int p = series * pages; p < (series + 1) * pages; p++)
+                    {
+                        image.SetDirectory((short)p);
+
                         byte[] bytes = new byte[stride * SizeY];
                         for (int im = 0, offset = 0; im < SizeY; im++)
                         {
                             image.ReadScanline(bytes, offset, im, 0);
                             offset += stride;
                         }
-                        Bitmap inf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(0, 0, 0), p, null, b.littleEndian, inter);
+                        Bitmap inf = new Bitmap(file, tileSizeX, tileSizeY, b.Resolutions[series].PixelFormat, bytes, new ZCT(0, 0, 0), p, null, b.littleEndian, inter);
                         b.Buffers.Add(inf);
                         Statistics.CalcStatistics(inf);
+                        progressValue = (float)p / (float)(series + 1) * pages;
                     }
-                    else
-                    {
-                        InitDirectoryResolution(b, image);
-                    }
-                    progressValue = (float)p / (float)(series + 1) * pages;
                 }
                 image.Close();
-                if (tiled)
-                {
-                    //We check to see if libvips is working/installed.
-                    if (Settings.GetSettings("VipsSupport") == "true")
-                        vips = true;
-                    else
-                        vips = VipsSupport(b);
-                    if (vips)
-                    {
-                        OpenVips(b, pages);
-                    }
-                    if (tiled && vips)
-                    {
-                        Bitmap bm = ExtractRegionFromTiledTiff(b, tileX, tileY, tileSizeX, tileSizeY, series);
-                        b.Buffers.Add(bm);
-                        Console.WriteLine("Calculating statisitics.");
-                        Statistics.CalcStatistics(bm);
-                    }
-                }
                 b.UpdateCoords();
             }
             if (b.StageSizeX == -1)
@@ -4599,14 +4604,13 @@ namespace BioGTK
                 b.StageSizeZ = 0;
             }
             b.Volume = new VolumeD(new Point3D(b.StageSizeX, b.StageSizeY, b.StageSizeZ), new Point3D(b.PhysicalSizeX * b.SizeX, b.PhysicalSizeY * b.SizeY, b.PhysicalSizeZ * b.SizeZ));
-            
+
             //If file is ome and we have OME support then check for annotation in metadata.
             if (ome && OmeSupport)
             {
                 b.Annotations.AddRange(OpenOMEROIs(file, series));
             }
 
-            if(!vips && !tiled)
             //We wait for histogram image statistics calculation
             do
             {
@@ -4619,8 +4623,8 @@ namespace BioGTK
             else
                 b.StackThreshold(false);
             Recorder.AddLine("Bio.BioImage.Open(" + '"' + file + '"' + ");");
-            if(addToImages)
-            Images.AddImage(b,tab);
+            if (addToImages)
+                Images.AddImage(b, tab);
             //pr.Close();
             //pr.Dispose();
             st.Stop();
@@ -4746,9 +4750,9 @@ namespace BioGTK
                 progFile = files[fi];
                 int serie = fi;
                 string file = files[fi];
-                
+
                 BioImage b = Images.GetImage(file);
-                if(b.isPyramidal)
+                if (b.isPyramidal)
                 {
                     b = OpenOME(b.file, b.resolution, false, false, true, (int)App.viewer.PyramidalOrigin.X, (int)App.viewer.PyramidalOrigin.Y, App.viewer.AllocatedWidth, App.viewer.AllocatedHeight);
                 }
@@ -5122,11 +5126,11 @@ namespace BioGTK
             BioImage b = new BioImage(files[0]);
             for (int i = 0; i < files.Length; i++)
             {
-                BioImage bb = OpenFile(files[i],false);
+                BioImage bb = OpenFile(files[i], false);
                 b.Buffers.AddRange(bb.Buffers);
             }
             b.UpdateCoords(sizeZ, sizeC, sizeT);
-            Images.AddImage(b,true);
+            Images.AddImage(b, true);
             return b;
         }
         /// It takes a folder of images and creates a stack from them
@@ -5151,7 +5155,7 @@ namespace BioGTK
                     c = int.Parse(st[2].Replace("C", ""));
                     t = int.Parse(st[3].Replace("T", ""));
                 }
-                bb = OpenFile(files[i],tab);
+                bb = OpenFile(files[i], tab);
                 b.Buffers.AddRange(bb.Buffers);
             }
             if (z == 0)
@@ -5165,64 +5169,95 @@ namespace BioGTK
             }
             else
                 b.UpdateCoords(z + 1, c + 1, t + 1);
-            Images.AddImage(b,tab);
+            Images.AddImage(b, tab);
             Recorder.AddLine("BioImage.FolderToStack(\"" + path + "\");");
             return b;
         }
 
         static bool vips = false;
-        public static void OpenVips(BioImage b,int pagecount)
+        public static void OpenVips(BioImage b, int pagecount)
         {
-            for (int i = 0; i < pagecount; i++)
+            try
             {
-                b.vipPages.Add(NetVips.Image.Tiffload(b.file, i));
+                for (int i = 0; i < pagecount; i++)
+                {
+                    b.vipPages.Add(NetVips.Image.Tiffload(b.file, i));
+                }
             }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+            
         }
         public static Bitmap ExtractRegionFromTiledTiff(BioImage b, int x, int y, int width, int height, int res)
         {
             try
             {
                 NetVips.Image subImage = b.vipPages[res].Crop(x, y, width, height);
-                byte[] imageData = subImage.WriteToMemory();
-                return new Bitmap(width, height, PixelFormat.Format24bppRgb, imageData, new ZCT(), b.file);
+                if (b.vipPages[res].Format == Enums.BandFormat.Uchar)
+                {
+                    Bitmap bm;
+                    byte[] imageData = subImage.WriteToMemory();
+                    if (b.Resolutions[res].RGBChannelsCount == 3)
+                        bm = new Bitmap(width, height, PixelFormat.Format24bppRgb, imageData, new ZCT(), b.file);
+                    else
+                        bm = new Bitmap(width, height, PixelFormat.Format8bppIndexed, imageData, new ZCT(), b.file);
+                    return bm;
+
+                }
+                else if (b.vipPages[res].Format == Enums.BandFormat.Ushort)
+                {
+                    Bitmap bm;
+                    byte[] imageData = subImage.WriteToMemory();
+                    if (b.Resolutions[res].RGBChannelsCount == 3)
+                        bm = new Bitmap(width, height, PixelFormat.Format24bppRgb, imageData, new ZCT(), b.file);
+                    else
+                        bm = new Bitmap(width, height, PixelFormat.Format8bppIndexed, imageData, new ZCT(), b.file);
+                    return bm;
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error: {ex.Message}");
                 return null;
             }
+            return null;
         }
         /* Reading the OME-XML metadata and creating a BioImage object. */
         public static BioImage OpenOME(string file, int serie, bool tab, bool addToImages, bool tile, int tilex, int tiley, int tileSizeX, int tileSizeY)
         {
+            if (tileSizeX == 0)
+                tileSizeX = 1920;
+            if (tileSizeY == 0)
+                tileSizeY = 1080;
             if (file == null || file == "")
                 throw new InvalidDataException("File is empty or null");
-            if (!OMESupport() || file.EndsWith(".tif"))
-            {
-                OpenFile(file, serie, tab, addToImages, tile, tilex, tiley, tileSizeX, tileSizeY);
-            }
-            
             progressValue = 0;
             progFile = file;
             BioImage b = new BioImage(file);
             b.Loading = true;
-            if(b.meta == null)
-            b.meta = (IMetadata)((OMEXMLService)new ServiceFactory().getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
+            if (b.meta == null)
+                b.meta = (IMetadata)((OMEXMLService)new ServiceFactory().getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
             string f = file.Replace("\\", "/");
             string cf = reader.getCurrentFile();
-            if(cf != null)
-            cf = cf.Replace("\\", "/");
+            if (cf != null)
+                cf = cf.Replace("\\", "/");
             if (cf != f)
             {
                 status = "Opening OME Image.";
+                reader.close();
                 reader.setMetadataStore(b.meta);
                 reader.setId(file);
             }
             status = "Reading OME Metadata.";
             reader.setSeries(serie);
             int RGBChannelCount = reader.getRGBChannelCount();
-
-
+            if (reader.getOptimalTileWidth() != reader.getSizeX())
+            {
+                b.ispyramidal = true;
+                tile = true;
+            }
             //OME reader.getBitsPerPixel(); sometimes returns incorrect bits per pixel, like when opening ImageJ images.
             //So we check the pixel type from xml metadata and if it fails we use the readers value.
             PixelFormat PixelFormat;
@@ -5234,7 +5269,7 @@ namespace BioGTK
             {
                 PixelFormat = GetPixelFormat(RGBChannelCount, reader.getBitsPerPixel());
             }
-            
+
             b.id = file;
             b.file = file;
             int SizeX, SizeY;
@@ -5250,7 +5285,7 @@ namespace BioGTK
             b.bitsPerPixel = reader.getBitsPerPixel();
             b.series = serie;
             string order = reader.getDimensionOrder();
-            
+
             //Lets get the channels and initialize them
             int i = 0;
             while (true)
@@ -5321,7 +5356,7 @@ namespace BioGTK
             }
 
             //If the file doens't have channels we initialize them.
-            if(b.Channels.Count == 0)
+            if (b.Channels.Count == 0)
             {
                 b.Channels.Add(new Channel(0, b.bitsPerPixel, RGBChannelCount));
             }
@@ -5368,7 +5403,7 @@ namespace BioGTK
                         }
                         else
                             res.PhysicalSizeY = (96 / 2.54) / 1000;
-                    
+
                         if (b.meta.getStageLabelX(s) != null)
                             res.StageSizeX = b.meta.getStageLabelX(s).value().doubleValue();
                         if (b.meta.getStageLabelY(s) != null)
@@ -5689,7 +5724,7 @@ namespace BioGTK
                         an.AddPoint(b.ToStageSpace(p));
                         an.Text = b.meta.getLabelText(im, sc);
                     }
-                    if (b.Volume.Intersects(new PointD(an.BoundingBox.X,an.BoundingBox.Y)))
+                    if (b.Volume.Intersects(new PointD(an.BoundingBox.X, an.BoundingBox.Y)))
                         b.Annotations.Add(an);
                 }
             }
@@ -5705,22 +5740,20 @@ namespace BioGTK
             int c = 0;
             int t = 0;
             status = "Reading OME Image Planes";
-            for (int p = 0; p < pages; p++)
-            {
-                Bitmap bf;
-                if (tile)
+            if (!tile)
+                for (int p = 0; p < pages; p++)
                 {
-                    b.Buffers.Add(GetTile(b, new ZCT(z, c, t), serie, tilex, tiley, tileSizeX, tileSizeY));
-                }
-                else
-                {
+                    Bitmap bf;
                     progressValue = (float)p / (float)pages;
                     byte[] bytes = reader.openBytes(p);
                     bf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(z, c, t), p, null, b.littleEndian, inter);
                     b.Buffers.Add(bf);
                 }
+            else
+            {
+                b.Buffers.Add(GetTile(b, new ZCT(z, c, t), serie, tilex, tiley, tileSizeX, tileSizeY));
+                Statistics.CalcStatistics(b.Buffers.Last());
             }
-            
             int pls;
             try
             {
@@ -5759,6 +5792,19 @@ namespace BioGTK
                 }
 
             b.UpdateCoords(b.SizeZ, b.SizeC, b.SizeT, order);
+            //We wait for histogram image statistics calculation
+            do
+            {
+                Thread.Sleep(50);
+            } while (b.Buffers[b.Buffers.Count - 1].Stats == null);
+            Statistics.ClearCalcBuffer();
+            AutoThreshold(b, true);
+            if (b.bitsPerPixel > 8)
+                b.StackThreshold(true);
+            else
+                b.StackThreshold(false);
+            if (addToImages)
+                Images.AddImage(b, tab);
             //We use a try block to close the reader as sometimes this will cause an error.
             bool stop = false;
             do
@@ -5773,18 +5819,12 @@ namespace BioGTK
 
                 }
             } while (!stop);
-            AutoThreshold(b, false);
-            if (b.bitsPerPixel > 8)
-                b.StackThreshold(true);
-            else
-                b.StackThreshold(false);
-            if (!tile && addToImages)
-                Images.AddImage(b,tab);
             b.Loading = false;
             return b;
         }
         public ImageReader imRead;
         public Tiff tifRead;
+        static Bitmap bm;
         /// It reads a tile from a file, and returns a bitmap
         /// 
         /// @param BioImage This is a class that contains the image file name, the image reader, and the
@@ -5799,46 +5839,64 @@ namespace BioGTK
         /// @return A Bitmap object.
         public static Bitmap GetTile(BioImage b, ZCT coord, int serie, int tilex, int tiley, int tileSizeX, int tileSizeY)
         {
-            if (!OMESupport() || b.file.EndsWith(".tif"))
+            if ((!OMESupport() && b.file.EndsWith("ome.tif") && vips) || (b.file.EndsWith(".tif") && vips))
             {
                 //We can get a tile faster with libvips rather than bioformats.
                 //and incase we are on mac we can't use bioformats due to IKVM not supporting mac.
-                return ExtractRegionFromTiledTiff(b,tilex,tiley,tileSizeX,tileSizeY, serie);
+                return ExtractRegionFromTiledTiff(b, tilex, tiley, tileSizeX, tileSizeY, serie);
             }
-            if (b.imRead == null)
-                b.imRead = new ImageReader();
-            string s = b.imRead.getCurrentFile();
-            if (s == null)
-                b.imRead.setId(b.file);
-            if (b.imRead.getSeries() != serie)
-                b.imRead.setSeries(serie);
-            int SizeX = b.imRead.getSizeX();
-            int SizeY = b.imRead.getSizeY();
+            string curfile = reader.getCurrentFile();
+            if (curfile == null)
+            {
+                b.meta = (IMetadata)((OMEXMLService)factory.getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
+                reader.close();
+                reader.setMetadataStore(b.meta);
+                reader.setId(b.file);
+            }
+            else
+            {
+                if (curfile != b.file)
+                {
+                    reader.close();
+                    b.meta = (IMetadata)((OMEXMLService)factory.getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
+                    reader.setMetadataStore(b.meta);
+                    reader.setId(b.file);
+                }
+            }
+            if (reader.getSeries() != serie)
+                reader.setSeries(serie);
+            int SizeX = reader.getSizeX();
+            int SizeY = reader.getSizeY();
             int p = b.Coords[coord.Z, coord.C, coord.T];
-            bool littleEndian = b.imRead.isLittleEndian();
+            bool littleEndian = reader.isLittleEndian();
             PixelFormat PixelFormat = b.Resolutions[serie].PixelFormat;
             if (tilex < 0)
                 tilex = 0;
             if (tiley < 0)
                 tiley = 0;
             if (tilex >= SizeX)
-                tilex = SizeX - 1;
+                tilex = SizeX;
             if (tiley >= SizeY)
-                tiley = SizeY - 1;
+                tiley = SizeY;
             int sx = tileSizeX;
             if (tilex + tileSizeX > SizeX)
                 sx -= (tilex + tileSizeX) - (SizeX);
             int sy = tileSizeY;
             if (tiley + tileSizeY > SizeY)
                 sy -= (tiley + tileSizeY) - (SizeY);
-            if (sx <= 0)
+            //For some reason calling openBytes with 1x1px area causes an exception. 
+            if (sx <= 1)
                 return null;
-            if (sy <= 0)
+            if (sy <= 1)
                 return null;
-            byte[] bytesr = b.imRead.openBytes(b.Coords[coord.Z, coord.C, coord.T], tilex, tiley, sx, sy);
-            bool interleaved = b.imRead.isInterleaved();
-            Bitmap bm = new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, null, littleEndian, interleaved);
-            return bm; 
+            byte[] bytesr = reader.openBytes(b.Coords[coord.Z, coord.C, coord.T], tilex, tiley, sx, sy);
+            bool interleaved = reader.isInterleaved();
+            if (bm != null)
+                bm.Dispose();
+            bm = new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, null, littleEndian, interleaved);
+            if (bm.isRGB && !interleaved)
+                bm.SwitchRedBlue();
+            return bm;
         }
         /// This function sets the minimum and maximum values of the image to the minimum and maximum
         /// values of the stack
@@ -5988,11 +6046,11 @@ namespace BioGTK
         {
             //We wait incase OME has not initialized yet.
             if (!initialized)
-            do
-            {
-                Thread.Sleep(100);
-                //Application.DoEvents();
-            } while (!Initialized);
+                do
+                {
+                    Thread.Sleep(100);
+                    //Application.DoEvents();
+                } while (!Initialized);
             var meta = (IMetadata)((OMEXMLService)new ServiceFactory().getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
             reader.setMetadataStore((MetadataStore)meta);
             file = file.Replace("\\", "/");
@@ -6009,7 +6067,7 @@ namespace BioGTK
                 Scripting.LogLine(e.Message);
                 return null;
             }
-           
+
             bool tile = false;
             if (reader.getOptimalTileWidth() != reader.getSizeX())
                 tile = true;
@@ -6018,9 +6076,9 @@ namespace BioGTK
             if (tile)
             {
                 bs = new BioImage[1];
-                bs[0] = OpenOME(file, 0, tab, addToImages,true, 0, 0, 1920, 1080);
+                bs[0] = OpenOME(file, 0, tab, addToImages, true, 0, 0, 1920, 1080);
                 bs[0].isPyramidal = true;
-                Images.AddImage(bs[0],tab);
+                Images.AddImage(bs[0], tab);
                 return bs;
             }
             else
@@ -6028,7 +6086,7 @@ namespace BioGTK
             reader.close();
             for (int i = 0; i < count; i++)
             {
-                bs[i] = OpenOME(file, i, tab, addToImages, false, 0,0,0,0);
+                bs[i] = OpenOME(file, i, tab, addToImages, false, 0, 0, 0, 0);
                 if (bs[i] == null)
                     return null;
             }
@@ -6125,7 +6183,7 @@ namespace BioGTK
                     t = int.Parse(st[3].Replace("T", ""));
                 }
                 if (i == 0)
-                    bs[0] = OpenOME(files[i],tab);
+                    bs[0] = OpenOME(files[i], tab);
                 else
                 {
                     bs[i] = OpenFile(files[i], 0, tab, false);
@@ -6225,7 +6283,7 @@ namespace BioGTK
                 return;
             foreach (string f in openOMEfile)
             {
-                OpenOME(f,true);
+                OpenOME(f, true);
             }
             openOMEfile.Clear();
         }
@@ -6852,7 +6910,7 @@ namespace BioGTK
                     if (col == 16)
                     {
                         //STROKECOLORW
-                        an.strokeWidth = double.Parse(val,CultureInfo.InvariantCulture);
+                        an.strokeWidth = double.Parse(val, CultureInfo.InvariantCulture);
                     }
                     else
                     if (col == 17)
@@ -7144,7 +7202,7 @@ namespace BioGTK
             }
             return a;
         }
-        
+
         /// This function adds a constant value to each pixel in the image
         /// 
         /// @param BioImage a class that contains a list of buffers (float[])

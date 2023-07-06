@@ -1006,6 +1006,8 @@ namespace BioGTK
             {
                 Gtk.Label l = item as Gtk.Label;
                 string name = System.IO.Path.GetFileName(l.Text);
+                name = name.Replace("_", "");
+                tabName = tabName.Replace("_", "");
                 if (name == tabName)
                 {
                     ImageView iv = viewers[i];

@@ -68,6 +68,19 @@ namespace BioGTK
                 scrollH.Adjustment.Upper = im.Resolutions[resolution].SizeX;
                 scrollV.Adjustment.Upper = im.Resolutions[resolution].SizeY;
             }
+            if(im.Resolutions[0].SizeX <= 1920 && im.Resolutions[0].SizeY <= 1080)
+            {
+                if (im.isPyramidal)
+                {
+                    imageBox.WidthRequest = im.Resolutions[0].SizeX;
+                    imageBox.HeightRequest = im.Resolutions[0].SizeY;
+                }
+                else
+                {
+                    pictureBox.WidthRequest = im.Resolutions[0].SizeX;
+                    pictureBox.HeightRequest = im.Resolutions[0].SizeY;
+                }
+            } 
             UpdateGUI();
             UpdateImages();
             GoToImage(Images.Count - 1);
@@ -213,18 +226,10 @@ namespace BioGTK
             roi.ShowAll();
             pxWmicron = SelectedImage.PhysicalSizeX;
             pxHmicron = SelectedImage.PhysicalSizeY;
-            if (im.SizeY >= 1080)
-            {
-                pictureBox.SetSizeRequest(800, 600 - 130);
-            }
-            else
-                pictureBox.SetSizeRequest(im.SizeX, im.SizeY);
             AddImage(im);
             if (im.isPyramidal)
             {
                 viewStack.VisibleChild = viewStack.Children[1];
-                scrollH.HeightRequest = im.SizeY;
-                scrollV.WidthRequest = im.SizeX;
                 InitPreview();
             }
             SetupHandlers();
@@ -259,8 +264,9 @@ namespace BioGTK
             {
                 UpdateGUI();
             }
-
             int bi = 0;
+            if (SelectedImage.isPyramidal && (imageBox.AllocatedWidth <= 1 || imageBox.AllocatedHeight <= 1))
+                return;
             foreach (BioImage b in Images)
             {
                 ZCT c = GetCoordinate();
@@ -269,11 +275,14 @@ namespace BioGTK
                 int index = b.Coords[c.Z, c.C, c.T];
                 if (Mode == ViewMode.Filtered)
                 {
-                    if (SelectedImage.isPyramidal)
+                    if (b.isPyramidal)
                     {
                         AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                        if (bf == null)
+                            return;
                         bitmap = bf.ImageRGB;
-                        SelectedImage.Buffers[0] = bf;
+                        b.Buffers[index].Dispose();
+                        b.Buffers[index] = bf;
                     }
                     else
                     {
@@ -285,9 +294,11 @@ namespace BioGTK
                     if (SelectedImage.isPyramidal)
                     {
                         AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                        if (bf == null)
+                            return;
                         bitmap = bf.ImageRGB;
-                        SelectedImage.Buffers[index].Dispose();
-                        SelectedImage.Buffers[index] = bf;
+                        b.Buffers[index].Dispose();
+                        b.Buffers[index] = bf;
                     }
                     else
                         bitmap = b.GetRGBBitmap(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
@@ -297,9 +308,11 @@ namespace BioGTK
                     if (SelectedImage.isPyramidal)
                     {
                         AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                        if (bf == null)
+                            return;
                         bitmap = bf.ImageRGB;
-                        SelectedImage.Buffers[index].Dispose();
-                        SelectedImage.Buffers[index] = bf;
+                        b.Buffers[index].Dispose();
+                        b.Buffers[index] = bf;
                     }
                     else
                         bitmap = b.Buffers[index];
@@ -309,9 +322,11 @@ namespace BioGTK
                     if (SelectedImage.isPyramidal)
                     {
                         AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                        if (bf == null)
+                            return;
                         bitmap = bf.ImageRGB;
-                        SelectedImage.Buffers[index].Dispose();
-                        SelectedImage.Buffers[index] = bf;
+                        b.Buffers[index].Dispose();
+                        b.Buffers[index] = bf;
                     }
                     else
                         bitmap = b.GetEmission(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
@@ -328,75 +343,7 @@ namespace BioGTK
         /// It updates the image.
         public void UpdateImage()
         {
-            if (SelectedImage == null)
-                return;
-            if (zBar.Adjustment.Upper != SelectedImage.SizeZ - 1 || tBar.Adjustment.Upper != SelectedImage.SizeT - 1)
-            {
-                UpdateGUI();
-            }
-            
-            ZCT c = GetCoordinate();
-            AForge.Bitmap bitmap = null;
-            BioImage b = SelectedImage;
-            int index = SelectedImage.Coords[c.Z, c.C, c.T];
-            if (Mode == ViewMode.Filtered)
-            {
-                if (SelectedImage.isPyramidal)
-                {
-                    AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
-                    bitmap = bf.ImageRGB;
-                    SelectedImage.Buffers[0].Dispose();
-                    SelectedImage.Buffers[0] = bf;
-                }
-                else
-                {
-                    bitmap = b.GetFiltered(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
-                }
-            }
-            else if (Mode == ViewMode.RGBImage)
-            {
-                if (SelectedImage.isPyramidal)
-                {
-                    AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
-                    bitmap = bf.ImageRGB;
-                    SelectedImage.Buffers[index].Dispose();
-                    SelectedImage.Buffers[index] = bf;
-                }
-                else
-                    bitmap = b.GetRGBBitmap(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
-            }
-            else if (Mode == ViewMode.Raw)
-            {
-                if (SelectedImage.isPyramidal)
-                {
-                    AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
-                    bitmap = bf.ImageRGB;
-                    SelectedImage.Buffers[index].Dispose();
-                    SelectedImage.Buffers[index] = bf;
-                }
-                else
-                    bitmap = b.Buffers[index];
-            }
-            else
-            {
-                if (SelectedImage.isPyramidal)
-                {
-                    AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, Resolution, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
-                    bitmap = bf.ImageRGB;
-                    SelectedImage.Buffers[index].Dispose();
-                    SelectedImage.Buffers[index] = bf;
-                }
-                else
-                    bitmap = b.GetEmission(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
-            }
-            if(Bitmaps.Count> 0)
-            if (Bitmaps[selectedIndex] != null)
-                Bitmaps[selectedIndex].Dispose();
-            if (bitmap.PixelFormat == PixelFormat.Format16bppGrayScale || bitmap.PixelFormat == PixelFormat.Format48bppRgb)
-                bitmap = AForge.Imaging.Image.Convert16bppTo8bpp(bitmap);
-            AForge.Bitmap bm = bitmap.ImageRGB;
-            Pixbuf pixbuf = new Pixbuf(bm.RGBBytes, true, 8, bm.Width, bm.Height, bm.Stride);
-            Bitmaps.Add(pixbuf);
+            UpdateImages();
         }
         bool showOverview;
         Rectangle overview;
@@ -418,20 +365,13 @@ namespace BioGTK
         {
             //We will find the first Resolution small enough in bytes to use as a preview image.
             int i = 0;
-            PixelFormat format = SelectedImage.Resolutions[0].PixelFormat;
-            int ires = 0;
             foreach (Resolution res in SelectedImage.Resolutions)
             {
-                if (res.PixelFormat == format)
-                {
-                    if (res.SizeInBytes < 1e+9 * 2)
-                        ires = i;
-                }//Also the macro && label resolutions are often in a different pixel format
-                else
-                    return i - 1;
+                if (res.SizeInBytes < 1e+9 * 0.05)
+                    return i;
                 i++;
             }
-            return ires;
+            return 0;
         }
         /// It takes a large image, resizes it to a small image, and then displays it in a Gtk.Image
         public void InitPreview()
@@ -446,14 +386,14 @@ namespace BioGTK
             {
                 BioImage b = BioImage.OpenOME(SelectedImage.file, r, false, false, true, 0, 0, SelectedImage.Resolutions[r].SizeX, SelectedImage.Resolutions[r].SizeY);
                 bm = re.Apply((Bitmap)b.Buffers[0].ImageRGB);
-                overviewBitmap = new Pixbuf(bm.Bytes, false, 8, bm.Width, bm.Height, bm.Stride);
+                overviewBitmap = new Pixbuf(bm.RGBBytes, true, 8, bm.Width, bm.Height, bm.Stride);
                 b.Dispose();
             }
             else
             {
                 Resolution res = SelectedImage.Resolutions[r];
                 Bitmap bmp = BioImage.GetTile(SelectedImage, new ZCT(), r, 0, 0, res.SizeX, res.SizeY);
-                overviewBitmap = new Pixbuf(bmp.Bytes, false, 8, bmp.SizeX, bmp.SizeY, bmp.SizeX * 3);
+                overviewBitmap = new Pixbuf(bmp.RGBBytes, true, 8, bmp.SizeX, bmp.SizeY, bmp.SizeX * 3);
                 //overview = new Rectangle(0, 0, bmp.SizeX, bmp.SizeY);
             }
             showOverview = true;
@@ -1089,7 +1029,7 @@ namespace BioGTK
         /// height of the picturebox.
         private void PictureBox_Drawn(object o, DrawnArgs e)
         {
-            if (Bitmaps.Count == 0 || Bitmaps.Count != Images.Count)
+            if ((Bitmaps.Count == 0 || Bitmaps.Count != Images.Count))
                 UpdateImages();
             //e.Cr.Translate(-(pictureBox.AllocatedWidth / 2),-(pictureBox.AllocatedHeight / 2));
             e.Cr.Scale(Scale.Width, Scale.Height);
@@ -1097,6 +1037,12 @@ namespace BioGTK
             e.Cr.Rectangle(rr.X, rr.Y,Math.Abs(rr.W),Math.Abs(rr.H));
             e.Cr.Stroke();
             int i = 0;
+            
+            //These ensure we always ask for min 2x2px pixels since Bioformats throws an error if we try to get 1x1px.
+            if (!SelectedImage.isPyramidal && (pictureBox.AllocatedWidth <= 1 || pictureBox.AllocatedHeight <= 1))
+                return;
+            if (SelectedImage.isPyramidal && (imageBox.AllocatedWidth <= 1 || imageBox.AllocatedHeight <= 1))
+                return;
             foreach (BioImage im in Images)
             {
                 if (Bitmaps[i] == null)
@@ -2478,7 +2424,6 @@ namespace BioGTK
         /// @return The method is returning the value of the variable "i"
         public void GoToImage(int i)
         {
-            if(pictureBox.AllocatedWidth == 1 || pictureBox.AllocatedHeight== 1) { return; }
             if (Images.Count <= i)
                 return;
             double dx = Images[i].Volume.Width / 2;
