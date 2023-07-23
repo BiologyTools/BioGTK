@@ -133,6 +133,14 @@
                       </object>
                     </child>
                     <child>
+                      <object class="GtkImageMenuItem" id="savePyramidal">
+                        <property name="label" translatable="yes">Save Pyramidal</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="use-stock">False</property>
+                      </object>
+                    </child>
+                    <child>
                       <object class="GtkSeparatorMenuItem">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
