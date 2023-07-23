@@ -27,17 +27,23 @@ namespace BioGTK
         #endregion
 
         #region Constructors / Destructors
-        /// <summary> Default Shared Constructor. </summary>
-        /// <returns> A TestForm1. </returns>
+
+        /// The function creates a NodeView object using a Glade file and returns it.
+        /// 
+        /// @param args The "args" parameter is an array of strings that can be passed to the Create
+        /// method. It is used to provide additional arguments or data that may be needed for the
+        /// creation of the NodeView object. The specific purpose or usage of these arguments would
+        /// depend on the implementation of the NodeView class and
+        /// 
+        /// @return The method is returning a NodeView object.
         public static NodeView Create(string[] args)
         {
             Builder builder = new Builder(null, "BioGTK.Glade.NodeView.glade", null);
             return new NodeView(builder, builder.GetObject("nodeView").Handle,args);
         }
         ListStore store;
-        /// <summary> Specialised constructor for use only by derived class. </summary>
-        /// <param name="builder"> The builder. </param>
-        /// <param name="handle">  The handle. </param>
+
+        /* The code you provided is the constructor for the `NodeView` class. */
         protected NodeView(Builder builder, IntPtr handle, string[] args) : base(handle)
         {
             Console.WriteLine("Creating Nodeview.");

@@ -55,6 +55,8 @@ namespace BioGTK
             get { return model; }
             set { model = value; UpdateImage(); }
         }
+        /// The function updates an image by saving it as a PNG file, setting the window title, creating
+        /// a new Pixbuf object from the file, and redrawing the image.
         public void UpdateImage()
         {
             model.SavePng(file, AllocatedWidth, AllocatedHeight);
@@ -62,6 +64,7 @@ namespace BioGTK
             pixbuf = new Pixbuf(file);
             image.QueueDraw();
         }
+        /// The function initializes a scatter plot by adding data points to the model.
         private void InitScatter()
         {
             model.Clear();
@@ -75,6 +78,8 @@ namespace BioGTK
             }
             model.Add.Scatter(cs);
         }
+        /// The function initializes a bar chart by creating a list of bar series and adding them to the
+        /// model.
         private void InitBars()
         {
             model.Clear();
@@ -166,6 +171,16 @@ namespace BioGTK
                 plots.Add(name,this);
         }
 
+        /// The function saves data in CSV format to a user-selected file.
+        /// 
+        /// @param o The parameter "o" is the object that triggered the event. In this case, it is the
+        /// object that represents the button that was pressed.
+        /// @param ButtonPressEventArgs ButtonPressEventArgs is an event argument that provides
+        /// information about a button press event. It contains properties such as the button that was
+        /// pressed, the event's coordinates, and modifiers (e.g., Shift, Control) that were active
+        /// during the event.
+        /// 
+        /// @return The method is not returning anything.
         private void SaveCSVMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Gtk.FileChooserDialog filechooser =
@@ -195,6 +210,18 @@ namespace BioGTK
             
         }
 
+        /// The function allows the user to save a PNG image of a plot by selecting a file location
+        /// using a file chooser dialog.
+        /// 
+        /// @param o The "o" parameter is the object that triggered the event. In this case, it is the
+        /// SaveImageMenu button that was clicked.
+        /// @param ButtonPressEventArgs ButtonPressEventArgs is an event argument that contains
+        /// information about a button press event, such as the button that was pressed and the
+        /// coordinates of the event.
+        /// 
+        /// @return If the "Save" button is clicked in the file chooser dialog, the response type
+        /// "Accept" is returned. Otherwise, if the "Cancel" button is clicked or the dialog is closed,
+        /// the response type "Cancel" is returned.
         private void SaveImageMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Gtk.FileChooserDialog filechooser =
@@ -210,6 +237,15 @@ namespace BioGTK
             
         }
 
+        /// The ScatterMenu_ButtonPressEvent function sets the plot type to scatter, initializes the
+        /// scatter plot, and updates the image.
+        /// 
+        /// @param o The "o" parameter is the object that triggered the event. In this case, it is the
+        /// ScatterMenu button that was pressed.
+        /// @param ButtonPressEventArgs ButtonPressEventArgs is an event argument class that contains
+        /// information about a button press event. It provides properties and methods to access details
+        /// such as the button that was pressed, the position of the press, and any modifiers that were
+        /// active during the press.
         private void ScatterMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             barMenu.Active = false;
@@ -218,6 +254,14 @@ namespace BioGTK
             UpdateImage();
         }
 
+        /// The function sets the plot type to "Bar", initializes the bars, and updates the image.
+        /// 
+        /// @param o The "o" parameter is the object that triggered the event. In this case, it is the
+        /// button that was pressed to trigger the event.
+        /// @param ButtonPressEventArgs ButtonPressEventArgs is an event argument class that contains
+        /// information about a button press event. It provides properties and methods to access details
+        /// such as the button that was pressed, the event timestamp, and the event modifiers (e.g.,
+        /// Shift, Control, etc.).
         private void BarMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             scatterMenu.Active = false;
@@ -226,6 +270,15 @@ namespace BioGTK
             UpdateImage();
         }
 
+        /// The Image_ButtonPressEvent function sets the selected plot to the current plot and adds a
+        /// line to the Recorder.
+        /// 
+        /// @param o The "o" parameter is the object that triggered the event. In this case, it is the
+        /// image button that was pressed.
+        /// @param ButtonPressEventArgs ButtonPressEventArgs is an event argument class that contains
+        /// information about a button press event. It provides properties such as Button, which
+        /// represents the button that was pressed, and EventTime, which represents the time at which
+        /// the event occurred.
         private void Image_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             selected = this;
@@ -238,16 +291,32 @@ namespace BioGTK
         {
             get { return selected; }
         }
+        /// The ShowPlot function displays the selected plot.
         static void ShowPlot()
         {
             selected.Show();
         }
 
+        /// The function "Image_SizeAllocated" updates the image based on the allocated size.
+        /// 
+        /// @param o The "o" parameter is the object that triggered the event. In this case, it is the
+        /// object that the event handler is attached to, which is likely an instance of a class.
+        /// @param SizeAllocatedArgs SizeAllocatedArgs is a class that contains information about the
+        /// allocated size of a widget. It is used to pass this information to event handlers or methods
+        /// that need to perform actions based on the allocated size of the widget.
         private void Image_SizeAllocated(object o, SizeAllocatedArgs args)
         {
             UpdateImage();
         }
 
+        /// The function "About_DeleteEvent" removes a plot from a collection and hides the current
+        /// window.
+        /// 
+        /// @param o The "o" parameter is an object that represents the sender of the event. It is
+        /// typically used to refer to the object that raised the event.
+        /// @param DeleteEventArgs DeleteEventArgs is an event argument class that is used to pass
+        /// information about a delete event. It contains properties and methods that provide
+        /// information about the event and allow you to control the event's behavior.
         private void About_DeleteEvent(object o, DeleteEventArgs args)
         {
             args.RetVal = true;
@@ -255,6 +324,14 @@ namespace BioGTK
             Hide();
         }
 
+        /// The function `Image_Drawn` scales a `Pixbuf` and sets it as the source for a `CairoContext`,
+        /// then paints and strokes the context.
+        /// 
+        /// @param o The "o" parameter is the object that triggered the event. In this case, it is the
+        /// object that the event handler is attached to.
+        /// @param DrawnArgs DrawnArgs is an event argument class that contains information about the
+        /// drawing event. It typically includes a Cairo context (Cr) that can be used to perform
+        /// drawing operations, such as setting the source image and painting/stroking on the context.
         private void Image_Drawn(object o, DrawnArgs e)
         {
             Pixbuf pf = pixbuf.ScaleSimple(image.AllocatedWidth, image.AllocatedHeight, InterpType.Bilinear);

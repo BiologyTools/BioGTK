@@ -25,8 +25,6 @@ namespace BioGTK
         }
 
         #region Properties
-
-        /// <summary> Used to load in the glade file resource as a window. </summary>
         private Builder _builder;
         int line = 0;
 #pragma warning disable 649
@@ -552,9 +550,9 @@ namespace BioGTK
             return JsonConvert.DeserializeObject<Function>(s);
         }
 
-/// It takes the current object and converts it to a JSON string.
-/// 
-/// @return The object is being serialized into a JSON string.
+        /// It takes the current object and converts it to a JSON string.
+        /// 
+        /// @return The object is being serialized into a JSON string.
         public string Serialize()
         {
             return JsonConvert.SerializeObject(this);

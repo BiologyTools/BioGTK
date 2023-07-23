@@ -149,12 +149,12 @@ namespace BioGTK
         }
 
         /// If the user has selected an image in each stack, then merge the two images and add the result to the
-/// tabsView
-/// 
-/// @param sender The object that raised the event.
-/// @param EventArgs e
-/// 
-/// @return The return type is void.
+        /// tabsView
+        /// 
+        /// @param sender The object that raised the event.
+        /// @param EventArgs e
+        /// 
+        /// @return The return type is void.
         private void MergeBut_Clicked(object sender, EventArgs e)
         {
              if (stackABox.Active == -1)

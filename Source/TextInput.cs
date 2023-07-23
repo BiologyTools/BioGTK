@@ -10,8 +10,6 @@ namespace BioGTK
     public class TextInput : Dialog
     {
         #region Properties
-
-        /// <summary> Used to load in the glade file resource as a window. </summary>
         private Builder _builder;
 
 #pragma warning disable 649

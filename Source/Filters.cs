@@ -12,8 +12,6 @@ namespace BioGTK
     public class FiltersView : Window
     {
         #region Properties
-
-        /// <summary> Used to load in the glade file resource as a window. </summary>
         private Builder _builder;
 
 #pragma warning disable 649
@@ -24,17 +22,15 @@ namespace BioGTK
         #endregion
 
         #region Constructors / Destructors
-        /// <summary> Default Shared Constructor. </summary>
-        /// <returns> A TestForm1. </returns>
         public static FiltersView Create()
         {
             Builder builder = new Builder(null, "BioGTK.Glade.Filters.glade", null);
             return new FiltersView(builder, builder.GetObject("filters").Handle);
         }
         ListStore store;
-        /// <summary> Specialised constructor for use only by derived class. </summary>
-        /// <param name="builder"> The builder. </param>
-        /// <param name="handle">  The handle. </param>
+
+        /* The code snippet is the constructor for the `FiltersView` class. It takes in a `Builder`
+        object and an `IntPtr` handle as parameters. */
         protected FiltersView(Builder builder, IntPtr handle) : base(handle)
         {
             _builder = builder;

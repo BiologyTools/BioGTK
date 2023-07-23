@@ -55,10 +55,10 @@ namespace BioGTK
         {
             Thread.Sleep(moveWait);
         }
-/// This function sets the position of the object to the given coordinates
-/// 
-/// @param px The x position of the object
-/// @param py The y-coordinate of the point.
+        /// This function sets the position of the object to the given coordinates
+        /// 
+        /// @param px The x position of the object
+        /// @param py The y-coordinate of the point.
         public void SetPosition(double px, double py)
         {
             x = px;
@@ -240,15 +240,7 @@ namespace BioGTK
 
     The SetPosition() method sets the position of the shutter. 
 
-    The position of the shutter is an int. 
-
-    The position of the shutter is set to 0 when the shutter is closed. 
-
-    The position of the shutter is set to 1 when the shutter is open. 
-
-    The position of the shutter is */
-
-    /* The class is a wrapper for the TLShutter class in the Thorlabs.MotionControl.DeviceManager.dll */
+    /* The class is a wrapper for the TLShutter class*/
     public class TLShutter
     {
         public static Type tlType;

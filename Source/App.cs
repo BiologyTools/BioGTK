@@ -79,6 +79,15 @@ namespace BioGTK
             return true;
         }
 
+        /// The function FindItem takes a Menu object and a label as input, and returns the MenuItem
+        /// object with the matching label, if found.
+        /// 
+        /// @param Menu The parameter "w" is of type Menu, which represents a menu widget. It is the
+        /// menu in which we want to find the item.
+        /// @param label The label is a string that represents the label of the MenuItem we are
+        /// searching for.
+        /// 
+        /// @return The method is returning a MenuItem object or null.
         static MenuItem FindItem(Menu w,string label)
         {
             foreach (Widget item in w.Children)
@@ -116,6 +125,21 @@ namespace BioGTK
             return null;
         }
         
+        /// The function `GetMainMenuItem` takes a path and returns the corresponding `Widget` and a
+        /// boolean indicating whether it is a menu or not.
+        /// 
+        /// @param path The path is a string that represents the location of a main menu item in a menu
+        /// bar. It is formatted as a series of menu item labels separated by forward slashes ("/"). For
+        /// example, "File/Open/Recent" represents the "Recent" menu item under the "Open" menu item
+        /// under the
+        /// @param Widget The `Widget` parameter `wid` is an output parameter that will store the found
+        /// `MenuItem` or `Menu` widget based on the given `path`.
+        /// @param Menu The "Menu" parameter is a boolean variable that indicates whether the main menu
+        /// item is a menu or a menu item. If it is true, it means the main menu item is a menu, and if
+        /// it is false, it means the main menu item is a menu item.
+        /// 
+        /// @return The method is returning the main menu item specified by the given path. The main
+        /// menu item can be either a MenuItem or a Menu.
         private static void GetMainMenuItem(string path, out Widget wid, out bool Menu)
         {
             string[] s = path.Split('/');
@@ -151,6 +175,21 @@ namespace BioGTK
             Menu = false;
         }
 
+        /// The function `GetContextMenuItem` takes a path and returns the corresponding widget and a
+        /// boolean indicating if it is a menu or not.
+        /// 
+        /// @param path The path parameter is a string that represents the path to a specific context
+        /// menu item. It is in the format of a forward-slash-separated string, where each segment
+        /// represents a level in the menu hierarchy. For example, "File/Edit/Copy" would represent the
+        /// "Copy" item in the "
+        /// @param Widget The `Widget` parameter is an output parameter that will store the found widget
+        /// (either a `Menu` or a `MenuItem`) based on the given `path`.
+        /// @param Menu The `Menu` parameter is a boolean variable that indicates whether the `wid` is a
+        /// `Menu` or a `MenuItem`. If `Menu` is `true`, it means `wid` is a `Menu`, otherwise it is a
+        /// `MenuItem`.
+        /// 
+        /// @return The method is returning the widget (wid) and a boolean value (Menu) indicating
+        /// whether the widget is a menu or not.
         private static void GetContextMenuItem(string path, out Widget wid, out bool Menu)
         {
             string[] s = path.Split('/');
@@ -186,6 +225,13 @@ namespace BioGTK
             Menu = false;
         }
 
+        /// The AddMenu function adds a new menu item to an existing menu structure based on the
+        /// specified path.
+        /// 
+        /// @param path The path parameter is a string that represents the file path of the menu item
+        /// that needs to be added.
+        /// 
+        /// @return The method does not have a return type, so it does not return anything.
         public static void AddMenu(string path)
         {
             if (path == null || path == "")
@@ -225,6 +271,12 @@ namespace BioGTK
                 m.Append(mi);
             }
         }
+        /// The function `AddContextMenu` adds a context menu item to a specified path in a C#
+        /// application.
+        /// 
+        /// @param path The path parameter is a string that represents the path of a file or directory.
+        /// 
+        /// @return The method does not have a return type, so nothing is being returned.
         public static void AddContextMenu(string path)
         {
             if (path == null || path == "")
@@ -265,6 +317,15 @@ namespace BioGTK
                 viewer.contextMenu.ShowAll();
             }
         }
+        /// The function "ItemClicked" is an event handler that is triggered when a menu item is
+        /// clicked, and it performs a specific function based on the label of the clicked menu item.
+        /// 
+        /// @param o The "o" parameter is of type object and represents the object that triggered the
+        /// event. In this case, it is a MenuItem object.
+        /// @param ButtonPressEventArgs ButtonPressEventArgs is an event argument class that contains
+        /// information about a button press event. It typically includes properties such as the button
+        /// that was pressed, the timestamp of the event, and any modifiers (e.g., Ctrl, Shift) that
+        /// were pressed along with the button.
         private static void ItemClicked(object o, ButtonPressEventArgs args)
         {
             MenuItem ts = (MenuItem)o;

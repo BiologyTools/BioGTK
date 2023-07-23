@@ -358,7 +358,7 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkImageMenuItem" id="focus">
+                      <object class="GtkImageMenuItem" id="focusMenu">
                         <property name="label" translatable="yes">Find Focus</property>
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>

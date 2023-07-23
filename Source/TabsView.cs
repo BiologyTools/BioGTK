@@ -50,6 +50,8 @@ namespace BioGTK
         [Builder.Object]
         private MenuItem saveSeriesMenu;
         [Builder.Object]
+        private MenuItem savePyramidalMenu;
+        [Builder.Object]
         private MenuItem imagesToStack;
 
         [Builder.Object]
@@ -196,6 +198,7 @@ namespace BioGTK
             saveTabOME.ButtonPressEvent += saveTabOMEClick;
             saveTabTiffMenu.ButtonPressEvent += saveTabTiffMenuClick;
             saveSeriesMenu.ButtonPressEvent += saveSeriesMenuClick;
+            savePyramidalMenu.ButtonPressEvent += SavePyramidalMenu_ButtonPressEvent;
             imagesToStack.ButtonPressEvent += imagesToStackClick;
 
             rgbMenu.ButtonPressEvent += rgbMenuClick;
@@ -241,6 +244,19 @@ namespace BioGTK
             emissionMenu.ButtonPressEvent += EmissionMenu_ButtonPressEvent;
             tabsView.SwitchPage += TabsView_SwitchPage;
             this.WindowStateEvent += TabsView_WindowStateEvent;
+        }
+
+        private void SavePyramidalMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Gtk.FileChooserDialog filechooser =
+        new Gtk.FileChooserDialog("Set ROI filename to save",
+            this,
+            FileChooserAction.Save,
+            "Cancel", ResponseType.Cancel,
+            "Save", ResponseType.Accept);
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            BioImage.SaveOMEPyramidal(App.viewer.Images.ToArray(), filechooser.Filename,"lzw");
         }
 
         private void FocusMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -454,11 +470,12 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             string[] sts = filechooser.Filenames;
+            filechooser.Destroy();
+            
             foreach (string item in sts)
             {
                 BioImage.OpenAsync(item);
             }
-            filechooser.Hide();
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file and adds
         /// it to the list of open images

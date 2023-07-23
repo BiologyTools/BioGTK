@@ -48,12 +48,27 @@ namespace BioGTK
             this.DeleteEvent += About_DeleteEvent;
         }
 
+        /// The function "About_DeleteEvent" sets the "RetVal" property of the "args" parameter to true
+        /// and hides the current form.
+        /// 
+        /// @param o The "o" parameter is of type object and represents the object that raised the
+        /// event. In this case, it is not being used in the method.
+        /// @param DeleteEventArgs DeleteEventArgs is an event argument class that is used to pass
+        /// information about a delete event. It contains properties and methods that provide access to
+        /// the event data.
         private void About_DeleteEvent(object o, DeleteEventArgs args)
         {
             args.RetVal = true;
             Hide();
         }
 
+        /// The function resizes an image and draws it onto a Cairo context.
+        /// 
+        /// @param o The "o" parameter is the object that triggered the event. In this case, it is the
+        /// object that the event handler is attached to.
+        /// @param DrawnArgs DrawnArgs is an event argument class that contains information about the
+        /// drawing event. It typically includes a Cairo context (Cr) that can be used to perform
+        /// drawing operations, such as setting the source image and painting/stroking on the context.
         private void Image_Drawn(object o, DrawnArgs e)
         {
             Pixbuf pf = pixbuf.ScaleSimple(image.AllocatedWidth, image.AllocatedHeight, InterpType.Bilinear);

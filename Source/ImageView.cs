@@ -203,8 +203,14 @@ namespace BioGTK
         #endregion
 
         #region Constructors / Destructors
-        /// <summary> Default Shared Constructor. </summary>
-        /// <returns> A TestForm1. </returns>
+
+        /// The function creates an ImageView object using a BioImage object and returns it.
+        /// 
+        /// @param BioImage The BioImage parameter is an object that represents an image in a biological
+        /// context. It likely contains information about the image file, such as the filename, and
+        /// possibly additional metadata related to the image.
+        /// 
+        /// @return The method is returning an instance of the ImageView class.
         public static ImageView Create(BioImage bm)
         {
             Builder builder = new Builder(null, "BioGTK.Glade.ImageView.glade", null);
@@ -213,9 +219,9 @@ namespace BioGTK
             return v;
         }
 
-        /// <summary> Specialised constructor for use only by derived class. </summary>
-        /// <param name="builder"> The builder. </param>
-        /// <param name="handle">  The handle. </param>
+
+        /* The above code is a constructor for the ImageView class in C#. It takes in a Builder object,
+        a handle, and a BioImage object as parameters. */
         protected ImageView(Builder builder, IntPtr handle, BioImage im) : base(handle)
         {
             _builder = builder;
@@ -1045,8 +1051,6 @@ namespace BioGTK
                 return;
             foreach (BioImage im in Images)
             {
-                if (Bitmaps[i] == null)
-                    UpdateImages();
                 RectangleD r = ToViewSpace(im.Volume.Location.X, im.Volume.Location.Y, im.Volume.Width, im.Volume.Height);
                 e.Cr.LineWidth = 1;
                 if (SelectedImage.isPyramidal)
@@ -1705,7 +1709,7 @@ namespace BioGTK
                 return SelectedImage.Channels[SelectedImage.rgbChannels[1]];
             }
         }
-/* A property that returns the B channel of the selected image. */
+        /* A property that returns the B channel of the selected image. */
         public Channel BChannel
         {
             get
@@ -2253,6 +2257,14 @@ namespace BioGTK
             PointD ff = new PointD(SelectedImage.Volume.Location.X + f.X, SelectedImage.Volume.Location.Y + f.Y);
             return ff;
         }
+        /// The function converts a rectangle from world space to view space.
+        /// 
+        /// @param RectangleD The RectangleD is a custom data type that represents a rectangle in 2D
+        /// space. It has four properties: X (the x-coordinate of the top-left corner), Y (the
+        /// y-coordinate of the top-left corner), W (the width of the rectangle), and H (the height of
+        /// the
+        /// 
+        /// @return The method is returning a RectangleD object.
         public RectangleD ToViewSpace(RectangleD p)
         {
             PointD d = ToViewSpace(p.X, p.Y);
@@ -2260,20 +2272,46 @@ namespace BioGTK
             double dy = ToScreenScaleH(p.H);
             return new RectangleD((float)d.X, (float)d.Y, (float)dx, (float)dy);
         }
+        /// The function converts a Point object to PointF object in view space.
+        /// 
+        /// @param Point The Point class represents an ordered pair of integer x and y coordinates that
+        /// define a point in a two-dimensional plane.
+        /// 
+        /// @return The method is returning a PointF object, which represents a point in 2D space with
+        /// floating-point coordinates.
         public PointF ToViewSpace(Point p)
         {
             PointD d = ToViewSpace(p.X, p.Y);
             return new PointF((float)d.X, (float)d.Y);
         }
+        /// The function converts a PointF object from world space to view space.
+        /// 
+        /// @param PointF PointF is a structure in C# that represents a point in a two-dimensional
+        /// space. It consists of two float values, X and Y, which represent the coordinates of the
+        /// point.
+        /// 
+        /// @return The method is returning a PointF object.
         public PointF ToViewSpace(PointF p)
         {
             PointD d = ToViewSpace(p.X, p.Y);
             return new PointF((float)d.X, (float)d.Y);
         }
+        /// The function converts a point from a coordinate system to view space.
+        /// 
+        /// @param PointD The PointD class represents a point in a two-dimensional space. It typically
+        /// has two properties: X and Y, which represent the coordinates of the point.
+        /// 
+        /// @return The method is returning a PointD object.
         public PointD ToViewSpace(PointD p)
         {
             return ToViewSpace(p.X, p.Y); ;
         }
+        /// The function converts coordinates from a given space to view space.
+        /// 
+        /// @param x The x-coordinate in the original coordinate system.
+        /// @param y The parameter "y" represents the y-coordinate in the original coordinate system.
+        /// 
+        /// @return The method is returning a PointD object.
         public PointD ToViewSpace(double x, double y)
         {
             if (SelectedImage.isPyramidal)
@@ -2284,6 +2322,16 @@ namespace BioGTK
             double dy = (ToViewSizeH(Origin.Y - y)) * Scale.Height;
             return new PointD(dx, dy);
         }
+        /// The function converts coordinates and sizes from a given space to a view space.
+        /// 
+        /// @param x The x-coordinate of the rectangle's top-left corner in world space.
+        /// @param y The parameter "y" represents the y-coordinate of the rectangle in the original
+        /// coordinate space.
+        /// @param w The width of the rectangle in world space.
+        /// @param h The parameter "h" represents the height of the rectangle in the original coordinate
+        /// space.
+        /// 
+        /// @return The method is returning a RectangleD object.
         public RectangleD ToViewSpace(double x, double y, double w, double h)
         {
             PointD d = ToViewSpace(x, y);
@@ -2295,6 +2343,12 @@ namespace BioGTK
             }
             return new RectangleD(-d.X, -d.Y, dw, dh);
         }
+        /// The function converts a given value to a view size width based on certain conditions.
+        /// 
+        /// @param d The parameter "d" represents a size value that needs to be converted to a view
+        /// size.
+        /// 
+        /// @return The method is returning a double value.
         private double ToViewSizeW(double d)
         {
             if (SelectedImage.isPyramidal)
@@ -2304,6 +2358,11 @@ namespace BioGTK
             double x = (double)(d / PxWmicron) * Scale.Width;
             return x;
         }
+        /// The function converts a given value to a view size in the horizontal direction.
+        /// 
+        /// @param d The parameter "d" represents a value that needs to be converted to a view size.
+        /// 
+        /// @return The method is returning a double value.
         public double ToViewSizeH(double d)
         {
             if (SelectedImage.isPyramidal)
@@ -2313,6 +2372,12 @@ namespace BioGTK
             double y = (double)(d / PxHmicron) * Scale.Width;
             return y;
         }
+       /// The function converts a given value from microns to view width units, taking into account the
+       /// scale and whether the image is pyramidal.
+       /// 
+       /// @param d The parameter "d" represents a value that needs to be converted to a view width.
+       /// 
+       /// @return The method is returning a double value.
         public double ToViewW(double d)
         {
             if (SelectedImage.isPyramidal)
@@ -2322,6 +2387,12 @@ namespace BioGTK
             double x = (double)(d / PxWmicron) * Scale.Width;
             return x;
         }
+        /// The function converts a given value from a specific unit to a view height value.
+        /// 
+        /// @param d The parameter "d" represents a value that needs to be converted to a different unit
+        /// of measurement.
+        /// 
+        /// @return The method is returning a double value.
         public double ToViewH(double d)
         {
             if (SelectedImage.isPyramidal)
@@ -2331,21 +2402,45 @@ namespace BioGTK
             double y = (double)(d / PxHmicron) * Scale.Height;
             return y;
         }
+        /// The function converts coordinates from a Cartesian plane to screen space.
+        /// 
+        /// @param x The x-coordinate of the point in the coordinate system.
+        /// @param y The parameter "y" represents the y-coordinate of a point in a coordinate system.
+        /// 
+        /// @return The method is returning a PointD object.
         public PointD ToScreenSpace(double x, double y)
         {
             double fx = ToScreenScaleW(Origin.X - x);
             double fy = ToScreenScaleH(Origin.Y - y);
             return new PointD(fx, fy);
         }
+        /// The function converts a point from a coordinate system to screen space.
+        /// 
+        /// @param PointD The PointD class represents a point in a two-dimensional space. It typically
+        /// has two properties, X and Y, which represent the coordinates of the point.
+        /// 
+        /// @return The method is returning a PointD object.
         public PointD ToScreenSpace(PointD p)
         {
             return ToScreenSpace(p.X, p.Y);
         }
+        /// The function converts a PointF object from world space to screen space.
+        /// 
+        /// @param PointF PointF is a structure in C# that represents a point in a two-dimensional
+        /// space. It consists of two float values, X and Y, which represent the coordinates of the
+        /// point.
+        /// 
+        /// @return The method is returning a PointF object.
         public PointF ToScreenSpace(PointF p)
         {
             PointD pd = ToScreenSpace(p.X, p.Y);
             return new PointF((float)pd.X, (float)pd.Y);
         }
+        /// The function takes an array of PointF objects and converts them to screen space coordinates.
+        /// 
+        /// @param p An array of PointF objects representing points in some coordinate system.
+        /// 
+        /// @return The method is returning an array of PointF objects in screen space.
         public PointF[] ToScreenSpace(PointF[] p)
         {
             PointF[] pf = new PointF[p.Length];
@@ -2355,11 +2450,24 @@ namespace BioGTK
             }
             return pf;
         }
+        /// The function converts a 3D point to screen space and returns it as a PointF object.
+        /// 
+        /// @param Point3D The Point3D parameter represents a point in a three-dimensional space. It
+        /// typically consists of three coordinates: X, Y, and Z.
+        /// 
+        /// @return The method is returning a PointF object.
         public PointF ToScreenSpace(Point3D p)
         {
             PointD pd = ToScreenSpace(p.X, p.Y);
             return new PointF((float)pd.X, (float)pd.Y);
         }
+        /// The function converts a given value to screen scale width based on the selected image's
+        /// properties.
+        /// 
+        /// @param x The parameter "x" represents a value that needs to be converted to screen scale
+        /// width.
+        /// 
+        /// @return The method is returning a double value.
         public double ToScreenScaleW(double x)
         {
             if (SelectedImage.isPyramidal)
@@ -2368,6 +2476,13 @@ namespace BioGTK
             }
             return (x * PxWmicron) * Scale.Width;
         }
+        /// The function converts a given value to screen scale height based on the selected image's
+        /// properties.
+        /// 
+        /// @param y The parameter "y" represents the vertical coordinate value that needs to be
+        /// converted to screen scale.
+        /// 
+        /// @return The method is returning a double value.
         public double ToScreenScaleH(double y)
         {
             if (SelectedImage.isPyramidal)
@@ -2376,22 +2491,53 @@ namespace BioGTK
             }
             return (y * PxHmicron) * Scale.Height;
         }
+        /// The function takes a PointD object and returns a PointF object with the coordinates scaled
+        /// to the screen.
+        /// 
+        /// @param PointD PointD is a custom data type that represents a point in a two-dimensional
+        /// space. It consists of two double values, X and Y, which represent the coordinates of the
+        /// point.
+        /// 
+        /// @return The method is returning a PointF object, which represents a point in a
+        /// two-dimensional plane with floating-point coordinates.
         public PointF ToScreenScale(PointD p)
         {
             double x = ToScreenScaleW((float)p.X);
             double y = ToScreenScaleH((float)p.Y);
             return new PointF((float)x, (float)y);
         }
+       /// The function converts a set of coordinates and dimensions from a mathematical coordinate
+       /// system to a screen coordinate system and returns a rectangle with the converted values.
+       /// 
+       /// @param x The x-coordinate of the rectangle's top-left corner in world space.
+       /// @param y The parameter "y" represents the y-coordinate of the top-left corner of the
+       /// rectangle in the coordinate system of the screen.
+       /// @param w The width of the rectangle in world space.
+       /// @param h The parameter "h" represents the height of the rectangle.
+       /// 
+       /// @return The method is returning a RectangleD object.
         public RectangleD ToScreenRectF(double x, double y, double w, double h)
         {
             PointD pf = ToScreenSpace(x, y);
             RectangleD rf = new RectangleD((float)pf.X, (float)pf.Y, (float)ToViewW(w), (float)ToViewH(h));
             return rf;
         }
+        /// The function converts a RectangleD object to screen space.
+        /// 
+        /// @param RectangleD The RectangleD is a custom data type that represents a rectangle in 2D
+        /// space. It typically has four properties: X (the x-coordinate of the top-left corner), Y (the
+        /// y-coordinate of the top-left corner), W (the width of the rectangle), and H (the height of
+        /// 
+        /// @return The method is returning a RectangleD object.
         public RectangleD ToScreenSpace(RectangleD p)
         {
             return ToScreenRectF(p.X, p.Y, p.W, p.H);
         }
+        /// The function takes an array of RectangleD objects and converts them to screen space.
+        /// 
+        /// @param p An array of RectangleD objects representing rectangles in some coordinate space.
+        /// 
+        /// @return The method is returning an array of RectangleD objects.
         public RectangleD[] ToScreenSpace(RectangleD[] p)
         {
             RectangleD[] rs = new RectangleD[p.Length];
@@ -2401,6 +2547,12 @@ namespace BioGTK
             }
             return rs;
         }
+        /// The function takes an array of PointD objects and converts them to an array of PointF
+        /// objects in screen space.
+        /// 
+        /// @param p An array of PointD objects representing points in some coordinate system.
+        /// 
+        /// @return The method is returning an array of PointF objects.
         public PointF[] ToScreenSpace(PointD[] p)
         {
             PointF[] rs = new PointF[p.Length];

@@ -947,7 +947,6 @@ namespace BioGTK
             return type.ToString() + ", " + Text + " (" + w + ", " + h + ") " + " (" + x + ", " + y + ") " + coord.ToString();
         }
     }
-
     /* It's a class that holds a string, an IFilter, and a Type */
     public class Filt
     {
@@ -2043,6 +2042,14 @@ namespace BioGTK
             public int count;
             public bool bit8color = false;
 
+            /// The function "FromImage" takes a BioImage object and sets the properties of an
+            /// ImageJDesc object based on the properties of the BioImage object.
+            /// 
+            /// @param BioImage The BioImage parameter represents an object that contains information
+            /// about a biological image, such as the number of images, channels, slices, and frames, as
+            /// well as other properties like frame interval, physical size, and channel ranges.
+            /// 
+            /// @return The method is returning an instance of the ImageJDesc class.
             public ImageJDesc FromImage(BioImage b)
             {
                 ImageJ = "";
@@ -4275,11 +4282,22 @@ namespace BioGTK
                     {
                         throw new Exception("Failed to open TIFF image.");
                     }
-                    return tiff.IsTiled();
+                    bool t = tiff.IsTiled();
+                    tiff.Close();
+                    return t;
                 }
             }
             else return false;
         }
+        /// The function `InitDirectoryResolution` initializes the resolution properties of a `BioImage`
+        /// object based on the resolution information stored in a TIFF image.
+        /// 
+        /// @param BioImage BioImage is a class representing a bioimage, which contains information
+        /// about the image resolution, size, and pixel format.
+        /// @param Tiff The "Tiff" parameter is an object of the Tiff class. It represents a TIFF image
+        /// file and provides methods and properties to access and manipulate the image data.
+        /// @param ImageJDesc ImageJDesc is a class that contains information about the image dimensions
+        /// and resolution in ImageJ format. It has the following properties:
         static void InitDirectoryResolution(BioImage b, Tiff image, ImageJDesc jdesc = null)
         {
             Resolution res = new Resolution();
@@ -4351,14 +4369,36 @@ namespace BioGTK
             res.PixelFormat = GetPixelFormat(RGBChannelCount, bitsPerPixel);
             b.Resolutions.Add(res);
         }
-        /// It opens a TIFF file and returns a BioImage object
+
+        /// The OpenFile function in C# opens a BioImage file, reads its metadata, and loads the image
+        /// data into a BioImage object.
         /// 
-        /// @param file the file path
-        /// @param series the series number of the image to open
+        /// @param file The file path of the bioimage to be opened.
+        /// @param series The series parameter is an integer that specifies the series number of the
+        /// image to open.
+        /// @param tab The "tab" parameter is a boolean value that determines whether the BioImage
+        /// should be opened in a new tab or not. If set to true, the BioImage will be opened in a new
+        /// tab. If set to false, the BioImage will be opened in the current tab.
+        /// @param addToImages A boolean value indicating whether the BioImage should be added to the
+        /// Images collection.
+        /// @param tile The "tile" parameter is a boolean value that determines whether the image should
+        /// be opened as a tiled image or not. If set to true, the image will be opened as a tiled
+        /// image. If set to false, the image will be opened as a regular image.
+        /// @param tileX The `tileX` parameter is an integer that represents the starting X coordinate
+        /// of the tile. It is used when opening a tiled image to specify the position of the tile
+        /// within the image.
+        /// @param tileY The `tileY` parameter is used to specify the starting Y coordinate of the tile
+        /// when opening a tiled image. It determines the position of the tile within the image.
+        /// @param tileSizeX The tileSizeX parameter is the width of each tile in pixels. It is used
+        /// when opening a tiled TIFF image to specify the size of the tiles.
+        /// @param tileSizeY The tileSizeY parameter is the height of each tile in pixels when the image
+        /// is tiled.
         /// 
-        /// @return A BioImage object.
+        /// @return The method is returning a BioImage object.
         public static BioImage OpenFile(string file, int series, bool tab, bool addToImages, bool tile, int tileX, int tileY, int tileSizeX, int tileSizeY)
         {
+            string fs = file.Replace("\\", "/");
+            vips = VipsSupport(file);
             Console.WriteLine("Opening BioImage: " + file);
             bool ome = isOME(file);
             if (ome) return OpenOME(file, series, tab, addToImages, tile, tileX, tileY, tileSizeX, tileSizeY);
@@ -4375,7 +4415,7 @@ namespace BioGTK
             if(tiled && file.EndsWith(".tif") && !file.EndsWith(".ome.tif"))
             {
                 //To open this we need libvips
-                vips = VipsSupport(b);
+                vips = VipsSupport(b.file);
             }
             b.series = series;
             b.file = file;
@@ -5088,7 +5128,374 @@ namespace BioGTK
 
             } while (!stop);
         }
+        public static void SaveOMEPyramidal(BioImage[] bms, string file, string compression)
+        {
+            if (File.Exists(file))
+                File.Delete(file);
+            loci.formats.meta.IMetadata omexml = service.createOMEXMLMetadata();
+            //We need to go through the images and find the ones belonging to each resolution.
+            //As well we need to determine the dimensions of the tiles.
+            Dictionary<double, List<BioImage>> bis = new Dictionary<double, List<BioImage>>();
+            Dictionary<double, Point3D> min = new Dictionary<double, Point3D>();
+            Dictionary<double, Point3D> max = new Dictionary<double, Point3D>();
+            for (int i = 0; i < bms.Length; i++)
+            {
+                Resolution res = bms[i].Resolutions[bms[i].Resolution];
+                if (bis.ContainsKey(res.PhysicalSizeX))
+                {
+                    bis[res.PhysicalSizeX].Add(bms[i]);
+                    if (bms[i].StageSizeX < min[res.PhysicalSizeX].X || bms[i].StageSizeY < min[res.PhysicalSizeX].Y)
+                    {
+                        min[res.PhysicalSizeX] = bms[i].Volume.Location;
+                    }
+                    if (bms[i].StageSizeX > max[res.PhysicalSizeX].X || bms[i].StageSizeY > max[res.PhysicalSizeX].Y)
+                    {
+                        max[res.PhysicalSizeX] = bms[i].Volume.Location;
+                    }
+                }
+                else
+                {
+                    bis.Add(res.PhysicalSizeX, new List<BioImage>());
+                    min.Add(res.PhysicalSizeX, new Point3D(res.StageSizeX, res.StageSizeY, res.StageSizeZ));
+                    max.Add(res.PhysicalSizeX, new Point3D(res.StageSizeX, res.StageSizeY, res.StageSizeZ));
+                    bis[res.PhysicalSizeX].Add(bms[i]);
+                }
+            }
+            int s = 0;
+            foreach (double px in bis.Keys)
+            {
+                int xi = 1 + (int)Math.Ceiling((max[px].X - min[px].X) / bis[px][0].Resolutions[bis[px][0].Resolution].VolumeWidth);
+                int yi = 1 + (int)Math.Ceiling((max[px].Y - min[px].Y) / bis[px][0].Resolutions[bis[px][0].Resolution].VolumeHeight);
+                BioImage b = bis[px][0];
+                int serie = s;
+                // create OME-XML metadata store.
+                omexml.setImageID("Image:" + serie, serie);
+                omexml.setPixelsID("Pixels:" + serie, serie);
+                omexml.setPixelsInterleaved(java.lang.Boolean.TRUE, serie);
+                omexml.setPixelsDimensionOrder(ome.xml.model.enums.DimensionOrder.XYCZT, serie);
+                if (b.bitsPerPixel > 8)
+                    omexml.setPixelsType(ome.xml.model.enums.PixelType.UINT16, serie);
+                else
+                    omexml.setPixelsType(ome.xml.model.enums.PixelType.UINT8, serie);
+                omexml.setPixelsSizeX(new PositiveInteger(java.lang.Integer.valueOf(b.SizeX * xi)), serie);
+                omexml.setPixelsSizeY(new PositiveInteger(java.lang.Integer.valueOf(b.SizeY * yi)), serie);
+                omexml.setPixelsSizeZ(new PositiveInteger(java.lang.Integer.valueOf(b.SizeZ)), serie);
+                omexml.setPixelsSizeC(new PositiveInteger(java.lang.Integer.valueOf(b.SizeC)), serie);
+                omexml.setPixelsSizeT(new PositiveInteger(java.lang.Integer.valueOf(b.SizeT)), serie);
+                if (BitConverter.IsLittleEndian)
+                    omexml.setPixelsBigEndian(java.lang.Boolean.FALSE, serie);
+                else
+                    omexml.setPixelsBigEndian(java.lang.Boolean.TRUE, serie);
+                ome.units.quantity.Length p1 = new ome.units.quantity.Length(java.lang.Double.valueOf(b.PhysicalSizeX), ome.units.UNITS.MICROMETER);
+                omexml.setPixelsPhysicalSizeX(p1, serie);
+                ome.units.quantity.Length p2 = new ome.units.quantity.Length(java.lang.Double.valueOf(b.PhysicalSizeY), ome.units.UNITS.MICROMETER);
+                omexml.setPixelsPhysicalSizeY(p2, serie);
+                ome.units.quantity.Length p3 = new ome.units.quantity.Length(java.lang.Double.valueOf(b.PhysicalSizeZ), ome.units.UNITS.MICROMETER);
+                omexml.setPixelsPhysicalSizeZ(p3, serie);
+                ome.units.quantity.Length s1 = new ome.units.quantity.Length(java.lang.Double.valueOf(b.Volume.Location.X), ome.units.UNITS.MICROMETER);
+                omexml.setStageLabelX(s1, serie);
+                ome.units.quantity.Length s2 = new ome.units.quantity.Length(java.lang.Double.valueOf(b.Volume.Location.Y), ome.units.UNITS.MICROMETER);
+                omexml.setStageLabelY(s2, serie);
+                ome.units.quantity.Length s3 = new ome.units.quantity.Length(java.lang.Double.valueOf(b.Volume.Location.Z), ome.units.UNITS.MICROMETER);
+                omexml.setStageLabelZ(s3, serie);
+                omexml.setStageLabelName("StageLabel:" + serie, serie);
 
+                for (int channel = 0; channel < b.Channels.Count; channel++)
+                {
+                    Channel c = b.Channels[channel];
+                    for (int r = 0; r < c.range.Length; r++)
+                    {
+                        omexml.setChannelID("Channel:" + channel + ":" + serie, serie, channel + r);
+                        omexml.setChannelSamplesPerPixel(new PositiveInteger(java.lang.Integer.valueOf(1)), serie, channel + r);
+                        if (c.LightSourceWavelength != 0)
+                        {
+                            omexml.setChannelLightSourceSettingsID("LightSourceSettings:" + channel, serie, channel + r);
+                            ome.units.quantity.Length lw = new ome.units.quantity.Length(java.lang.Double.valueOf(c.LightSourceWavelength), ome.units.UNITS.NANOMETER);
+                            omexml.setChannelLightSourceSettingsWavelength(lw, serie, channel + r);
+                            omexml.setChannelLightSourceSettingsAttenuation(PercentFraction.valueOf(c.LightSourceAttenuation), serie, channel + r);
+                        }
+                        omexml.setChannelName(c.Name, serie, channel + r);
+                        if (c.Color != null)
+                        {
+                            ome.xml.model.primitives.Color col = new ome.xml.model.primitives.Color(c.Color.Value.R, c.Color.Value.G, c.Color.Value.B, c.Color.Value.A);
+                            omexml.setChannelColor(col, serie, channel + r);
+                        }
+                        if (c.Emission != 0)
+                        {
+                            ome.units.quantity.Length em = new ome.units.quantity.Length(java.lang.Double.valueOf(c.Emission), ome.units.UNITS.NANOMETER);
+                            omexml.setChannelEmissionWavelength(em, serie, channel + r);
+                            ome.units.quantity.Length ex = new ome.units.quantity.Length(java.lang.Double.valueOf(c.Excitation), ome.units.UNITS.NANOMETER);
+                            omexml.setChannelExcitationWavelength(ex, serie, channel + r);
+                        }
+                        omexml.setChannelContrastMethod((ome.xml.model.enums.ContrastMethod)Enum.Parse(typeof(ome.xml.model.enums.ContrastMethod), c.ContrastMethod), serie, channel + r);
+                        omexml.setChannelFluor(c.Fluor, serie, channel + r);
+                        omexml.setChannelIlluminationType((ome.xml.model.enums.IlluminationType)Enum.Parse(typeof(ome.xml.model.enums.IlluminationType), c.IlluminationType), serie, channel + r);
+
+                        if (c.LightSourceIntensity != 0)
+                        {
+                            ome.units.quantity.Power pw = new ome.units.quantity.Power(java.lang.Double.valueOf(c.LightSourceIntensity), ome.units.UNITS.VOLT);
+                            omexml.setLightEmittingDiodePower(pw, serie, channel + r);
+                            omexml.setLightEmittingDiodeID(c.DiodeName, serie, channel + r);
+                        }
+                        if (c.AcquisitionMode != null)
+                            omexml.setChannelAcquisitionMode((ome.xml.model.enums.AcquisitionMode)Enum.Parse(typeof(ome.xml.model.enums.AcquisitionMode), c.AcquisitionMode), serie, channel + r);
+                    }
+                }
+
+                int i = 0;
+                foreach (ROI an in b.Annotations)
+                {
+                    if (an.roiID == "")
+                        omexml.setROIID("ROI:" + i.ToString() + ":" + serie, i);
+                    else
+                        omexml.setROIID(an.roiID, i);
+                    omexml.setROIName(an.roiName, i);
+                    if (an.type == ROI.Type.Point)
+                    {
+                        if (an.id != "")
+                            omexml.setPointID(an.id, i, serie);
+                        else
+                            omexml.setPointID("Shape:" + i + ":" + serie, i, serie);
+                        omexml.setPointX(java.lang.Double.valueOf(b.ToImageSpaceX(an.X)), i, serie);
+                        omexml.setPointY(java.lang.Double.valueOf(b.ToImageSpaceY(an.Y)), i, serie);
+                        omexml.setPointTheZ(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.Z)), i, serie);
+                        omexml.setPointTheC(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.C)), i, serie);
+                        omexml.setPointTheT(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.T)), i, serie);
+                        if (an.Text != "")
+                            omexml.setPointText(an.Text, i, serie);
+                        else
+                            omexml.setPointText(i.ToString(), i, serie);
+                        ome.units.quantity.Length fl = new ome.units.quantity.Length(java.lang.Double.valueOf(an.fontSize), ome.units.UNITS.PIXEL);
+                        omexml.setPointFontSize(fl, i, serie);
+                        ome.xml.model.primitives.Color col = new ome.xml.model.primitives.Color(an.strokeColor.R, an.strokeColor.G, an.strokeColor.B, an.strokeColor.A);
+                        omexml.setPointStrokeColor(col, i, serie);
+                        ome.units.quantity.Length sw = new ome.units.quantity.Length(java.lang.Double.valueOf(an.strokeWidth), ome.units.UNITS.PIXEL);
+                        omexml.setPointStrokeWidth(sw, i, serie);
+                        ome.xml.model.primitives.Color colf = new ome.xml.model.primitives.Color(an.fillColor.R, an.fillColor.G, an.fillColor.B, an.fillColor.A);
+                        omexml.setPointFillColor(colf, i, serie);
+                    }
+                    else
+                    if (an.type == ROI.Type.Polygon || an.type == ROI.Type.Freeform)
+                    {
+                        if (an.id != "")
+                            omexml.setPolygonID(an.id, i, serie);
+                        else
+                            omexml.setPolygonID("Shape:" + i + ":" + serie, i, serie);
+                        omexml.setPolygonPoints(an.PointsToString(b), i, serie);
+                        omexml.setPolygonTheZ(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.Z)), i, serie);
+                        omexml.setPolygonTheC(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.C)), i, serie);
+                        omexml.setPolygonTheT(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.T)), i, serie);
+                        if (an.Text != "")
+                            omexml.setPolygonText(an.Text, i, serie);
+                        else
+                            omexml.setPolygonText(i.ToString(), i, serie);
+                        ome.units.quantity.Length fl = new ome.units.quantity.Length(java.lang.Double.valueOf(an.fontSize), ome.units.UNITS.PIXEL);
+                        omexml.setPolygonFontSize(fl, i, serie);
+                        ome.xml.model.primitives.Color col = new ome.xml.model.primitives.Color(an.strokeColor.R, an.strokeColor.G, an.strokeColor.B, an.strokeColor.A);
+                        omexml.setPolygonStrokeColor(col, i, serie);
+                        ome.units.quantity.Length sw = new ome.units.quantity.Length(java.lang.Double.valueOf(an.strokeWidth), ome.units.UNITS.PIXEL);
+                        omexml.setPolygonStrokeWidth(sw, i, serie);
+                        ome.xml.model.primitives.Color colf = new ome.xml.model.primitives.Color(an.fillColor.R, an.fillColor.G, an.fillColor.B, an.fillColor.A);
+                        omexml.setPolygonFillColor(colf, i, serie);
+                    }
+                    else
+                    if (an.type == ROI.Type.Rectangle)
+                    {
+                        if (an.id != "")
+                            omexml.setRectangleID(an.id, i, serie);
+                        else
+                            omexml.setRectangleID("Shape:" + i + ":" + serie, i, serie);
+                        omexml.setRectangleWidth(java.lang.Double.valueOf(b.ToImageSizeX(an.W)), i, serie);
+                        omexml.setRectangleHeight(java.lang.Double.valueOf(b.ToImageSizeY(an.H)), i, serie);
+                        omexml.setRectangleX(java.lang.Double.valueOf(b.ToImageSpaceX(an.Rect.X)), i, serie);
+                        omexml.setRectangleY(java.lang.Double.valueOf(b.ToImageSpaceY(an.Rect.Y)), i, serie);
+                        omexml.setRectangleTheZ(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.Z)), i, serie);
+                        omexml.setRectangleTheC(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.C)), i, serie);
+                        omexml.setRectangleTheT(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.T)), i, serie);
+                        omexml.setRectangleText(i.ToString(), i, serie);
+                        if (an.Text != "")
+                            omexml.setRectangleText(an.Text, i, serie);
+                        else
+                            omexml.setRectangleText(i.ToString(), i, serie);
+                        ome.units.quantity.Length fl = new ome.units.quantity.Length(java.lang.Double.valueOf(an.fontSize), ome.units.UNITS.PIXEL);
+                        omexml.setRectangleFontSize(fl, i, serie);
+                        ome.xml.model.primitives.Color col = new ome.xml.model.primitives.Color(an.strokeColor.R, an.strokeColor.G, an.strokeColor.B, an.strokeColor.A);
+                        omexml.setRectangleStrokeColor(col, i, serie);
+                        ome.units.quantity.Length sw = new ome.units.quantity.Length(java.lang.Double.valueOf(an.strokeWidth), ome.units.UNITS.PIXEL);
+                        omexml.setRectangleStrokeWidth(sw, i, serie);
+                        ome.xml.model.primitives.Color colf = new ome.xml.model.primitives.Color(an.fillColor.R, an.fillColor.G, an.fillColor.B, an.fillColor.A);
+                        omexml.setRectangleFillColor(colf, i, serie);
+                    }
+                    else
+                    if (an.type == ROI.Type.Line)
+                    {
+                        if (an.id != "")
+                            omexml.setLineID(an.id, i, serie);
+                        else
+                            omexml.setLineID("Shape:" + i + ":" + serie, i, serie);
+                        omexml.setLineX1(java.lang.Double.valueOf(b.ToImageSpaceX(an.GetPoint(0).X)), i, serie);
+                        omexml.setLineY1(java.lang.Double.valueOf(b.ToImageSpaceY(an.GetPoint(0).Y)), i, serie);
+                        omexml.setLineX2(java.lang.Double.valueOf(b.ToImageSpaceX(an.GetPoint(1).X)), i, serie);
+                        omexml.setLineY2(java.lang.Double.valueOf(b.ToImageSpaceY(an.GetPoint(1).Y)), i, serie);
+                        omexml.setLineTheZ(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.Z)), i, serie);
+                        omexml.setLineTheC(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.C)), i, serie);
+                        omexml.setLineTheT(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.T)), i, serie);
+                        if (an.Text != "")
+                            omexml.setLineText(an.Text, i, serie);
+                        else
+                            omexml.setLineText(i.ToString(), i, serie);
+                        ome.units.quantity.Length fl = new ome.units.quantity.Length(java.lang.Double.valueOf(an.fontSize), ome.units.UNITS.PIXEL);
+                        omexml.setLineFontSize(fl, i, serie);
+                        ome.xml.model.primitives.Color col = new ome.xml.model.primitives.Color(an.strokeColor.R, an.strokeColor.G, an.strokeColor.B, an.strokeColor.A);
+                        omexml.setLineStrokeColor(col, i, serie);
+                        ome.units.quantity.Length sw = new ome.units.quantity.Length(java.lang.Double.valueOf(an.strokeWidth), ome.units.UNITS.PIXEL);
+                        omexml.setLineStrokeWidth(sw, i, serie);
+                        ome.xml.model.primitives.Color colf = new ome.xml.model.primitives.Color(an.fillColor.R, an.fillColor.G, an.fillColor.B, an.fillColor.A);
+                        omexml.setLineFillColor(colf, i, serie);
+                    }
+                    else
+                    if (an.type == ROI.Type.Ellipse)
+                    {
+
+                        if (an.id != "")
+                            omexml.setEllipseID(an.id, i, serie);
+                        else
+                            omexml.setEllipseID("Shape:" + i + ":" + serie, i, serie);
+                        //We need to change System.Drawing.Rectangle to ellipse radius;
+                        double w = (double)an.W / 2;
+                        double h = (double)an.H / 2;
+                        omexml.setEllipseRadiusX(java.lang.Double.valueOf(b.ToImageSizeX(w)), i, serie);
+                        omexml.setEllipseRadiusY(java.lang.Double.valueOf(b.ToImageSizeY(h)), i, serie);
+
+                        double x = an.Point.X + w;
+                        double y = an.Point.Y + h;
+                        omexml.setEllipseX(java.lang.Double.valueOf(b.ToImageSpaceX(x)), i, serie);
+                        omexml.setEllipseY(java.lang.Double.valueOf(b.ToImageSpaceX(y)), i, serie);
+                        omexml.setEllipseTheZ(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.Z)), i, serie);
+                        omexml.setEllipseTheC(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.C)), i, serie);
+                        omexml.setEllipseTheT(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.T)), i, serie);
+                        if (an.Text != "")
+                            omexml.setEllipseText(an.Text, i, serie);
+                        else
+                            omexml.setEllipseText(i.ToString(), i, serie);
+                        ome.units.quantity.Length fl = new ome.units.quantity.Length(java.lang.Double.valueOf(an.fontSize), ome.units.UNITS.PIXEL);
+                        omexml.setEllipseFontSize(fl, i, serie);
+                        ome.xml.model.primitives.Color col = new ome.xml.model.primitives.Color(an.strokeColor.R, an.strokeColor.G, an.strokeColor.B, an.strokeColor.A);
+                        omexml.setEllipseStrokeColor(col, i, serie);
+                        ome.units.quantity.Length sw = new ome.units.quantity.Length(java.lang.Double.valueOf(an.strokeWidth), ome.units.UNITS.PIXEL);
+                        omexml.setEllipseStrokeWidth(sw, i, serie);
+                        ome.xml.model.primitives.Color colf = new ome.xml.model.primitives.Color(an.fillColor.R, an.fillColor.G, an.fillColor.B, an.fillColor.A);
+                        omexml.setEllipseFillColor(colf, i, serie);
+                    }
+                    else
+                    if (an.type == ROI.Type.Label)
+                    {
+                        if (an.id != "")
+                            omexml.setLabelID(an.id, i, serie);
+                        else
+                            omexml.setLabelID("Shape:" + i + ":" + serie, i, serie);
+                        omexml.setLabelX(java.lang.Double.valueOf(b.ToImageSpaceX(an.Rect.X)), i, serie);
+                        omexml.setLabelY(java.lang.Double.valueOf(b.ToImageSpaceY(an.Rect.Y)), i, serie);
+                        omexml.setLabelTheZ(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.Z)), i, serie);
+                        omexml.setLabelTheC(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.C)), i, serie);
+                        omexml.setLabelTheT(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.T)), i, serie);
+                        omexml.setLabelText(i.ToString(), i, serie);
+                        if (an.Text != "")
+                            omexml.setLabelText(an.Text, i, serie);
+                        else
+                            omexml.setLabelText(i.ToString(), i, serie);
+                        ome.units.quantity.Length fl = new ome.units.quantity.Length(java.lang.Double.valueOf(an.fontSize), ome.units.UNITS.PIXEL);
+                        omexml.setLabelFontSize(fl, i, serie);
+                        ome.xml.model.primitives.Color col = new ome.xml.model.primitives.Color(an.strokeColor.R, an.strokeColor.G, an.strokeColor.B, an.strokeColor.A);
+                        omexml.setLabelStrokeColor(col, i, serie);
+                        ome.units.quantity.Length sw = new ome.units.quantity.Length(java.lang.Double.valueOf(an.strokeWidth), ome.units.UNITS.PIXEL);
+                        omexml.setLabelStrokeWidth(sw, i, serie);
+                        ome.xml.model.primitives.Color colf = new ome.xml.model.primitives.Color(an.fillColor.R, an.fillColor.G, an.fillColor.B, an.fillColor.A);
+                        omexml.setLabelFillColor(colf, i, serie);
+                    }
+                    i++;
+                }
+                /*
+                if (b.Buffers[0].Plane != null)
+                    for (int bu = 0; bu < b.Buffers.Count; bu++)
+                    {
+                        //Correct order of parameters.
+                        if (b.Buffers[bu].Plane.Delta != 0)
+                        {
+                            ome.units.quantity.Time t = new ome.units.quantity.Time(java.lang.Double.valueOf(b.Buffers[bu].Plane.Delta), ome.units.UNITS.MILLISECOND);
+                            omexml.setPlaneDeltaT(t, bu, serie);
+                        }
+                        if (b.Buffers[bu].Plane.Exposure != 0)
+                        {
+                            ome.units.quantity.Time et = new ome.units.quantity.Time(java.lang.Double.valueOf(b.Buffers[bu].Plane.Exposure), ome.units.UNITS.MILLISECOND);
+                            omexml.setPlaneExposureTime(et, bu, serie);
+                        }
+                        ome.units.quantity.Length lx = new ome.units.quantity.Length(java.lang.Double.valueOf(b.Buffers[bu].Plane.Location.X), ome.units.UNITS.MICROMETER);
+                        ome.units.quantity.Length ly = new ome.units.quantity.Length(java.lang.Double.valueOf(b.Buffers[bu].Plane.Location.Y), ome.units.UNITS.MICROMETER);
+                        ome.units.quantity.Length lz = new ome.units.quantity.Length(java.lang.Double.valueOf(b.Buffers[bu].Plane.Location.Z), ome.units.UNITS.MICROMETER);
+                        omexml.setPlanePositionX(lx, bu, serie);
+                        omexml.setPlanePositionY(ly, bu, serie);
+                        omexml.setPlanePositionZ(lz, bu, serie);
+                        omexml.setPlaneTheC(new NonNegativeInteger(java.lang.Integer.valueOf(b.Buffers[bu].Plane.Coordinate.C)), bu, serie);
+                        omexml.setPlaneTheZ(new NonNegativeInteger(java.lang.Integer.valueOf(b.Buffers[bu].Plane.Coordinate.Z)), bu, serie);
+                        omexml.setPlaneTheT(new NonNegativeInteger(java.lang.Integer.valueOf(b.Buffers[bu].Plane.Coordinate.T)), bu, serie);
+
+                        omexml.setTiffDataPlaneCount(new NonNegativeInteger(java.lang.Integer.valueOf(1)), bu, serie);
+                        omexml.setTiffDataIFD(new NonNegativeInteger(java.lang.Integer.valueOf(bu)), bu, serie);
+                        omexml.setTiffDataFirstC(new NonNegativeInteger(java.lang.Integer.valueOf(b.Buffers[bu].Plane.Coordinate.C)), bu, serie);
+                        omexml.setTiffDataFirstZ(new NonNegativeInteger(java.lang.Integer.valueOf(b.Buffers[bu].Plane.Coordinate.Z)), bu, serie);
+                        omexml.setTiffDataFirstT(new NonNegativeInteger(java.lang.Integer.valueOf(b.Buffers[bu].Plane.Coordinate.T)), bu, serie);
+
+                    }
+                */
+                s++;
+            }
+            writer.setMetadataRetrieve(omexml);
+            writer.setId(file);
+            writer.setCompression(compression);
+            s = 0;
+            foreach (double px in bis.Keys)
+            {
+                writer.setSeries(s);
+                PointD p = new PointD(max[px].X - min[px].X, max[px].Y - min[px].Y);
+                for (int i = 0; i < bis[px].Count; i++)
+                {
+                    BioImage b = bis[px][i];
+                    writer.setTileSizeX(b.SizeX);
+                    writer.setTileSizeY(b.SizeY);
+                    double dx = Math.Ceiling((bis[px][i].StageSizeX - min[px].X) / bis[px][i].Resolutions[bis[px][i].Resolution].VolumeWidth);
+                    double dy = Math.Ceiling((bis[px][i].StageSizeY - min[px].Y) / bis[px][i].Resolutions[bis[px][i].Resolution].VolumeHeight);
+                    for (int bu = 0; bu < b.Buffers.Count; bu++)
+                    {
+                        byte[] bt = b.Buffers[bu].GetSaveBytes(BitConverter.IsLittleEndian);
+                        writer.saveBytes(bu, bt, (int)dx * b.SizeX, (int)dy * b.SizeY, b.SizeX, b.SizeY);
+                    }
+                    progress = (int)((float)i / bis[px].Count) * 100;
+                }
+            }
+            bool stop = false;
+            do
+            {
+                try
+                {
+                    writer.close();
+                    stop = true;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+            } while (!stop);
+        }
+
+        /// The function "OpenOME" opens a bioimage file in the OME format and returns the first image
+        /// in the series.
+        /// 
+        /// @param file The "file" parameter is a string that represents the file path or name of the
+        /// OME file that you want to open.
+        /// @param tab The "tab" parameter is a boolean value that determines whether the image is opened in a new tab.
+        /// 
+        /// @return The method is returning a BioImage object.
         public static BioImage OpenOME(string file, bool tab)
         {
             if (!OMESupport())
@@ -5173,8 +5580,16 @@ namespace BioGTK
             Recorder.AddLine("BioImage.FolderToStack(\"" + path + "\");");
             return b;
         }
-
+        static int progress;
         static bool vips = false;
+        /// The function "OpenVips" takes a BioImage object and an integer representing the number of
+        /// pages, and adds each page of the image file to the BioImage's vipPages list using the
+        /// NetVips library.
+        /// 
+        /// @param BioImage The BioImage parameter is an object that represents a bio image. It likely
+        /// contains information about the image file, such as the file path and other metadata.
+        /// @param pagecount The parameter "pagecount" represents the number of pages in the TIFF file
+        /// that needs to be loaded into the "vipPages" list of the "BioImage" object.
         public static void OpenVips(BioImage b, int pagecount)
         {
             try
@@ -5190,6 +5605,25 @@ namespace BioGTK
             }
             
         }
+        /// The function ExtractRegionFromTiledTiff takes a BioImage object, coordinates, width, height,
+        /// and resolution as input, and returns a Bitmap object representing the extracted region from
+        /// the tiled TIFF image.
+        /// 
+        /// @param BioImage The BioImage object represents an image file that contains multiple pages or
+        /// resolutions. It contains information about the image file, such as the file path, the number
+        /// of pages, and the format of each page.
+        /// @param x The x-coordinate of the top-left corner of the region to extract from the tiled
+        /// TIFF image.
+        /// @param y The parameter "y" represents the starting y-coordinate of the region to be
+        /// extracted from the tiled TIFF image.
+        /// @param width The width parameter represents the width of the region to be extracted from the
+        /// tiled TIFF image.
+        /// @param height The height parameter represents the height of the region to be extracted from
+        /// the tiled TIFF image.
+        /// @param res The parameter "res" represents the resolution level of the tiled TIFF image. It
+        /// is used to specify the level of detail or zoom level at which the image is being extracted.
+        /// 
+        /// @return The method is returning a Bitmap object.
         public static Bitmap ExtractRegionFromTiledTiff(BioImage b, int x, int y, int width, int height, int res)
         {
             try
@@ -5224,7 +5658,31 @@ namespace BioGTK
             }
             return null;
         }
-        /* Reading the OME-XML metadata and creating a BioImage object. */
+        /// The function "OpenOME" opens a bioimage file, with options to specify the series, whether to
+        /// display it in a tab, whether to add it to existing images, whether to tile the image, and
+        /// the tile size.
+        /// 
+        /// @param file The file parameter is a string that represents the file path or name of the OME
+        /// (Open Microscopy Environment) file that you want to open.
+        /// @param serie The "serie" parameter is an integer that represents the series number of the
+        /// image to be opened.
+        /// @param tab The "tab" parameter is a boolean value that determines whether the image should
+        /// be opened in a new tab or not. If set to true, the image will be opened in a new tab. If set
+        /// to false, the image will be opened in the current tab.
+        /// @param addToImages The "addToImages" parameter is a boolean value that determines whether
+        /// the opened image should be added to a collection of images. If set to true, the image will
+        /// be added to the collection. If set to false, the image will not be added.
+        /// @param tile The "tile" parameter is a boolean value that determines whether or not to tile
+        /// the images. If set to true, the images will be tiled according to the specified tilex,
+        /// tiley, tileSizeX, and tileSizeY parameters. If set to false, the images will not be tiled.
+        /// @param tilex The parameter "tilex" is an integer that represents the starting x-coordinate
+        /// of the tile.
+        /// @param tiley The parameter "tiley" is used to specify the number of tiles in the y-direction
+        /// when tiling the image.
+        /// @param tileSizeX The tileSizeX parameter specifies the width of each tile in pixels when
+        /// tiling the images.
+        /// @param tileSizeY The tileSizeY parameter is the height of each tile in pixels when tiling
+        /// the images.
         public static BioImage OpenOME(string file, int serie, bool tab, bool addToImages, bool tile, int tilex, int tiley, int tileSizeX, int tileSizeY)
         {
             if (tileSizeX == 0)
@@ -5851,6 +6309,7 @@ namespace BioGTK
                 b.meta = (IMetadata)((OMEXMLService)factory.getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
                 reader.close();
                 reader.setMetadataStore(b.meta);
+                Console.WriteLine(b.file);
                 reader.setId(b.file);
             }
             else
@@ -6017,6 +6476,16 @@ namespace BioGTK
             }
             throw new NotSupportedException("Not supported pixel format.");
         }
+        /// The function returns the appropriate PixelFormat based on the number of RGB channels and the
+        /// pixel type.
+        /// 
+        /// @param rgbChannelCount The `rgbChannelCount` parameter represents the number of channels in
+        /// the RGB color model. It can have a value of either 1 (for grayscale images) or 3 (for RGB
+        /// color images).
+        /// @param px The parameter "px" is of type ome.xml.model.enums.PixelType. It represents the
+        /// pixel type of the image, such as INT8, UINT8, INT16, or UINT16.
+        /// 
+        /// @return The method returns a PixelFormat value based on the input parameters.
         public static PixelFormat GetPixelFormat(int rgbChannelCount, ome.xml.model.enums.PixelType px)
         {
             if (rgbChannelCount == 1)
@@ -6222,6 +6691,7 @@ namespace BioGTK
         {
             OpenFile(Thread.CurrentThread.Name);
         }
+        /// The function "AddThread" opens a file with the name of the current thread.
         private static void AddThread()
         {
             OpenFile(Thread.CurrentThread.Name, false);
@@ -6322,6 +6792,12 @@ namespace BioGTK
         }
         public static bool OmeSupport = false;
         static bool supportDialog = false;
+        /// The function checks if the operating system is macOS and displays a message if OME images
+        /// are not supported, otherwise it sets OmeSupport to true.
+        /// 
+        /// @return The method is returning a boolean value. If the operating system is MacOS and the
+        /// supportDialog flag is false, it will display a message dialog and return false. Otherwise,
+        /// it will set the OmeSupport flag to true and return true.
         public static bool OMESupport()
         {
             bool isMacOS = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
@@ -6345,12 +6821,20 @@ namespace BioGTK
                 return true;
             }
         }
-        public static bool VipsSupport(BioImage bi)
+        static NetVips.Image netim;
+        /// The function checks if a given file is supported by the Vips library and returns true if it
+        /// is, false otherwise.
+        /// 
+        /// @param file The "file" parameter is a string that represents the file path of the TIFF image
+        /// that you want to load using the NetVips library.
+        /// 
+        /// @return The method is returning a boolean value. If the try block is executed successfully,
+        /// it will return true. If an exception is caught, it will return false.
+        public static bool VipsSupport(string file)
         {
-            NetVips.Image im;
             try
             {
-                im = NetVips.Image.Tiffload(bi.file);
+                netim = NetVips.Image.Tiffload(file);
                 Settings.AddSettings("VipsSupport", "true");
             }
             catch (Exception e)
@@ -6358,7 +6842,8 @@ namespace BioGTK
                 Console.WriteLine(e.ToString());
                 return false;
             }
-            im.Dispose();
+            netim.Close();
+            netim.Dispose();
             return true;
         }
         private static Stopwatch st = new Stopwatch();

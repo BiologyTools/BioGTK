@@ -11,8 +11,6 @@ namespace BioGTK
     public class Play : Window
     {
         #region Properties
-
-        /// <summary> Used to load in the glade file resource as a window. </summary>
         private Builder _builder;
 
 #pragma warning disable 649
@@ -39,6 +37,10 @@ namespace BioGTK
         #endregion
 
         #region Constructors / Destructors
+        /// The function creates a new instance of the Play class using a Builder object and a Glade
+        /// file.
+        /// 
+        /// @return The method is returning an instance of the Play class.
         public static Play Create()
         {
             Builder builder = new Builder(null, "BioGTK.Glade.Play.glade", null);
