@@ -4750,6 +4750,7 @@ namespace BioGTK
             ImageReader reader = new ImageReader();
             var meta = (IMetadata)((OMEXMLService)new ServiceFactory().getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
             reader.setMetadataStore((MetadataStore)meta);
+            file = file.Replace("\\", "/");
             reader.setId(file);
             bool ser = false;
             if (reader.getSeriesCount() > 1)
@@ -5094,6 +5095,7 @@ namespace BioGTK
 
             }
             writer.setMetadataRetrieve(omexml);
+            f = f.Replace("\\", "/");
             writer.setId(f);
             status = "Saving OME Image Planes.";
             for (int i = 0; i < files.Length; i++)
@@ -5451,6 +5453,7 @@ namespace BioGTK
                 s++;
             }
             writer.setMetadataRetrieve(omexml);
+            file = file.Replace("\\", "/");
             writer.setId(file);
             writer.setCompression(compression);
             s = 0;
@@ -5706,7 +5709,7 @@ namespace BioGTK
                 status = "Opening OME Image.";
                 reader.close();
                 reader.setMetadataStore(b.meta);
-                reader.setId(file);
+                reader.setId(f);
             }
             status = "Reading OME Metadata.";
             reader.setSeries(serie);
@@ -6310,6 +6313,7 @@ namespace BioGTK
                 reader.close();
                 reader.setMetadataStore(b.meta);
                 Console.WriteLine(b.file);
+                b.file = b.file.Replace("\\", "/");
                 reader.setId(b.file);
             }
             else
@@ -6319,6 +6323,7 @@ namespace BioGTK
                     reader.close();
                     b.meta = (IMetadata)((OMEXMLService)factory.getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
                     reader.setMetadataStore(b.meta);
+                    b.file = b.file.Replace("\\", "/");
                     reader.setId(b.file);
                 }
             }
@@ -6528,6 +6533,7 @@ namespace BioGTK
                 if (reader.getCurrentFile() != file)
                 {
                     status = "Opening OME Image.";
+                    file = file.Replace("\\", "/");
                     reader.setId(file);
                 }
             }
@@ -6832,6 +6838,9 @@ namespace BioGTK
         /// it will return true. If an exception is caught, it will return false.
         public static bool VipsSupport(string file)
         {
+            //Currently GTKSharp and LibVips causes an error so on windows no netvips support.
+            if (OperatingSystem.IsWindows())
+                return false;
             try
             {
                 netim = NetVips.Image.Tiffload(file);
@@ -6890,6 +6899,7 @@ namespace BioGTK
             ImageReader imageReader = new ImageReader();
             imageReader.setMetadataStore(meta);
             // initialize file
+            file = file.Replace("\\", "/");
             imageReader.setId(file);
             int imageCount = imageReader.getImageCount();
             int seriesCount = imageReader.getSeriesCount();
