@@ -136,9 +136,8 @@ namespace BioGTK
             if (im == null)
                 return;
             images.Remove(im);
-            im.Dispose();
+            //im.Dispose();
             im = null;
-            //GC.Collect();
             Recorder.AddLine("Bio.Table.RemoveImage(" + '"' + id + '"' + ");");
         }
 
@@ -5685,7 +5684,8 @@ namespace BioGTK
         /// @param tileSizeX The tileSizeX parameter specifies the width of each tile in pixels when
         /// tiling the images.
         /// @param tileSizeY The tileSizeY parameter is the height of each tile in pixels when tiling
-        /// the images.
+        /// the images. <summary>
+        /// The function "OpenOME" opens a bioimage file, with options to specify the series, whether to
         public static BioImage OpenOME(string file, int serie, bool tab, bool addToImages, bool tile, int tilex, int tiley, int tileSizeX, int tileSizeY)
         {
             if (tileSizeX == 0)
@@ -5706,12 +5706,12 @@ namespace BioGTK
                 cf = cf.Replace("\\", "/");
             if (cf != f)
             {
-                status = "Opening OME Image.";
+                //status = "Opening OME Image.";
                 reader.close();
                 reader.setMetadataStore(b.meta);
                 reader.setId(f);
             }
-            status = "Reading OME Metadata.";
+            //status = "Reading OME Metadata.";
             reader.setSeries(serie);
             int RGBChannelCount = reader.getRGBChannelCount();
             if (reader.getOptimalTileWidth() != reader.getSizeX())
@@ -6200,7 +6200,7 @@ namespace BioGTK
             int z = 0;
             int c = 0;
             int t = 0;
-            status = "Reading OME Image Planes";
+            //status = "Reading OME Image Planes";
             if (!tile)
                 for (int p = 0; p < pages; p++)
                 {
@@ -6572,9 +6572,17 @@ namespace BioGTK
         /// @param file The file to open
         public static void OpenAsync(string file)
         {
-            Thread t = new Thread(OpenThread);
-            t.Name = file;
-            t.Start();
+            //Due to a GTKSharp error we can't open async on windows.
+            if (Environment.OSVersion.Platform != PlatformID.Win32NT)
+            {
+                Thread t = new Thread(OpenThread);
+                t.Name = file;
+                t.Start();
+            }
+            else
+            {
+                OpenFile(file);
+            }
         }
         /// It opens a file asynchronously
         /// 
@@ -6594,19 +6602,6 @@ namespace BioGTK
             Thread t = new Thread(OpenThread);
             t.Name = file;
             t.Start();
-            App.progress.ProgressValue = 0;
-            App.progress.Title = "Opening File";
-            App.progress.Text = file;
-            App.progress.Show();
-            // start a background task to update progress bar
-            System.Threading.Tasks.Task.Run(() =>
-            {
-                // update progress bar on main UI thread
-                Application.Invoke(delegate
-                {
-                    App.progress.ProgressValue = progressValue;
-                });
-            });
         }
         /// It opens a file asynchronously
         /// 
@@ -7671,8 +7666,6 @@ namespace BioGTK
             {
                 Channels[i].Dispose();
             }
-            Images.RemoveImage(this);
-            //GC.Collect();
         }
         /// This function returns the filename of the object, and the location of the object in the 3D
         /// space

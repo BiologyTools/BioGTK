@@ -287,7 +287,7 @@ namespace BioGTK
                         if (bf == null)
                             return;
                         bitmap = bf.ImageRGB;
-                        b.Buffers[index].Dispose();
+                        //b.Buffers[index].Dispose();
                         b.Buffers[index] = bf;
                     }
                     else
@@ -303,7 +303,7 @@ namespace BioGTK
                         if (bf == null)
                             return;
                         bitmap = bf.ImageRGB;
-                        b.Buffers[index].Dispose();
+                        //b.Buffers[index].Dispose();
                         b.Buffers[index] = bf;
                     }
                     else
@@ -317,7 +317,7 @@ namespace BioGTK
                         if (bf == null)
                             return;
                         bitmap = bf.ImageRGB;
-                        b.Buffers[index].Dispose();
+                        //b.Buffers[index].Dispose();
                         b.Buffers[index] = bf;
                     }
                     else
@@ -331,7 +331,7 @@ namespace BioGTK
                         if (bf == null)
                             return;
                         bitmap = bf.ImageRGB;
-                        b.Buffers[index].Dispose();
+                        //b.Buffers[index].Dispose();
                         b.Buffers[index] = bf;
                     }
                     else
@@ -393,7 +393,7 @@ namespace BioGTK
                 BioImage b = BioImage.OpenOME(SelectedImage.file, r, false, false, true, 0, 0, SelectedImage.Resolutions[r].SizeX, SelectedImage.Resolutions[r].SizeY);
                 bm = re.Apply((Bitmap)b.Buffers[0].ImageRGB);
                 overviewBitmap = new Pixbuf(bm.RGBBytes, true, 8, bm.Width, bm.Height, bm.Stride);
-                b.Dispose();
+                //b.Dispose();
             }
             else
             {
@@ -522,7 +522,7 @@ namespace BioGTK
                 System.Threading.Thread.Sleep(waitz);
             } while (playZ);
         }
-       /// It increments the C coordinate of the image by 1, waits for a specified amount of time, and
+        /// It increments the C coordinate of the image by 1, waits for a specified amount of time, and
        /// then repeats until the user stops it.
        /// 
        /// @return The method is returning a string.
@@ -591,7 +591,7 @@ namespace BioGTK
                 barMenu.Popup();
         }
 
-       /// If the user right clicks on the toolbar, the toolbar menu pops up
+        /// If the user right clicks on the toolbar, the toolbar menu pops up
        /// 
        /// @param o The object that the event is being called from.
        /// @param ButtonPressEventArgs The event that is triggered when a button is pressed.
@@ -642,7 +642,7 @@ namespace BioGTK
             }
         }
 
-       /// It creates a new instance of the Play class, and then calls the Show() method on that
+        /// It creates a new instance of the Play class, and then calls the Show() method on that
        /// instance
        /// 
        /// @param o The object that the event is being called from.
@@ -692,7 +692,7 @@ namespace BioGTK
             }
         }
 
-       /// When the play button is pressed, the program checks which bar is selected and then starts a
+        /// When the play button is pressed, the program checks which bar is selected and then starts a
        /// thread that will play the selected bar
        /// 
        /// @param o the object that called the event
@@ -870,7 +870,7 @@ namespace BioGTK
             UpdateView();
         }
 
-       /// This function removes the selected annotations from the image
+        /// This function removes the selected annotations from the image
        /// 
        /// @param o The object that the event is being called on.
        /// @param ButtonPressEventArgs
@@ -962,7 +962,7 @@ namespace BioGTK
         }
 
         bool initialized = false;
-       /// If the image is pyramidal, update the image. If the image is not initialized, go to the
+        /// If the image is pyramidal, update the image. If the image is not initialized, go to the
        /// image. Update the view
        /// 
        /// @param o The object that the event is being called on.
@@ -982,7 +982,7 @@ namespace BioGTK
             UpdateView();
         }
 
-       /// > Draw an ellipse by drawing a circle and then scaling it
+        /// > Draw an ellipse by drawing a circle and then scaling it
        /// 
        /// @param g The Cairo.Context object
        /// @param x The x-coordinate of the upper-left corner of the rectangle that defines the ellipse.
@@ -1081,7 +1081,7 @@ namespace BioGTK
                 {
                     Pixbuf pf = Bitmaps[i].ScaleSimple((int)r.W,(int)r.H, InterpType.Bilinear);
                     Gdk.CairoHelper.SetSourcePixbuf(e.Cr, pf, (int)r.X, (int)r.Y);
-                    pf.Dispose();
+                    //pf.Dispose();
                     e.Cr.Paint();
                 }
                 
@@ -1330,16 +1330,16 @@ namespace BioGTK
         {
             if (args.Event.Direction == ScrollDirection.Up)
             {
-                if (zBar.Value + 1 <= zBar.Adjustment.Upper)
-                    zBar.Value += 1;
+                if (tBar.Value + 1 <= tBar.Adjustment.Upper)
+                    tBar.Value += 1;
             }
             else
             {
-                if (zBar.Value - 1 >= 0)
-                    zBar.Value -= 1;
+                if (tBar.Value - 1 >= 0)
+                    tBar.Value -= 1;
             }
         }
-       /// If the scroll direction is up, and the value of the scrollbar is less than the upper limit,
+        /// If the scroll direction is up, and the value of the scrollbar is less than the upper limit,
        /// then increment the value of the scrollbar. If the scroll direction is down, and the value of
        /// the scrollbar is greater than the lower limit, then decrement the value of the scrollbar
        /// 
@@ -1581,7 +1581,7 @@ namespace BioGTK
             goToImageMenu.ShowAll();
         }
 
-       /// When a menu item is clicked, find the image that matches the menu item's label, and go to
+        /// When a menu item is clicked, find the image that matches the menu item's label, and go to
        /// that image
        /// 
        /// @param o The object that the event is being called on.
@@ -1982,7 +1982,7 @@ namespace BioGTK
                     Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(ImageView.SelectedBuffer);
                     Bio.Graphics.Pen pen = new Bio.Graphics.Pen(Tools.EraseColor, (int)Tools.StrokeWidth, ImageView.SelectedBuffer.BitsPerPixel);
                     g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)Tools.StrokeWidth, (int)Tools.StrokeWidth), pen.color);
-                    pen.Dispose();
+                    //pen.Dispose();
                     App.viewer.UpdateImages();
                 }
             }
@@ -2013,7 +2013,7 @@ namespace BioGTK
             App.viewer = this;
             PointD pointer = ImageToViewSpace(e.Event.X, e.Event.Y);
             mouseUp = pointer;
-            if (e.Event.State == ModifierType.Button2Mask)
+            if (e.Event.State.HasFlag(ModifierType.Button2Mask))
             {
                 if (SelectedImage != null && !SelectedImage.isPyramidal)
                 {
@@ -2372,7 +2372,7 @@ namespace BioGTK
             double y = (double)(d / PxHmicron) * Scale.Width;
             return y;
         }
-       /// The function converts a given value from microns to view width units, taking into account the
+        /// The function converts a given value from microns to view width units, taking into account the
        /// scale and whether the image is pyramidal.
        /// 
        /// @param d The parameter "d" represents a value that needs to be converted to a view width.
@@ -2506,7 +2506,7 @@ namespace BioGTK
             double y = ToScreenScaleH((float)p.Y);
             return new PointF((float)x, (float)y);
         }
-       /// The function converts a set of coordinates and dimensions from a mathematical coordinate
+        /// The function converts a set of coordinates and dimensions from a mathematical coordinate
        /// system to a screen coordinate system and returns a rectangle with the converted values.
        /// 
        /// @param x The x-coordinate of the rectangle's top-left corner in world space.

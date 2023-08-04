@@ -151,7 +151,13 @@ namespace BioGTK
             filteredMenu.Active = true;
             SetupHandlers();
             Function.InitializeMainMenu();
-
+            filechooser =
+        new Gtk.FileChooserDialog("Choose file to open",
+            this,
+            FileChooserAction.Open,
+            "Cancel", ResponseType.Cancel,
+            "OK", ResponseType.Accept);
+            filechooser.SelectMultiple = true;
             Menu m = new Menu();
             foreach (RotateFlipType flip in (RotateFlipType[])Enum.GetValues(typeof(RotateFlipType)))
             {
@@ -442,7 +448,7 @@ namespace BioGTK
             tabsView.ShowAll();
         }
 
-       /// When the TabsView is focused, set the tabsView variable in the App class to the TabsView
+        /// When the TabsView is focused, set the tabsView variable in the App class to the TabsView
        /// 
        /// @param o The object that is being focused
        /// @param FocusedArgs This is a class that contains the following properties:
@@ -451,7 +457,8 @@ namespace BioGTK
             App.tabsView = this;
         }
 
-       /// It opens a file chooser dialog, and when the user selects a file, it creates a new BioImage
+        Gtk.FileChooserDialog filechooser;
+        /// It opens a file chooser dialog, and when the user selects a file, it creates a new BioImage
        /// object, creates a new ImageView object, and adds the ImageView object to the list of viewers
        /// 
        /// @param sender The object that raised the event.
@@ -460,18 +467,12 @@ namespace BioGTK
        /// @return The response type of the dialog.
         protected void openImagesMenuClick(object sender, EventArgs a)
         {
-            Gtk.FileChooserDialog filechooser =
-        new Gtk.FileChooserDialog("Choose file to open",
-            this,
-            FileChooserAction.Open,
-            "Cancel", ResponseType.Cancel,
-            "Open", ResponseType.Accept);
-            filechooser.SelectMultiple= true;
+            filechooser.Title = "Choose file to open";
+            filechooser.Action = FileChooserAction.Open;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             string[] sts = filechooser.Filenames;
-            filechooser.Destroy();
-            
+            filechooser.Hide();
             foreach (string item in sts)
             {
                 BioImage.OpenAsync(item);
@@ -486,14 +487,8 @@ namespace BioGTK
         /// @return The response type of the dialog.
         protected void openOMEImagesMenuClick(object sender, EventArgs a)
         {
-            
-                Gtk.FileChooserDialog filechooser =
-        new Gtk.FileChooserDialog("Choose file to open",
-            this,
-            FileChooserAction.Open,
-            "Cancel", ResponseType.Cancel,
-            "Open", ResponseType.Accept);
-            filechooser.SelectMultiple = true;
+            filechooser.Title = "Choose file to open";
+            filechooser.Action = FileChooserAction.Open;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             foreach (string item in filechooser.Filenames)
@@ -518,13 +513,8 @@ namespace BioGTK
         /// @return A list of file names.
         protected void openOMESeriesMenuClick(object sender, EventArgs a)
         {
-            Gtk.FileChooserDialog filechooser =
-        new Gtk.FileChooserDialog("Choose file to open",
-            this,
-            FileChooserAction.Open,
-            "Cancel", ResponseType.Cancel,
-            "Open", ResponseType.Accept);
-            filechooser.SelectMultiple = true;
+            filechooser.Title = "Choose file to open";
+            filechooser.Action = FileChooserAction.Open;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
@@ -551,13 +541,8 @@ namespace BioGTK
         /// @return The response type of the dialog.
         protected void openSeriesMenuClick(object sender, EventArgs a)
         {
-            Gtk.FileChooserDialog filechooser =
-        new Gtk.FileChooserDialog("Choose file to open",
-            this,
-            FileChooserAction.Open,
-            "Cancel", ResponseType.Cancel,
-            "Open", ResponseType.Accept);
-            filechooser.SelectMultiple = true;
+            filechooser.Title = "Choose file to open";
+            filechooser.Action = FileChooserAction.Open;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
@@ -584,14 +569,8 @@ namespace BioGTK
         /// @return The response type of the filechooser dialog.
         protected void addImagesToTabMenuClick(object sender, EventArgs a)
         {
-            Gtk.FileChooserDialog filechooser =
-        new Gtk.FileChooserDialog("Choose file to open",
-            this,
-            FileChooserAction.Open,
-            "Cancel", ResponseType.Cancel,
-            "Open", ResponseType.Accept);
-            filechooser.SelectMultiple = true;
-            filechooser.Hide();
+            filechooser.Title = "Choose file to open";
+            filechooser.Action = FileChooserAction.Open;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             foreach (string item in filechooser.Filenames)
@@ -600,7 +579,7 @@ namespace BioGTK
                 SelectedViewer.AddImage(b);
             }
             this.ShowAll();
-            
+            filechooser.Hide();
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file as an
         /// OME image, and adds it to the currently selected viewer
@@ -611,13 +590,8 @@ namespace BioGTK
         /// @return The response type of the filechooser dialog.
         protected void addOMEImagesToTabClick(object sender, EventArgs a)
         {
-            Gtk.FileChooserDialog filechooser =
-       new Gtk.FileChooserDialog("Choose file to open",
-           this,
-           FileChooserAction.Open,
-           "Cancel", ResponseType.Cancel,
-           "Open", ResponseType.Accept);
-            filechooser.SelectMultiple = true;
+            filechooser.Title = "Choose file to open";
+            filechooser.Action = FileChooserAction.Open;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
@@ -638,12 +612,8 @@ namespace BioGTK
         /// @return The response type of the dialog.
         protected void saveSelectedTiffClick(object sender, EventArgs a)
         {
-            Gtk.FileChooserDialog filechooser =
-       new Gtk.FileChooserDialog("Save File",
-           this,
-           FileChooserAction.Save,
-           "Cancel", ResponseType.Cancel,
-           "Save", ResponseType.Accept);
+            filechooser.Action = FileChooserAction.Save;
+            filechooser.Title = "Save File";
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             BioImage.SaveFile(filechooser.Filename,ImageView.SelectedImage.ID);
@@ -657,12 +627,8 @@ namespace BioGTK
         /// @return The response type of the filechooser dialog.
         protected void saveSelectedOMEClick(object sender, EventArgs a)
         {
-            Gtk.FileChooserDialog filechooser =
-      new Gtk.FileChooserDialog("Choose the file to open",
-          this,
-          FileChooserAction.Save,
-          "Cancel", ResponseType.Cancel,
-          "Save", ResponseType.Accept);
+            filechooser.Action = FileChooserAction.Save;
+            filechooser.Title = "Save File";
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             BioImage.SaveOME(filechooser.Filename, ImageView.SelectedImage.ID);
@@ -676,12 +642,8 @@ namespace BioGTK
         /// @return The response from the filechooser dialog.
         protected void saveTabOMEClick(object sender, EventArgs a)
         {
-            Gtk.FileChooserDialog filechooser =
-      new Gtk.FileChooserDialog("Choose the file to open",
-          this,
-          FileChooserAction.Save,
-          "Cancel", ResponseType.Cancel,
-          "Save", ResponseType.Accept);
+            filechooser.Action = FileChooserAction.Save;
+            filechooser.Title = "Save File";
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             List<string> list = new List<string>();
@@ -700,12 +662,8 @@ namespace BioGTK
         /// @return The response type of the filechooser dialog.
         protected void saveTabTiffMenuClick(object sender, EventArgs a)
         {
-            Gtk.FileChooserDialog filechooser =
-     new Gtk.FileChooserDialog("Choose the file to open",
-         this,
-         FileChooserAction.Save,
-         "Cancel", ResponseType.Cancel,
-         "Save", ResponseType.Accept);
+            filechooser.Action = FileChooserAction.Save;
+            filechooser.Title = "Save File";
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             List<string> list = new List<string>();
@@ -1033,7 +991,7 @@ namespace BioGTK
                         Images.RemoveImage(iv.Images[v]);
                     }
                     tabsView.Remove(item);
-                    viewers[i].Dispose();
+                    //viewers[i].Dispose();
                     viewers.RemoveAt(i);
                     App.nodeView.UpdateItems();
                     return;
