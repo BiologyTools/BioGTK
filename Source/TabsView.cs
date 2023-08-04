@@ -680,7 +680,20 @@ namespace BioGTK
         /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         protected void saveSeriesMenuClick(object sender, EventArgs a)
         {
-
+            filechooser.Action = FileChooserAction.Save;
+            filechooser.Title = "Save File";
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            List<string> list = new List<string>();
+            foreach (ImageView v in viewers)
+            {
+                foreach (BioImage b in v.Images)
+                {
+                    list.Add(b.ID);
+                }
+            }
+            BioImage.SaveSeries(list.ToArray(), filechooser.Filename);
+            filechooser.Hide();
         }
         /// This function is called when the user clicks the "Images to Stack" button
         /// 
