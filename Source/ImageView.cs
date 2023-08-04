@@ -342,6 +342,7 @@ namespace BioGTK
                 AForge.Bitmap bm = bitmap.ImageRGB;
                 Pixbuf pixbuf = new Pixbuf(bm.Bytes, true, 8, bm.Width, bm.Height, bm.Stride);
                 Bitmaps.Add(pixbuf);
+                bm.Dispose();
                 bi++;
             }
             UpdateView();
@@ -471,8 +472,6 @@ namespace BioGTK
             zBar.ButtonPressEvent += ZBar_ButtonPressEvent;
             tBar.ButtonPressEvent += TBar_ButtonPressEvent;
             cBar.ButtonPressEvent += CBar_ButtonPressEvent;
-
-
         }
         int bar = 0;
         System.Threading.Thread threadZ = null;
