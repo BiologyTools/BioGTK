@@ -6802,17 +6802,18 @@ namespace BioGTK
         public static bool OMESupport()
         {
             bool isMacOS = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
-            if (isMacOS && !supportDialog)
+            if (RuntimeInformation.OSArchitecture == Architecture.Arm64 && isMacOS)
             {
-                MessageDialog md = new MessageDialog(
-                null,
-                DialogFlags.DestroyWithParent,
-                MessageType.Info,
-                ButtonsType.Ok, "BioGTK currently doens't support OME images on MacOS due to dependency IKVM not supporting Mac. " +
-                "On MacOS ImageJ Tiff files, LibVips supported whole-slide images, and BioGTK Tiff files are supported.");
-                md.Run();
-                md.Destroy();
-                OmeSupport = false;
+                if(!supportDialog)
+                {
+                    MessageDialog md = new MessageDialog(
+                    null,
+                    DialogFlags.DestroyWithParent,
+                    MessageType.Info,
+                    ButtonsType.Ok, "BioGTK currently doens't support OME images on Arm64 MacOS due to dependency IKVM 8.6.2 not yet supporting Mac Arm64." +
+                    "On MacOS ImageJ Tiff files, LibVips supported whole-slide images, and BioGTK Tiff files are supported.");
+                    md.Run();
+                }
                 supportDialog = true;
                 return false;
             }

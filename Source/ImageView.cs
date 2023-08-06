@@ -389,7 +389,7 @@ namespace BioGTK
             int r = GetPreviewResolution();
             Bitmap bm;
             AForge.Imaging.Filters.ResizeBilinear re = new AForge.Imaging.Filters.ResizeBilinear(200, 80);
-            if (BioImage.OMESupport() && !SelectedImage.file.EndsWith(".tif"))
+            if (!SelectedImage.file.EndsWith(".tif"))
             {
                 BioImage b = BioImage.OpenOME(SelectedImage.file, r, false, false, true, 0, 0, SelectedImage.Resolutions[r].SizeX, SelectedImage.Resolutions[r].SizeY);
                 bm = re.Apply((Bitmap)b.Buffers[0].ImageRGB);

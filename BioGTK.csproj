@@ -3,25 +3,25 @@
     <TargetFramework>net6.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RuntimeIdentifiers>osx-x64;linux-x64;win7-x64;linux-arm64;osx-arm64</RuntimeIdentifiers>
-    <AssemblyVersion>3.3.3</AssemblyVersion>
-    <FileVersion>3.3.3</FileVersion>
+    <AssemblyVersion>3.4.0</AssemblyVersion>
+    <FileVersion>3.4.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>BioGTK</PackageId>
     <Title>BioGTK</Title>
     <PackageProjectUrl>https://github.com/BiologyTools/BioGTK</PackageProjectUrl>
     <PackageIcon>banner.jpg</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageVersion>3.3.3</PackageVersion>
+    <PackageVersion>3.4.0</PackageVersion>
     <RepositoryUrl>https://github.com/BiologyTools/BioGTK</RepositoryUrl>
     <PackageTags>Biology; GTK; ImageJ; Bio-Formats; Image-Stacks; Microscopy;</PackageTags>
     <PackageLicenseExpression> GPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Description>A .NET application &amp; library for editing &amp; annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters &amp; macro functions. Supports Windows, Linux and Mac.</Description>
-    <Version>3.3.3</Version>
+    <Version>3.4.0</Version>
     <Platforms>AnyCPU;x64;ARM64</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>Windows stability improvements.</PackageReleaseNotes>
+    <PackageReleaseNotes>Bioformats support on Mac x64. As well as better Arm64 support.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
 
@@ -244,7 +244,7 @@
     <None Include="F:\Shared\Bio\BioGTK\BioGTK\.editorconfig" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="AForgeBio" Version="1.3.3" />
+    <PackageReference Include="AForgeBio" Version="1.4.0" />
     <PackageReference Include="BioFormats.NET6" Version="7.0.0" />
     <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
     <PackageReference Include="CS-Script" Version="4.8.1" />
