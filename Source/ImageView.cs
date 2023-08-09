@@ -117,14 +117,16 @@ namespace BioGTK
             get
             {
                 int ind = SelectedImage.Coords[SelectedImage.Coordinate.Z, SelectedImage.Coordinate.C, SelectedImage.Coordinate.T];
-                return selectedImage.Buffers[ind];
+                return SelectedImage.Buffers[ind];
             }
         }
         int selectedIndex = 0;
         public int SelectedIndex
         {
             get { return selectedIndex; }
-            set { selectedIndex = value; }
+            set { selectedIndex = value;
+                Images[selectedIndex] = SelectedImage;
+            }
         }
         Menu imagesMenu;
         public static List<ROI> selectedAnnotations = new List<ROI>();
@@ -1080,7 +1082,6 @@ namespace BioGTK
                 {
                     Pixbuf pf = Bitmaps[i].ScaleSimple((int)r.W,(int)r.H, InterpType.Bilinear);
                     Gdk.CairoHelper.SetSourcePixbuf(e.Cr, pf, (int)r.X, (int)r.Y);
-                    //pf.Dispose();
                     e.Cr.Paint();
                 }
                 
@@ -1110,8 +1111,8 @@ namespace BioGTK
 
                     if (an.type == ROI.Type.Point)
                     {
-                        RectangleD p1 = ToViewSpace(an.Point.X,an.Point.Y,1,1);
-                        RectangleD p2 = ToViewSpace(an.Point.X + 1, an.Point.Y + 1,1,1);
+                        RectangleD p1 = ToViewSpace(an.Point.X, an.Point.Y, 1, 1);
+                        RectangleD p2 = ToViewSpace(an.Point.X + 1, an.Point.Y + 1, 1, 1);
 
                         e.Cr.MoveTo(p1.X, p1.Y);
                         e.Cr.LineTo(p2.X, p2.Y);
@@ -1129,8 +1130,8 @@ namespace BioGTK
                     {
                         for (int p = 0; p < an.PointsD.Count - 1; p++)
                         {
-                            RectangleD p1 = ToViewSpace(an.PointsD[p].X, an.PointsD[p].Y, 1,1);
-                            RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y,1,1);
+                            RectangleD p1 = ToViewSpace(an.PointsD[p].X, an.PointsD[p].Y, 1, 1);
+                            RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
                             e.Cr.MoveTo(p1.X, p1.Y);
                             e.Cr.LineTo(p2.X, p2.Y);
                             e.Cr.Stroke();
@@ -1152,7 +1153,7 @@ namespace BioGTK
                         e.Cr.Rectangle(rect.X, rect.Y, rect.W, rect.H);
                         e.Cr.Stroke();
                         if (!an.selected)
-                        { 
+                        {
                             e.Cr.SetSourceColor(FromColor(Color.Red));
                             foreach (RectangleD re in an.GetSelectBoxes(width))
                             {
@@ -1180,14 +1181,14 @@ namespace BioGTK
                     {
                         for (int p = 0; p < an.PointsD.Count - 1; p++)
                         {
-                            RectangleD p1 = ToViewSpace(an.PointsD[p].X, an.PointsD[p].Y, 1,1);
-                            RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y,1,1);
+                            RectangleD p1 = ToViewSpace(an.PointsD[p].X, an.PointsD[p].Y, 1, 1);
+                            RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
                             e.Cr.MoveTo(p1.X, p1.Y);
                             e.Cr.LineTo(p2.X, p2.Y);
                             e.Cr.Stroke();
                         }
 
-                        RectangleD pp1 = ToViewSpace(an.PointsD[0].X, an.PointsD[0].Y,1,1);
+                        RectangleD pp1 = ToViewSpace(an.PointsD[0].X, an.PointsD[0].Y, 1, 1);
                         RectangleD pp2 = ToViewSpace(an.PointsD[an.PointsD.Count - 1].X, an.PointsD[an.PointsD.Count - 1].Y, 1, 1);
                         e.Cr.MoveTo(pp1.X, pp1.Y);
                         e.Cr.LineTo(pp2.X, pp2.Y);
@@ -1248,11 +1249,12 @@ namespace BioGTK
                         e.Cr.LineTo(pp2.X, pp2.Y);
                         e.Cr.Stroke();
                     }
+                    else
                     if (an.type == ROI.Type.Label)
                     {
                         e.Cr.SetFontSize(an.fontSize);
                         e.Cr.SelectFontFace(an.family, Cairo.FontSlant.Normal, Cairo.FontWeight.Normal);
-                        RectangleD p = ToViewSpace(an.Point.X, an.Point.Y, 1 ,1);
+                        RectangleD p = ToViewSpace(an.Point.X, an.Point.Y, 1, 1);
                         e.Cr.MoveTo(p.X, p.Y);
                         e.Cr.ShowText(an.Text);
                         e.Cr.Stroke();
@@ -1263,6 +1265,11 @@ namespace BioGTK
                             e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
                             e.Cr.Stroke();
                         }
+                    }
+                    if (an.type == ROI.Type.Mask || an.mask != null)
+                    {
+                        Gdk.CairoHelper.SetSourcePixbuf(e.Cr, an.mask, 0, 0);
+                        e.Cr.Paint();
                     }
                     if (ROIManager.showText)
                     {
@@ -1657,6 +1664,7 @@ namespace BioGTK
             set
             {
                 selectedImage = value;
+                App.viewer.Images[App.viewer.SelectedIndex] = value;
             }
         }
         private ViewMode viewMode = ViewMode.Filtered;
@@ -1876,6 +1884,19 @@ namespace BioGTK
         public static bool mouseLeftState;
         public static ModifierType Modifiers;
         PointD mouseD = new PointD(0, 0);
+
+        public List<ROI> GetSelectedROIs()
+        {
+            List<ROI> roi = new List<ROI>();
+            foreach (ROI r in SelectedImage.Annotations)
+            {
+                if(r.selected)
+                {
+                    roi.Add(r);
+                }
+            }
+            return roi;
+        }
 
         /// This function is called when the mouse is moved over the image. It updates the mouse
         /// position, and if the user is drawing a brush stroke, it draws the stroke on the image

@@ -432,6 +432,7 @@ namespace BioGTK
             {
                 currentTool = GetTool(Tool.Type.pan);
             }
+            selectedROI.selected = true;
         }
         /// The function is called when the mouse button is released
         /// 
@@ -736,7 +737,7 @@ namespace BioGTK
                 Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(ImageView.mouseDown.X, ImageView.mouseDown.Y, d.X, d.Y);
                 UpdateView();
             }
-
+            selectedROI.selected = true;
             
         }
 

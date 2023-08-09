@@ -85,6 +85,7 @@
     <None Remove="Glade\Tools.glade" />
     <None Remove="Info.plist" />
     <None Remove="Resources\polyline.png" />
+    <None Remove="SAM\Glade\form.glade" />
   </ItemGroup>
 
   <ItemGroup>
@@ -210,6 +211,9 @@
     <Content Include="Resources\zoom_out.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <EmbeddedResource Include="SAM\Glade\form.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>
@@ -251,6 +255,8 @@
     <PackageReference Include="Dotnet.Bundle" Version="0.9.13" />
     <PackageReference Include="GtkSharp" Version="3.24.24.95" />
     <PackageReference Include="IKVM" Version="8.6.2" />
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.15.1" />
     <PackageReference Include="NetVips" Version="2.3.1" />
     <PackageReference Include="NetVips.Native" Version="8.14.3" />
     <PackageReference Include="NetVips.Native.linux-arm64" Version="8.14.3" />

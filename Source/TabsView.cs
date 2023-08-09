@@ -1,7 +1,5 @@
 ﻿using AForge;
 using Bio;
-using com.sun.corba.se.spi.orb;
-using com.sun.org.apache.xpath.@internal.functions;
 using Gtk;
 using loci.formats.gui;
 using System;
@@ -67,6 +65,8 @@ namespace BioGTK
         private MenuItem toolsMenu;
         [Builder.Object]
         private MenuItem setToolMenu;
+        [Builder.Object]
+        private MenuItem runSAMMenu;
 
         [Builder.Object]
         private MenuItem roiManagerMenu;
@@ -94,6 +94,7 @@ namespace BioGTK
         private MenuItem stackToolMenu;
         [Builder.Object]
         private MenuItem focusMenu;
+
 
         [Builder.Object]
         private MenuItem to8BitMenu;
@@ -214,6 +215,7 @@ namespace BioGTK
 
             toolsMenu.ButtonPressEvent += toolsMenuClick;
             setToolMenu.ButtonPressEvent += setToolMenuClick;
+            runSAMMenu.ButtonPressEvent += RunSAMMenu_ButtonPressEvent;
 
             roiManagerMenu.ButtonPressEvent += roiManagerMenuClick;
             exportROIsToCSVMenu.ButtonPressEvent += exportROIsToCSVMenuClick;
@@ -250,6 +252,13 @@ namespace BioGTK
             emissionMenu.ButtonPressEvent += EmissionMenu_ButtonPressEvent;
             tabsView.SwitchPage += TabsView_SwitchPage;
             this.WindowStateEvent += TabsView_WindowStateEvent;
+        }
+
+        private void RunSAMMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            SAMTool sam = SAMTool.Create();
+            if(sam.init)
+            sam.Show();
         }
 
         private void SavePyramidalMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -918,6 +927,7 @@ namespace BioGTK
         protected void to24BitMenuClick(object sender, EventArgs a)
         {
             ImageView.SelectedImage.To24Bit();
+            SelectedViewer.Images[0] = ImageView.SelectedImage;
         }
         /// It converts the selected image to 32 bit
         /// 

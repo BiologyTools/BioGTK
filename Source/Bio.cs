@@ -382,7 +382,8 @@ namespace BioGTK
             Polyline,
             Freeform,
             Ellipse,
-            Label
+            Label,
+            Mask
         }
         /* A property of a class. */
         public PointD Point
@@ -509,6 +510,7 @@ namespace BioGTK
             micron
         }
         public Type type;
+        public Gdk.Pixbuf mask;
         public static float selectBoxSize = 8f;
         private List<PointD> Points = new List<PointD>();
         public List<PointD> PointsD
@@ -2523,32 +2525,22 @@ namespace BioGTK
                     }
                 }
                 List<Bitmap> bfs = new List<Bitmap>();
-                if (Buffers.Count % 3 != 0 && Buffers.Count % 2 != 0)
-                    for (int i = 0; i < Buffers.Count; i++)
+                for (int i = 0; i < Buffers.Count; i += Channels.Count)
+                {
+                    Bitmap[] bs = new Bitmap[3];
+                    bs[0] = new Bitmap(ID, SizeX, SizeY, Buffers[i].PixelFormat, Buffers[i].Bytes, new ZCT(Buffers[i].Coordinate.Z, 0, Buffers[i].Coordinate.T), i, Buffers[i].Plane);
+                    bs[1] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 1].PixelFormat, Buffers[i + 1].Bytes, new ZCT(Buffers[i + 1].Coordinate.Z, 0, Buffers[i + 1].Coordinate.T), i + 1, Buffers[i + 1].Plane);
+                    if (Channels.Count > 2)
+                        bs[2] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 2].PixelFormat, Buffers[i + 2].Bytes, new ZCT(Buffers[i + 2].Coordinate.Z, 0, Buffers[i + 2].Coordinate.T), i + 2, Buffers[i + 2].Plane);
+                    Bitmap bbs = Bitmap.RGB8To24(bs);
+                    for (int b = 0; b < 3; b++)
                     {
-                        Bitmap bs = new Bitmap(ID, SizeX, SizeY, Buffers[i].PixelFormat, Buffers[i].Bytes, new ZCT(Buffers[i].Coordinate.Z, 0, Buffers[i].Coordinate.T), i, Buffers[i].Plane);
-                        Bitmap bbs = Bitmap.RGB16To48(bs);
-                        bs.Dispose();
-                        bs = null;
-                        bfs.Add(bbs);
+                        if (bs[b] != null)
+                            bs[b].Dispose();
+                        bs[b] = null;
                     }
-                else
-                    for (int i = 0; i < Buffers.Count; i += Channels.Count)
-                    {
-                        Bitmap[] bs = new Bitmap[3];
-                        bs[2] = new Bitmap(ID, SizeX, SizeY, Buffers[i].PixelFormat, Buffers[i].Bytes, new ZCT(Buffers[i].Coordinate.Z, 0, Buffers[i].Coordinate.T), i, Buffers[i].Plane);
-                        bs[1] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 1].PixelFormat, Buffers[i + 1].Bytes, new ZCT(Buffers[i + 1].Coordinate.Z, 0, Buffers[i + 1].Coordinate.T), i + 1, Buffers[i + 1].Plane);
-                        if (Channels.Count > 2)
-                            bs[0] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 2].PixelFormat, Buffers[i + 2].Bytes, new ZCT(Buffers[i + 2].Coordinate.Z, 0, Buffers[i + 2].Coordinate.T), i + 2, Buffers[i + 2].Plane);
-                        Bitmap bbs = Bitmap.RGB8To24(bs);
-                        for (int b = 0; b < 3; b++)
-                        {
-                            if (bs[b] != null)
-                                bs[b].Dispose();
-                            bs[b] = null;
-                        }
-                        bfs.Add(bbs);
-                    }
+                    bfs.Add(bbs);
+                }
                 Buffers = bfs;
                 UpdateCoords(SizeZ, 1, SizeT);
             }
@@ -6358,8 +6350,6 @@ namespace BioGTK
             if (bm != null)
                 bm.Dispose();
             bm = new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, null, littleEndian, interleaved);
-            if (bm.isRGB && !interleaved)
-                bm.SwitchRedBlue();
             return bm;
         }
         /// This function sets the minimum and maximum values of the image to the minimum and maximum
@@ -7526,7 +7516,6 @@ namespace BioGTK
                     }
                 }
             }
-
             for (int c = 0; c < b.Channels.Count; c++)
             {
                 Statistics[] sts = new Statistics[b.Buffers[0].RGBChannelsCount];
@@ -7543,7 +7532,13 @@ namespace BioGTK
                 {
                     for (int t = 0; t < b.SizeT; t++)
                     {
-                        int ind = b.Coords[z, c, t];
+                        int ind;
+                        if(b.Channels.Count > b.SizeC)
+                        {
+                            ind = b.Coords[z, 0, t];
+                        }
+                        else 
+                            ind = b.Coords[z, c, t];
                         if (b.Buffers[ind].RGBChannelsCount == 1)
                             sts[0].AddStatistics(b.Buffers[ind].Stats[0]);
                         else
