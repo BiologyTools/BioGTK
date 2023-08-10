@@ -27,7 +27,7 @@ A .NET application & library for editing & annotating various microscopy image f
 
 - Exporting ROI's from each OME image in a folder of images to CSV.
 
-- Easy freeform annotation with magic select tool which selects based on blob detection.
+- Easy segmentation with Segment Anything (SAM). Required model files downloadable from [Releases.](https://github.com/BiologyTools/BioGTK/releases/tag/SAM-Models)
 
 ## Dependencies
 - [BioFormats.Net](https://github.com/GDanovski/BioFormats.Net)
@@ -38,6 +38,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - [ImageJ](https://imagej.nih.gov/ij/) (Only needed when running ImageJ macro commands)
 - [ScottPlot](https://oxyplot.github.io/)
 - [LibVips](https://www.libvips.org/install.html) (Optional)
+- [Segment-Anything-CSharp](https://github.com/AIDajiangtang/Segment-Anything-CSharp) (Optional)
 
 ## Licenses
 - BioGTK [GPL3](https://www.gnu.org/licenses/gpl-3.0.en.html)
@@ -48,6 +49,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - Cs-script [MIT](https://github.com/oleg-shilo/cs-script/blob/master/LICENSE)
 - ScottPlot [MIT](https://github.com/ScottPlot/ScottPlot/blob/main/LICENSE)
 - LibVips [LGPL]([https://www.libvips.org/install.html](https://github.com/libvips/libvips/blob/master/LICENSE))
+- Segment-Anything-CSharp [Apache License 2.0](https://github.com/AIDajiangtang/Segment-Anything-CSharp/blob/main/LICENSE)
 
 ## Scripting
 -  Save scripts into "StartupPath/Scripts" with ".cs" ending.
