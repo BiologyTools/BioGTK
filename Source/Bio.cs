@@ -6200,6 +6200,8 @@ namespace BioGTK
                     progressValue = (float)p / (float)pages;
                     byte[] bytes = reader.openBytes(p);
                     bf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(z, c, t), p, null, b.littleEndian, inter);
+                    if (bf.isRGB && !inter && b.littleEndian)
+                        bf.SwitchRedBlue();
                     b.Buffers.Add(bf);
                 }
             else
@@ -6350,6 +6352,8 @@ namespace BioGTK
             if (bm != null)
                 bm.Dispose();
             bm = new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, null, littleEndian, interleaved);
+            if (bm.isRGB && !interleaved && littleEndian)
+                bm.SwitchRedBlue();
             return bm;
         }
         /// This function sets the minimum and maximum values of the image to the minimum and maximum
