@@ -455,6 +455,7 @@ namespace BioGTK
                 an.AddPoint(new PointD(e.X, e.Y));
                 an.type = ROI.Type.Point;
                 an.coord = App.viewer.GetCoordinate();
+                an.selected = true;
                 ImageView.SelectedImage.Annotations.Add(an);
             }
             else
@@ -570,12 +571,7 @@ namespace BioGTK
                     DrawColor = ImageView.SelectedBuffer.GetPixel((int)mouseU.X, (int)mouseU.Y);
                 }
             }
-            /*
-            if(Tools.currentTool.type == Tool.Type.select)
-            {
-                currentTool.Rectangle = new RectangleD(0, 0, 0, 0);
-            }
-            */
+            selectedROI.selected = true;
             UpdateView();
         }
         /// This function is called when the mouse is moved. It is used to update the view when the user

@@ -111,6 +111,12 @@ namespace BioGTK
                 pxHmicron = value;
             }
         }
+        bool allowNavigation;
+        public bool AllowNavigation
+        {
+            get { return allowNavigation; }
+            set { allowNavigation = value; }
+        }
        /* Getting the selected buffer from the selected image. */
         public static AForge.Bitmap SelectedBuffer
         {
@@ -1732,6 +1738,7 @@ namespace BioGTK
             get { return origin; }
             set
             {
+                if(AllowNavigation)
                 origin = value;
             }
         }
@@ -2155,7 +2162,7 @@ namespace BioGTK
                 {
                     foreach (ROI an in bi.Annotations)
                     {
-                        if (an.Rect.ToRectangleF().IntersectsWith(new RectangleF((float)pointer.X, (float)pointer.Y,1,1)))
+                        if (an.Rect.ToRectangleF().IntersectsWith(new RectangleF((float)pointer.X, (float)pointer.Y,ROI.selectBoxSize, ROI.selectBoxSize)))
                         {
                             //We clicked inside an ROI so selection should not be cleared.
                             clearSel = false;

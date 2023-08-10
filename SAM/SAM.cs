@@ -15,7 +15,7 @@ namespace BioGTK
     /// <summary>
     /// Segment Anything
     /// </summary>
-    class SAM
+    class SAM : IDisposable
     {
         public static SAM theSingleton = null;
         InferenceSession mEncoder;
@@ -139,6 +139,13 @@ namespace BioGTK
             var outputmask = segmask.First().AsTensor<float>().ToArray();
             return outputmask;
            
+        }
+        public void Dispose()
+        {
+            mEncoder.Dispose();
+            mDecoder.Dispose();
+            mImgEmbedding = null;
+            GC.Collect();
         }
     }
 }

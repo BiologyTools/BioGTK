@@ -19,7 +19,6 @@ namespace BioGTK
         #region Properties
         ImageView view;
         SAM mSam = SAM.Instance();
-        CLIP mCLIP = CLIP.Instance();
         List<Promotion> mPromotionList = new List<Promotion>();
         Pixbuf mask;
         public bool init = false;
@@ -54,7 +53,8 @@ namespace BioGTK
         private Gtk.CheckMenuItem autoSaveMenu;
         [Builder.Object]
         private Gtk.Entry textBox;
-
+        [Builder.Object]
+        private Gtk.Scale thresholdBar;
 #pragma warning restore 649
 
         #endregion
@@ -86,13 +86,33 @@ namespace BioGTK
                 dialog.Run();
                 return;
             }
-            BioImage bb = ImageView.SelectedImage.Copy();
+            //Next lets make sure the image is a single plane as memory requirments make handling multiple images difficult.
+            if (ImageView.SelectedImage.SizeZ != 1 || ImageView.SelectedImage.SizeC != 1 || ImageView.SelectedImage.SizeT != 1)
+            {
+                MessageDialog dialog = new MessageDialog(
+             this,
+             DialogFlags.Modal,
+             MessageType.Info,
+             ButtonsType.Ok,
+             "SAM currently only supports single RGB24 plane images. Reduce image to single plane and ensure 24 bit RGB format.");
+                dialog.Run();
+                return;
+            }
+            BioImage bb = ImageView.SelectedImage;
             bb.To24Bit();
             bb.isPyramidal = true;
             view = ImageView.Create(bb);
             view.Show();
             _builder = builder;
             builder.Autoconnect(this);
+            thresholdBar.Adjustment.Lower = 0;
+            thresholdBar.Adjustment.Upper = 255;
+            filechooser =
+        new Gtk.FileChooserDialog("Choose file to open",
+            this,
+            FileChooserAction.Open,
+            "Cancel", ResponseType.Cancel,
+            "OK", ResponseType.Accept);
             Directory.CreateDirectory("Masks");
             SetupHandlers();
             Init();
@@ -107,12 +127,17 @@ namespace BioGTK
         protected void SetupHandlers()
         {
             saveSelected.ButtonPressEvent += saveSelectedTiffClick;
-            view.ButtonPressEvent += PictureBox_ButtonPressEvent;
             view.ButtonReleaseEvent += PictureBox_ButtonReleaseEvent;
             addMaskMenu.ButtonPressEvent += AddMaskMenu_ButtonPressEvent;
             removeMaskMenu.ButtonPressEvent += RemoveMaskMenu_ButtonPressEvent;
             setAutoSave.ButtonPressEvent += SetAutoSave_ButtonPressEvent;
+            this.DeleteEvent += SAMTool_DeleteEvent;
             textBox.Changed += TextBox_Changed;
+        }
+
+        private void SAMTool_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            mSam.Dispose();
         }
 
         private void SetAutoSave_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -145,6 +170,7 @@ namespace BioGTK
             if (ImageView.SelectedImage == null)
                 return;
             ImageView.SelectedImage.isPyramidal = true;
+            this.ShowStatus("Loading ONNX Model");
             this.mSam.LoadONNXModel();
             this.ShowStatus("ONNX Model Loaded");
             this.mSam.Encode(ImageView.SelectedImage);//Image Embedding
@@ -153,14 +179,34 @@ namespace BioGTK
 
         private void PictureBox_ButtonReleaseEvent(object o, ButtonReleaseEventArgs e)
         {
-            if (Tools.currentTool.type != Tools.Tool.Type.rect)
-                return;
             if (view.Images.Count < 1)
                 return;
             if (view.Images[0].Annotations.Count == 0)
                 return;
             if (SelectedROI == null)
                 return;
+
+            //this.pictureBox.CaptureMouse();
+            if (Tools.currentTool.type == Tools.Tool.Type.point && view.AnnotationsRGB.Count > 0)
+            {
+                OpType type = this.addMaskMenu.Active == true ? OpType.ADD : OpType.REMOVE;
+                //Brush brush = type == OpType.ADD ? Brushes.Red : Brushes.Black;
+                Promotion promtt = new PointPromotion(type);
+                (promtt as PointPromotion).X = (int)e.Event.X;
+                (promtt as PointPromotion).Y = (int)e.Event.Y;
+                ShowStatus("Decode Started");
+                Transforms trs = new Transforms(1024);
+                PointPromotion ptn = trs.ApplyCoords((promtt as PointPromotion), ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
+                this.mPromotionList.Add(ptn);
+                float[] maskk = this.mSam.Decode(this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
+                this.ShowMask(maskk, ImageView.SelectedBuffer.Width,ImageView.SelectedBuffer.Height);
+                ShowStatus("Decode Done");
+                this.mPromotionList.Clear();
+            }
+
+            if (Tools.currentTool.type != Tools.Tool.Type.rect)
+                return;
+            
             BoxPromotion promt = new BoxPromotion();
             (promt as BoxPromotion).mLeftUp.X = (int)this.SelectedROI.X;
             (promt as BoxPromotion).mLeftUp.Y = (int)this.SelectedROI.Y;
@@ -173,28 +219,6 @@ namespace BioGTK
             float[] mask = this.mSam.Decode(this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
             ShowMask(mask,ImageView.SelectedBuffer.Width,ImageView.SelectedBuffer.Height);
             this.mPromotionList.Clear();
-        }
-
-        private void PictureBox_ButtonPressEvent(object o, ButtonPressEventArgs args)
-        {
-            //this.pictureBox.CaptureMouse();
-            if (Tools.currentTool.type == Tools.Tool.Type.point && view.AnnotationsRGB.Count > 0)
-            {
-                OpType type = this.addMaskMenu.Active == true ? OpType.ADD : OpType.REMOVE;
-                //Brush brush = type == OpType.ADD ? Brushes.Red : Brushes.Black;
-                Promotion promt = new PointPromotion(type);
-                (promt as PointPromotion).X = (int)args.Event.X;
-                (promt as PointPromotion).Y = (int)args.Event.Y;
-                ShowStatus("Decode Started");
-                Transforms ts = new Transforms(1024);
-                PointPromotion ptn = ts.ApplyCoords((promt as PointPromotion), ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
-                this.mPromotionList.Add(ptn);
-                float[] mask = this.mSam.Decode(this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
-                this.ShowMask(mask, ImageView.SelectedBuffer.Width,ImageView.SelectedBuffer.Height);
-                ShowStatus("Decode Done");
-                this.mPromotionList.Clear();
-            }
-
         }
 
         /// It creates a file chooser dialog, and if the user selects a file, it saves the selected
@@ -210,7 +234,7 @@ namespace BioGTK
             filechooser.Title = "Save File";
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            BioImage.SaveFile(filechooser.Filename, ImageView.SelectedImage.ID);
+            mask.Save(filechooser.Filename, "tiff");
             filechooser.Hide();
         }
         #endregion
@@ -225,7 +249,7 @@ namespace BioGTK
                 for (int x = 0; x < width; x++)
                 {
                     int ind = y * width + x;
-                    if (mask[ind] > 0)
+                    if (mask[ind] > thresholdBar.Value)
                     {
                         pixelData[4 * ind] = 255;// Blue
                         pixelData[4 * ind + 1] = 255;// Green
@@ -240,7 +264,7 @@ namespace BioGTK
             this.SelectedROI.mask = pf;
             if (autoSaveMenu.Active)
             {
-                pf.Save(autoSavePath + "/" + textBox.Text + id + ".tiff", "tiff");
+                pf.Save(autoSavePath + "/" + textBox.Text + id + ".tif", "tiff");
                 id++;
             }
             this.mask = pf;

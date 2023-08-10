@@ -7,7 +7,7 @@
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">SAM Tool</property>
     <property name="resizable">False</property>
-    <property name="default-width">200</property>
+    <property name="default-width">250</property>
     <child>
       <object class="GtkBox">
         <property name="visible">True</property>
@@ -111,6 +111,30 @@
             <property name="expand">False</property>
             <property name="fill">True</property>
             <property name="position">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">Threshold</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkScale" id="thresholdBar">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="round-digits">1</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">3</property>
           </packing>
         </child>
       </object>
