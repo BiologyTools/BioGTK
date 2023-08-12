@@ -6307,17 +6307,17 @@ namespace BioGTK
                 reader.close();
                 reader.setMetadataStore(b.meta);
                 Console.WriteLine(b.file);
-                b.file = b.file.Replace("\\", "/");
                 reader.setId(b.file);
             }
             else
             {
-                if (curfile != b.file)
+                string fi = b.file.Replace("\\", "/");
+                string cf = curfile.Replace("\\", "/");
+                if (cf != fi)
                 {
                     reader.close();
                     b.meta = (IMetadata)((OMEXMLService)factory.getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
                     reader.setMetadataStore(b.meta);
-                    b.file = b.file.Replace("\\", "/");
                     reader.setId(b.file);
                 }
             }

@@ -103,6 +103,7 @@ namespace BioGTK
             bb.isPyramidal = true;
             view = ImageView.Create(bb);
             view.Show();
+            view.AllowNavigation = false;
             _builder = builder;
             builder.Autoconnect(this);
             thresholdBar.Adjustment.Lower = 0;

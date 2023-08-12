@@ -111,7 +111,7 @@ namespace BioGTK
                 pxHmicron = value;
             }
         }
-        bool allowNavigation;
+        bool allowNavigation = true;
         public bool AllowNavigation
         {
             get { return allowNavigation; }
@@ -1748,6 +1748,8 @@ namespace BioGTK
             get { return pyramidalOrigin; }
             set
             {
+                if (!AllowNavigation)
+                    return;
                 if (scrollH.Adjustment.Upper > value.X && value.X > -1)
                 {
                     scrollH.Adjustment.Value = value.X;

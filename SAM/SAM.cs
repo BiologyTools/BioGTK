@@ -45,10 +45,10 @@ namespace BioGTK
                 this.mDecoder.Dispose();
 
             string exePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            string encode_model_path = exePath + @"\encoder-quant.onnx";
+            string encode_model_path = exePath + "/encoder-quant.onnx";
             this.mEncoder = new InferenceSession(encode_model_path);
 
-            string decode_model_path = exePath + @"\decoder-quant.onnx";
+            string decode_model_path = exePath + "/decoder-quant.onnx";
             this.mDecoder = new InferenceSession(decode_model_path);
         }
         /// <summary>
