@@ -8,7 +8,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Gdk;
 using System.Threading;
-using Pango;
 using System.IO;
 
 namespace BioGTK
@@ -87,7 +86,7 @@ namespace BioGTK
                 return;
             }
             //Next lets make sure the image is a single plane as memory requirments make handling multiple images difficult.
-            if (ImageView.SelectedImage.SizeZ != 1 || ImageView.SelectedImage.SizeC != 1 || ImageView.SelectedImage.SizeT != 1)
+            if (ImageView.SelectedImage.SizeZ != 1 || ImageView.SelectedImage.SizeC != 1 || ImageView.SelectedImage.SizeT != 1 || ImageView.SelectedBuffer.PixelFormat != PixelFormat.Format24bppRgb)
             {
                 MessageDialog dialog = new MessageDialog(
              this,
@@ -98,12 +97,7 @@ namespace BioGTK
                 dialog.Run();
                 return;
             }
-            BioImage bb = ImageView.SelectedImage;
-            bb.To24Bit();
-            bb.isPyramidal = true;
-            view = ImageView.Create(bb);
-            view.Show();
-            view.AllowNavigation = false;
+            view = App.viewer;
             _builder = builder;
             builder.Autoconnect(this);
             thresholdBar.Adjustment.Lower = 0;
@@ -170,7 +164,6 @@ namespace BioGTK
         {
             if (ImageView.SelectedImage == null)
                 return;
-            ImageView.SelectedImage.isPyramidal = true;
             this.ShowStatus("Loading ONNX Model");
             this.mSam.LoadONNXModel();
             this.ShowStatus("ONNX Model Loaded");
@@ -186,6 +179,8 @@ namespace BioGTK
                 return;
             if (SelectedROI == null)
                 return;
+            PointD pointer = view.ImageToViewSpace(e.Event.X, e.Event.Y);
+            PointD mouse = new PointD(((pointer.X - view.Origin.X) / ImageView.SelectedImage.Volume.Width) * ImageView.SelectedImage.SizeX, ((pointer.Y - view.Origin.Y) / ImageView.SelectedImage.Volume.Height) * ImageView.SelectedImage.SizeY);
 
             //this.pictureBox.CaptureMouse();
             if (Tools.currentTool.type == Tools.Tool.Type.point && view.AnnotationsRGB.Count > 0)
@@ -193,8 +188,8 @@ namespace BioGTK
                 OpType type = this.addMaskMenu.Active == true ? OpType.ADD : OpType.REMOVE;
                 //Brush brush = type == OpType.ADD ? Brushes.Red : Brushes.Black;
                 Promotion promtt = new PointPromotion(type);
-                (promtt as PointPromotion).X = (int)e.Event.X;
-                (promtt as PointPromotion).Y = (int)e.Event.Y;
+                (promtt as PointPromotion).X = (int)mouse.X;
+                (promtt as PointPromotion).Y = (int)mouse.Y;
                 ShowStatus("Decode Started");
                 Transforms trs = new Transforms(1024);
                 PointPromotion ptn = trs.ApplyCoords((promtt as PointPromotion), ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
@@ -209,10 +204,10 @@ namespace BioGTK
                 return;
             
             BoxPromotion promt = new BoxPromotion();
-            (promt as BoxPromotion).mLeftUp.X = (int)this.SelectedROI.X;
-            (promt as BoxPromotion).mLeftUp.Y = (int)this.SelectedROI.Y;
-            (promt as BoxPromotion).mRightBottom.X = (int)this.SelectedROI.X + (int)this.SelectedROI.W;
-            (promt as BoxPromotion).mRightBottom.Y = (int)this.SelectedROI.Y + (int)this.SelectedROI.H;
+            (promt as BoxPromotion).mLeftUp.X = (int)SelectedROI.PointsImage[0].X;
+            (promt as BoxPromotion).mLeftUp.Y = (int)SelectedROI.PointsImage[0].Y;
+            (promt as BoxPromotion).mRightBottom.X = (int)SelectedROI.PointsImage[3].X;
+            (promt as BoxPromotion).mRightBottom.Y = (int)SelectedROI.PointsImage[3].Y;
 
             Transforms ts = new Transforms(1024);
             var pb = ts.ApplyBox(promt, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);

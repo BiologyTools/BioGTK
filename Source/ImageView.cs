@@ -1044,6 +1044,8 @@ namespace BioGTK
         {
             if ((Bitmaps.Count == 0 || Bitmaps.Count != Images.Count))
                 UpdateImages();
+            
+            
             //e.Cr.Translate(-(pictureBox.AllocatedWidth / 2),-(pictureBox.AllocatedHeight / 2));
             e.Cr.Scale(Scale.Width, Scale.Height);
             RectangleD rr = ToViewSpace(PointD.MinX, PointD.MinY, PointD.MaxX - PointD.MinX, PointD.MaxY - PointD.MinY);
@@ -1089,6 +1091,15 @@ namespace BioGTK
                     Pixbuf pf = Bitmaps[i].ScaleSimple((int)r.W,(int)r.H, InterpType.Bilinear);
                     Gdk.CairoHelper.SetSourcePixbuf(e.Cr, pf, (int)r.X, (int)r.Y);
                     e.Cr.Paint();
+                    foreach (ROI an in im.Annotations)
+                    {
+                        if (an.type == ROI.Type.Mask || an.mask != null)
+                        {
+                            Pixbuf p = an.mask.ScaleSimple((int)r.W, (int)r.H, InterpType.Bilinear);
+                            Gdk.CairoHelper.SetSourcePixbuf(e.Cr, p, r.X, r.Y);
+                            e.Cr.Paint();
+                        }
+                    }
                 }
                 
                 foreach (ROI an in im.Annotations)
@@ -1272,11 +1283,7 @@ namespace BioGTK
                             e.Cr.Stroke();
                         }
                     }
-                    if (an.type == ROI.Type.Mask || an.mask != null)
-                    {
-                        Gdk.CairoHelper.SetSourcePixbuf(e.Cr, an.mask, 0, 0);
-                        e.Cr.Paint();
-                    }
+                    
                     if (ROIManager.showText)
                     {
                         e.Cr.SetFontSize(an.fontSize);
@@ -1329,7 +1336,6 @@ namespace BioGTK
                     e.Cr.Stroke();
                 }
             }
-
         }
 
         /// If the scroll direction is up, and the value of the scrollbar is less than the upper limit,
