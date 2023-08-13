@@ -74,7 +74,8 @@ namespace BioGTK
         protected SAMTool(Builder builder, IntPtr handle) : base(handle)
         {
             //First lets make sure the model files are installed.
-            if(!File.Exists("decoder-quant.onnx") || !File.Exists("encoder-quant.onnx"))
+            string app = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            if (!File.Exists(app + "/decoder-quant.onnx") || !File.Exists(app + "/encoder-quant.onnx"))
             {
                 MessageDialog dialog = new MessageDialog(
              this,
