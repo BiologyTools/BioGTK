@@ -63,7 +63,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - Download the BioGTK application for either OSX-x64 or OSX-Arm from releases.
 - Make the file executable by opening terminal in the extracted folder and running "chmod 755 BioGTKApp"
 - Optionally install [LibVips](https://www.libvips.org/install.html) package for whole-slide support with homebrew.
-- Optionally install Onnx Runtime by running "brew install onnxruntime".
+- Optionally install Onnx Runtime by running "brew install onnxruntime" for running SAM.
 
 ## Windows Installation
 - Install package manager [MSYS2.](https://github.com/GtkSharp/GtkSharp/wiki/Installing-Gtk-on-Windows) to install package GTK3. (Required for GTK Apps.)
