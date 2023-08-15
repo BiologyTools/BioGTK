@@ -25,12 +25,12 @@
         </child>
         <child>
           <object class="GtkComboBox" id="stackABox">
-            <property name="width-request">246</property>
+            <property name="width-request">230</property>
             <property name="visible">True</property>
             <property name="can-focus">False</property>
           </object>
           <packing>
-            <property name="x">50</property>
+            <property name="x">70</property>
             <property name="y">6</property>
           </packing>
         </child>
@@ -94,6 +94,9 @@
             <property name="width-request">100</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
+            <property name="climb-rate">1</property>
+            <property name="numeric">True</property>
+            <property name="value">1</property>
           </object>
           <packing>
             <property name="x">33</property>
@@ -104,6 +107,9 @@
           <object class="GtkSpinButton" id="zEndBox">
             <property name="visible">True</property>
             <property name="can-focus">True</property>
+            <property name="climb-rate">1</property>
+            <property name="numeric">True</property>
+            <property name="value">1</property>
           </object>
           <packing>
             <property name="x">173</property>
@@ -114,6 +120,9 @@
           <object class="GtkSpinButton" id="cStartBox">
             <property name="visible">True</property>
             <property name="can-focus">True</property>
+            <property name="climb-rate">1</property>
+            <property name="numeric">True</property>
+            <property name="value">1</property>
           </object>
           <packing>
             <property name="x">33</property>
@@ -125,6 +134,9 @@
             <property name="width-request">100</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
+            <property name="climb-rate">1</property>
+            <property name="numeric">True</property>
+            <property name="value">1</property>
           </object>
           <packing>
             <property name="x">173</property>
@@ -136,6 +148,9 @@
             <property name="width-request">100</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
+            <property name="climb-rate">1</property>
+            <property name="numeric">True</property>
+            <property name="value">1</property>
           </object>
           <packing>
             <property name="x">33</property>
@@ -147,6 +162,9 @@
             <property name="width-request">100</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
+            <property name="climb-rate">1</property>
+            <property name="numeric">True</property>
+            <property name="value">1</property>
           </object>
           <packing>
             <property name="x">173</property>
@@ -186,7 +204,7 @@
             <property name="can-focus">False</property>
           </object>
           <packing>
-            <property name="x">58</property>
+            <property name="x">70</property>
             <property name="y">237</property>
           </packing>
         </child>

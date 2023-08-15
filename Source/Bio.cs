@@ -76,10 +76,12 @@ namespace BioGTK
         public static int GetImageCountByName(string s)
         {
             int i = 0;
-            string name = Path.GetFileNameWithoutExtension(s);
             for (int im = 0; im < images.Count; im++)
             {
-                if (images[im].ID == s)
+                string name = images[im].ID;
+                int sti = name.LastIndexOf("-");
+                string st = name.Remove(sti);
+                if (images[im].ID.Contains(st))
                     i++;
             }
             return i;
@@ -95,14 +97,12 @@ namespace BioGTK
             int i = Images.GetImageCountByName(s);
             if (i == 0)
                 return Path.GetFileName(s);
-            string test = Path.GetFileName(s);
             string name = Path.GetFileNameWithoutExtension(s);
             string ext = Path.GetExtension(s);
             int sti = name.LastIndexOf("-");
             if (sti == -1)
             {
-                return name + "-" + i + ext;
-
+                return name + "-" + (i) + ext;
             }
             else
             {
@@ -111,10 +111,10 @@ namespace BioGTK
                 int ind;
                 if (int.TryParse(sta, out ind))
                 {
-                    return stb + "-" + (ind + 1).ToString() + ext;
+                    return stb + "-" + (i+1).ToString() + ext;
                 }
                 else
-                    return name + "-" + i + ext;
+                    return name + "-" + (i+1) + ext;
             }
             //
         }
@@ -2486,6 +2486,7 @@ namespace BioGTK
                 for (int i = 0; i < Buffers.Count; i++)
                 {
                     Buffers[i] = Bitmap.To24Bit(Buffers[i]);
+                    Buffers[i].SwitchRedBlue();
                 }
                 if (Channels.Count == 4)
                 {
@@ -2525,32 +2526,41 @@ namespace BioGTK
                     }
                 }
                 List<Bitmap> bfs = new List<Bitmap>();
-                for (int i = 0; i < Buffers.Count; i += Channels.Count)
-                {
-                    Bitmap[] bs = new Bitmap[3];
-                    bs[0] = new Bitmap(ID, SizeX, SizeY, Buffers[i].PixelFormat, Buffers[i].Bytes, new ZCT(Buffers[i].Coordinate.Z, 0, Buffers[i].Coordinate.T), i, Buffers[i].Plane);
-                    bs[1] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 1].PixelFormat, Buffers[i + 1].Bytes, new ZCT(Buffers[i + 1].Coordinate.Z, 0, Buffers[i + 1].Coordinate.T), i + 1, Buffers[i + 1].Plane);
-                    if (Channels.Count > 2)
-                        bs[2] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 2].PixelFormat, Buffers[i + 2].Bytes, new ZCT(Buffers[i + 2].Coordinate.Z, 0, Buffers[i + 2].Coordinate.T), i + 2, Buffers[i + 2].Plane);
-                    Bitmap bbs = Bitmap.RGB8To24(bs);
-                    for (int b = 0; b < 3; b++)
+                if (Buffers.Count % 3 != 0 && Buffers.Count % 2 != 0)
+                    for (int i = 0; i < Buffers.Count; i++)
                     {
-                        if (bs[b] != null)
-                            bs[b].Dispose();
-                        bs[b] = null;
+                        Bitmap bs = new Bitmap(ID, SizeX, SizeY, Buffers[i].PixelFormat, Buffers[i].Bytes, new ZCT(Buffers[i].Coordinate.Z, 0, Buffers[i].Coordinate.T), i, Buffers[i].Plane);
+                        Bitmap bbs = Bitmap.RGB16To48(bs);
+                        bs.Dispose();
+                        bs = null;
+                        bfs.Add(bbs);
                     }
-                    bfs.Add(bbs);
-                }
+                else
+                    for (int i = 0; i < Buffers.Count; i += Channels.Count)
+                    {
+                        Bitmap[] bs = new Bitmap[3];
+                        bs[2] = new Bitmap(ID, SizeX, SizeY, Buffers[i].PixelFormat, Buffers[i].Bytes, new ZCT(Buffers[i].Coordinate.Z, 0, Buffers[i].Coordinate.T), i, Buffers[i].Plane);
+                        bs[1] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 1].PixelFormat, Buffers[i + 1].Bytes, new ZCT(Buffers[i + 1].Coordinate.Z, 0, Buffers[i + 1].Coordinate.T), i + 1, Buffers[i + 1].Plane);
+                        if (Channels.Count > 2)
+                            bs[0] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 2].PixelFormat, Buffers[i + 2].Bytes, new ZCT(Buffers[i + 2].Coordinate.Z, 0, Buffers[i + 2].Coordinate.T), i + 2, Buffers[i + 2].Plane);
+                        Bitmap bbs = Bitmap.RGB8To24(bs);
+                        for (int b = 0; b < 3; b++)
+                        {
+                            if (bs[b] != null)
+                                bs[b].Dispose();
+                            bs[b] = null;
+                        }
+                        bfs.Add(bbs);
+                    }
                 Buffers = bfs;
                 UpdateCoords(SizeZ, 1, SizeT);
             }
-
+            Recorder.AddLine("Bio.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To24Bit();");
             AutoThreshold(this, true);
             StackThreshold(false);
             App.viewer.UpdateGUI();
             App.viewer.UpdateImages();
             App.viewer.UpdateView();
-            Recorder.AddLine("Bio.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To24Bit();");
         }
         /// Converts the image to 32 bit.
         public void To32Bit()
@@ -2588,6 +2598,7 @@ namespace BioGTK
                     for (int i = 0; i < Buffers.Count; i++)
                     {
                         Buffers[i].Image = AForge.Imaging.Image.Convert8bppTo16bpp(Buffers[i]);
+                        Buffers[i].SwitchRedBlue();
                     }
                 }
                 List<Bitmap> bfs = new List<Bitmap>();
@@ -2605,10 +2616,10 @@ namespace BioGTK
                     for (int i = 0; i < Buffers.Count; i += Channels.Count)
                     {
                         Bitmap[] bs = new Bitmap[3];
-                        bs[0] = new Bitmap(ID, SizeX, SizeY, Buffers[i].PixelFormat, Buffers[i].Bytes, new ZCT(Buffers[i].Coordinate.Z, 0, Buffers[i].Coordinate.T), i, Buffers[i].Plane);
+                        bs[0] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 2].PixelFormat, Buffers[i+2].Bytes, new ZCT(Buffers[i+2].Coordinate.Z, 0, Buffers[i+2].Coordinate.T), i + 2, Buffers[i+2].Plane);
                         bs[1] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 1].PixelFormat, Buffers[i + 1].Bytes, new ZCT(Buffers[i + 1].Coordinate.Z, 0, Buffers[i + 1].Coordinate.T), i + 1, Buffers[i + 1].Plane);
                         if (Channels.Count > 2)
-                            bs[2] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 2].PixelFormat, Buffers[i + 2].Bytes, new ZCT(Buffers[i + 2].Coordinate.Z, 0, Buffers[i + 2].Coordinate.T), i + 2, Buffers[i + 2].Plane);
+                            bs[2] = new Bitmap(ID, SizeX, SizeY, Buffers[i].PixelFormat, Buffers[i].Bytes, new ZCT(Buffers[i].Coordinate.Z, 0, Buffers[i].Coordinate.T), i, Buffers[i].Plane);
                         Bitmap bbs = Bitmap.RGB16To48(bs);
                         for (int b = 0; b < 3; b++)
                         {
@@ -3169,6 +3180,7 @@ namespace BioGTK
                 Thread.Sleep(100);
             } while (b.Buffers[b.Buffers.Count - 1].Stats == null);
             Statistics.ClearCalcBuffer();
+            b.Resolutions.Add(new BioGTK.Resolution(b.Buffers[0].SizeX, b.Buffers[0].SizeY, b.Buffers[0].PixelFormat, b.PhysicalSizeX, b.PhysicalSizeY, b.PhysicalSizeZ, b.StageSizeX, b.StageSizeY, b.StageSizeZ));
             AutoThreshold(b, false);
             if (b.bitsPerPixel > 8)
                 b.StackThreshold(true);
@@ -3316,6 +3328,8 @@ namespace BioGTK
                 Thread.Sleep(100);
             } while (bi.Buffers[bi.Buffers.Count - 1].Stats == null);
             Statistics.ClearCalcBuffer();
+            bi.Resolutions.Add(new BioGTK.Resolution(b.Buffers[0].SizeX, b.Buffers[0].SizeY, b.Buffers[0].PixelFormat, b.PhysicalSizeX, b.PhysicalSizeY, b.PhysicalSizeZ, b.StageSizeX, b.StageSizeY, b.StageSizeZ));
+
             AutoThreshold(bi, false);
             if (bi.bitsPerPixel > 8)
                 bi.StackThreshold(true);
@@ -3359,6 +3373,7 @@ namespace BioGTK
                 Thread.Sleep(100);
             } while (bi.Buffers[bi.Buffers.Count - 1].Stats == null);
             Statistics.ClearCalcBuffer();
+            bi.Resolutions.Add(new BioGTK.Resolution(b.Buffers[0].SizeX, b.Buffers[0].SizeY, b.Buffers[0].PixelFormat, b.PhysicalSizeX, b.PhysicalSizeY, b.PhysicalSizeZ, b.StageSizeX, b.StageSizeY, b.StageSizeZ));
             AutoThreshold(bi, false);
             if (bi.bitsPerPixel > 8)
                 bi.StackThreshold(true);
@@ -3379,7 +3394,6 @@ namespace BioGTK
                 BioImage ri = new BioImage(Path.GetFileNameWithoutExtension(ID) + "-1" + Path.GetExtension(ID));
                 BioImage gi = new BioImage(Path.GetFileNameWithoutExtension(ID) + "-2" + Path.GetExtension(ID));
                 BioImage bi = new BioImage(Path.GetFileNameWithoutExtension(ID) + "-3" + Path.GetExtension(ID));
-
                 ri.sizeC = 1;
                 gi.sizeC = 1;
                 bi.sizeC = 1;
@@ -3440,7 +3454,9 @@ namespace BioGTK
                 {
                     Thread.Sleep(100);
                 } while (bi.Buffers[bi.Buffers.Count - 1].Stats == null);
-
+                ri.Resolutions.Add(new BioGTK.Resolution(Buffers[0].SizeX, Buffers[0].SizeY, Buffers[0].PixelFormat, PhysicalSizeX, PhysicalSizeY, PhysicalSizeZ, StageSizeX, StageSizeY, StageSizeZ));
+                gi.Resolutions.Add(new BioGTK.Resolution(Buffers[0].SizeX, Buffers[0].SizeY, Buffers[0].PixelFormat, PhysicalSizeX, PhysicalSizeY, PhysicalSizeZ, StageSizeX, StageSizeY, StageSizeZ));
+                bi.Resolutions.Add(new BioGTK.Resolution(Buffers[0].SizeX, Buffers[0].SizeY, Buffers[0].PixelFormat, PhysicalSizeX, PhysicalSizeY, PhysicalSizeZ, StageSizeX, StageSizeY, StageSizeZ));
                 ri.Channels.Add(Channels[0].Copy());
                 gi.Channels.Add(Channels[0].Copy());
                 bi.Channels.Add(Channels[0].Copy());
@@ -7598,7 +7614,6 @@ namespace BioGTK
         /// quality in a given channel and time.
         public static int FindFocus(BioImage im, int Channel, int Time)
         {
-
             long mf = 0;
             int fr = 0;
             List<double> dt = new List<double>();

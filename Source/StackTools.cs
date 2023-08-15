@@ -57,6 +57,14 @@ namespace BioGTK
         {
             _builder = builder;
             builder.Autoconnect(this);
+            // Create an Adjustment object to define the range and step increment
+            zStartBox.Adjustment = new Adjustment(0, 0, 10000, 1, 10, 0);
+            cStartBox.Adjustment = new Adjustment(0, 0, 10000, 1, 10, 0);
+            tStartBox.Adjustment = new Adjustment(0, 0, 10000, 1, 10, 0);
+            zEndBox.Adjustment = new Adjustment(0, 0, 10000, 1, 10, 0);
+            cEndBox.Adjustment = new Adjustment(0, 0, 10000, 1, 10, 0);
+            tEndBox.Adjustment = new Adjustment(0, 0, 10000, 1, 10, 0);
+
             stackABox.Changed += StackABox_Changed;
             stackBBox.Changed += StackBBox_Changed;
             splitChannelsBut.Clicked += SplitChannelsBut_Clicked;
@@ -173,7 +181,7 @@ namespace BioGTK
         private void MergeTBut_Clicked(object sender, EventArgs e)
         {
             if (ImageA != null)
-                App.tabsView.AddTab(BioImage.MergeT(ImageA));
+                BioImage.MergeT(ImageA);
         }
 
         /// MergeZBut_Clicked() is a function that is called when the MergeZBut button is clicked
@@ -183,7 +191,7 @@ namespace BioGTK
         private void MergeZBut_Clicked(object sender, EventArgs e)
         {
             if (ImageA != null)
-                App.tabsView.AddTab(BioImage.MergeZ(ImageA));
+               BioImage.MergeZ(ImageA);
             
         }
 
@@ -198,8 +206,7 @@ namespace BioGTK
         {
              if (stackABox.Active == -1)
                 return;
-            BioImage b = BioImage.Substack(ImageA, ImageA.series, (int)zStartBox.Value, (int)zEndBox.Value, (int)cStartBox.Value, (int)cEndBox.Value, (int)tStartBox.Value, (int)tEndBox.Value);
-            App.tabsView.AddTab(b);
+            BioImage.Substack(ImageA, ImageA.series, (int)zStartBox.Value, (int)zEndBox.Value, (int)cStartBox.Value, (int)cEndBox.Value, (int)tStartBox.Value, (int)tEndBox.Value);
             UpdateStacks();
         }
 
@@ -214,11 +221,7 @@ namespace BioGTK
         {
             if (stackABox.Active == -1)
                 return;
-            BioImage[] bms = ImageA.SplitChannels();
-            for (int i = 0; i < bms.Length; i++)
-            {
-                App.tabsView.AddTab(bms[i]);
-            }
+            ImageA.SplitChannels();
             UpdateStacks();
         }
 
