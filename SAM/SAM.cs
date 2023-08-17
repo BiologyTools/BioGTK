@@ -12,9 +12,7 @@ using System.Windows;
 
 namespace BioGTK
 {
-    /// <summary>
-    /// Segment Anything
-    /// </summary>
+
     class SAM : IDisposable
     {
         public static SAM theSingleton = null;
@@ -25,6 +23,9 @@ namespace BioGTK
         protected SAM()
         {
         }
+        /// The function returns an instance of the SAM class, creating it if it doesn't already exist.
+        /// 
+        /// @return The method is returning an instance of the SAM class.
         public static SAM Instance()
         {
             if (null == theSingleton)
@@ -33,9 +34,8 @@ namespace BioGTK
             }
             return theSingleton;
         }
-        /// <summary>
-        /// Segment Anything
-        /// </summary>
+
+        /// The function `LoadONNXModel` loads ONNX models for encoding and decoding.
         public void LoadONNXModel()
         {
             if (this.mEncoder != null)
@@ -51,9 +51,13 @@ namespace BioGTK
             string decode_model_path = exePath + "/decoder-quant.onnx";
             this.mDecoder = new InferenceSession(decode_model_path);
         }
-        /// <summary>
-        /// Segment Anything
-        /// </summary>
+
+        /// The Encode function takes a BioImage object, applies a transformation to it, converts it to
+        /// a tensor, runs it through an encoder model, and stores the resulting embedding.
+        /// 
+        /// @param BioImage The BioImage parameter is an object that represents an image. It likely
+        /// contains information such as the image data, size, and other properties related to the
+        /// image.
         public void Encode(BioImage b)
         {
             Transforms tranform = new Transforms(1024);
@@ -69,9 +73,16 @@ namespace BioGTK
             this.mImgEmbedding = results.First().AsTensor<float>().ToArray();
             this.mReady = true;
         }
-        /// <summary>
-        /// Segment Anything
-        /// </summary>
+
+        /// The function takes a list of promotions, original width, and original height as input, and
+        /// returns an array of decoded output masks.
+        /// 
+        /// @param promotions A list of Promotion objects. Each Promotion object has properties like
+        /// mType, mInput, and mLable.
+        /// @param orgWid The parameter `orgWid` represents the original width of the image.
+        /// @param orgHei The parameter `orgHei` represents the original height of the image.
+        /// 
+        /// @return The method is returning an array of floats, which represents the output mask.
         public float[] Decode(List<Promotion> promotions, int orgWid, int orgHei)
         {
             var embedding_tensor = new DenseTensor<float>(this.mImgEmbedding, new[] { 1, 256, 64, 64 });
@@ -140,6 +151,7 @@ namespace BioGTK
             return outputmask;
            
         }
+        /// The Dispose function disposes of resources and sets variables to null.
         public void Dispose()
         {
             mEncoder.Dispose();

@@ -10,11 +10,7 @@ using Gdk;
 
 namespace BioGTK
 {
-    /// <summary>
-    ///  Resizes images to the longest side 'target_length', as well as provides
-    ///  methods for resizing coordinates and boxes. Provides methods for
-    ///  transforming both numpy array and batched torch tensors.
-    /// </summary>
+
     class Transforms
     {
         public Transforms(int target_length)
@@ -22,6 +18,14 @@ namespace BioGTK
             this.mTargetLength = target_length;
         }
 
+        /// The function takes a BioImage object, resizes it, calculates the mean and standard deviation
+        /// of each channel, and returns a transformed image.
+        /// 
+        /// @param BioImage The BioImage parameter represents an image object that contains the image
+        /// data. It likely has properties such as SizeX and SizeY, which represent the width and height
+        /// of the image, respectively.
+        /// 
+        /// @return The method is returning a float array called "transformedImg".
         public float[] ApplyImage(BioImage b)
         {
             int neww = 0;
@@ -73,6 +77,14 @@ namespace BioGTK
 
             return transformedImg;
         }
+        /// The function takes an input width and height, resizes an image using bilinear interpolation,
+        /// and returns the resized image as a float array.
+        /// 
+        /// @param w The width of the resized image.
+        /// @param h The parameter "h" in the Resize method represents the desired height of the resized
+        /// image.
+        /// 
+        /// @return The method is returning a 3-dimensional float array representing the resized image.
         float[,,] Resize(int w,int h)
         {
             Bitmap originalImage = ImageView.SelectedBuffer;
@@ -94,6 +106,17 @@ namespace BioGTK
             return newimg;
         }
 
+        /// The function takes in a point and its original width and height, applies a scaling factor
+        /// based on a target length, and returns a new point with adjusted coordinates.
+        /// 
+        /// @param PointPromotion PointPromotion is a class that represents a point with additional
+        /// properties related to promotions. It has properties like X and Y coordinates, and an Optype
+        /// property.
+        /// @param orgw The original width of the shape.
+        /// @param orgh The parameter "orgh" represents the original height of the shape.
+        /// 
+        /// @return The method is returning a new instance of the PointPromotion class, which is
+        /// assigned to the variable newpointp.
         public PointPromotion ApplyCoords(PointPromotion org_point, int orgw, int orgh)
         {
             int neww = 0;
@@ -107,6 +130,15 @@ namespace BioGTK
 
             return newpointp;
         }
+        /// The function ApplyBox takes a BoxPromotion object, along with its original width and height,
+        /// and applies coordinate transformations to return a new BoxPromotion object.
+        /// 
+        /// @param BoxPromotion The BoxPromotion class represents a box with coordinates for the
+        /// top-left and bottom-right corners.
+        /// @param orgw The orgw parameter represents the original width of the box.
+        /// @param orgh The parameter "orgh" represents the original height of the box.
+        /// 
+        /// @return The method is returning a BoxPromotion object.
         public BoxPromotion ApplyBox(BoxPromotion org_box, int orgw, int orgh)
         {
             BoxPromotion box = new BoxPromotion();
@@ -119,6 +151,14 @@ namespace BioGTK
             return box;
         }
 
+        /// The function calculates the new width and height of an image based on the desired long side
+        /// length and the original width and height.
+        /// 
+        /// @param oldw The width of the original image.
+        /// @param oldh The height of the original image.
+        /// @param long_side_length The desired length of the longer side of the new shape.
+        /// @param neww The new width of the shape after preprocessing.
+        /// @param newh The new height of the image after preprocessing.
         void GetPreprocessShape(int oldw, int oldh, int long_side_length, ref int neww, ref int newh)
         {
             float scale = long_side_length * 1.0f / Math.Max(oldh, oldw);

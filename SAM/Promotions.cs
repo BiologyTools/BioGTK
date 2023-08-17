@@ -18,9 +18,8 @@ namespace BioGTK
         public abstract float[] GetLable();
         public PromotionType mType;
     }
-    /// <summary>
-    /// 提示点
-    /// </summary>
+
+    /* The PointPromotion class represents a promotion with X and Y coordinates and an operation type. */
     public class PointPromotion: Promotion
     {
         public PointPromotion(OpType optype)
@@ -53,9 +52,9 @@ namespace BioGTK
         ADD,
         REMOVE
     }
-    /// <summary>
-    /// 提示框
-    /// </summary>
+   
+    /* The BoxPromotion class represents a promotion that involves a box shape, defined by a left-up
+    point and a right-bottom point. */
     class BoxPromotion : Promotion
     {
         public BoxPromotion()
@@ -79,9 +78,8 @@ namespace BioGTK
         public PointPromotion mRightBottom { get; set; }//左上角点
 
     }
-    /// <summary>
-    /// 提示蒙版
-    /// </summary>
+
+    /* The MaskPromotion class represents a mask with a specified width and height. */
     class MaskPromotion
     {
         public MaskPromotion(int wid,int hei)

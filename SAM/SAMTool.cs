@@ -136,6 +136,17 @@ namespace BioGTK
             mSam.Dispose();
         }
 
+        /// The SetAutoSave_ButtonPressEvent function allows the user to select a folder for auto-saving
+        /// files.
+        /// 
+        /// @param o The "o" parameter is the object that triggered the event. In this case, it is the
+        /// object that the event handler is attached to.
+        /// @param ButtonPressEventArgs ButtonPressEventArgs is an event argument that contains
+        /// information about a button press event. It provides properties and methods to access details
+        /// such as the button that was pressed, the event timestamp, and the event modifiers.
+        /// 
+        /// @return If the `filechooser.Run()` method returns a value other than
+        /// `(int)ResponseType.Accept`, the method will return and no further code will be executed.
         private void SetAutoSave_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             filechooser.Action = FileChooserAction.SelectFolder;
@@ -161,6 +172,12 @@ namespace BioGTK
             removeMaskMenu.Active = false;
         }
 
+        /// The Init function loads an ONNX model, calculates image embedding, and updates the status
+        /// accordingly.
+        /// 
+        /// @return If the condition `ImageView.SelectedImage == null` is true, then nothing is being
+        /// returned and the method will exit. If the condition is false, then the method will continue
+        /// executing the remaining code without returning anything.
         protected void Init()
         {
             if (ImageView.SelectedImage == null)
@@ -172,6 +189,17 @@ namespace BioGTK
             this.ShowStatus("Image Embedding Calculation Finished");
         }
 
+        /// The function handles the button release event for a picture box and performs various
+        /// operations based on the selected tool and annotations.
+        /// 
+        /// @param o The "o" parameter is the object that raised the event. In this case, it is the
+        /// PictureBox control that the event is attached to.
+        /// @param ButtonReleaseEventArgs The ButtonReleaseEventArgs parameter is an event argument that
+        /// contains information about the button release event. It provides access to properties such
+        /// as Event, which contains information about the event itself, and X and Y, which represent
+        /// the coordinates of the mouse pointer when the button was released.
+        /// 
+        /// @return The method does not have a return type, so it does not return anything.
         private void PictureBox_ButtonReleaseEvent(object o, ButtonReleaseEventArgs e)
         {
             if (view.Images.Count < 1)
@@ -236,6 +264,14 @@ namespace BioGTK
         }
         #endregion
 
+        /// The function takes in a mask array, width, and height, and creates a bitmap image with a
+        /// specified threshold value, saving it if autoSaveMenu is active.
+        /// 
+        /// @param mask The `mask` parameter is an array of floating-point values representing the mask
+        /// data. Each element in the array corresponds to a pixel in the image.
+        /// @param width The width of the mask image in pixels.
+        /// @param height The height parameter represents the height of the mask, which is the number of
+        /// rows in the mask array.
         void ShowMask(float[] mask, int width, int height)
         {
             Bitmap bp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
