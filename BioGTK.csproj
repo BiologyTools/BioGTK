@@ -248,6 +248,7 @@
     <None Include="F:\Shared\Bio\BioGTK\BioGTK\.editorconfig" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="AForgeBio" Version="1.4.2" />
     <PackageReference Include="BioFormats.NET6" Version="7.0.0" />
     <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
     <PackageReference Include="CS-Script" Version="4.8.1" />
@@ -257,12 +258,13 @@
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.15.1" />
     <PackageReference Include="NetVips" Version="2.3.1" />
-    <PackageReference Include="NetVips.Native" Version="8.14.3" />
-    <PackageReference Include="NetVips.Native.linux-arm64" Version="8.14.3" />
-    <PackageReference Include="NetVips.Native.linux-x64" Version="8.14.3" />
-    <PackageReference Include="NetVips.Native.osx-arm64" Version="8.14.3" />
-    <PackageReference Include="NetVips.Native.osx-x64" Version="8.14.3" />
-    <PackageReference Include="NetVips.Native.win-x64" Version="8.14.3" />
+    <PackageReference Include="NetVips.Native" Version="8.14.4" />
+    <PackageReference Include="NetVips.Native.linux-arm64" Version="8.14.4" />
+    <PackageReference Include="NetVips.Native.linux-x64" Version="8.14.4" />
+    <PackageReference Include="NetVips.Native.osx-arm64" Version="8.14.4" />
+    <PackageReference Include="NetVips.Native.osx-x64" Version="8.14.4" />
+    <PackageReference Include="NetVips.Native.win-arm64" Version="8.14.4" />
+    <PackageReference Include="NetVips.Native.win-x64" Version="8.14.4" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="NuGet.Build.Tasks.Pack" Version="6.7.0">
       <PrivateAssets>all</PrivateAssets>
@@ -283,10 +285,6 @@
 
   <ItemGroup>
     <EditorConfigFiles Remove="F:\Shared\Bio\BioGTK\BioGTK\.editorconfig" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\AForgeBio\AForgeBio\AForgeBio\AForgeBio.csproj" />
   </ItemGroup>
 
   <ItemGroup>

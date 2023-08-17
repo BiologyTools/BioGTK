@@ -178,22 +178,10 @@ namespace Bio.Graphics
         /// @param Rectangle The rectangle to draw
         public void DrawRectangle(Rectangle r)
         {
-            for (int x = r.X; x < r.Width + r.X; x++)
-            {
-                for (int i = 0; i < pen.width; i++)
-                {
-                    buf.SetPixel(x + i, r.Y, pen.color);
-                    buf.SetPixel(x + i, r.Y + r.Height, pen.color);
-                }
-            }
-            for (int y = r.Y; y < r.Height + r.Y; y++)
-            {
-                for (int i = 0; i < pen.width; i++)
-                {
-                    buf.SetPixel(r.X, y + i, pen.color);
-                    buf.SetPixel(r.X + r.Width, y + i, pen.color);
-                }
-            }
+            DrawLine(new PointF(r.X, r.Y), new PointF(r.X + r.Width, r.Y));
+            DrawLine(new PointF(r.X + r.Width, r.Y), new PointF(r.X + r.Width, r.Y + r.Height));
+            DrawLine(new PointF(r.X, r.Y), new PointF(r.X, r.Y + r.Height));
+            DrawLine(new PointF(r.X, r.Y + r.Height), new PointF(r.X + r.Width, r.Y + r.Height));
         }
         /// "Draw a rectangle with the top left corner at (x,y) and the bottom right corner at
         /// (x+width,y+height)."

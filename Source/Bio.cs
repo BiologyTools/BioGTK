@@ -2598,7 +2598,6 @@ namespace BioGTK
                     for (int i = 0; i < Buffers.Count; i++)
                     {
                         Buffers[i].Image = AForge.Imaging.Image.Convert8bppTo16bpp(Buffers[i]);
-                        Buffers[i].SwitchRedBlue();
                     }
                 }
                 List<Bitmap> bfs = new List<Bitmap>();
