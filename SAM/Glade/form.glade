@@ -90,6 +90,15 @@
                         <property name="active">True</property>
                       </object>
                     </child>
+                    <child>
+                      <object class="GtkImageMenuItem" id="toROIMenu">
+                        <property name="label">To ROI</property>
+                        <property name="name">openImagesMenu</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="use-stock">False</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>

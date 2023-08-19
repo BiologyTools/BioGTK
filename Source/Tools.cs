@@ -615,7 +615,7 @@ namespace BioGTK
                 }
                 UpdateView();
             }
-            if (ImageView.SelectedImage == null)
+            if (ImageView.SelectedImage == null || selectedROI == null)
                 return;
             if (currentTool.type == Tool.Type.move && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
             {
@@ -675,7 +675,7 @@ namespace BioGTK
                 RectangleD r = Tools.GetTool(Tools.Tool.Type.select).Rectangle;
                 foreach (ROI an in App.viewer.AnnotationsRGB)
                 {
-                    if (an.GetSelectBound(App.viewer.GetScale()).IntersectsWith(r))
+                    if (an.GetSelectBound(ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeX, ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeY).IntersectsWith(r))
                     {
                         an.selectedPoints.Clear();
                         ImageView.selectedAnnotations.Add(an);
@@ -690,7 +690,10 @@ namespace BioGTK
                         }
                     }
                     else
+                    {
                         an.selected = false;
+                        an.selectedPoints.Clear();
+                    }
                 }
             }
             /*else

@@ -1130,17 +1130,9 @@ namespace BioGTK
                     {
                         RectangleD p1 = ToViewSpace(an.Point.X, an.Point.Y, 1, 1);
                         RectangleD p2 = ToViewSpace(an.Point.X + 1, an.Point.Y + 1, 1, 1);
-
                         e.Cr.MoveTo(p1.X, p1.Y);
                         e.Cr.LineTo(p2.X, p2.Y);
                         e.Cr.Stroke();
-                        foreach (RectangleD re in an.GetSelectBoxes(width))
-                        {
-                            e.Cr.SetSourceColor(FromColor(Color.Red));
-                            RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
-                            e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                            e.Cr.Stroke();
-                        }
                     }
                     else
                     if (an.type == ROI.Type.Line)
@@ -1153,45 +1145,32 @@ namespace BioGTK
                             e.Cr.LineTo(p2.X, p2.Y);
                             e.Cr.Stroke();
                         }
-                        e.Cr.SetSourceColor(FromColor(Color.Red));
-                        foreach (RectangleD re in an.GetSelectBoxes(width))
-                        {
-                            RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
-                            e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                            e.Cr.Stroke();
-                        }
                     }
                     else
                     if (an.type == ROI.Type.Rectangle)
                     {
-                        //ImageToViewSpace
-                        //RectangleD rect = ToScreenRectF(an.X, an.Y, an.W, an.H);
-                        RectangleD rect = ToViewSpace(an.X, an.Y, an.W, an.H);
-                        e.Cr.Rectangle(rect.X, rect.Y, rect.W, rect.H);
+                        RectangleD p1 = ToViewSpace(an.PointsD[0].X, an.PointsD[0].Y, 0, 0);
+                        RectangleD p2 = ToViewSpace(an.PointsD[1].X, an.PointsD[1].Y, 0, 0);
+                        RectangleD p4 = ToViewSpace(an.PointsD[2].X, an.PointsD[2].Y, 0, 0);
+                        RectangleD p3 = ToViewSpace(an.PointsD[3].X, an.PointsD[3].Y, 0, 0);
+                        e.Cr.MoveTo(p1.X, p1.Y);
+                        e.Cr.LineTo(p2.X, p2.Y);
                         e.Cr.Stroke();
-                        if (!an.selected)
-                        {
-                            e.Cr.SetSourceColor(FromColor(Color.Red));
-                            foreach (RectangleD re in an.GetSelectBoxes(width))
-                            {
-                                RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
-                                e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                                e.Cr.Stroke();
-                            }
-                        }
+                        e.Cr.MoveTo(p2.X, p2.Y);
+                        e.Cr.LineTo(p3.X, p3.Y);
+                        e.Cr.Stroke();
+                        e.Cr.MoveTo(p3.X, p3.Y);
+                        e.Cr.LineTo(p4.X, p4.Y);
+                        e.Cr.Stroke();
+                        e.Cr.MoveTo(p4.X, p4.Y);
+                        e.Cr.LineTo(p1.X, p1.Y);
+                        e.Cr.Stroke();
                     }
                     else
                     if (an.type == ROI.Type.Ellipse)
                     {
                         RectangleD rect = ToViewSpace(an.X + (an.W / 2), an.Y + (an.H / 2), an.W, an.H);
                         DrawEllipse(e.Cr, rect.X, rect.Y, rect.W, rect.H);
-                        e.Cr.SetSourceColor(FromColor(Color.Red));
-                        foreach (RectangleD re in an.GetSelectBoxes(width))
-                        {
-                            RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
-                            e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                            e.Cr.Stroke();
-                        }
                     }
                     else
                     if ((an.type == ROI.Type.Polygon && an.closed))
@@ -1210,14 +1189,6 @@ namespace BioGTK
                         e.Cr.MoveTo(pp1.X, pp1.Y);
                         e.Cr.LineTo(pp2.X, pp2.Y);
                         e.Cr.Stroke();
-                        e.Cr.SetSourceColor(FromColor(Color.Red));
-
-                        foreach (RectangleD re in an.GetSelectBoxes(width))
-                        {
-                            RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
-                            e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                            e.Cr.Stroke();
-                        }
                     }
                     else
                     if ((an.type == ROI.Type.Polygon && !an.closed) || an.type == ROI.Type.Polyline)
@@ -1228,13 +1199,6 @@ namespace BioGTK
                             RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
                             e.Cr.MoveTo(p1.X, p1.Y);
                             e.Cr.LineTo(p2.X, p2.Y);
-                            e.Cr.Stroke();
-                        }
-                        e.Cr.SetSourceColor(FromColor(Color.Red));
-                        foreach (RectangleD re in an.GetSelectBoxes(width))
-                        {
-                            RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
-                            e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
                             e.Cr.Stroke();
                         }
                     }
@@ -1248,17 +1212,6 @@ namespace BioGTK
                             e.Cr.MoveTo(p1.X, p1.Y);
                             e.Cr.LineTo(p2.X, p2.Y);
                             e.Cr.Stroke();
-                        }
-                        //With freeform we don't draw select boxes unless the ROI is selected
-                        if (an.selected)
-                        {
-                            e.Cr.SetSourceColor(FromColor(Color.Red));
-                            foreach (RectangleD re in an.GetSelectBoxes(width))
-                            {
-                                RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
-                                e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                                e.Cr.Stroke();
-                            }
                         }
                         RectangleD pp1 = ToViewSpace(an.PointsD[0].X, an.PointsD[0].Y, 1, 1);
                         RectangleD pp2 = ToViewSpace(an.PointsD[an.PointsD.Count - 1].X, an.PointsD[an.PointsD.Count - 1].Y, 1, 1);
@@ -1275,13 +1228,6 @@ namespace BioGTK
                         e.Cr.MoveTo(p.X, p.Y);
                         e.Cr.ShowText(an.Text);
                         e.Cr.Stroke();
-                        e.Cr.SetSourceColor(FromColor(Color.Red));
-                        foreach (RectangleD re in an.GetSelectBoxes(width))
-                        {
-                            RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
-                            e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                            e.Cr.Stroke();
-                        }
                     }
                     
                     if (ROIManager.showText)
@@ -1300,7 +1246,17 @@ namespace BioGTK
                         e.Cr.Rectangle(rrf.X, rrf.Y, rrf.W, rrf.H);
                         e.Cr.Stroke();
                     }
-                    //Lets draw the selected Boxes.
+
+                    e.Cr.SetSourceColor(FromColor(Color.Red));
+                    if(!(an.type == ROI.Type.Freeform && !an.selected))
+                    foreach (RectangleD re in an.GetSelectBoxes(width))
+                    {
+                        RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
+                        e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
+                        e.Cr.Stroke();
+                    }
+
+                    //Lets draw the selection Boxes.
                     List<RectangleD> rects = new List<RectangleD>();
                     RectangleD[] sels = an.GetSelectBoxes(width);
                     for (int p = 0; p < an.selectedPoints.Count; p++)
@@ -1310,6 +1266,7 @@ namespace BioGTK
                             rects.Add(sels[an.selectedPoints[p]]);
                         }
                     }
+                    //Lets draw selected selection boxes.
                     e.Cr.SetSourceColor(FromColor(Color.Blue));
                     if (rects.Count > 0)
                     {
@@ -2170,7 +2127,7 @@ namespace BioGTK
                 {
                     foreach (ROI an in bi.Annotations)
                     {
-                        if (an.Rect.ToRectangleF().IntersectsWith(new RectangleF((float)pointer.X, (float)pointer.Y,ROI.selectBoxSize, ROI.selectBoxSize)))
+                        if (an.GetSelectBound(ROI.selectBoxSize * SelectedImage.PhysicalSizeX, ROI.selectBoxSize * SelectedImage.PhysicalSizeY).IntersectsWith(new RectangleD((float)pointer.X, (float)pointer.Y,SelectedImage.PhysicalSizeX, SelectedImage.PhysicalSizeY)))
                         {
                             //We clicked inside an ROI so selection should not be cleared.
                             clearSel = false;
@@ -2188,7 +2145,7 @@ namespace BioGTK
                             }
                         }
                         else
-                            if (Modifiers != ModifierType.ControlMask)
+                            if (!Modifiers.HasFlag(ModifierType.ControlMask))
                             an.selected = false;
                     }
                 }

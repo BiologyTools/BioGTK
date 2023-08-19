@@ -45,6 +45,8 @@ namespace BioGTK
         [Builder.Object]
         private MenuItem setAutoSave;
         [Builder.Object]
+        private MenuItem toROIMenu;
+        [Builder.Object]
         private Gtk.CheckMenuItem addMaskMenu;
         [Builder.Object]
         private Gtk.CheckMenuItem removeMaskMenu;
@@ -54,6 +56,7 @@ namespace BioGTK
         private Gtk.Entry textBox;
         [Builder.Object]
         private Gtk.Scale thresholdBar;
+        
 #pragma warning restore 649
 
         #endregion
@@ -103,13 +106,13 @@ namespace BioGTK
             builder.Autoconnect(this);
             thresholdBar.Adjustment.Lower = 0;
             thresholdBar.Adjustment.Upper = 255;
+            Directory.CreateDirectory("Masks");
             filechooser =
-        new Gtk.FileChooserDialog("Choose file to open",
+            new Gtk.FileChooserDialog("Choose file to open",
             this,
             FileChooserAction.Open,
             "Cancel", ResponseType.Cancel,
             "OK", ResponseType.Accept);
-            Directory.CreateDirectory("Masks");
             SetupHandlers();
             Init();
             init = true;
@@ -129,8 +132,58 @@ namespace BioGTK
             setAutoSave.ButtonPressEvent += SetAutoSave_ButtonPressEvent;
             this.DeleteEvent += SAMTool_DeleteEvent;
             textBox.Changed += TextBox_Changed;
+            toROIMenu.ButtonPressEvent += ToROIMenu_ButtonPressEvent;
         }
 
+        private void ToROIMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            List<ROI> rois = new List<ROI>();
+            foreach (ROI r in view.AnnotationsRGB)
+            {
+                if (r.mask == null)
+                    continue;
+                List<PointD> ps = GetEdgePolygonFromMask(new Bitmap("",r.mask.Width,r.mask.Height,PixelFormat.Format32bppArgb, r.mask.PixelBytes.Data,new ZCT(),0));
+                ROI rs = ROI.CreatePolygon(new ZCT(), ps.ToArray());
+                rois.Add(rs);
+            }
+            ImageView.SelectedImage.Annotations.AddRange(rois.ToArray());
+        }
+        static List<PointD> GetEdgePolygonFromMask(Bitmap maskBitmap)
+        {
+            List<PointD> edgePolygon = new List<PointD>();
+
+            // Lock the bitmap data to access pixel values
+            BitmapData data = maskBitmap.LockBits(new AForge.Rectangle(0, 0, maskBitmap.Width, maskBitmap.Height),
+                                                  ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+
+            unsafe
+            {
+                byte* ptr = (byte*)data.Scan0;
+
+                for (int y = 1; y < maskBitmap.Height - 1; y++)
+                {
+                    for (int x = 1; x < maskBitmap.Width - 1; x++)
+                    {
+                        int index = y * data.Stride + x * 4;
+
+                        // Check if the pixel is non-zero (white)
+                        if (ptr[index] > 0)
+                        {
+                            // Check if at least one neighboring pixel is zero (black)
+                            if (ptr[index - data.Stride] == 0 || ptr[index + data.Stride] == 0 || ptr[index - 4] == 0 || ptr[index + 4] == 0)
+                            {
+                                edgePolygon.Add(new PointD(x, y));
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Unlock the bitmap data
+            maskBitmap.UnlockBits(data);
+
+            return edgePolygon;
+        }
         private void SAMTool_DeleteEvent(object o, DeleteEventArgs args)
         {
             mSam.Dispose();

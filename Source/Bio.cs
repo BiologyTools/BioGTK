@@ -631,10 +631,11 @@ namespace BioGTK
         /// @param scale the scale of the image
         /// 
         /// @return A rectangle with the following properties:
-        public RectangleD GetSelectBound(double scale)
+        public RectangleD GetSelectBound(double scaleX,double scaleY)
         {
-            double f = scale / 2;
-            return new RectangleD(BoundingBox.X - f, BoundingBox.Y - f, BoundingBox.W + scale, BoundingBox.H + scale);
+            double fx = scaleX / 2;
+            double fy = scaleY / 2;
+            return new RectangleD(BoundingBox.X - fx, BoundingBox.Y - fy, BoundingBox.W + scaleX, BoundingBox.H + scaleY);
         }
         /* Creating a new ROI object. */
         public ROI()
@@ -4440,7 +4441,7 @@ namespace BioGTK
                 int SizeX = image.GetField(TiffTag.IMAGEWIDTH)[0].ToInt();
                 int SizeY = image.GetField(TiffTag.IMAGELENGTH)[0].ToInt();
                 b.bitsPerPixel = image.GetField(TiffTag.BITSPERSAMPLE)[0].ToInt();
-                b.littleEndian = image.IsBigEndian();
+                b.littleEndian = !image.IsBigEndian();
                 int RGBChannelCount = image.GetField(TiffTag.SAMPLESPERPIXEL)[0].ToInt();
                 string desc = "";
 
@@ -4576,7 +4577,7 @@ namespace BioGTK
                     }
                 }
                 b.Coords = new int[b.SizeZ, b.SizeC, b.SizeT];
-                if (tileSizeX == 0 && tileSizeY == 0)
+                if (tiled && tileSizeX == 0 && tileSizeY == 0)
                 {
                     tileSizeX = 1920;
                     tileSizeY = 1080;
@@ -4633,7 +4634,7 @@ namespace BioGTK
                             image.ReadScanline(bytes, offset, im, 0);
                             offset += stride;
                         }
-                        Bitmap inf = new Bitmap(file, tileSizeX, tileSizeY, b.Resolutions[series].PixelFormat, bytes, new ZCT(0, 0, 0), p, null, b.littleEndian, inter);
+                        Bitmap inf = new Bitmap(file, SizeX, SizeY, b.Resolutions[series].PixelFormat, bytes, new ZCT(0, 0, 0), p, null, b.littleEndian, inter);
                         b.Buffers.Add(inf);
                         Statistics.CalcStatistics(inf);
                         progressValue = (float)p / (float)(series + 1) * pages;
