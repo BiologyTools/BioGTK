@@ -182,7 +182,17 @@ namespace BioGTK
             // Unlock the bitmap data
             maskBitmap.UnlockBits(data);
 
-            return edgePolygon;
+            return OrderPolygon(edgePolygon);
+        }
+        static List<PointD> OrderPolygon(List<PointD> polygon)
+        {
+            // Calculate the centroid of the polygon
+            PointD centroid = new PointD((int)polygon.Average(p => p.X), (int)polygon.Average(p => p.Y));
+
+            // Sort the points based on polar angle
+            List<PointD> orderedPolygon = polygon.OrderBy(p => Math.Atan2(p.Y - centroid.Y, p.X - centroid.X)).ToList();
+
+            return orderedPolygon;
         }
         private void SAMTool_DeleteEvent(object o, DeleteEventArgs args)
         {
