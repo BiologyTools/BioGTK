@@ -143,6 +143,10 @@ namespace BioGTK
                 if (r.mask == null)
                     continue;
                 List<PointD> ps = GetEdgePolygonFromMask(new Bitmap("",r.mask.Width,r.mask.Height,PixelFormat.Format32bppArgb, r.mask.PixelBytes.Data,new ZCT(),0));
+                for (int i = 0; i < ps.Count; i++)
+                {
+                    ps[i] = new PointD(ps[i].X * ImageView.SelectedImage.PhysicalSizeX, ps[i].Y * ImageView.SelectedImage.PhysicalSizeY);
+                }
                 ROI rs = ROI.CreatePolygon(new ZCT(), ps.ToArray());
                 rois.Add(rs);
             }

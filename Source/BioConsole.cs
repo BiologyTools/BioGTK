@@ -72,7 +72,6 @@ namespace BioGTK
             runBut.Clicked += RunBut_Clicked;
             imagejBut.Clicked += ImagejBut_Clicked;
             headlessBox.Clicked += HeadlessBox_Clicked;
-            bioformatsBox.Clicked += BioformatsBox_Clicked;
             resultsBox.Clicked += ResultsBox_Clicked;
             selRadioBut.Clicked += SelRadioBox_Clicked;
             tabRadioBut.Clicked += TabRadioBox_Clicked;
@@ -144,25 +143,6 @@ namespace BioGTK
         {
             onTab = selRadioBut.Active;
         }
-
-        /// If the operating system is not MacOS, then the user's choice of whether or not to use
-        /// Bioformats is stored in the variable useBioformats. If the operating system is MacOS, then
-        /// the user is informed that Bioformats is not supported on MacOS and the checkbox is
-        /// automatically unchecked
-        /// 
-        /// @param sender The object that raised the event.
-        /// @param EventArgs The event arguments.
-        private void BioformatsBox_Clicked(object sender, EventArgs e)
-        {
-            if(!OperatingSystem.IsMacOS())
-                useBioformats = bioformatsBox.Active;
-            else
-            {
-                BioImage.OMESupport();
-                bioformatsBox.Active = false;
-            }
-        }
-
         private void HeadlessBox_Clicked(object sender, EventArgs e)
         {
             headless = headlessBox.Active;

@@ -80,7 +80,11 @@ namespace BioGTK
             {
                 string name = images[im].ID;
                 int sti = name.LastIndexOf("-");
-                string st = name.Remove(sti);
+                string st = name;
+                if (sti != -1)
+                {
+                    st = name.Remove(sti);
+                }
                 if (images[im].ID.Contains(st))
                     i++;
             }
@@ -5013,7 +5017,7 @@ namespace BioGTK
                             omexml.setEllipseID(an.id, i, serie);
                         else
                             omexml.setEllipseID("Shape:" + i + ":" + serie, i, serie);
-                        //We need to change Rectangle to ellipse radius;
+                        //We need to change System.Drawing.Rectangle to ellipse radius;
                         double w = (double)an.W / 2;
                         double h = (double)an.H / 2;
                         omexml.setEllipseRadiusX(java.lang.Double.valueOf(b.ToImageSizeX(w)), i, serie);

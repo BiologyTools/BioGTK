@@ -313,7 +313,14 @@ namespace BioGTK
             int i = 1;
             foreach (ROI item in ImageView.SelectedImage.Annotations)
             {
-                ImageJ.RoiEncoder.save(item,filechooser.Filename + "-" + i);
+                string f = filechooser.Filename;
+                if (!f.EndsWith(".roi"))
+                    f += i + ".roi";
+                else
+                {
+                    f = f.Replace(".roi","") + i + ".roi";
+                }
+                ImageJ.RoiEncoder.save(item, f);
                 i++;
             }
             filechooser.Hide();

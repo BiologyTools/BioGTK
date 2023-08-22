@@ -62,7 +62,7 @@
                 <property name="receives-default">True</property>
               </object>
               <packing>
-                <property name="x">382</property>
+                <property name="x">409</property>
                 <property name="y">15</property>
               </packing>
             </child>
@@ -76,7 +76,7 @@
                 <property name="receives-default">True</property>
               </object>
               <packing>
-                <property name="x">260</property>
+                <property name="x">289</property>
                 <property name="y">15</property>
               </packing>
             </child>
@@ -92,7 +92,7 @@
                 <property name="draw-indicator">True</property>
               </object>
               <packing>
-                <property name="x">175</property>
+                <property name="x">184</property>
                 <property name="y">9</property>
               </packing>
             </child>
@@ -107,7 +107,7 @@
                 <property name="draw-indicator">True</property>
               </object>
               <packing>
-                <property name="x">175</property>
+                <property name="x">184</property>
                 <property name="y">26</property>
               </packing>
             </child>
@@ -134,6 +134,7 @@
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="receives-default">False</property>
+                <property name="active">True</property>
                 <property name="draw-indicator">True</property>
               </object>
               <packing>
