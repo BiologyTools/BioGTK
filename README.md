@@ -82,7 +82,7 @@ App.Initialize();
 
 //Or you can create a new NodeView which will initialize the application
 //as well as parse any command line arguments.
-NodeView nodes = new NodeView(new string[]{"file"});
+NodeView nodes = NodeView.Create(new string[]{"file"});
 
 //You can also call BioImage.Initialize to 
 //initialize just the Bioformats library.
@@ -128,7 +128,7 @@ Graphics g = Graphics.FromImage(b.Buffers[0]);
 
 //Then we create a pen by passing a ColorS which represent a Color with, 
 //a higher bit depth (unsigned short) rather than a byte.
-g.pen = new Pen(new ColorS(ushort.MaxValue, ushort.MaxValue, ushort.MaxValue),10,b.bitsPerPixel);
+g.pen = new Pen(new ColorS(ushort.MaxValue, ushort.MaxValue, ushort.MaxValue));
 
 //Then we can call the familiar methods DrawLine, DrawPolygon, FillPolygon etc.
 g.DrawLine(0,0,100,100);
