@@ -1044,10 +1044,8 @@ namespace BioGTK
         {
             if ((Bitmaps.Count == 0 || Bitmaps.Count != Images.Count))
                 UpdateImages();
-            
-            
-            //e.Cr.Translate(-(pictureBox.AllocatedWidth / 2),-(pictureBox.AllocatedHeight / 2));
             e.Cr.Scale(Scale.Width, Scale.Height);
+            e.Cr.Translate(pictureBox.AllocatedWidth / 2, pictureBox.AllocatedHeight / 2);
             RectangleD rr = ToViewSpace(PointD.MinX, PointD.MinY, PointD.MaxX - PointD.MinX, PointD.MaxY - PointD.MinY);
             e.Cr.Rectangle(rr.X, rr.Y,Math.Abs(rr.W),Math.Abs(rr.H));
             e.Cr.Stroke();
@@ -2572,7 +2570,7 @@ namespace BioGTK
                 return;
             double dx = Images[i].Volume.Width / 2;
             double dy = Images[i].Volume.Height / 2;
-            Origin = new PointD((Images[i].Volume.Location.X), (Images[i].Volume.Location.Y));
+            Origin = new PointD((Images[i].Volume.Location.X)+dx, (Images[i].Volume.Location.Y)+dy);
             PxWmicron = Images[i].PhysicalSizeX;
             PxHmicron = Images[i].PhysicalSizeY;
             if (Images[i].SizeX > 1080)

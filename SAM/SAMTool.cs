@@ -300,11 +300,20 @@ namespace BioGTK
                 return;
             
             BoxPromotion promt = new BoxPromotion();
-            (promt as BoxPromotion).mLeftUp.X = (int)SelectedROI.PointsImage[0].X;
-            (promt as BoxPromotion).mLeftUp.Y = (int)SelectedROI.PointsImage[0].Y;
-            (promt as BoxPromotion).mRightBottom.X = (int)SelectedROI.PointsImage[3].X;
-            (promt as BoxPromotion).mRightBottom.Y = (int)SelectedROI.PointsImage[3].Y;
-
+            if (SelectedROI.PointsImage[0].X < (int)SelectedROI.PointsImage[3].X || SelectedROI.PointsImage[0].Y < (int)SelectedROI.PointsImage[3].Y)
+            {
+                (promt as BoxPromotion).mLeftUp.X = (int)SelectedROI.PointsImage[0].X;
+                (promt as BoxPromotion).mLeftUp.Y = (int)SelectedROI.PointsImage[0].Y;
+                (promt as BoxPromotion).mRightBottom.X = (int)SelectedROI.PointsImage[3].X;
+                (promt as BoxPromotion).mRightBottom.Y = (int)SelectedROI.PointsImage[3].Y;
+            }
+            else
+            {
+                (promt as BoxPromotion).mLeftUp.X = (int)SelectedROI.PointsImage[3].X;
+                (promt as BoxPromotion).mLeftUp.Y = (int)SelectedROI.PointsImage[3].Y;
+                (promt as BoxPromotion).mRightBottom.X = (int)SelectedROI.PointsImage[0].X;
+                (promt as BoxPromotion).mRightBottom.Y = (int)SelectedROI.PointsImage[0].Y;
+            }
             Transforms ts = new Transforms(1024);
             var pb = ts.ApplyBox(promt, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
             this.mPromotionList.Add(pb);
@@ -323,10 +332,25 @@ namespace BioGTK
         protected void saveSelectedTiffClick(object sender, EventArgs a)
         {
             filechooser.Action = FileChooserAction.Save;
-            filechooser.Title = "Save File";
+            //Saving Tiff can cause a crash on Windows so we check the platform.
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+            {
+                filechooser.Title = "Save File PNG";
+            }
+            else
+            {
+                filechooser.Title = "Save File Tiff";
+            }
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            mask.Save(filechooser.Filename, "tiff");
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+            {
+                mask.Save(filechooser.Filename, "png");
+            }
+            else
+            {
+                mask.Save(filechooser.Filename, "tiff");
+            }
             filechooser.Hide();
         }
         #endregion
@@ -360,11 +384,19 @@ namespace BioGTK
                         pixelData[4 * ind + 3] = 0;
                 }
             }
-            Pixbuf pf = new Pixbuf(pixelData, true, 8, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height, ImageView.SelectedBuffer.Width*4);
+            Pixbuf pf = new Pixbuf(pixelData, true, 8, width, height, width*4);
             this.SelectedROI.mask = pf;
             if (autoSaveMenu.Active)
             {
-                pf.Save(autoSavePath + "/" + textBox.Text + id + ".tif", "tiff");
+                //Saving Tiff can cause a crash on Windows so we check the platform.
+                if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+                {
+                    pf.Save(autoSavePath + "/" + textBox.Text + id + ".png", "png");
+                }
+                else
+                {
+                    pf.Save(autoSavePath + "/" + textBox.Text + id + ".tiff", "tiff");
+                }
                 id++;
             }
             this.mask = pf;
