@@ -30,7 +30,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - Easy segmentation with Segment Anything (SAM). Required model files downloadable from [Releases.](https://github.com/BiologyTools/BioGTK/releases/tag/SAM-Models)
 
 ## Dependencies
-- [BioFormats.Net](https://github.com/GDanovski/BioFormats.Net)
+- [BioFormats.NET6](https://github.com/BiologyTools/BioFormatsNET6)
 - [IKVM](http://www.ikvm.net/)
 - [AForge](http://www.aforgenet.com/)
 - [LibTiff.Net](https://bitmiracle.com/libtiff/)
@@ -43,7 +43,7 @@ A .NET application & library for editing & annotating various microscopy image f
 ## Licenses
 - BioGTK [GPL3](https://www.gnu.org/licenses/gpl-3.0.en.html)
 - AForge [LGPL](http://www.aforgenet.com/framework/license.html)
-- BioFormats.Net [GPL3](https://www.gnu.org/licenses/gpl-3.0.en.html)
+- BioFormats.NET6 [GPL3](https://www.gnu.org/licenses/gpl-3.0.en.html)
 - [IKVM](https://github.com/gluck/ikvm/blob/master/LICENSE)
 - LibTiff.Net [BSD](https://bitmiracle.com/libtiff/)
 - Cs-script [MIT](https://github.com/oleg-shilo/cs-script/blob/master/LICENSE)
