@@ -11,7 +11,9 @@ A .NET application & library for editing & annotating various microscopy image f
 
 - Supports running ImageJ macro commands on images open in Bio. Console to run ImageJ macro commands and Bio C# scripts.
 
-- Supports Pyramidal images with multiple resolutions. Like whole slide images.
+- Supports viewing & creating pyramidal images with multiple resolutions. Like whole slide images.
+
+- Stich images at varying resolutions into single pyramidal image with multiple resolutions.
 
 - Multiple view modes like Emission, and Filtered. ROI's shown for each channel can be configured in ROI Manager.
 
