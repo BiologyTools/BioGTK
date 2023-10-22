@@ -199,7 +199,7 @@ namespace BioGTK
             openOMESeriesMenu.ButtonPressEvent += openOMESeriesMenuClick;
             openSeriesMenu.ButtonPressEvent += openSeriesMenuClick;
             addImagesToTabMenu.ButtonPressEvent += addImagesToTabMenuClick;
-            addOMEImagesToTab.ButtonPressEvent += openSeriesMenuClick;
+            addOMEImagesToTab.ButtonPressEvent += addOMEImagesToTabClick;
             saveSelectedTiff.ButtonPressEvent += saveSelectedTiffClick;
             saveSelectedOME.ButtonPressEvent += saveSelectedOMEClick;
             saveTabOME.ButtonPressEvent += saveTabOMEClick;
@@ -264,14 +264,14 @@ namespace BioGTK
         private void SavePyramidalMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Gtk.FileChooserDialog filechooser =
-        new Gtk.FileChooserDialog("Set ROI filename to save",
+        new Gtk.FileChooserDialog("Set Pyramidal filename to save",
             this,
             FileChooserAction.Save,
             "Cancel", ResponseType.Cancel,
             "Save", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            BioImage.SaveOMEPyramidal(App.viewer.Images.ToArray(), filechooser.Filename,"lzw");
+            BioImage.SaveOMEPyramidal(App.viewer.Images.ToArray(), filechooser.Filename,NetVips.Enums.ForeignTiffCompression.None,0);
         }
 
         private void FocusMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -336,7 +336,7 @@ namespace BioGTK
         private void ImportROIsFromImageJMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Gtk.FileChooserDialog filechooser =
-        new Gtk.FileChooserDialog("Choose file to open",
+        new Gtk.FileChooserDialog("Choose ROI file to open",
             this,
             FileChooserAction.Open,
             "Cancel", ResponseType.Cancel,
@@ -503,7 +503,7 @@ namespace BioGTK
         /// @return The response type of the dialog.
         protected void openOMEImagesMenuClick(object sender, EventArgs a)
         {
-            filechooser.Title = "Choose file to open";
+            filechooser.Title = "Choose OME file to open";
             filechooser.Action = FileChooserAction.Open;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
@@ -529,7 +529,7 @@ namespace BioGTK
         /// @return A list of file names.
         protected void openOMESeriesMenuClick(object sender, EventArgs a)
         {
-            filechooser.Title = "Choose file to open";
+            filechooser.Title = "Choose OME Series file to open";
             filechooser.Action = FileChooserAction.Open;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
@@ -557,7 +557,7 @@ namespace BioGTK
         /// @return The response type of the dialog.
         protected void openSeriesMenuClick(object sender, EventArgs a)
         {
-            filechooser.Title = "Choose file to open";
+            filechooser.Title = "Choose series file to open";
             filechooser.Action = FileChooserAction.Open;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
@@ -585,7 +585,7 @@ namespace BioGTK
         /// @return The response type of the filechooser dialog.
         protected void addImagesToTabMenuClick(object sender, EventArgs a)
         {
-            filechooser.Title = "Choose file to open";
+            filechooser.Title = "Choose file to add to current tab.";
             filechooser.Action = FileChooserAction.Open;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
@@ -606,7 +606,7 @@ namespace BioGTK
         /// @return The response type of the filechooser dialog.
         protected void addOMEImagesToTabClick(object sender, EventArgs a)
         {
-            filechooser.Title = "Choose file to open";
+            filechooser.Title = "Choose OME file to add to current tab";
             filechooser.Action = FileChooserAction.Open;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
@@ -629,7 +629,7 @@ namespace BioGTK
         protected void saveSelectedTiffClick(object sender, EventArgs a)
         {
             filechooser.Action = FileChooserAction.Save;
-            filechooser.Title = "Save File";
+            filechooser.Title = "Save Selected Image To TIFF";
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             BioImage.SaveFile(filechooser.Filename,ImageView.SelectedImage.ID);
@@ -644,7 +644,7 @@ namespace BioGTK
         protected void saveSelectedOMEClick(object sender, EventArgs a)
         {
             filechooser.Action = FileChooserAction.Save;
-            filechooser.Title = "Save File";
+            filechooser.Title = "Save Selected Image to File";
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             BioImage.SaveOME(filechooser.Filename, ImageView.SelectedImage.ID);
@@ -662,12 +662,7 @@ namespace BioGTK
             filechooser.Title = "Save File";
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            List<string> list = new List<string>();
-            foreach (BioImage b in App.viewer.Images)
-            {
-                list.Add(b.ID);
-            }
-            BioImage.SaveOMESeries(list.ToArray(), filechooser.Filename, true);
+            BioImage.SaveOMESeries(App.viewer.Images.ToArray(), filechooser.Filename, true);
             filechooser.Hide();
         }
         /// It saves the current tab as a tiff file
@@ -679,7 +674,7 @@ namespace BioGTK
         protected void saveTabTiffMenuClick(object sender, EventArgs a)
         {
             filechooser.Action = FileChooserAction.Save;
-            filechooser.Title = "Save File";
+            filechooser.Title = "Save Tab as a series to file.";
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             List<string> list = new List<string>();
@@ -697,7 +692,7 @@ namespace BioGTK
         protected void saveSeriesMenuClick(object sender, EventArgs a)
         {
             filechooser.Action = FileChooserAction.Save;
-            filechooser.Title = "Save File";
+            filechooser.Title = "Save Series to File";
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             List<string> list = new List<string>();
@@ -718,7 +713,7 @@ namespace BioGTK
         protected void imagesToStackClick(object sender, EventArgs a)
         {
             Gtk.FileChooserDialog filechooser =
-    new Gtk.FileChooserDialog("Choose the file to open",
+    new Gtk.FileChooserDialog("Choose images to convert to stack.",
         this,
         FileChooserAction.Save,
         "Cancel", ResponseType.Cancel,
