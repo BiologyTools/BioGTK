@@ -396,21 +396,10 @@ namespace BioGTK
             overview = new Rectangle(0, 0, 200, 80);
             int r = GetPreviewResolution();
             Bitmap bm;
-            AForge.Imaging.Filters.ResizeBilinear re = new AForge.Imaging.Filters.ResizeBilinear(200, 80);
-            if (!SelectedImage.file.EndsWith(".tif"))
-            {
-                BioImage b = BioImage.OpenOME(SelectedImage.file, r, false, false, true, 0, 0, SelectedImage.Resolutions[r].SizeX, SelectedImage.Resolutions[r].SizeY);
-                bm = re.Apply((Bitmap)b.Buffers[0].ImageRGB);
-                overviewBitmap = new Pixbuf(bm.RGBBytes, true, 8, bm.Width, bm.Height, bm.Stride);
-                //b.Dispose();
-            }
-            else
-            {
-                Resolution res = SelectedImage.Resolutions[r];
-                Bitmap bmp = BioImage.GetTile(SelectedImage, new ZCT(), r, 0, 0, res.SizeX, res.SizeY);
-                overviewBitmap = new Pixbuf(bmp.RGBBytes, true, 8, bmp.SizeX, bmp.SizeY, bmp.SizeX * 3);
-                //overview = new Rectangle(0, 0, bmp.SizeX, bmp.SizeY);
-            }
+            ResizeBilinear re = new ResizeBilinear(200, 80);
+            BioImage b = BioImage.OpenOME(SelectedImage.file, r, false, false, true, 0, 0, SelectedImage.Resolutions[r].SizeX, SelectedImage.Resolutions[r].SizeY);
+            bm = re.Apply((Bitmap)b.Buffers[0].ImageRGB);
+            overviewBitmap = new Pixbuf(bm.RGBBytes, true, 8, bm.Width, bm.Height, bm.Stride);
             showOverview = true;
         }
         #region Handlers

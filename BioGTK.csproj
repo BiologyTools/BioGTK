@@ -3,25 +3,25 @@
     <TargetFramework>net6.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RuntimeIdentifiers>osx-x64;linux-x64;win-x64;win-arm64;linux-arm64;osx-arm64;</RuntimeIdentifiers>
-    <AssemblyVersion>3.6.2</AssemblyVersion>
-    <FileVersion>3.6.2</FileVersion>
+    <AssemblyVersion>3.7.0</AssemblyVersion>
+    <FileVersion>3.7.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>BioGTK</PackageId>
     <Title>BioGTK</Title>
     <PackageProjectUrl>https://github.com/BiologyTools/BioGTK</PackageProjectUrl>
     <PackageIcon>banner.jpg</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageVersion>3.6.2</PackageVersion>
+    <PackageVersion>3.7.0</PackageVersion>
     <RepositoryUrl>https://github.com/BiologyTools/BioGTK</RepositoryUrl>
     <PackageTags>Biology; GTK; ImageJ; Bio-Formats; Image-Stacks; Microscopy; Whole-Slide-Image; Segment-Anything; SAM;</PackageTags>
     <PackageLicenseExpression> GPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Description>A .NET application &amp; library for editing &amp; annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters &amp; macro functions. Supports Windows, Linux and Mac.</Description>
-    <Version>3.6.2</Version>
+    <Version>3.7.0</Version>
     <Platforms>AnyCPU;x64;ARM64</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>ImageView Zoom Improvement. As well as SAM Tool bug fix on windows.</PackageReleaseNotes>
+    <PackageReleaseNotes>Multi-resolution pyramidal image creation &amp; stitching and saving. Dependency updates, as well as bug fixes.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
 
@@ -249,31 +249,31 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="AForgeBio" Version="1.4.2" />
-    <PackageReference Include="BioFormats.NET6" Version="7.0.0" />
+    <PackageReference Include="BioFormats.NET6" Version="7.0.1" />
     <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
-    <PackageReference Include="CS-Script" Version="4.8.1" />
+    <PackageReference Include="CS-Script" Version="4.8.3" />
     <PackageReference Include="Dotnet.Bundle" Version="0.9.13" />
     <PackageReference Include="GtkSharp" Version="3.24.24.95" />
-    <PackageReference Include="IKVM" Version="8.6.2" />
+    <PackageReference Include="IKVM" Version="8.6.4" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.15.1" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.16.1" />
     <PackageReference Include="NetVips" Version="2.3.1" />
-    <PackageReference Include="NetVips.Native" Version="8.14.4" />
-    <PackageReference Include="NetVips.Native.linux-arm64" Version="8.14.4" />
-    <PackageReference Include="NetVips.Native.linux-x64" Version="8.14.4" />
-    <PackageReference Include="NetVips.Native.osx-arm64" Version="8.14.4" />
-    <PackageReference Include="NetVips.Native.osx-x64" Version="8.14.4" />
-    <PackageReference Include="NetVips.Native.win-arm64" Version="8.14.4" />
-    <PackageReference Include="NetVips.Native.win-x64" Version="8.14.4" />
+    <PackageReference Include="NetVips.Native" Version="8.14.5" />
+    <PackageReference Include="NetVips.Native.linux-arm64" Version="8.14.5" />
+    <PackageReference Include="NetVips.Native.linux-x64" Version="8.14.5" />
+    <PackageReference Include="NetVips.Native.osx-arm64" Version="8.14.5" />
+    <PackageReference Include="NetVips.Native.osx-x64" Version="8.14.5" />
+    <PackageReference Include="NetVips.Native.win-arm64" Version="8.14.5" />
+    <PackageReference Include="NetVips.Native.win-x64" Version="8.14.5" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="NuGet.Build.Tasks.Pack" Version="6.7.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="ScottPlot" Version="5.0.5-beta" />
-    <PackageReference Include="SkiaSharp" Version="2.88.3" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.3" />
-    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="2.88.3" />
+    <PackageReference Include="SkiaSharp" Version="2.88.6" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.6" />
+    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="2.88.6" />
   </ItemGroup>
 
   <ItemGroup>
