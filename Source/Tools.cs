@@ -443,7 +443,7 @@ namespace BioGTK
         public void ToolUp(PointD e, ButtonReleaseEventArgs buts)
         {
             PointF p = new PointF((float)e.X, (float)e.Y);
-            PointD mouseU = new PointD(((e.X - App.viewer.Origin.X) / ImageView.SelectedImage.Volume.Width) * ImageView.SelectedImage.SizeX, ((e.Y - App.viewer.Origin.Y) / ImageView.SelectedImage.Volume.Height) * ImageView.SelectedImage.SizeY);
+            PointD mouseU = new PointD(((e.X - App.viewer.TopRightOrigin.X) / ImageView.SelectedImage.Volume.Width) * ImageView.SelectedImage.SizeX, ((e.Y - App.viewer.TopRightOrigin.Y) / ImageView.SelectedImage.Volume.Height) * ImageView.SelectedImage.SizeY);
             if (App.viewer == null || currentTool == null || ImageView.SelectedImage == null || selectedROI == null)
                 return;
             Scripting.UpdateState(Scripting.State.GetUp(e, buts.Event.Button));

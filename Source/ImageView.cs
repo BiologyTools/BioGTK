@@ -1692,6 +1692,13 @@ namespace BioGTK
                 origin = value;
             }
         }
+        /* Origin of the viewer in microns */
+        public PointD TopRightOrigin
+        {
+            get {
+                return new PointD((Origin.X - ((pictureBox.AllocatedWidth / 2) * pxWmicron)), (Origin.Y - ((pictureBox.AllocatedHeight / 2) * pxHmicron)));
+            }
+        }
         /* Setting the origin of a pyramidal image. */
         public Point PyramidalOrigin
         {
@@ -1868,7 +1875,7 @@ namespace BioGTK
             MouseMoveInt = new PointD((int)e.Event.X, (int)e.Event.Y);
 
             PointD p = ImageToViewSpace(e.Event.X, e.Event.Y);
-            PointD ip = new PointD((p.X - origin.X) / pxWmicron, (p.Y - origin.Y) / pxHmicron);
+            PointD ip = new PointD((p.X - TopRightOrigin.X) / pxWmicron, (p.Y - TopRightOrigin.Y) / pxHmicron);
             App.tools.ToolMove(p, e);
             Tools.currentTool.Rectangle = new RectangleD(mouseDown.X, mouseDown.Y, p.X - mouseDown.X, p.Y - mouseDown.Y);
             mousePoint = "(" + (p.X.ToString("F")) + ", " + (p.Y.ToString("F")) + ")";
@@ -2053,7 +2060,7 @@ namespace BioGTK
             MouseDownInt = new PointD(e.Event.X, e.Event.Y);
             pd = pointer;
             mouseDown = pd;
-            mouseD = new PointD(((pointer.X - Origin.X) / SelectedImage.Volume.Width)*SelectedImage.SizeX,((pointer.Y - Origin.Y) / SelectedImage.Volume.Height) * SelectedImage.SizeY);
+            mouseD = new PointD(((pointer.X - TopRightOrigin.X) / SelectedImage.Volume.Width)*SelectedImage.SizeX,((pointer.Y - TopRightOrigin.Y) / SelectedImage.Volume.Height) * SelectedImage.SizeY);
             
             if (SelectedImage == null)
                 return;
