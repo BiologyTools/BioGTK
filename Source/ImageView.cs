@@ -2230,7 +2230,9 @@ namespace BioGTK
             }
             double dx = ToViewW(SelectedImage.Volume.Width);
             double dy = ToViewH(SelectedImage.Volume.Height);
-            PointD orig = new PointD(Origin.X - SelectedImage.Volume.Location.X, Origin.Y - SelectedImage.Volume.Location.Y);
+            //The origin is the middle of the screen we want the top left corner
+            PointD torig = new PointD((Origin.X - ((pictureBox.AllocatedWidth / 2) * pxWmicron)), (Origin.Y - ((pictureBox.AllocatedHeight / 2) * pxHmicron)));
+            PointD orig = new PointD(torig.X - SelectedImage.Volume.Location.X, torig.Y - SelectedImage.Volume.Location.Y);
             PointD diff = new PointD(ToViewW(orig.X), ToViewH(orig.Y));
             PointD f = new PointD((((x + diff.X)/ dx) * SelectedImage.Volume.Width),(((y + diff.Y) / dy) * SelectedImage.Volume.Height));
             PointD ff = new PointD(SelectedImage.Volume.Location.X + f.X, SelectedImage.Volume.Location.Y + f.Y);
