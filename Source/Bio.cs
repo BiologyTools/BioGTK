@@ -4087,7 +4087,6 @@ namespace BioGTK
             }
             return annotations;
         }
-
         public bool Loading = false;
         /// We initialize OME on a seperate thread so the user doesn't have to wait for initialization
         /// to view images.
@@ -6022,8 +6021,6 @@ namespace BioGTK
                     progressValue = (float)p / (float)pages;
                     byte[] bytes = reader.openBytes(p);
                     bf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(z, c, t), p, null, b.littleEndian, inter);
-                    if (bf.isRGB && !inter && b.littleEndian)
-                        bf.SwitchRedBlue();
                     b.Buffers.Add(bf);
                 }
             else
