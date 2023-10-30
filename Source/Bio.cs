@@ -4092,8 +4092,6 @@ namespace BioGTK
         /// to view images.
         public static void Initialize()
         {
-            if (!OMESupport())
-                return;
             //We initialize OME on a seperate thread so the user doesn't have to wait for initialization to
             //view images. 
             System.Threading.Thread t = new System.Threading.Thread(new System.Threading.ThreadStart(InitOME));
@@ -4656,7 +4654,7 @@ namespace BioGTK
             b.Volume = new VolumeD(new Point3D(b.StageSizeX, b.StageSizeY, b.StageSizeZ), new Point3D(b.PhysicalSizeX * b.SizeX, b.PhysicalSizeY * b.SizeY, b.PhysicalSizeZ * b.SizeZ));
 
             //If file is ome and we have OME support then check for annotation in metadata.
-            if (ome && OmeSupport)
+            if (ome)
             {
                 b.Annotations.AddRange(OpenOMEROIs(file, series));
             }
@@ -4771,8 +4769,6 @@ namespace BioGTK
         }
         public static void SaveOME(string file, string ID)
         {
-            if (!OMESupport())
-                return;
             BioImage[] sts = new BioImage[1];
             sts[0] = Images.GetImage(ID);
             SaveOMESeries(sts, file, BioImage.Planes);
@@ -4780,8 +4776,6 @@ namespace BioGTK
 
         public static void SaveOME(BioImage image, string file)
         {
-            if (!OMESupport())
-                return;
             BioImage[] sts = new BioImage[1];
             sts[0] = image;
             SaveOMESeries(sts, file, BioImage.Planes);
@@ -4793,8 +4787,6 @@ namespace BioGTK
         /// @param planes if true, the planes will be saved as well.
         public static void SaveOMESeries(BioImage[] files, string f, bool planes)
         {
-            if (!OMESupport())
-                return;
             if (File.Exists(f))
                 File.Delete(f);
             loci.formats.meta.IMetadata omexml = service.createOMEXMLMetadata();
@@ -5313,8 +5305,6 @@ namespace BioGTK
         /// @return The method is returning a BioImage object.
         public static BioImage OpenOME(string file, bool tab)
         {
-            if (!OMESupport())
-                return null;
             return OpenOMESeries(file, tab, true)[0];
         }
         /// > OpenOME(string file, int serie)
@@ -5327,8 +5317,6 @@ namespace BioGTK
         /// @return A BioImage object.
         public static BioImage OpenOME(string file, int serie)
         {
-            if (!OMESupport())
-                return null;
             Recorder.AddLine("Bio.BioImage.OpenOME(\"" + file + "\"," + serie + ");");
             return OpenOME(file, serie, true, false, false, 0, 0, 0, 0);
         }
@@ -5501,6 +5489,11 @@ namespace BioGTK
         /// The function "OpenOME" opens a bioimage file, with options to specify the series, whether to
         public static BioImage OpenOME(string file, int serie, bool tab, bool addToImages, bool tile, int tilex, int tiley, int tileSizeX, int tileSizeY)
         {
+            //We wait incase OME has not initialized.
+            do
+            {
+                Thread.Sleep(10);
+            } while (!initialized);
             if (tileSizeX == 0)
                 tileSizeX = 1920;
             if (tileSizeY == 0)
@@ -6113,7 +6106,7 @@ namespace BioGTK
         /// @return A Bitmap object.
         public static Bitmap GetTile(BioImage b, ZCT coord, int serie, int tilex, int tiley, int tileSizeX, int tileSizeY)
         {
-            if ((!OMESupport() && b.file.EndsWith("ome.tif") && vips) || (b.file.EndsWith(".tif") && vips))
+            if ((b.file.EndsWith("ome.tif") && vips) || (b.file.EndsWith(".tif") && vips))
             {
                 //We can get a tile faster with libvips rather than bioformats.
                 //and incase we are on mac we can't use bioformats due to IKVM not supporting mac.
@@ -6554,8 +6547,6 @@ namespace BioGTK
         /// @param file The file path to the OME file.
         public static void OpenOMEThread(string[] file)
         {
-            if (!OMESupport())
-                return;
             openOMEfile.AddRange(file);
             Thread t = new Thread(OpenOME);
             t.Start();
@@ -6563,8 +6554,6 @@ namespace BioGTK
         /// It opens the OME file.
         private static void OpenOME()
         {
-            if (!OMESupport())
-                return;
             foreach (string f in openOMEfile)
             {
                 OpenOME(f, true);
@@ -6590,8 +6579,6 @@ namespace BioGTK
         /// @param ID The ID of the OME file to save.
         public static void SaveOMEThread(string file, string ID)
         {
-            if (!OMESupport())
-                return;
             saveOMEID = ID;
             saveOMEfile = file;
             Thread t = new Thread(SaveOME);
@@ -6603,38 +6590,6 @@ namespace BioGTK
         private static void SaveOME()
         {
             SaveOME(saveOMEfile, saveOMEID);
-        }
-        public static bool OmeSupport = false;
-        static bool supportDialog = false;
-        /// The function checks if the operating system is macOS and displays a message if OME images
-        /// are not supported, otherwise it sets OmeSupport to true.
-        /// 
-        /// @return The method is returning a boolean value. If the operating system is MacOS and the
-        /// supportDialog flag is false, it will display a message dialog and return false. Otherwise,
-        /// it will set the OmeSupport flag to true and return true.
-        public static bool OMESupport()
-        {
-            bool isMacOS = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
-            if (RuntimeInformation.OSArchitecture == Architecture.Arm64 && isMacOS)
-            {
-                if(!supportDialog)
-                {
-                    MessageDialog md = new MessageDialog(
-                    null,
-                    DialogFlags.DestroyWithParent,
-                    MessageType.Info,
-                    ButtonsType.Ok, "BioGTK currently doens't support OME images on Arm64 MacOS due to dependency IKVM 8.6.2 not yet supporting Mac Arm64." +
-                    "On MacOS ImageJ Tiff files, LibVips supported whole-slide images, and BioGTK Tiff files are supported.");
-                    md.Run();
-                }
-                supportDialog = true;
-                return false;
-            }
-            else
-            {
-                OmeSupport = true;
-                return true;
-            }
         }
         static NetVips.Image netim;
         /// The function checks if a given file is supported by the Vips library and returns true if it
@@ -6697,8 +6652,6 @@ namespace BioGTK
         /// @return A list of ROI objects.
         public static List<ROI> OpenOMEROIs(string file, int series)
         {
-            if (!OMESupport())
-                return null;
             List<ROI> Annotations = new List<ROI>();
             // create OME-XML metadata store
             ServiceFactory factory = new ServiceFactory();
@@ -7277,8 +7230,6 @@ namespace BioGTK
         /// @param filename the name of the file you want to export
         public static void ExportROIFolder(string path, string filename)
         {
-            if (!OMESupport())
-                return;
             string[] fs = Directory.GetFiles(path);
             int i = 0;
             foreach (string f in fs)

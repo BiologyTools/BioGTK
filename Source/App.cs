@@ -1,7 +1,5 @@
 ﻿using Bio;
 using Gtk;
-using org.checkerframework.checker.units.qual;
-using sun.tools.tree;
 using System;
 using System.Collections.Generic;
 using System.Linq;
