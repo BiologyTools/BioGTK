@@ -21,7 +21,7 @@
     <Platforms>AnyCPU;x64;ARM64</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>BioFormats.NET6 missing dll's fix, as well as dependency updates.</PackageReleaseNotes>
+    <PackageReleaseNotes>BioFormats.NET6 missing dll's fix, as well as other NuGet package related fixes.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
