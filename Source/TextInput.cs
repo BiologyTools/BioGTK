@@ -1,6 +1,7 @@
 ﻿using Gtk;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -34,7 +35,7 @@ namespace BioGTK
        /// @return A new instance of the TextInput class.
         public static TextInput Create()
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.TextInput.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/TextInput.glade", FileMode.Open));
             return new TextInput(builder, builder.GetObject("textInput").Handle);
         }
 

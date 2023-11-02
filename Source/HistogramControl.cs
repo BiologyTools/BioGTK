@@ -11,6 +11,7 @@ using AForge;
 using Cairo;
 using Color = AForge.Color;
 using Gdk;
+using System.IO;
 
 namespace BioGTK
 {
@@ -42,7 +43,7 @@ namespace BioGTK
         #region Constructors / Destructors
         public static HistogramControl Create(Channel channel)
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.Histogram.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Histogram.glade", FileMode.Open));
             return new HistogramControl(builder, builder.GetObject("histogram").Handle,channel);
         }
         protected HistogramControl(Builder builder, IntPtr handle, Channel channel) : base(handle)

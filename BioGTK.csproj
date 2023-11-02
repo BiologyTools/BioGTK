@@ -24,6 +24,22 @@
     <PackageReleaseNotes>BioFormats.NET6 missing dll's fix, as well as dependency updates.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
+  
+<PropertyGroup>
+  <MavenAdditionalRepositories>ome=https://artifacts.openmicroscopy.org/artifactory/maven/;edu.ucar=https://maven.scijava.org/content/repositories/public/;</MavenAdditionalRepositories>
+</PropertyGroup>
+<ItemGroup>
+    <MavenReference Include="bioformats_package">
+      <GroupId>ome</GroupId>
+      <ArtifactId>bioformats_package</ArtifactId>
+      <Version>7.0.1</Version>
+    </MavenReference>
+    <MavenReference Include="cdm-core">
+      <GroupId>edu.ucar</GroupId>
+      <ArtifactId>cdm-core</ArtifactId>
+      <Version>5.3.3</Version>
+    </MavenReference>
+</ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <WarningLevel>7</WarningLevel>
@@ -79,7 +95,6 @@
     <None Remove="Glade\Tools.glade" />
     <None Remove="Info.plist" />
     <None Remove="Resources\polyline.png" />
-    <None Remove="SAM\Glade\form.glade" />
   </ItemGroup>
 
   <ItemGroup>
@@ -204,37 +219,87 @@
     <Content Include="Resources\zoom_out.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <EmbeddedResource Include="SAM\Glade\form.glade">
+    <EmbeddedResource Include="Glade\SAM.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Glade\About.glade" />
-    <EmbeddedResource Include="Glade\ApplyFilter.glade" />
-    <EmbeddedResource Include="Glade\BioConsole.glade" />
-    <EmbeddedResource Include="Glade\ChannelsTool.glade" />
-    <EmbeddedResource Include="Glade\ColorTool.glade" />
-    <EmbeddedResource Include="Glade\Console.glade" />
-    <EmbeddedResource Include="Glade\Filters.glade" />
-    <EmbeddedResource Include="Glade\Functions.glade" />
-    <EmbeddedResource Include="Glade\Histogram.glade" />
-    <EmbeddedResource Include="Glade\ImageView.glade" />
-    <EmbeddedResource Include="Glade\Magic.glade" />
-    <EmbeddedResource Include="Glade\NodeView.glade" />
-    <EmbeddedResource Include="Glade\Play.glade" />
-    <EmbeddedResource Include="Glade\Plot.glade" />
-    <EmbeddedResource Include="Glade\Progress.glade" />
-    <EmbeddedResource Include="Glade\Recorder.glade" />
-    <EmbeddedResource Include="Glade\Resolutions.glade" />
-    <EmbeddedResource Include="Glade\ROIManager.glade" />
-    <EmbeddedResource Include="Glade\Scripting.glade" />
-    <EmbeddedResource Include="Glade\SetTool.glade" />
-    <EmbeddedResource Include="Glade\Stacks.glade" />
-    <EmbeddedResource Include="Glade\TabsView.glade" />
-    <EmbeddedResource Include="Glade\TextInput.glade" />
-    <EmbeddedResource Include="Glade\Tolerance.glade" />
-    <EmbeddedResource Include="Glade\Tools.glade" />
+    <EmbeddedResource Include="Glade\About.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\ApplyFilter.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\BioConsole.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\ChannelsTool.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\ColorTool.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\Console.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\Filters.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\Functions.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\Histogram.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\ImageView.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\Magic.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\NodeView.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\Play.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\Plot.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\Progress.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\Recorder.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\Resolutions.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\ROIManager.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\Scripting.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\SetTool.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\Stacks.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\TabsView.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\TextInput.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\Tolerance.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Glade\Tools.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>
@@ -276,7 +341,7 @@
       <PackagePath>\</PackagePath>
     </None>
   </ItemGroup>
-  
+
   <ItemGroup>
     <EditorConfigFiles Remove="F:\Shared\Bio\BioGTK\BioGTK\.editorconfig" />
   </ItemGroup>

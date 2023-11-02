@@ -4,6 +4,7 @@ using Gtk;
 using sun.tools.tree;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -56,7 +57,7 @@ namespace BioGTK
         /// @return A new instance of the ColorTool class.
         public static ColorTool Create(bool color1)
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.ColorTool.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ColorTool.glade", FileMode.Open));
             return new ColorTool(builder, builder.GetObject("colorTool").Handle, color1);
         }
 

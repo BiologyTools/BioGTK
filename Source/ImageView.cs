@@ -15,6 +15,7 @@ using Bio;
 using Point = AForge.Point;
 using Color = AForge.Color;
 using Rectangle = AForge.Rectangle;
+using System.IO;
 
 namespace BioGTK
 {
@@ -220,7 +221,7 @@ namespace BioGTK
         /// @return The method is returning an instance of the ImageView class.
         public static ImageView Create(BioImage bm)
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.ImageView.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ImageView.glade", FileMode.Open));
             ImageView v = new ImageView(builder, builder.GetObject("imageView").Handle, bm);
             v.Title = bm.Filename;
             return v;

@@ -1,6 +1,7 @@
 ﻿using BioGTK;
 using Gtk;
 using System;
+using System.IO;
 
 namespace BioGTK
 {
@@ -48,7 +49,7 @@ namespace BioGTK
         /// @return A new instance of the BioConsole class.
         public static BioConsole Create()
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.Console.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Console.glade", FileMode.Open));
             return new BioConsole(builder, builder.GetObject("console").Handle);
         }
 

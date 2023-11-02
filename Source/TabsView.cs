@@ -4,6 +4,7 @@ using Gtk;
 using loci.formats.gui;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -139,7 +140,7 @@ namespace BioGTK
        /// @return A new instance of the TabsView class.
         public static TabsView Create()
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.TabsView.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/TabsView.glade", FileMode.Open));
             return new TabsView(builder, builder.GetObject("TabsView").Handle);
         }
 

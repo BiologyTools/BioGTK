@@ -3,6 +3,7 @@ using Bio;
 using Gtk;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -24,7 +25,7 @@ namespace BioGTK
         #region Constructors / Destructors
         public static FiltersView Create()
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.Filters.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Filters.glade", FileMode.Open));
             return new FiltersView(builder, builder.GetObject("filters").Handle);
         }
         ListStore store;

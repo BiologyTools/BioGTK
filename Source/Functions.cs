@@ -69,7 +69,7 @@ namespace BioGTK
         /// <returns> A TestForm1. </returns>
         public static Functions Create()
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.Functions.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Functions.glade", FileMode.Open));
             return new Functions(builder, builder.GetObject("functions").Handle);
         }
 

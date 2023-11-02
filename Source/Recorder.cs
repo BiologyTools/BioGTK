@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
+using System.IO;
 
 namespace BioGTK
 {
@@ -33,7 +34,7 @@ namespace BioGTK
         /// @return A new instance of the Recorder class.
         public static Recorder Create()
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.Recorder.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Recorder.glade", FileMode.Open));
             return new Recorder(builder, builder.GetObject("recorderWindow").Handle);
         }
 

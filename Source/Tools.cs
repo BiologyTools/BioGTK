@@ -11,6 +11,7 @@ using System.Collections;
 using Gdk;
 using Color = AForge.Color;
 using Rectangle = AForge.Rectangle;
+using System.IO;
 
 namespace BioGTK
 {
@@ -34,7 +35,7 @@ namespace BioGTK
         /// @return A new instance of the Tools class.
         public static Tools Create()
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.Tools.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Tools.glade", FileMode.Open));
             return new Tools(builder, builder.GetObject("tools").Handle);
         }
 

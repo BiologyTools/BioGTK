@@ -1,5 +1,6 @@
 ﻿using Gtk;
 using System;
+using System.IO;
 
 namespace BioGTK
 {
@@ -43,10 +44,10 @@ namespace BioGTK
 
         #region Constructors / Destructors
         /// <summary> Default Shared Constructor. </summary>
-        /// <returns> A TestForm1. </returns>
+        /// <returns> StackTools </returns>
         public static StackTools Create()
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.Stacks.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Stacks.glade", FileMode.Open));
             return new StackTools(builder, builder.GetObject("stackTools").Handle);
         }
 

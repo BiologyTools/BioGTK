@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
+using System.IO;
 
 namespace BioGTK
 {
@@ -45,9 +46,8 @@ namespace BioGTK
         /// @return A new instance of the Resolutions class.
         public static Resolutions Create(Resolution[] re)
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.Resolutions.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Resolutions.glade", FileMode.Open));
             Resolutions res = new Resolutions(builder, builder.GetObject("resolutions").Handle, re);
-            //TO DO res.resolutionsBox
             return res;
         }
 

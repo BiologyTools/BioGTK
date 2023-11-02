@@ -60,7 +60,7 @@ namespace BioGTK
         /// @return A new instance of the Scripting class.
         public static Scripting Create()
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.Scripting.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Scripting.glade", FileMode.Open));
             return new Scripting(builder, builder.GetObject("scripting").Handle);
         }
        

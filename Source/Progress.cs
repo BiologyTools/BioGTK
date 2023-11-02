@@ -4,6 +4,7 @@ using Gtk;
 using sun.tools.tree;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -81,7 +82,7 @@ namespace BioGTK
         /// @return A new instance of the ColorTool class.
         public static Progress Create()
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.Progress.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Progress.glade", FileMode.Open));
             return new Progress(builder, builder.GetObject("progress").Handle);
         }
 

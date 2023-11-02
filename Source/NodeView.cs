@@ -2,6 +2,7 @@
 using Gtk;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -38,7 +39,7 @@ namespace BioGTK
         /// @return The method is returning a NodeView object.
         public static NodeView Create(string[] args)
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.NodeView.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/NodeView.glade", FileMode.Open));
             return new NodeView(builder, builder.GetObject("nodeView").Handle,args);
         }
         ListStore store;

@@ -2,6 +2,7 @@
 using Gtk;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -30,7 +31,7 @@ namespace BioGTK
         /// @return A new instance of the About class.
         public static About Create()
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.About.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/About.glade", FileMode.Open));
             return new About(builder, builder.GetObject("about").Handle);
         }
 

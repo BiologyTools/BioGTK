@@ -4,6 +4,7 @@ using BioGTK;
 using Gtk;
 using AForge;
 using sun.tools.tree;
+using System.IO;
 
 namespace BioGTK
 {
@@ -56,7 +57,7 @@ namespace BioGTK
         /// @return The ApplyFilter class is being returned.
         public static ApplyFilter Create(Filt filter,bool two)
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.ApplyFilter.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ApplyFilter.glade", FileMode.Open));
             filt = filter;
             return new ApplyFilter(builder, builder.GetObject("applyFilter").Handle, two, filter);
         }

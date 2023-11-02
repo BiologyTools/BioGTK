@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
-
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -82,7 +82,7 @@ namespace Bio
         public static Dictionary<string, ROI> rois = new Dictionary<string, ROI>();
         public static ROIManager Create()
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.ROIManager.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ROIManager.glade", FileMode.Open));
             return new ROIManager(builder, builder.GetObject("roiManager").Handle);
         }
         /* The above code is initializing the ROIManager class. */

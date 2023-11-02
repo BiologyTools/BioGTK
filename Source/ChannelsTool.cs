@@ -2,7 +2,7 @@
 using Gtk;
 using System;
 using System.Collections.Generic;
-
+using System.IO;
 
 
 namespace BioGTK
@@ -56,7 +56,7 @@ namespace BioGTK
         #region Constructors / Destructors
         public static ChannelsTool Create()
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.ChannelsTool.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ChannelsTool.glade", FileMode.Open));
             return new ChannelsTool(builder, builder.GetObject("chanTool").Handle);
         }
         /* Creating a new window and populating it with the values from the channels. */

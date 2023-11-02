@@ -69,7 +69,7 @@ namespace BioGTK
         /// @return A new instance of the SAMTool class.
         public static SAMTool Create()
         {
-            Builder builder = new Builder(null, "BioGTK.SAM.Glade.form.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/SAM.glade", FileMode.Open));
             return new SAMTool(builder, builder.GetObject("SAMTool").Handle);
         }
 

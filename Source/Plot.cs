@@ -128,7 +128,7 @@ namespace BioGTK
         /// @return A new instance of the Plot class.
         public static Plot Create(double[] vals, string name)
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.Plot.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Plot.glade", FileMode.Open));
             return new Plot(builder, builder.GetObject("plot").Handle, vals, name, PlotType.Scatter);
         }
         /// It creates a new instance of the Plot class.
@@ -136,7 +136,7 @@ namespace BioGTK
         /// @return A new instance of the Plot class.
         public static Plot Create(double[] vals, string name, PlotType typ)
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.Plot.glade", null);
+            Builder builder = new Builder(new FileStream("Glade/Plot.glade", FileMode.Open));
             return new Plot(builder, builder.GetObject("plot").Handle, vals, name, typ);
         }
 

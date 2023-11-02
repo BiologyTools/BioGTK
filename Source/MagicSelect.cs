@@ -2,6 +2,7 @@
 using BioGTK;
 using Gtk;
 using System;
+using System.IO;
 
 namespace Bio
 {
@@ -39,7 +40,7 @@ namespace Bio
         /// @return A new instance of the ColorTool class.
         public static MagicSelect Create(int index)
         {
-            Builder builder = new Builder(null, "BioGTK.Glade.Magic.glade", null);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Magic.glade", FileMode.Open));
             return new MagicSelect(builder, builder.GetObject("magicSelect").Handle, index);
         }
 
