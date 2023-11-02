@@ -18,7 +18,6 @@ using Rectangle = AForge.Rectangle;
 
 namespace BioGTK
 {
-    /// <summary> Example Test Form for GTKSharp and Glade. </summary>
     public class ImageView : Gtk.Window
     {
         #region Properties
