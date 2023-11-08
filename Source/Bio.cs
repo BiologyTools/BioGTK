@@ -2264,11 +2264,19 @@ namespace BioGTK
             }
             set
             {
-                // update ui on main UI thread
-                Application.Invoke(delegate
+                try
                 {
-                    App.progress.ProgressValue = value;
-                });
+                    // update ui on main UI thread
+                    Application.Invoke(delegate
+                    {
+                        App.progress.ProgressValue = value;
+                    });
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+                
             }
         }
         public static string status;

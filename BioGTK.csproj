@@ -28,6 +28,7 @@
 <PropertyGroup>
   <MavenAdditionalRepositories>ome=https://artifacts.openmicroscopy.org/artifactory/maven/;edu.ucar=https://maven.scijava.org/content/repositories/public/;</MavenAdditionalRepositories>
 </PropertyGroup>
+  
 <ItemGroup>
     <MavenReference Include="bioformats_package">
       <GroupId>ome</GroupId>
@@ -66,240 +67,335 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Entitlements.plist" />
-    <None Remove="Glade\About.glade" />
-    <None Remove="Glade\ApplyFilter.glade" />
-    <None Remove="Glade\BioConsole.glade" />
-    <None Remove="Glade\ChannelsTool.glade" />
-    <None Remove="Glade\ColorTool.glade" />
-    <None Remove="Glade\Console.glade" />
-    <None Remove="Glade\Filters.glade" />
-    <None Remove="Glade\Functions.glade" />
-    <None Remove="Glade\Histogram.glade" />
-    <None Remove="Glade\ImageView.glade" />
-    <None Remove="Glade\Magic.glade" />
-    <None Remove="Glade\NodeView.glade" />
-    <None Remove="Glade\Play.glade" />
-    <None Remove="Glade\Plot.glade" />
-    <None Remove="Glade\Plot.glade~RF53a42aa.TMP" />
-    <None Remove="Glade\Progress.glade" />
-    <None Remove="Glade\Recorder.glade" />
-    <None Remove="Glade\Resolutions.glade" />
-    <None Remove="Glade\ROIManager.glade" />
-    <None Remove="Glade\Scripting.glade" />
-    <None Remove="Glade\SetTool.glade" />
-    <None Remove="Glade\Stacks.glade" />
-    <None Remove="Glade\TabsView.glade" />
-    <None Remove="Glade\TextInput.glade" />
-    <None Remove="Glade\Tolerance.glade" />
-    <None Remove="Glade\Tools.glade" />
-    <None Remove="Info.plist" />
-    <None Remove="Resources\polyline.png" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Entitlements.plist">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Info.plist" />
-    <Content Include="Resources\banner.jpg">
+    <Content Include="Images\banner.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </Content>
-    <Content Include="Bio.ico" />
-    <Content Include="Resources\brush.png">
+    <Content Include="Images\banner.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\bucket.png">
+    <Content Include="Bio.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\ellipse.png">
+    <Content Include="Images\bio.icns">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\Contents.json">
+    <Content Include="Images\brush.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+    <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\crop.png">
+    <Content Include="Images\bucket.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+    <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\delete.png">
+    <Content Include="Images\ellipse.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\dropper.png">
+    <Content Include="Images\Contents.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\eraser.png">
+    <Content Include="Images\crop.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\bucket.png">
+    <Content Include="Images\delete.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\flipX.png">
+    <Content Include="Images\dropper.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\flipY.png">
+    <Content Include="Images\eraser.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\folder.png">
+    <Content Include="Images\flipX.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\freeform.png">
+    <Content Include="Images\flipY.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\gears.png">
+    <Content Include="Images\folder.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\pan.png">
+    <Content Include="Images\freeform.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\image.png">
+    <Content Include="Images\gears.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\lasso.png">
+    <Content Include="Images\pan.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\line.png">
+    <Content Include="Images\image.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\magic.png">
+    <Content Include="Images\line.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\move.png">
+    <Content Include="Images\magic.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\pencil.png">
+    <Content Include="Images\move.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\play.png">
+    <Content Include="Images\pencil.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\point.png">
+    <Content Include="Images\play.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\pointSel.png">
+    <Content Include="Images\point.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\polygon.png">
+    <Content Include="Images\pointSel.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\polyline.png">
+    <Content Include="Images\polygon.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\rect.png">
+    <Content Include="Images\polyline.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\redo.png">
+    <Content Include="Images\rect.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\resize.png">
+    <Content Include="Images\redo.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\rotate.png">
+    <Content Include="Images\resize.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\save.png">
+    <Content Include="Images\rotate.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\select.png">
+    <Content Include="Images\save.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\switchColors.png">
+    <Content Include="Images\select.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\text.png">
+    <Content Include="Images\switchColors.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\undo.png">
+    <Content Include="Images\text.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\zoom_in.png">
+    <Content Include="Images\undo.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="Resources\zoom_out.png">
+    <Content Include="Images\zoom_in.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <EmbeddedResource Include="Glade\SAM.glade">
+    <Content Include="Images\zoom_out.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\SAM.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>True</Pack>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Glade\About.glade">
+    <Content Include="Glade\About.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\ApplyFilter.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\ApplyFilter.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\BioConsole.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\BioConsole.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\ChannelsTool.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\ChannelsTool.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\ColorTool.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\ColorTool.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\Console.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\Console.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\Filters.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\Filters.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\Functions.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\Functions.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\Histogram.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\Histogram.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\ImageView.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\ImageView.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\Magic.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\Magic.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\NodeView.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\NodeView.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\Play.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\Play.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\Plot.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\Plot.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\Progress.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\Progress.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\Recorder.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\Recorder.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\Resolutions.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\Resolutions.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\ROIManager.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\ROIManager.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\Scripting.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\Scripting.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\SetTool.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\SetTool.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\Stacks.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\Stacks.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\TabsView.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\TabsView.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\TextInput.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\TextInput.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\Tolerance.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\Tolerance.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Glade\Tools.glade">
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\Tools.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
+    <Pack>True</Pack>
+<PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

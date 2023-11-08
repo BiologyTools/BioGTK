@@ -130,7 +130,7 @@ namespace BioGTK
                         {
                             Tool tool = new Tool(t, new ColorS(0, 0, 0));
                             tool.bounds = new Rectangle(x * w, y * h, w, h);
-                            tool.image = new Pixbuf(s + "Resources/" + tool.type.ToString() + ".png");
+                            tool.image = new Pixbuf(s + "Images/" + tool.type.ToString() + ".png");
                             tools.Add(tool.ToString(), tool);
                         }
                         else
