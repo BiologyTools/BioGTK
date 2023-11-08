@@ -78,6 +78,18 @@ A .NET application & library for editing & annotating various microscopy image f
 
 ## Usage
 ```
+//First you need to setup your project as a GTK project with .NET 6.0 as the target. 
+//Then in between Gtk.Application.Init() and Gtk.Application.Run() use the library as you please.
+//Here is an example from BioGTKApp program.cs.
+
+Console.WriteLine("Initializing GTK.");
+Gtk.Application.Init();
+Console.WriteLine("Creating NodeView.");
+BioGTK.NodeView node = BioGTK.NodeView.Create(args);
+node.Show();
+Gtk.Application.Run();
+
+
 //If you want to initialize the application call app initialize. 
 //This will initialize Bioformats library as well as the rest of the application.
 App.Initialize();
