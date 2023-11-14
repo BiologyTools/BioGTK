@@ -387,7 +387,7 @@ namespace BioGTK
         private void TabsView_SwitchPage(object o, SwitchPageArgs args)
         {
             if(viewers.Count == 0) return;
-            viewers[(int)args.PageNum].Show();
+            viewers[(int)args.PageNum].Present();
         }
 
         /// If the emission menu is active, then deactivate it. Otherwise, activate it
@@ -930,7 +930,6 @@ namespace BioGTK
         protected void to24BitMenuClick(object sender, EventArgs a)
         {
             ImageView.SelectedImage.To24Bit();
-            SelectedViewer.Images[0] = ImageView.SelectedImage;
         }
         /// It converts the selected image to 32 bit
         /// 

@@ -80,13 +80,22 @@ A .NET application & library for editing & annotating various microscopy image f
 ```
 //First you need to setup your project as a GTK project with .NET 6.0 as the target. 
 //Then in between Gtk.Application.Init() and Gtk.Application.Run() use the library as you please.
-//Here is an example from BioGTKApp program.cs.
+//Here is an example for opening a new NodeView from BioGTKApp program.cs.
 
 Console.WriteLine("Initializing GTK.");
 Gtk.Application.Init();
 Console.WriteLine("Creating NodeView.");
 BioGTK.NodeView node = BioGTK.NodeView.Create(args);
 node.Show();
+Gtk.Application.Run();
+
+//Another example on how to open an image with a new ImageView
+Gtk.Application.Init();
+//Since we will be using the GUI we call App.Initialize();
+App.Initialize();
+BioImage bm = BioImage.OpenFile("F:\\TESTIMAGES\\CZI\\16Bit-ZStack.czi");
+ImageView v = ImageView.Create(bm);
+v.Show();
 Gtk.Application.Run();
 
 

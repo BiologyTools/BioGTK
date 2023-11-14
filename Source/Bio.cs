@@ -52,18 +52,20 @@ namespace BioGTK
             im.ID = im.Filename;
             images.Add(im);
 
-            // start a background task to update progress bar
-            System.Threading.Tasks.Task.Run(() =>
+            if (App.tabsView != null)
             {
-                // update ui on main UI thread
-                Application.Invoke(delegate
+                // start a background task to update progress bar
+                System.Threading.Tasks.Task.Run(() =>
                 {
-                    App.nodeView.UpdateItems();
-                    if (newtab)
-                        App.tabsView.AddTab(im);
+                    // update ui on main UI thread
+                    Application.Invoke(delegate
+                    {
+                        App.nodeView.UpdateItems();
+                        if (newtab)
+                            App.tabsView.AddTab(im);
+                    });
                 });
-            });
-
+            }
             //App.Image = im;
             //NodeView.viewer.AddTab(im);
         }
@@ -2260,11 +2262,14 @@ namespace BioGTK
         {
             get
             {
-                return App.progress.ProgressValue;
+                if (App.progress != null)
+                    return App.progress.ProgressValue;
+                else
+                    return 0;
             }
             set
             {
-                try
+                if (App.progress != null)
                 {
                     // update ui on main UI thread
                     Application.Invoke(delegate
@@ -2272,11 +2277,6 @@ namespace BioGTK
                         App.progress.ProgressValue = value;
                     });
                 }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                }
-                
             }
         }
         public static string status;

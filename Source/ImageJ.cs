@@ -176,11 +176,14 @@ namespace BioGTK
             if(bioformats)
             File.Delete(f);
             // update image on main UI thread
-            Application.Invoke(delegate
+            if (App.viewer != null)
             {
-                App.viewer.UpdateImage();
-                App.viewer.UpdateView();
-            });
+                Application.Invoke(delegate
+                {
+                    App.viewer.UpdateImage();
+                    App.viewer.UpdateView();
+                });
+            }
             Recorder.AddLine("ImageJ.RunOnImage(\"" + con + "\"," + headless + "," + onTab + "," + bioformats + "," + resultInNewTab + ");");
         }
 
