@@ -1,5 +1,6 @@
 ﻿using AForge;
 using Bio;
+using com.google.common.@base;
 using Gtk;
 using loci.formats.gui;
 using System;
@@ -262,7 +263,7 @@ namespace BioGTK
             sam.Show();
         }
 
-        private void SavePyramidalMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        private async void SavePyramidalMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Gtk.FileChooserDialog filechooser =
         new Gtk.FileChooserDialog("Set Pyramidal filename to save",
@@ -272,7 +273,17 @@ namespace BioGTK
             "Save", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            BioImage.SaveOMEPyramidal(App.viewer.Images.ToArray(), filechooser.Filename,NetVips.Enums.ForeignTiffCompression.None,0);
+            filechooser.Hide();
+            ComboPicker picker = ComboPicker.Create(typeof(NetVips.Enums.ForeignTiffCompression));
+            picker.Title = "Select Compression";
+            picker.Show();
+            if(picker.Run() != (int)ResponseType.Ok)
+                return;
+            NumberPicker numpicker = NumberPicker.Create(0,100,0);
+            numpicker.Title = "Select Compression Level in %";
+            if (numpicker.Run() != (int)ResponseType.Ok)
+                return;
+            await BioImage.SavePyramidalAsync(App.viewer.Images.ToArray(), filechooser.Filename, (NetVips.Enums.ForeignTiffCompression)picker.SelectedIndex, (int)numpicker.SelectedValue);
         }
 
         private void FocusMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -388,6 +399,7 @@ namespace BioGTK
         {
             if(viewers.Count == 0) return;
             viewers[(int)args.PageNum].Present();
+            App.viewer = viewers[(int)args.PageNum];
         }
 
         /// If the emission menu is active, then deactivate it. Otherwise, activate it
@@ -466,9 +478,9 @@ namespace BioGTK
         }
 
         /// When the TabsView is focused, set the tabsView variable in the App class to the TabsView
-       /// 
-       /// @param o The object that is being focused
-       /// @param FocusedArgs This is a class that contains the following properties:
+        /// 
+        /// @param o The object that is being focused
+        /// @param FocusedArgs This is a class that contains the following properties:
         private void TabsView_Focused(object o, FocusedArgs args)
         {
             App.tabsView = this;
@@ -482,7 +494,7 @@ namespace BioGTK
        /// @param EventArgs The event arguments.
        /// 
        /// @return The response type of the dialog.
-        protected void openImagesMenuClick(object sender, EventArgs a)
+        protected async void openImagesMenuClick(object sender, EventArgs a)
         {
             filechooser.Title = "Choose file to open";
             filechooser.Action = FileChooserAction.Open;
@@ -492,7 +504,7 @@ namespace BioGTK
             filechooser.Hide();
             foreach (string item in sts)
             {
-                BioImage.OpenAsync(item);
+                await BioImage.OpenAsync(item,false,true,true);
             }
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file and adds
@@ -502,24 +514,17 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         /// 
         /// @return The response type of the dialog.
-        protected void openOMEImagesMenuClick(object sender, EventArgs a)
+        protected async void openOMEImagesMenuClick(object sender, EventArgs a)
         {
             filechooser.Title = "Choose OME file to open";
             filechooser.Action = FileChooserAction.Open;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
+            filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
-                BioImage b = BioImage.OpenOME(item,true);
-                ImageView view = ImageView.Create(b);
-                viewers.Add(view);
-                Label dummy = new Gtk.Label(b.file);
-                dummy.Visible = false;
-                tabsView.AppendPage(dummy, new Gtk.Label(b.Filename));
-                view.Present();
+                await BioImage.OpenAsync(item, true, true, true);
             }
-            this.ShowAll();
-            filechooser.Hide();
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file as a
         /// BioImage, creates an ImageView for it, and adds the ImageView to the notebook
@@ -528,7 +533,7 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         /// 
         /// @return A list of file names.
-        protected void openOMESeriesMenuClick(object sender, EventArgs a)
+        protected async void openOMESeriesMenuClick(object sender, EventArgs a)
         {
             filechooser.Title = "Choose OME Series file to open";
             filechooser.Action = FileChooserAction.Open;
@@ -537,14 +542,7 @@ namespace BioGTK
             filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
-                BioImage[] bm = BioImage.OpenOMESeries(item,true, true);
-                foreach (BioImage b in bm)
-                {
-                    ImageView view = ImageView.Create(b);
-                    Label dummy = new Gtk.Label(b.file);
-                    dummy.Visible = false;
-                    tabsView.AppendPage(dummy, new Gtk.Label(b.Filename));
-                }
+                await BioImage.OpenAsync(item, true, true, true);
             }
             tabsView.ShowAll();
             
@@ -556,7 +554,7 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         /// 
         /// @return The response type of the dialog.
-        protected void openSeriesMenuClick(object sender, EventArgs a)
+        protected async void openSeriesMenuClick(object sender, EventArgs a)
         {
             filechooser.Title = "Choose series file to open";
             filechooser.Action = FileChooserAction.Open;
@@ -565,16 +563,9 @@ namespace BioGTK
             filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
-                BioImage[] bm = BioImage.OpenSeries(item, true);
-                foreach (BioImage b in bm)
-                {
-                    ImageView view = ImageView.Create(b);
-                    Label dummy = new Gtk.Label(b.file);
-                    dummy.Visible = false;
-                    tabsView.AppendPage(dummy, new Gtk.Label(b.Filename));
-                }
+                await BioImage.OpenAsync(item, false, true, true);
             }
-            tabsView.ShowAll();
+            tabsView.Show();
         }
 
         /// It opens a file chooser dialog, and then adds the selected images to the currently selected
@@ -584,7 +575,7 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         /// 
         /// @return The response type of the filechooser dialog.
-        protected void addImagesToTabMenuClick(object sender, EventArgs a)
+        protected async void addImagesToTabMenuClick(object sender, EventArgs a)
         {
             filechooser.Title = "Choose file to add to current tab.";
             filechooser.Action = FileChooserAction.Open;
@@ -592,8 +583,7 @@ namespace BioGTK
                 return;
             foreach (string item in filechooser.Filenames)
             {
-                BioImage b = BioImage.OpenFile(item, false);
-                SelectedViewer.AddImage(b);
+                await BioImage.OpenAsync(item, false, false, true);
             }
             this.ShowAll();
             filechooser.Hide();
@@ -605,19 +595,18 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         /// 
         /// @return The response type of the filechooser dialog.
-        protected void addOMEImagesToTabClick(object sender, EventArgs a)
+        protected async void addOMEImagesToTabClick(object sender, EventArgs a)
         {
-            filechooser.Title = "Choose OME file to add to current tab";
+            filechooser.Title = "Choose OME file to add to current tab.";
             filechooser.Action = FileChooserAction.Open;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
-                BioImage b = BioImage.OpenOME(item, false);
-                SelectedViewer.AddImage(b);
+                await BioImage.OpenAsync(item, true, false, true);
             }
-            this.ShowAll();
+            this.Show();
         }
 
         /// It creates a file chooser dialog, and if the user selects a file, it saves the selected
@@ -627,13 +616,13 @@ namespace BioGTK
         /// @param EventArgs This is the event that is being passed to the method.
         /// 
         /// @return The response type of the dialog.
-        protected void saveSelectedTiffClick(object sender, EventArgs a)
+        protected async void saveSelectedTiffClick(object sender, EventArgs a)
         {
             filechooser.Action = FileChooserAction.Save;
             filechooser.Title = "Save Selected Image To TIFF";
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            BioImage.SaveFile(filechooser.Filename,ImageView.SelectedImage.ID);
+            await BioImage.SaveAsync(filechooser.Filename,ImageView.SelectedImage.ID, 0, false);
             filechooser.Hide();
         }
         /// This function saves the selected image in the OME-TIFF format
@@ -642,13 +631,13 @@ namespace BioGTK
         /// @param EventArgs This is the event that is being called.
         /// 
         /// @return The response type of the filechooser dialog.
-        protected void saveSelectedOMEClick(object sender, EventArgs a)
+        protected async void saveSelectedOMEClick(object sender, EventArgs a)
         {
             filechooser.Action = FileChooserAction.Save;
             filechooser.Title = "Save Selected Image to File";
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            BioImage.SaveOME(filechooser.Filename, ImageView.SelectedImage.ID);
+            await BioImage.SaveAsync(filechooser.Filename, ImageView.SelectedImage.ID, 0, true);
             filechooser.Hide();
         }
         /// This function saves the current series of images to an OME-TIFF file
@@ -657,13 +646,13 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         /// 
         /// @return The response from the filechooser dialog.
-        protected void saveTabOMEClick(object sender, EventArgs a)
+        protected async void saveTabOMEClick(object sender, EventArgs a)
         {
             filechooser.Action = FileChooserAction.Save;
             filechooser.Title = "Save File";
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            BioImage.SaveOMESeries(App.viewer.Images.ToArray(), filechooser.Filename, true);
+            await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, true);
             filechooser.Hide();
         }
         /// It saves the current tab as a tiff file
@@ -672,39 +661,26 @@ namespace BioGTK
         /// @param EventArgs 
         /// 
         /// @return The response type of the filechooser dialog.
-        protected void saveTabTiffMenuClick(object sender, EventArgs a)
+        protected async void saveTabTiffMenuClick(object sender, EventArgs a)
         {
             filechooser.Action = FileChooserAction.Save;
             filechooser.Title = "Save Tab as a series to file.";
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            List<string> list = new List<string>();
-            foreach (BioImage b in App.viewer.Images)
-            {
-                list.Add(b.ID);
-            }
-            BioImage.SaveSeries(list.ToArray(), filechooser.Filename);
+            await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, false);
             filechooser.Hide();
         }
         /// This function is called when the user clicks the "Save Series" menu item
         /// 
         /// @param sender The object that raised the event.
         /// @param EventArgs The EventArgs class is the base class for classes containing event data.
-        protected void saveSeriesMenuClick(object sender, EventArgs a)
+        protected async void saveSeriesMenuClick(object sender, EventArgs a)
         {
             filechooser.Action = FileChooserAction.Save;
             filechooser.Title = "Save Series to File";
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            List<string> list = new List<string>();
-            foreach (ImageView v in viewers)
-            {
-                foreach (BioImage b in v.Images)
-                {
-                    list.Add(b.ID);
-                }
-            }
-            BioImage.SaveSeries(list.ToArray(), filechooser.Filename);
+            await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, true);
             filechooser.Hide();
         }
         /// This function is called when the user clicks the "Images to Stack" button

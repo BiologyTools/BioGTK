@@ -39,7 +39,7 @@ namespace BioGTK
             roiManager = ROIManager.Create();
             scripting = Scripting.Create();
             funcs = Functions.Create();
-            progress = Progress.Create();
+            progress = Progress.Create("","","");
             //channelsTool = ChannelsTool.Create();
             console = BioConsole.Create();
             stack = StackTools.Create();

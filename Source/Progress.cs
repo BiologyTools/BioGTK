@@ -74,24 +74,22 @@ namespace BioGTK
 
         #region Constructors / Destructors
 
-        /// It creates a new instance of the ColorTool class, which is a GTK# widget that allows the
-        /// user to select a color
-        /// 
-        /// @param ColorS The color to be displayed in the color tool.
-        /// 
-        /// @return A new instance of the ColorTool class.
-        public static Progress Create()
+        
+        public static Progress Create(string title, string status, string state)
         {
             Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Progress.glade", FileMode.Open));
-            return new Progress(builder, builder.GetObject("progress").Handle);
+            return new Progress(builder, builder.GetObject("progress").Handle, title, status, state);
         }
 
        
         /* The constructor for the class. */
-        protected Progress(Builder builder, IntPtr handle) : base(handle)
+        protected Progress(Builder builder, IntPtr handle, string title, string status, string state) : base(handle)
         {
             _builder = builder;
             builder.Autoconnect(this);
+            this.Title = title;
+            this.statusLabel.Text = status;
+            this.progLabel.Text = state;
             this.DeleteEvent += Progress_DeleteEvent;
         }
 
