@@ -6585,6 +6585,18 @@ namespace BioGTK
             else
                 SaveFile(savefile, saveid);
         }
+        /// <summary>
+        /// The SaveAsync function saves data to a file asynchronously.
+        /// </summary>
+        /// <param name="file">The file parameter is a string that represents the file path or name
+        /// where the data will be saved.</param>
+        /// <param name="id">The "id" parameter is a string that represents an identifier for the save
+        /// operation. It could be used to uniquely identify the saved data or to specify a specific
+        /// location or format for the saved file.</param>
+        /// <param name="serie">The "serie" parameter is an integer that represents a series or sequence
+        /// number. It is used as a parameter in the SaveAsync method.</param>
+        /// <param name="ome">The "ome" parameter is a boolean value that determines whether or not to
+        /// perform a specific action in the saving process.</param>
         public static async Task SaveAsync(string file, string id, int serie, bool ome)
         {
             savefile = file;
@@ -6609,6 +6621,15 @@ namespace BioGTK
             else
                 SaveSeries(sts.ToArray(), savefile);
         }
+       /// <summary>
+       /// The function `SaveSeriesAsync` saves a series of `BioImage` objects to a file asynchronously.
+       /// </summary>
+       /// <param name="imgs">imgs is an array of BioImage objects.</param>
+       /// <param name="file">The "file" parameter is a string that represents the file path where the
+       /// series of BioImages will be saved.</param>
+       /// <param name="ome">The "ome" parameter is a boolean flag that indicates whether the images
+       /// should be saved in OME-TIFF format or not. If "ome" is set to true, the images will be saved
+       /// in OME-TIFF format. If "ome" is set to false, the images will be</param>
         public static async Task SaveSeriesAsync(BioImage[] imgs, string file, bool ome)
         {
             sts.Clear();
@@ -6627,6 +6648,19 @@ namespace BioGTK
         {
             SaveOMEPyramidal(bms, savefile, comp, compLev);
         }
+        /// <summary>
+        /// The function `SavePyramidalAsync` saves an array of `BioImage` objects as a pyramidal TIFF
+        /// file asynchronously.
+        /// </summary>
+        /// <param name="imgs">imgs is an array of BioImage objects.</param>
+        /// <param name="file">The "file" parameter is a string that represents the file path where the
+        /// pyramidal image will be saved.</param>
+        /// <param name="com">The parameter "com" is of type Enums.ForeignTiffCompression, which is an
+        /// enumeration representing different compression options for the TIFF file.</param>
+        /// <param name="compLevel">The `compLevel` parameter is an integer that represents the
+        /// compression level for the TIFF file. It is used to specify the level of compression to be
+        /// applied to the image data when saving the pyramidal image. The higher the compression level,
+        /// the smaller the file size but potentially lower image quality.</param>
         public static async Task SavePyramidalAsync(BioImage[] imgs, string file, Enums.ForeignTiffCompression com, int compLevel)
         {
             bms = imgs;
