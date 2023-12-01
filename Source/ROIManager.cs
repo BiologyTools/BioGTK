@@ -258,7 +258,7 @@ namespace Bio
                         typeLabel.Text = anno.type.ToString();
                         UpdatePointBox();
                         if(ImageView.SelectedImage.isPyramidal)
-                        App.viewer.PyramidalOrigin = new Point((int)(anno.X), (int)(anno.Y));
+                        App.viewer.PyramidalOrigin = new PointD((int)(anno.X), (int)(anno.Y));
                     }
                     else return;
                 }

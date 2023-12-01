@@ -35,7 +35,7 @@ namespace BioGTK
        /// @return A new instance of the TextInput class.
         public static TextInput Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/textInput.glade", FileMode.Open));
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/TextInput.glade", FileMode.Open));
             return new TextInput(builder, builder.GetObject("textInput").Handle);
         }
 

@@ -3,8 +3,8 @@
 
 A .NET application & library for editing & annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters & macro functions. Check out the wiki for [library usage.](https://github.com/BiologyTools/BioGTK/#Usage) or check out the [documentation.](https://biologytools.github.io/) Supports Windows, Linux and Mac. For Windows & Mac see installation instructions. For Discussion check out the new Discord Server. https://discord.gg/tdeyc6fgpv
 
-[![NuGet version (BioGTK)](https://img.shields.io/nuget/v/BioGTK.svg?style=flat-square)](https://www.nuget.org/packages/BioGTK/3.8.0)
-[![NuGet version (BioGTK)](https://img.shields.io/nuget/dt/BioGTK?color=g)](https://www.nuget.org/packages/BioGTK/3.8.0) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8122239.svg)](https://doi.org/10.5281/zenodo.8122239)
+[![NuGet version (BioGTK)](https://img.shields.io/nuget/v/BioGTK.svg?style=flat-square)](https://www.nuget.org/packages/BioGTK/3.9.0)
+[![NuGet version (BioGTK)](https://img.shields.io/nuget/dt/BioGTK?color=g)](https://www.nuget.org/packages/BioGTK/3.9.0) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8122239.svg)](https://doi.org/10.5281/zenodo.8122239)
 ## Features
 
 - C# scripting with sample tool-script and other sample scripts in "/Scripts/" folder. [See samples](https://github.com/BioMicroscopy/BioImage-Scripts)
@@ -32,26 +32,16 @@ A .NET application & library for editing & annotating various microscopy image f
 - Easy segmentation with Segment Anything (SAM). Required model files downloadable from [Releases.](https://github.com/BiologyTools/BioGTK/releases/tag/SAM-Models)
 
 ## Dependencies
-- [BioFormats.NET6](https://github.com/BiologyTools/BioFormatsNET6)
-- [IKVM](http://www.ikvm.net/)
-- [AForge](http://www.aforgenet.com/)
-- [LibTiff.Net](https://bitmiracle.com/libtiff/)
-- [Cs-script](https://github.com/oleg-shilo/cs-script/blob/master/LICENSE)
+- [BioFormats.NET6](https://github.com/BiologyTools/BioFormatsNET6) [GPL3](https://www.gnu.org/licenses/gpl-3.0.en.html)
+- [IKVM](http://www.ikvm.net/) [License](https://github.com/gluck/ikvm/blob/master/LICENSE)
+- [AForge](http://www.aforgenet.com/) [LGPL](http://www.aforgenet.com/framework/license.html)
+- [LibTiff.Net](https://bitmiracle.com/libtiff/) [BSD](https://bitmiracle.com/libtiff/)
+- [Cs-script](https://github.com/oleg-shilo/cs-script/blob/master/LICENSE) [MIT](https://github.com/oleg-shilo/cs-script/blob/master/LICENSE)
 - [ImageJ](https://imagej.nih.gov/ij/) (Only needed when running ImageJ macro commands)
-- [ScottPlot](https://oxyplot.github.io/)
-- [LibVips](https://www.libvips.org/install.html) (Optional)
-- [Segment-Anything-CSharp](https://github.com/AIDajiangtang/Segment-Anything-CSharp) (Optional)
-
-## Licenses
-- BioGTK [GPL3](https://www.gnu.org/licenses/gpl-3.0.en.html)
-- AForge [LGPL](http://www.aforgenet.com/framework/license.html)
-- BioFormats.NET6 [GPL3](https://www.gnu.org/licenses/gpl-3.0.en.html)
-- [IKVM](https://github.com/gluck/ikvm/blob/master/LICENSE)
-- LibTiff.Net [BSD](https://bitmiracle.com/libtiff/)
-- Cs-script [MIT](https://github.com/oleg-shilo/cs-script/blob/master/LICENSE)
-- ScottPlot [MIT](https://github.com/ScottPlot/ScottPlot/blob/main/LICENSE)
-- LibVips [LGPL]([https://www.libvips.org/install.html](https://github.com/libvips/libvips/blob/master/LICENSE))
-- Segment-Anything-CSharp [Apache License 2.0](https://github.com/AIDajiangtang/Segment-Anything-CSharp/blob/main/LICENSE)
+- [ScottPlot](https://oxyplot.github.io/) [MIT](https://github.com/ScottPlot/ScottPlot/blob/main/LICENSE)
+- [LibVips](https://www.libvips.org/install.html) (Optional) [LGPL]([https://www.libvips.org/install.html](https://github.com/libvips/libvips/blob/master/LICENSE))
+- [Segment-Anything-CSharp](https://github.com/AIDajiangtang/Segment-Anything-CSharp) (Optional) [Apache License 2.0](https://github.com/AIDajiangtang/Segment-Anything-CSharp/blob/main/LICENSE)
+- [OpenSlideGTK](https://github.com/BiologyTools/OpenSlideSharp) (Optional) [MIT](https://github.com/BiologyTools/OpenSlideSharp/blob/master/LICENSE)
 
 ## Scripting
 -  Save scripts into "StartupPath/Scripts" with ".cs" ending.
@@ -64,17 +54,20 @@ A .NET application & library for editing & annotating various microscopy image f
 - From brew install [GTK3.](https://formulae.brew.sh/formula/gtk+3#default)
 - Download the BioGTK application for either OSX-x64 or OSX-Arm from releases.
 - Make the file executable by opening terminal in the extracted folder and running "chmod 755 BioGTKApp"
-- Optionally install [LibVips](https://www.libvips.org/install.html) package for whole-slide support with homebrew.
-- Optionally install Onnx Runtime by running "brew install onnxruntime" for running SAM.
+- Optionally install [OpenSlide](https://formulae.brew.sh/formula/openslide) for better navigation of whole-slide-images.
+- Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance and functions with whole-slide-images.
+
 
 ## Windows Installation
 - Install package manager [MSYS2.](https://github.com/GtkSharp/GtkSharp/wiki/Installing-Gtk-on-Windows) to install package GTK3. (Required for GTK Apps.)
 - Download the BioGTK Windows installer from releases.
-- Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance when opening pyramidal images. Make sure to define environmental variable $VIPS_HOME as instructed [here.](https://github.com/kleisauke/net-vips/issues/3)
+- Optionally install [OpenSlide](https://openslide.org/docs/windows/) for better navigation of whole-slide-images. Be sure to set the PATH variable correctly.
 
 ## Linux Installation
-- Just download the latest tarball(tar.gz) from Releases as linux already includes GTK3 package.
-- Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance when opening pyramidal images.
+- Download the latest tarball(tar.gz) from Releases as linux already includes GTK3 package.
+- Extract the tarball and go to the "Glade" folder and select all the glade files and change permissions to read-write.
+- Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance and functions with whole-slide-images.
+- Optionally install [OpenSlide](http://openslide.org/) for better navigation of whole-slide-images.
 
 ## Examples
 First you need to setup your project as a GTK project with .NET 6.0 as the target. 

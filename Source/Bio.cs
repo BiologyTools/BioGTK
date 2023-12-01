@@ -25,7 +25,6 @@ using Gtk;
 using System.Linq;
 using NetVips;
 using System.Threading.Tasks;
-using com.sun.jdi;
 
 namespace BioGTK
 {
@@ -71,11 +70,14 @@ namespace BioGTK
                             else
                                 App.tabsView.AddTab(im);
                         }
+                        Console.WriteLine("Added image " + im.Filename + " to Images Table.");
                     });
                 });
             }
-            //App.Image = im;
-            //NodeView.viewer.AddTab(im);
+            else
+            {
+                Console.WriteLine("App.tabsView is null.");
+            }
         }
         /// It takes a string as an argument, and returns the number of times that string appears in the
         /// list of images
@@ -154,7 +156,6 @@ namespace BioGTK
             im = null;
             Recorder.AddLine("Bio.Table.RemoveImage(" + '"' + id + '"' + ");");
         }
-
         /// It updates an image from the table
         /// 
         /// @param id The id of the image to update.
@@ -1848,6 +1849,7 @@ namespace BioGTK
         private int sizeZ, sizeC, sizeT;
         private Statistics statistics;
         private int resolution = 0;
+        
         ImageInfo imageInfo = new ImageInfo();
         /// It copies the BioImage b and returns a new BioImage object.
         /// 
@@ -2715,9 +2717,41 @@ namespace BioGTK
             App.viewer.UpdateView();
             Recorder.AddLine("Bio.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To48Bit();");
         }
-        /// Rotates the image by specified degrees or flips it.
-        /// 
-        /// @param rot The type of rotation to perform.
+        public int? MacroResolution { get;set; }
+        public int? LabelResolution { get;set; }
+        void SetLabelMacroResolutions(BioImage b)
+        {
+            int i = 0;
+            AForge.Size s = new AForge.Size(int.MaxValue, int.MaxValue);
+            bool noMacro = true;
+            PixelFormat pf = b.Resolutions[0].PixelFormat;
+            foreach (Resolution res in b.Resolutions)
+            {
+                if (res.SizeX < s.Width && res.SizeY < s.Height)
+                {
+                    //If the pixel format changes it means this is the macro resolution.
+                    if (pf != res.PixelFormat)
+                    {
+                        noMacro = false;
+                        break;
+                    }
+                    pf = res.PixelFormat;
+                    s = new AForge.Size(res.SizeX, res.SizeY);
+                }
+                else
+                {
+                    //If this level is bigger than the previous this is the macro resolution.
+                    noMacro = false;
+                    break;
+                }
+                i++;
+            }
+            if (!noMacro)
+            {
+                MacroResolution = i;
+                LabelResolution = i + 1;
+            }
+        }
         public void RotateFlip(AForge.RotateFlipType rot)
         {
             for (int i = 0; i < Buffers.Count; i++)
@@ -4110,17 +4144,38 @@ namespace BioGTK
         {
             //We initialize OME on a seperate thread so the user doesn't have to wait for initialization to
             //view images. 
-            System.Threading.Thread t = new System.Threading.Thread(new System.Threading.ThreadStart(InitOME));
+            System.Threading.Thread t = new System.Threading.Thread(new System.Threading.ThreadStart(InitFactory));
             t.Start();
+            System.Threading.Thread t3 = new System.Threading.Thread(new System.Threading.ThreadStart(InitReader));
+            t3.Start();
+            System.Threading.Thread t4 = new System.Threading.Thread(new System.Threading.ThreadStart(InitWriter));
+            t4.Start();
         }
+        static bool inf = false, inr = false, inw = false;
         /// > Initialize the OME-XML library
-        private static void InitOME()
+        private static void InitFactory()
         {
             factory = new ServiceFactory();
             service = (OMEXMLService)factory.getInstance(typeof(OMEXMLService));
+            inf = true;
+            if (inf && inr && inw)
+                initialized = true;
+        }
+        /// > Initialize the OME-XML library
+        private static void InitReader()
+        {
             reader = new ImageReader();
+            inr = true;
+            if (inf && inr && inw)
+                initialized = true;
+        }
+        /// > Initialize the OME-XML library
+        private static void InitWriter()
+        {
             writer = new ImageWriter();
-            initialized = true;
+            inw = true;
+            if (inf && inr && inw)
+                initialized = true;
         }
         /// This function takes a string array of file names and a string ID and saves the files to the
         /// database
@@ -5297,11 +5352,11 @@ namespace BioGTK
                     mutable.Set(GValue.GIntType, "page-height", ss[last].Height);
                 });
                 if (bis[px][0].bitsPerPixel > 8)
-                    mutated.Tiffsave(file, compression, 1, Enums.ForeignTiffPredictor.None, null, true, ss[px].Width, ss[px].Height, true, false, 16,
+                    mutated.Tiffsave(file, compression, 1, Enums.ForeignTiffPredictor.None, true, ss[px].Width, ss[px].Height, true, false, 16,
                     Enums.ForeignTiffResunit.Cm, 1000 * bis[px][0].PhysicalSizeX, 1000 * bis[px][0].PhysicalSizeY, true, null, Enums.RegionShrink.Nearest,
                     compressionLevel, true, Enums.ForeignDzDepth.One, true, false, null, null, ss[px].Height);
                 else
-                    mutated.Tiffsave(file, compression, 1, Enums.ForeignTiffPredictor.None, null, true, ss[px].Width, ss[px].Height, true, false, 8,
+                    mutated.Tiffsave(file, compression, 1, Enums.ForeignTiffPredictor.None, true, ss[px].Width, ss[px].Height, true, false, 8,
                     Enums.ForeignTiffResunit.Cm, 1000 * bis[px][0].PhysicalSizeX, 1000 * bis[px][0].PhysicalSizeY, true, null, Enums.RegionShrink.Nearest,
                     compressionLevel, true, Enums.ForeignDzDepth.One, true, false, null, null, ss[px].Height);
                 s++;
@@ -5502,27 +5557,27 @@ namespace BioGTK
         /// The function "OpenOME" opens a bioimage file, with options to specify the series, whether to
         public static BioImage OpenOME(string file, int serie, bool tab, bool addToImages, bool tile, int tilex, int tiley, int tileSizeX, int tileSizeY)
         {
+            if (file == null || file == "")
+                throw new InvalidDataException("File is empty or null");
             //We wait incase OME has not initialized.
             do
             {
                 Thread.Sleep(10);
             } while (!initialized);
-            ImageReader reader = new ImageReader();
+            Console.WriteLine("OpenOME " + file);
+            Progress pr = Progress.Create(file, "Opening OME","Opening OME file.");
+            pr.Show();
+            pr.Present();
             if (tileSizeX == 0)
                 tileSizeX = 1920;
             if (tileSizeY == 0)
                 tileSizeY = 1080;
-            if (file == null || file == "")
-                throw new InvalidDataException("File is empty or null");
             progressValue = 0;
             progFile = file;
             BioImage b = new BioImage(file);
             b.Loading = true;
             if (b.meta == null)
-                b.meta = (IMetadata)((OMEXMLService)new ServiceFactory().getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
-            Progress pr = Progress.Create(file, "Opening OME","Opening OME");
-            pr.Show();
-            pr.Present();
+                b.meta = service.createOMEXMLMetadata();
             string f = file.Replace("\\", "/");
             string cf = reader.getCurrentFile();
             if (cf != null)
@@ -5572,6 +5627,7 @@ namespace BioGTK
 
             //Lets get the channels and initialize them
             int i = 0;
+            pr.Status = "Reading Channels";
             while (true)
             {
                 Channel ch = new Channel(i, b.bitsPerPixel, 1);
@@ -5713,7 +5769,7 @@ namespace BioGTK
                 }
             }
             b.Volume = new VolumeD(new Point3D(b.StageSizeX, b.StageSizeY, b.StageSizeZ), new Point3D(b.PhysicalSizeX * SizeX, b.PhysicalSizeY * SizeY, b.PhysicalSizeZ * SizeZ));
-
+            pr.Status = "Reading ROIs";
             int rc = b.meta.getROICount();
             for (int im = 0; im < rc; im++)
             {
@@ -6017,6 +6073,7 @@ namespace BioGTK
             serFiles.AddRange(reader.getSeriesUsedFiles());
 
             b.Buffers = new List<Bitmap>();
+            b.openSlideImage = OpenSlideGTK.OpenSlideImage.Open(file);
             // read the image data bytes
             int pages = reader.getImageCount();
             bool inter = reader.isInterleaved();
@@ -6028,7 +6085,7 @@ namespace BioGTK
                 for (int p = 0; p < pages; p++)
                 {
                     Bitmap bf;
-                    pr.Status = "Reading Image Planes.";
+                    pr.Status = "Reading Image Data";
                     pr.ProgressValue = (float)p / (float)pages;
                     byte[] bytes = reader.openBytes(p);
                     bf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(z, c, t), p, null, b.littleEndian, inter);
@@ -6048,6 +6105,7 @@ namespace BioGTK
             {
                 pls = 0;
             }
+            pr.Status = "Reading Plane Data";
             if (pls == b.Buffers.Count)
                 for (int bi = 0; bi < b.Buffers.Count; bi++)
                 {
@@ -6099,17 +6157,19 @@ namespace BioGTK
                     reader.close();
                     stop = true;
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-
+                    Console.WriteLine(e.Message);
                 }
             } while (!stop);
             b.Loading = false;
             pr.Hide();
+            Console.WriteLine("Opening complete " + file);
             return b;
         }
         public ImageReader imRead;
         public Tiff tifRead;
+        public OpenSlideGTK.OpenSlideImage openSlideImage;
         static Bitmap bm;
         /// It reads a tile from a file, and returns a bitmap
         /// 
@@ -6130,6 +6190,12 @@ namespace BioGTK
                 //We can get a tile faster with libvips rather than bioformats.
                 return ExtractRegionFromTiledTiff(b, tilex, tiley, tileSizeX, tileSizeY, serie);
             }
+            //We check if we can open this with OpenSlide as this is faster than Bioformats with IKVM.
+            if(b.openSlideImage != null)
+            {
+                return new Bitmap(tileSizeX, tileSizeY, AForge.PixelFormat.Format32bppArgb, b.openSlideImage.ReadRegion(serie, tilex, tiley, tileSizeX, tileSizeY),coord,"");
+            }
+
             string curfile = reader.getCurrentFile();
             if (curfile == null)
             {
@@ -6155,6 +6221,7 @@ namespace BioGTK
                 reader.setSeries(serie);
             int SizeX = reader.getSizeX();
             int SizeY = reader.getSizeY();
+            bool flat = reader.hasFlattenedResolutions();
             int p = b.Coords[coord.Z, coord.C, coord.T];
             bool littleEndian = reader.isLittleEndian();
             PixelFormat PixelFormat = b.Resolutions[serie].PixelFormat;
@@ -6177,14 +6244,22 @@ namespace BioGTK
                 return null;
             if (sy <= 1)
                 return null;
-            byte[] bytesr = reader.openBytes(b.Coords[coord.Z, coord.C, coord.T], tilex, tiley, sx, sy);
-            bool interleaved = reader.isInterleaved();
-            if (bm != null)
-                bm.Dispose();
-            bm = new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, null, littleEndian, interleaved);
-            if (bm.isRGB && !interleaved && littleEndian)
-                bm.SwitchRedBlue();
-            return bm;
+            try
+            {
+                byte[] bytesr = reader.openBytes(b.Coords[coord.Z, coord.C, coord.T], tilex, tiley, sx, sy);
+                bool interleaved = reader.isInterleaved();
+                if (bm != null)
+                    bm.Dispose();
+                bm = new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, null, littleEndian, interleaved);
+                if (bm.isRGB && !interleaved && littleEndian)
+                    bm.SwitchRedBlue();
+                return bm;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                return null;
+            }
         }
         /// This function sets the minimum and maximum values of the image to the minimum and maximum
         /// values of the stack

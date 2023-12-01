@@ -56,13 +56,17 @@ namespace BioGTK
             System.IO.Directory.CreateDirectory(st + "/Scripts");
             System.IO.Directory.CreateDirectory(st + "/Functions");
             System.IO.Directory.CreateDirectory(st + "/Tools");
-            App.Initialize();
             App.nodeView = this;
+            App.Initialize();
             SetupHandlers();
             Console.WriteLine("Parsing arguments.");
+            if(args.Length > 0)
+            {
+                TabsView.Create();
+            }
             foreach (string item in args)
             {
-                BioImage.OpenFile(item);
+                BioImage.OpenAsync(item, false, true, true);
             }
             Console.WriteLine("Initializing nodes.");    
             InitItems();
