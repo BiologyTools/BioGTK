@@ -5565,9 +5565,15 @@ namespace BioGTK
                 Thread.Sleep(10);
             } while (!initialized);
             Console.WriteLine("OpenOME " + file);
-            Progress pr = Progress.Create(file, "Opening OME","Opening OME file.");
-            pr.Show();
-            pr.Present();
+
+            Progress pr = null;
+            // update ui on main UI thread
+            Application.Invoke(delegate
+            {
+                pr = Progress.Create(file, "Opening OME", "Opening OME file.");
+                pr.Show();
+                pr.Present();
+            });
             if (tileSizeX == 0)
                 tileSizeX = 1920;
             if (tileSizeY == 0)
@@ -5628,6 +5634,7 @@ namespace BioGTK
             //Lets get the channels and initialize them
             int i = 0;
             pr.Status = "Reading Channels";
+            
             while (true)
             {
                 Channel ch = new Channel(i, b.bitsPerPixel, 1);
@@ -5694,7 +5701,6 @@ namespace BioGTK
                 }
                 i++;
             }
-
             //If the file doens't have channels we initialize them.
             if (b.Channels.Count == 0)
             {
@@ -6080,12 +6086,12 @@ namespace BioGTK
             int z = 0;
             int c = 0;
             int t = 0;
-            //status = "Reading OME Image Planes";
+            pr.Status = "Reading Image Data";
             if (!tile)
                 for (int p = 0; p < pages; p++)
                 {
                     Bitmap bf;
-                    pr.Status = "Reading Image Data";
+                    
                     pr.ProgressValue = (float)p / (float)pages;
                     byte[] bytes = reader.openBytes(p);
                     bf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(z, c, t), p, null, b.littleEndian, inter);
@@ -6163,7 +6169,11 @@ namespace BioGTK
                 }
             } while (!stop);
             b.Loading = false;
-            pr.Hide();
+            // update ui on main UI thread
+            Application.Invoke(delegate
+            {
+                pr.Hide();
+            });
             Console.WriteLine("Opening complete " + file);
             return b;
         }
