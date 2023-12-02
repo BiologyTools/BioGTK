@@ -5566,11 +5566,10 @@ namespace BioGTK
             } while (!initialized);
             Console.WriteLine("OpenOME " + file);
 
-            Progress pr = null;
+            Progress pr = Progress.Create(file, "Opening OME", "Opening OME file.");
             // update ui on main UI thread
             Application.Invoke(delegate
             {
-                pr = Progress.Create(file, "Opening OME", "Opening OME file.");
                 pr.Show();
                 pr.Present();
             });
@@ -6079,7 +6078,17 @@ namespace BioGTK
             serFiles.AddRange(reader.getSeriesUsedFiles());
 
             b.Buffers = new List<Bitmap>();
-            b.openSlideImage = OpenSlideGTK.OpenSlideImage.Open(file);
+            try
+            {
+                string st = OpenSlideGTK.OpenSlideImage.DetectVendor(file);
+                if(st != null)
+                b.openSlideImage = OpenSlideGTK.OpenSlideImage.Open(file);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message.ToString());
+            }
+            
             // read the image data bytes
             int pages = reader.getImageCount();
             bool inter = reader.isInterleaved();
