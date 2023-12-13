@@ -1,4 +1,5 @@
-﻿using BioGTK;
+﻿using AForge;
+using BioGTK;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using System;
@@ -9,7 +10,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-
+using System.Diagnostics;
+using Gtk;
 namespace BioGTK
 {
 
@@ -18,7 +20,6 @@ namespace BioGTK
         public static SAM theSingleton = null;
         InferenceSession mEncoder;
         InferenceSession mDecoder;
-        float[] mImgEmbedding;
         bool mReady = false;
         protected SAM()
         {
@@ -60,17 +61,42 @@ namespace BioGTK
         /// image.
         public void Encode(BioImage b)
         {
-            Transforms tranform = new Transforms(1024);
-            float[] img = tranform.ApplyImage(b);
-
-            var tensor = new DenseTensor<float>(img, new[] { 1, 3, 1024, 1024 });
-            var inputs = new List<NamedOnnxValue>
+            if (b.Buffers.Count * 3 * 1024 * 1024 > 4e8)
             {
-                NamedOnnxValue.CreateFromTensor("x", tensor)
-            };
+                // Create the message dialog
+                MessageDialog msgBox = new MessageDialog(
+                    null,
+                    DialogFlags.Modal,
+                    MessageType.Info,
+                    ButtonsType.Ok | ButtonsType.Cancel,
+                    "Memory required is more than 4GB are you sure you want to continue?"
+                );
 
-            var results = this.mEncoder.Run(inputs);
-            this.mImgEmbedding = results.First().AsTensor<float>().ToArray();
+                // Show the message dialog
+                if (msgBox.Run() != (int)ResponseType.Ok)
+                    return;
+            }
+            foreach (Bitmap bu in b.Buffers)
+            {
+                Transforms tranform = new Transforms(1024);
+                float[] img = tranform.ApplyImage(bu);
+
+                var tensor = new DenseTensor<float>(img, new[] { 1, 3, 1024, 1024 });
+                var inputs = new List<NamedOnnxValue>
+                {
+                    NamedOnnxValue.CreateFromTensor("x", tensor)
+                };
+
+                var results = this.mEncoder.Run(inputs);
+                if (b.Tag == null)
+                {
+                    b.Tag = new List<float[]>();
+                }
+                List<float[]> l = (List<float[]>)b.Tag;
+                l.Add(results.First().AsTensor<float>().ToArray());
+                b.Tag = l;
+                results.Dispose();
+            }
             this.mReady = true;
         }
 
@@ -83,9 +109,11 @@ namespace BioGTK
         /// @param orgHei The parameter `orgHei` represents the original height of the image.
         /// 
         /// @return The method is returning an array of floats, which represents the output mask.
-        public float[] Decode(List<Promotion> promotions, int orgWid, int orgHei)
+        public float[] Decode(BioImage b, List<Promotion> promotions, int orgWid, int orgHei)
         {
-            var embedding_tensor = new DenseTensor<float>(this.mImgEmbedding, new[] { 1, 256, 64, 64 });
+            ZCT c = App.viewer.GetCoordinate();
+            List<float[]> lts = (List<float[]>)b.Tag;
+            var embedding_tensor = new DenseTensor<float>(lts[b.Coords[c.Z,c.C,c.T]], new[] { 1, 256, 64, 64 });
             var bpmos = promotions.FindAll(e => e.mType == PromotionType.Box);
             var pproms = promotions.FindAll(e => e.mType == PromotionType.Point);
             int boxCount = promotions.FindAll(e => e.mType == PromotionType.Box).Count();
@@ -156,7 +184,6 @@ namespace BioGTK
         {
             mEncoder.Dispose();
             mDecoder.Dispose();
-            mImgEmbedding = null;
             GC.Collect();
         }
     }

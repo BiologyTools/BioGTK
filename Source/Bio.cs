@@ -2197,6 +2197,7 @@ namespace BioGTK
             get { return sizeT; }
         }
         public static bool Planes = false;
+        public object Tag { get;set; }
         public IntRange RRange
         {
             get

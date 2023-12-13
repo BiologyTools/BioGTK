@@ -26,13 +26,13 @@ namespace BioGTK
         /// of the image, respectively.
         /// 
         /// @return The method is returning a float array called "transformedImg".
-        public float[] ApplyImage(BioImage b)
+        public float[] ApplyImage(Bitmap b)
         {
             int neww = 0;
             int newh = 0;
             this.GetPreprocessShape(b.SizeX, b.SizeY, this.mTargetLength, ref neww, ref newh);
 
-            float[,,] resizeImg = this.Resize(neww,newh);
+            float[,,] resizeImg = this.Resize(b,neww,newh);
 
             float[] means = new float[resizeImg.GetLength(0)];
             for (int i = 0; i < resizeImg.GetLength(0); i++)
@@ -80,14 +80,14 @@ namespace BioGTK
         /// The function takes an input width and height, resizes an image using bilinear interpolation,
         /// and returns the resized image as a float array.
         /// 
+        /// @param originalImage The original Bitmap image.
         /// @param w The width of the resized image.
         /// @param h The parameter "h" in the Resize method represents the desired height of the resized
         /// image.
         /// 
         /// @return The method is returning a 3-dimensional float array representing the resized image.
-        float[,,] Resize(int w,int h)
+        float[,,] Resize(Bitmap originalImage, int w,int h)
         {
-            Bitmap originalImage = ImageView.SelectedBuffer;
             AForge.Imaging.Filters.ResizeBilinear res = new AForge.Imaging.Filters.ResizeBilinear(w, h);
             Bitmap resizedImage = res.Apply(originalImage.ImageRGB);
             //resizedImage.Save("resized.jpg", System.Drawing.Imaging.ImageFormat.Jpeg);
@@ -96,9 +96,9 @@ namespace BioGTK
             {
                 for (int j = 0; j < h; j++)
                 {
-                    newimg[0, i, j] = resizedImage.GetPixel(i, j).R;
-                    newimg[1, i, j] = resizedImage.GetPixel(i, j).G;
-                    newimg[2, i, j] = resizedImage.GetPixel(i, j).B;
+                    newimg[0, i, j] = resizedImage.GetPixel(i, j).Rf * 255;
+                    newimg[1, i, j] = resizedImage.GetPixel(i, j).Gf * 255;
+                    newimg[2, i, j] = resizedImage.GetPixel(i, j).Bf * 255;
                 }
             }
             //originalImage.Dispose();

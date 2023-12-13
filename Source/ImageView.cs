@@ -24,7 +24,7 @@ using Rectangle = AForge.Rectangle;
 using System.IO;
 using loci.plugins;
 using Mapsui.Tiling.Fetcher;
-using static android.provider.ContactsContract.CommonDataKinds;
+using Mapsui;
 
 namespace BioGTK
 {
@@ -317,7 +317,7 @@ namespace BioGTK
                         if (openSlide)
                         {
                             //byte[] bts = _openSlideBase.GetSlice(new SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight, Resolution));
-                            byte[] bts = _openSlideBase.GetSlice(new SliceInfo(map.Navigator.Viewport.CenterX, map.Navigator.Viewport.CenterY, imageBox.AllocatedWidth, imageBox.AllocatedHeight, map.Navigator.Viewport.Resolution));
+                            byte[] bts = _openSlideBase.GetSlice(new SliceInfo(MapView.Navigator.Viewport.CenterX, MapView.Navigator.Viewport.CenterY, imageBox.AllocatedWidth, imageBox.AllocatedHeight, MapView.Navigator.Viewport.Resolution));
                             if (bts != null)
                             {
                                 bitmap = new Bitmap((int)Math.Ceiling(OpenSlideBase.destExtent.Width), (int)Math.Ceiling(OpenSlideBase.destExtent.Height), PixelFormat.Format24bppRgb, bts, new ZCT(), "");
@@ -1047,8 +1047,8 @@ namespace BioGTK
             {
                 if (openSlide)
                 {
-                    map.Navigator.SetSize(imageBox.AllocatedWidth, imageBox.AllocatedHeight);
-                    map.Navigator.OverridePanBounds = new Mapsui.MRect(-SelectedImage.Resolutions[Level].SizeX, -SelectedImage.Resolutions[Level].SizeY, SelectedImage.Resolutions[Level].SizeX, SelectedImage.Resolutions[Level].SizeY);
+                    MapView.Navigator.SetSize(imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                    MapView.Navigator.OverridePanBounds = new Mapsui.MRect(-SelectedImage.Resolutions[Level].SizeX, -SelectedImage.Resolutions[Level].SizeY, SelectedImage.Resolutions[Level].SizeX, SelectedImage.Resolutions[Level].SizeY);
                 }
                 UpdateImage();
             }
@@ -1183,15 +1183,6 @@ namespace BioGTK
                     Pixbuf pf = Bitmaps[i].ScaleSimple((int)r.W,(int)r.H, InterpType.Bilinear);
                     Gdk.CairoHelper.SetSourcePixbuf(e.Cr, pf, (int)r.X, (int)r.Y);
                     e.Cr.Paint();
-                    foreach (ROI an in im.Annotations)
-                    {
-                        if (an.type == ROI.Type.Mask || an.mask != null)
-                        {
-                            Pixbuf p = an.mask.ScaleSimple((int)r.W, (int)r.H, InterpType.Bilinear);
-                            Gdk.CairoHelper.SetSourcePixbuf(e.Cr, p, r.X, r.Y);
-                            e.Cr.Paint();
-                        }
-                    }
                 }
                 
                 foreach (ROI an in im.Annotations)
@@ -1216,7 +1207,12 @@ namespace BioGTK
                     e.Cr.LineWidth = an.strokeWidth;
                     PointF pc = new PointF((float)(an.BoundingBox.X + (an.BoundingBox.W / 2)), (float)(an.BoundingBox.Y + (an.BoundingBox.H / 2)));
                     float width = (float)ToScreenScaleW(ROI.selectBoxSize);
-
+                    if (an.type == ROI.Type.Mask || an.mask != null)
+                    {
+                        Pixbuf p = an.mask.ScaleSimple((int)r.W, (int)r.H, InterpType.Bilinear);
+                        Gdk.CairoHelper.SetSourcePixbuf(e.Cr, p, r.X, r.Y);
+                        e.Cr.Paint();
+                    }
                     if (an.type == ROI.Type.Point)
                     {
                         RectangleD p1 = ToViewSpace(an.Point.X, an.Point.Y, 1, 1);
@@ -1593,12 +1589,12 @@ namespace BioGTK
                 if (args.Event.Direction == ScrollDirection.Up)
                 {
                     Resolution *= 0.98;
-                    map.Navigator.ZoomTo(Resolution, new Mapsui.MPoint((double)imageBox.AllocatedWidth / 2, (double)imageBox.AllocatedHeight / 2));
+                    MapView.Navigator.ZoomTo(Resolution, new Mapsui.MPoint((double)imageBox.AllocatedWidth / 2, (double)imageBox.AllocatedHeight / 2));
                 }
                 else
                 {
                     Resolution *= 1.02;
-                    map.Navigator.ZoomTo(Resolution, new Mapsui.MPoint((double)imageBox.AllocatedWidth / 2, (double)imageBox.AllocatedHeight / 2));
+                    MapView.Navigator.ZoomTo(Resolution, new Mapsui.MPoint((double)imageBox.AllocatedWidth / 2, (double)imageBox.AllocatedHeight / 2));
                 }
         }
 
@@ -1832,7 +1828,7 @@ namespace BioGTK
             get 
             {
                 if (OpenSlide)
-                    return new PointD(map.Navigator.Viewport.CenterX, map.Navigator.Viewport.CenterY);
+                    return new PointD(MapView.Navigator.Viewport.CenterX, MapView.Navigator.Viewport.CenterY);
                 return 
                     pyramidalOrigin;
             }
@@ -1840,7 +1836,7 @@ namespace BioGTK
             {
                 if (!AllowNavigation)
                     return;
-                map.Navigator.CenterOn(new Mapsui.MPoint(value.X, value.Y));
+                MapView.Navigator.CenterOn(new Mapsui.MPoint(value.X, value.Y));
                 pyramidalOrigin = value;
                 if (scrollH.Adjustment.Upper > value.X && value.X > -1)
                 {
@@ -1925,7 +1921,7 @@ namespace BioGTK
             get 
             {
                 if (OpenSlide)
-                    return map.Navigator.Viewport.Resolution;
+                    return MapView.Navigator.Viewport.Resolution;
                 return resolution;
             }
             set
@@ -1958,8 +1954,8 @@ namespace BioGTK
                 }
                 
                 resolution = value;
-                map.Navigator.OverridePanBounds = new Mapsui.MRect(-SelectedImage.Resolutions[res].SizeX, -SelectedImage.Resolutions[res].SizeY, SelectedImage.Resolutions[res].SizeX * 2, SelectedImage.Resolutions[res].SizeY * 2);
-                map.Navigator.ZoomTo(resolution);
+                MapView.Navigator.OverridePanBounds = new Mapsui.MRect(-SelectedImage.Resolutions[res].SizeX, -SelectedImage.Resolutions[res].SizeY, SelectedImage.Resolutions[res].SizeX * 2, SelectedImage.Resolutions[res].SizeY * 2);
+                MapView.Navigator.ZoomTo(resolution);
                 // update ui on main UI thread
                 Application.Invoke(delegate
                 {
@@ -2470,7 +2466,6 @@ namespace BioGTK
         /// @return The point in the image space that corresponds to the point in the view space.
         public PointD ImageToViewSpace(double x,double y)
         {
-            Title = "Level:" + Level + " Pos:" + x + "," + y + " Res:" + Resolution + " Origin:" + PyramidalOrigin.ToString();
             if(SelectedImage.isPyramidal)
             {
                 if(openSlide)
@@ -2879,7 +2874,8 @@ namespace BioGTK
         #region OpenSlide
         private OpenSlideBase _openSlideBase;
         private ISlideSource _slideSource;
-        public Mapsui.Map map = new Mapsui.Map();
+        private Mapsui.Map map = new Mapsui.Map();
+        public Map MapView { get { return map; } }
         /// <summary>
         /// Open slide file
         /// </summary>
@@ -2909,9 +2905,9 @@ namespace BioGTK
                 {
                     Resolution = _openSlideBase.Schema.Resolutions[0].UnitsPerPixel;
                 }
-                map.Layers.Add(new SlideTileLayer(_slideSource, dataFetchStrategy: new MinimalDataFetchStrategy()));
-                map.Layers.Add(new SlideSliceLayer(_slideSource) { Enabled = false, Opacity = 0.5 });
-                map.Navigator.ZoomTo(Resolution,new Mapsui.MPoint((double)imageBox.AllocatedWidth/2, (double)imageBox.AllocatedHeight / 2));
+                MapView.Layers.Add(new SlideTileLayer(_slideSource, dataFetchStrategy: new MinimalDataFetchStrategy()));
+                MapView.Layers.Add(new SlideSliceLayer(_slideSource) { Enabled = false, Opacity = 0.5 });
+                MapView.Navigator.ZoomTo(Resolution,new Mapsui.MPoint((double)imageBox.AllocatedWidth/2, (double)imageBox.AllocatedHeight / 2));
             }
         }
         #endregion

@@ -19,7 +19,6 @@ namespace BioGTK
         ImageView view;
         SAM mSam = SAM.Instance();
         List<Promotion> mPromotionList = new List<Promotion>();
-        Pixbuf mask;
         public bool init = false;
         int id = 1;
         string autoSavePath = "Masks";
@@ -89,23 +88,14 @@ namespace BioGTK
                 dialog.Run();
                 return;
             }
-            //Next lets make sure the image is a single plane as memory requirments make handling multiple images difficult.
-            if (ImageView.SelectedImage.SizeZ != 1 || ImageView.SelectedImage.SizeC != 1 || ImageView.SelectedImage.SizeT != 1 || ImageView.SelectedBuffer.PixelFormat != PixelFormat.Format24bppRgb)
-            {
-                MessageDialog dialog = new MessageDialog(
-             this,
-             DialogFlags.Modal,
-             MessageType.Info,
-             ButtonsType.Ok,
-             "SAM currently only supports single RGB24 plane images. Reduce image to single plane and ensure 24 bit RGB format.");
-                dialog.Run();
-                return;
-            }
             view = App.viewer;
             _builder = builder;
             builder.Autoconnect(this);
             thresholdBar.Adjustment.Lower = 0;
-            thresholdBar.Adjustment.Upper = 255;
+            if (ImageView.SelectedImage.SelectedBuffer.BitsPerPixel > 8)
+                thresholdBar.Adjustment.Upper = ushort.MaxValue;
+            else
+                thresholdBar.Adjustment.Upper = 255;
             Directory.CreateDirectory("Masks");
             filechooser =
             new Gtk.FileChooserDialog("Choose file to open",
@@ -142,12 +132,12 @@ namespace BioGTK
             {
                 if (r.mask == null)
                     continue;
-                List<PointD> ps = GetEdgePolygonFromMask(new Bitmap("",r.mask.Width,r.mask.Height,PixelFormat.Format32bppArgb, r.mask.PixelBytes.Data,new ZCT(),0));
+                List<PointD> ps = GetEdgePolygonFromMask(new Bitmap("",r.mask.Width,r.mask.Height,PixelFormat.Format32bppArgb, r.mask.PixelBytes.Data, App.viewer.GetCoordinate(), 0));
                 for (int i = 0; i < ps.Count; i++)
                 {
                     ps[i] = new PointD(ps[i].X * ImageView.SelectedImage.PhysicalSizeX, ps[i].Y * ImageView.SelectedImage.PhysicalSizeY);
                 }
-                ROI rs = ROI.CreatePolygon(new ZCT(), ps.ToArray());
+                ROI rs = ROI.CreatePolygon(App.viewer.GetCoordinate(), ps.ToArray());
                 rois.Add(rs);
             }
             ImageView.SelectedImage.Annotations.AddRange(rois.ToArray());
@@ -275,51 +265,44 @@ namespace BioGTK
                 return;
             if (SelectedROI == null)
                 return;
-            PointD pointer = view.ImageToViewSpace(e.Event.X, e.Event.Y);
-            PointD mouse = new PointD(((pointer.X - view.Origin.X) / ImageView.SelectedImage.Volume.Width) * ImageView.SelectedImage.SizeX, ((pointer.Y - view.Origin.Y) / ImageView.SelectedImage.Volume.Height) * ImageView.SelectedImage.SizeY);
-
-            //this.pictureBox.CaptureMouse();
-            if (Tools.currentTool.type == Tools.Tool.Type.point && view.AnnotationsRGB.Count > 0)
+            if (Tools.currentTool.type == Tools.Tool.Type.point && view.AnnotationsRGB.Count > 0 && e.Event.State.HasFlag(ModifierType.Button1Mask))
             {
                 OpType type = this.addMaskMenu.Active == true ? OpType.ADD : OpType.REMOVE;
-                //Brush brush = type == OpType.ADD ? Brushes.Red : Brushes.Black;
                 Promotion promtt = new PointPromotion(type);
-                (promtt as PointPromotion).X = (int)mouse.X;
-                (promtt as PointPromotion).Y = (int)mouse.Y;
-                ShowStatus("Decode Started");
+                (promtt as PointPromotion).X = (int)SelectedROI.PointsImage[0].X;
+                (promtt as PointPromotion).Y = (int)SelectedROI.PointsImage[0].Y;
                 Transforms trs = new Transforms(1024);
                 PointPromotion ptn = trs.ApplyCoords((promtt as PointPromotion), ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 this.mPromotionList.Add(ptn);
-                float[] maskk = this.mSam.Decode(this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
+                float[] maskk = this.mSam.Decode(ImageView.SelectedImage, this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 this.ShowMask(maskk, ImageView.SelectedBuffer.Width,ImageView.SelectedBuffer.Height);
-                ShowStatus("Decode Done");
                 this.mPromotionList.Clear();
             }
 
-            if (Tools.currentTool.type != Tools.Tool.Type.rect)
-                return;
-            
-            BoxPromotion promt = new BoxPromotion();
-            if (SelectedROI.PointsImage[0].X < (int)SelectedROI.PointsImage[3].X || SelectedROI.PointsImage[0].Y < (int)SelectedROI.PointsImage[3].Y)
+            if (Tools.currentTool.type == Tools.Tool.Type.rect && e.Event.State.HasFlag(ModifierType.Button1Mask))
             {
-                (promt as BoxPromotion).mLeftUp.X = (int)SelectedROI.PointsImage[0].X;
-                (promt as BoxPromotion).mLeftUp.Y = (int)SelectedROI.PointsImage[0].Y;
-                (promt as BoxPromotion).mRightBottom.X = (int)SelectedROI.PointsImage[3].X;
-                (promt as BoxPromotion).mRightBottom.Y = (int)SelectedROI.PointsImage[3].Y;
+                BoxPromotion promt = new BoxPromotion();
+                if (SelectedROI.PointsImage[0].X < (int)SelectedROI.PointsImage[3].X || SelectedROI.PointsImage[0].Y < (int)SelectedROI.PointsImage[3].Y)
+                {
+                    (promt as BoxPromotion).mLeftUp.X = (int)SelectedROI.PointsImage[0].X;
+                    (promt as BoxPromotion).mLeftUp.Y = (int)SelectedROI.PointsImage[0].Y;
+                    (promt as BoxPromotion).mRightBottom.X = (int)SelectedROI.PointsImage[3].X;
+                    (promt as BoxPromotion).mRightBottom.Y = (int)SelectedROI.PointsImage[3].Y;
+                }
+                else
+                {
+                    (promt as BoxPromotion).mLeftUp.X = (int)SelectedROI.PointsImage[3].X;
+                    (promt as BoxPromotion).mLeftUp.Y = (int)SelectedROI.PointsImage[3].Y;
+                    (promt as BoxPromotion).mRightBottom.X = (int)SelectedROI.PointsImage[0].X;
+                    (promt as BoxPromotion).mRightBottom.Y = (int)SelectedROI.PointsImage[0].Y;
+                }
+                Transforms ts = new Transforms(1024);
+                var pb = ts.ApplyBox(promt, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
+                this.mPromotionList.Add(pb);
+                float[] mask = this.mSam.Decode(ImageView.SelectedImage, this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
+                ShowMask(mask, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
+                this.mPromotionList.Clear();
             }
-            else
-            {
-                (promt as BoxPromotion).mLeftUp.X = (int)SelectedROI.PointsImage[3].X;
-                (promt as BoxPromotion).mLeftUp.Y = (int)SelectedROI.PointsImage[3].Y;
-                (promt as BoxPromotion).mRightBottom.X = (int)SelectedROI.PointsImage[0].X;
-                (promt as BoxPromotion).mRightBottom.Y = (int)SelectedROI.PointsImage[0].Y;
-            }
-            Transforms ts = new Transforms(1024);
-            var pb = ts.ApplyBox(promt, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
-            this.mPromotionList.Add(pb);
-            float[] mask = this.mSam.Decode(this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
-            ShowMask(mask,ImageView.SelectedBuffer.Width,ImageView.SelectedBuffer.Height);
-            this.mPromotionList.Clear();
         }
 
         /// It creates a file chooser dialog, and if the user selects a file, it saves the selected
@@ -345,11 +328,11 @@ namespace BioGTK
                 return;
             if (Environment.OSVersion.Platform == PlatformID.Win32NT)
             {
-                mask.Save(filechooser.Filename, "png");
+                SelectedROI.mask.Save(filechooser.Filename, "png");
             }
             else
             {
-                mask.Save(filechooser.Filename, "tiff");
+                SelectedROI.mask.Save(filechooser.Filename, "tiff");
             }
             filechooser.Hide();
         }
@@ -399,12 +382,11 @@ namespace BioGTK
                 }
                 id++;
             }
-            this.mask = pf;
         }
 
         void ShowStatus(string message)
         {
-            view.Title = message;
+            view.Title = ImageView.SelectedImage.Filename + " " + message;
         }
     }
 }
