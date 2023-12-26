@@ -154,7 +154,7 @@ namespace BioGTK
             images.Remove(im);
             //im.Dispose();
             im = null;
-            Recorder.AddLine("Bio.Table.RemoveImage(" + '"' + id + '"' + ");");
+            Recorder.AddLine("BioGTK.Table.RemoveImage(" + '"' + id + '"' + ");");
         }
         /// It updates an image from the table
         /// 
@@ -1887,6 +1887,7 @@ namespace BioGTK
             bi.filename = b.filename;
             bi.Resolutions = b.Resolutions;
             bi.statistics = b.statistics;
+            bi.openSlideImage = b.openSlideImage;
             return bi;
         }
         /// Copy a BioImage object.
@@ -2393,7 +2394,7 @@ namespace BioGTK
             App.viewer.UpdateGUI();
             App.viewer.UpdateImages();
             App.viewer.UpdateView();
-            Recorder.AddLine("Bio.Table.GetImage(" + '"' + ID + '"' + ")" + "." + "To8Bit();");
+            Recorder.AddLine("BioGTK.Table.GetImage(" + '"' + ID + '"' + ")" + "." + "To8Bit();");
         }
         /// Converts the image to 16 bit.
         public void To16Bit()
@@ -2497,7 +2498,7 @@ namespace BioGTK
             App.viewer.UpdateGUI();
             App.viewer.UpdateImages();
             App.viewer.UpdateView();
-            Recorder.AddLine("Bio.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To16Bit();");
+            Recorder.AddLine("BioGTK.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To16Bit();");
         }
         /// Converts the image to 24 bit.
         public void To24Bit()
@@ -2579,7 +2580,7 @@ namespace BioGTK
                 Buffers = bfs;
                 UpdateCoords(SizeZ, 1, SizeT);
             }
-            Recorder.AddLine("Bio.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To24Bit();");
+            Recorder.AddLine("BioGTK.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To24Bit();");
             AutoThreshold(this, true);
             StackThreshold(false);
             App.viewer.UpdateGUI();
@@ -2604,7 +2605,7 @@ namespace BioGTK
             App.viewer.UpdateGUI();
             App.viewer.UpdateImages();
             App.viewer.UpdateView();
-            Recorder.AddLine("Bio.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To32Bit();");
+            Recorder.AddLine("BioGTK.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To32Bit();");
         }
         /// It converts a 16 bit image to a 48 bit image
         /// 
@@ -2639,10 +2640,10 @@ namespace BioGTK
                     for (int i = 0; i < Buffers.Count; i += Channels.Count)
                     {
                         Bitmap[] bs = new Bitmap[3];
-                        bs[0] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 2].PixelFormat, Buffers[i+2].Bytes, new ZCT(Buffers[i+2].Coordinate.Z, 0, Buffers[i+2].Coordinate.T), i + 2, Buffers[i+2].Plane);
+                        bs[0] = new Bitmap(ID, SizeX, SizeY, Buffers[i].PixelFormat, Buffers[i].Bytes, new ZCT(Buffers[i].Coordinate.Z, 0, Buffers[i].Coordinate.T), i, Buffers[i].Plane);
                         bs[1] = new Bitmap(ID, SizeX, SizeY, Buffers[i + 1].PixelFormat, Buffers[i + 1].Bytes, new ZCT(Buffers[i + 1].Coordinate.Z, 0, Buffers[i + 1].Coordinate.T), i + 1, Buffers[i + 1].Plane);
                         if (Channels.Count > 2)
-                            bs[2] = new Bitmap(ID, SizeX, SizeY, Buffers[i].PixelFormat, Buffers[i].Bytes, new ZCT(Buffers[i].Coordinate.Z, 0, Buffers[i].Coordinate.T), i, Buffers[i].Plane);
+                            bs[2] = new Bitmap(ID, SizeX, SizeY, Buffers[i+2].PixelFormat, Buffers[i+2].Bytes, new ZCT(Buffers[i].Coordinate.Z, 0, Buffers[i+2].Coordinate.T), i+2, Buffers[i].Plane);
                         Bitmap bbs = Bitmap.RGB16To48(bs);
                         for (int b = 0; b < 3; b++)
                         {
@@ -2716,17 +2717,17 @@ namespace BioGTK
             App.viewer.UpdateGUI();
             App.viewer.UpdateImages();
             App.viewer.UpdateView();
-            Recorder.AddLine("Bio.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To48Bit();");
+            Recorder.AddLine("BioGTK.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To48Bit();");
         }
         public int? MacroResolution { get;set; }
         public int? LabelResolution { get;set; }
-        void SetLabelMacroResolutions(BioImage b)
+        void SetLabelMacroResolutions()
         {
             int i = 0;
             AForge.Size s = new AForge.Size(int.MaxValue, int.MaxValue);
             bool noMacro = true;
-            PixelFormat pf = b.Resolutions[0].PixelFormat;
-            foreach (Resolution res in b.Resolutions)
+            PixelFormat pf = Resolutions[0].PixelFormat;
+            foreach (Resolution res in Resolutions)
             {
                 if (res.SizeX < s.Width && res.SizeY < s.Height)
                 {
@@ -3242,7 +3243,7 @@ namespace BioGTK
             else
                 b.StackThreshold(false);
             Images.AddImage(b, true);
-            Recorder.AddLine("Bio.BioImage.Substack(" + '"' + orig.Filename + '"' + "," + ser + "," + zs + "," + ze + "," + cs + "," + ce + "," + ts + "," + te + ");");
+            Recorder.AddLine("BioGTK.BioImage.Substack(" + '"' + orig.Filename + '"' + "," + ser + "," + zs + "," + ze + "," + cs + "," + ce + "," + ts + "," + te + ");");
             return b;
         }
         /// This function takes two images and merges them together
@@ -3333,7 +3334,7 @@ namespace BioGTK
                 res.StackThreshold(true);
             else
                 res.StackThreshold(false);
-            Recorder.AddLine("Bio.BioImage.MergeChannels(" + '"' + b.ID + '"' + "," + '"' + b2.ID + '"' + ");");
+            Recorder.AddLine("BioGTK.BioImage.MergeChannels(" + '"' + b.ID + '"' + "," + '"' + b2.ID + '"' + ");");
             return res;
         }
         /// MergeChannels(b, b2) takes two images, b and b2, and merges the channels of b2 into b
@@ -3390,7 +3391,7 @@ namespace BioGTK
                 bi.StackThreshold(true);
             else
                 bi.StackThreshold(false);
-            Recorder.AddLine("Bio.BioImage.MergeZ(" + '"' + b.ID + '"' + ");");
+            Recorder.AddLine("BioGTK.BioImage.MergeZ(" + '"' + b.ID + '"' + ");");
             return bi;
         }
         /// It takes a 3D image and merges the time dimension into a single image
@@ -3434,7 +3435,7 @@ namespace BioGTK
                 bi.StackThreshold(true);
             else
                 bi.StackThreshold(false);
-            Recorder.AddLine("Bio.BioImage.MergeT(" + '"' + b.ID + '"' + ");");
+            Recorder.AddLine("BioGTK.BioImage.MergeT(" + '"' + b.ID + '"' + ");");
             return bi;
         }
         /// It takes a single image and splits it into three images, one for each channel
@@ -3537,7 +3538,7 @@ namespace BioGTK
             }
 
             Statistics.ClearCalcBuffer();
-            Recorder.AddLine("Bio.BioImage.SplitChannels(" + '"' + Filename + '"' + ");");
+            Recorder.AddLine("BioGTK.BioImage.SplitChannels(" + '"' + Filename + '"' + ");");
             return bms;
         }
         /// > SplitChannels splits a BioImage into its constituent channels
@@ -4145,12 +4146,17 @@ namespace BioGTK
         {
             //We initialize OME on a seperate thread so the user doesn't have to wait for initialization to
             //view images. 
-            System.Threading.Thread t = new System.Threading.Thread(new System.Threading.ThreadStart(InitFactory));
-            t.Start();
-            System.Threading.Thread t3 = new System.Threading.Thread(new System.Threading.ThreadStart(InitReader));
-            t3.Start();
-            System.Threading.Thread t4 = new System.Threading.Thread(new System.Threading.ThreadStart(InitWriter));
-            t4.Start();
+            if (RuntimeInformation.ProcessArchitecture != Architecture.Arm64)
+            {
+                System.Threading.Thread t = new System.Threading.Thread(new System.Threading.ThreadStart(InitFactory));
+                t.Start();
+                System.Threading.Thread t3 = new System.Threading.Thread(new System.Threading.ThreadStart(InitReader));
+                t3.Start();
+                System.Threading.Thread t4 = new System.Threading.Thread(new System.Threading.ThreadStart(InitWriter));
+                t4.Start();
+            }
+            else
+                initialized = true;
         }
         static bool inf = false, inr = false, inw = false;
         /// > Initialize the OME-XML library
@@ -4448,7 +4454,7 @@ namespace BioGTK
             b.Resolutions.Add(res);
         }
 
-        /// The OpenFile function in C# opens a BioImage file, reads its metadata, and loads the image
+        /// The OpenFile function opens a BioImage file, reads its metadata, and loads the image
         /// data into a BioImage object.
         /// 
         /// @param file The file path of the bioimage to be opened.
@@ -4714,6 +4720,22 @@ namespace BioGTK
                 image.Close();
                 b.UpdateCoords();
             }
+            else
+            {
+                Gdk.Pixbuf pf = new Gdk.Pixbuf(file);
+                b.littleEndian = BitConverter.IsLittleEndian;
+                PixelFormat px = GetPixelFormat(pf.NChannels, pf.BitsPerSample);
+                b.Resolutions.Add(new Resolution(pf.Width, pf.Height,px,96 * (1/2.54) / 1000, 96 * (1 / 2.54) / 1000, 96 * (1 / 2.54) / 1000,0,0,0));
+                b.bitsPerPixel = pf.BitsPerSample;
+                b.Buffers.Add(new Bitmap(pf.Width, pf.Height, pf.Width * pf.NChannels, px, pf.Pixels));
+                b.Buffers.Last().ID = Bitmap.CreateID(file, 0);
+                Statistics.CalcStatistics(b.Buffers.Last());
+                b.Channels.Add(new Channel(0, b.bitsPerPixel, b.RGBChannelCount));
+                b.Coords = new int[1, 1, 1];
+                b.sizeC = 1;
+                b.sizeT = 1;
+                b.sizeZ = 1;
+            }
             if (b.StageSizeX == -1)
             {
                 b.imageInfo.Series = 0;
@@ -4740,7 +4762,7 @@ namespace BioGTK
                 b.StackThreshold(true);
             else
                 b.StackThreshold(false);
-            Recorder.AddLine("Bio.BioImage.Open(" + '"' + file + '"' + ");");
+            Recorder.AddLine("BioGTK.BioImage.Open(" + '"' + file + '"' + ");");
             if (addToImages)
                 Images.AddImage(b, tab);
             //pr.Close();
@@ -4809,12 +4831,12 @@ namespace BioGTK
                 else
                     return false;
             }
-            if (!(file.EndsWith("png") || file.EndsWith("PNG") || file.EndsWith("jpg") || file.EndsWith("JPG") ||
+            if ((file.EndsWith("png") || file.EndsWith("PNG") || file.EndsWith("jpg") || file.EndsWith("JPG") ||
                 file.EndsWith("jpeg") || file.EndsWith("JPEG") || file.EndsWith("bmp") || file.EndsWith("BMP")))
             {
-                return true;
+                return false;
             }
-            else return false;
+            else return true;
         }
         /// > If the file is an OME file and has more than one series, return true
         /// 
@@ -4883,9 +4905,6 @@ namespace BioGTK
                 omexml.setPixelsSizeX(new PositiveInteger(java.lang.Integer.valueOf(b.SizeX)), serie);
                 omexml.setPixelsSizeY(new PositiveInteger(java.lang.Integer.valueOf(b.SizeY)), serie);
                 omexml.setPixelsSizeZ(new PositiveInteger(java.lang.Integer.valueOf(b.SizeZ)), serie);
-                int samples = 1;
-                if (b.isRGB)
-                    samples = 3;
                 omexml.setPixelsSizeC(new PositiveInteger(java.lang.Integer.valueOf(b.SizeC)), serie);
                 omexml.setPixelsSizeT(new PositiveInteger(java.lang.Integer.valueOf(b.SizeT)), serie);
                 if (BitConverter.IsLittleEndian)
@@ -5387,7 +5406,7 @@ namespace BioGTK
         /// @return A BioImage object.
         public static BioImage OpenOME(string file, int serie)
         {
-            Recorder.AddLine("Bio.BioImage.OpenOME(\"" + file + "\"," + serie + ");");
+            Recorder.AddLine("BioGTK.BioImage.OpenOME(\"" + file + "\"," + serie + ");");
             return OpenOME(file, serie, true, false, false, 0, 0, 0, 0);
         }
         /// It takes a list of files, and creates a new BioImage object with the first file in the list.
@@ -5634,7 +5653,7 @@ namespace BioGTK
             //Lets get the channels and initialize them
             int i = 0;
             pr.Status = "Reading Channels";
-            
+            int sumSamples = 0;
             while (true)
             {
                 Channel ch = new Channel(i, b.bitsPerPixel, 1);
@@ -5645,6 +5664,7 @@ namespace BioGTK
                     {
                         int s = b.meta.getChannelSamplesPerPixel(serie, i).getNumberValue().intValue();
                         ch.SamplesPerPixel = s;
+                        sumSamples += s;
                         def = true;
                     }
                     if (b.meta.getChannelName(serie, i) != null)
@@ -5708,9 +5728,9 @@ namespace BioGTK
             }
 
             //Bioformats gives a size of 3 for C when saved in ImageJ as RGB. We need to correct for this as C should be 1 for RGB.
-            if ((PixelFormat == PixelFormat.Format24bppRgb || PixelFormat == PixelFormat.Format32bppArgb || PixelFormat == PixelFormat.Format48bppRgb) && b.SizeC == 3)
+            if (RGBChannelCount >= 3)
             {
-                b.sizeC = 1;
+                b.sizeC = sumSamples / b.Channels[0].SamplesPerPixel;
             }
             b.Coords = new int[b.SizeZ, b.SizeC, b.SizeT];
 
@@ -6101,7 +6121,6 @@ namespace BioGTK
                 for (int p = 0; p < pages; p++)
                 {
                     Bitmap bf;
-                    
                     pr.ProgressValue = (float)p / (float)pages;
                     byte[] bytes = reader.openBytes(p);
                     bf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(z, c, t), p, null, b.littleEndian, inter);
@@ -6179,6 +6198,7 @@ namespace BioGTK
                 }
             } while (!stop);
             b.Loading = false;
+            b.SetLabelMacroResolutions();
             // update ui on main UI thread
             Application.Invoke(delegate
             {
@@ -6271,8 +6291,6 @@ namespace BioGTK
                 if (bm != null)
                     bm.Dispose();
                 bm = new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, null, littleEndian, interleaved);
-                if (bm.isRGB && !interleaved && littleEndian)
-                    bm.SwitchRedBlue();
                 return bm;
             }
             catch (Exception e)
@@ -6419,14 +6437,16 @@ namespace BioGTK
                 else if (px == ome.xml.model.enums.PixelType.INT16 || px == ome.xml.model.enums.PixelType.UINT16)
                     return PixelFormat.Format16bppGrayScale;
             }
-            else
+            else if (rgbChannelCount == 3)
             {
                 if (px == ome.xml.model.enums.PixelType.INT8 || px == ome.xml.model.enums.PixelType.UINT8)
                     return PixelFormat.Format24bppRgb;
                 else if (px == ome.xml.model.enums.PixelType.INT16 || px == ome.xml.model.enums.PixelType.UINT16)
                     return PixelFormat.Format48bppRgb;
             }
-            throw new NotSupportedException("Not supported pixel format.");
+            else
+                return PixelFormat.Format32bppArgb;
+            throw new InvalidDataException("RGBChannels Count of " + rgbChannelCount + " not supported.");
         }
         /// It opens a file, checks if it's tiled, if it is, it opens it as a tiled image, if not, it
         /// opens it as a normal image
@@ -6726,7 +6746,7 @@ namespace BioGTK
         private static ImageWriter writer;
         private loci.formats.meta.IMetadata meta;
 
-        //We use UNIX type line endings since they are supported by ImageJ & Bio.
+        //We use UNIX type line endings since they are supported by ImageJ & BioGTK.
         public const char NewLine = '\n';
         public const string columns = "ROIID,ROINAME,TYPE,ID,SHAPEINDEX,TEXT,S,C,Z,T,X,Y,W,H,POINTS,STROKECOLOR,STROKECOLORW,FILLCOLOR,FONTSIZE\n";
 

@@ -459,8 +459,8 @@ namespace BioGTK
         /// @return The return type is void.
         public void ToolUp(PointD e, ButtonReleaseEventArgs buts)
         {
-            PointF p = new PointF((float)e.X, (float)e.Y);
-            PointD mouseU = new PointD(((e.X - App.viewer.TopRightOrigin.X) / ImageView.SelectedImage.Volume.Width) * ImageView.SelectedImage.SizeX, ((e.Y - App.viewer.TopRightOrigin.Y) / ImageView.SelectedImage.Volume.Height) * ImageView.SelectedImage.SizeY);
+            PointD p = new PointD((float)e.X, (float)e.Y);
+            PointD mouseU = ImageView.SelectedImage.ToImageSpace(p);
             if (App.viewer == null || currentTool == null || ImageView.SelectedImage == null || selectedROI == null)
                 return;
             Scripting.UpdateState(Scripting.State.GetUp(e, buts.Event.Button));
@@ -577,7 +577,7 @@ namespace BioGTK
                 if (mouseU.X >= ImageView.SelectedImage.SizeX && mouseU.Y >= ImageView.SelectedImage.SizeY)
                     return;
                 floodFiller.FillColor = DrawColor;
-                floodFiller.Tolerance = new ColorS(1000, 1000, 1000);
+                floodFiller.Tolerance = new ColorS(0, 0, 0);
                 floodFiller.Bitmap = ImageView.SelectedBuffer;
                 floodFiller.FloodFill(new AForge.Point((int)mouseU.X, (int)mouseU.Y));
                 App.viewer.UpdateImages();

@@ -3,7 +3,6 @@ using System;
 using BioGTK;
 using Gtk;
 using AForge;
-using sun.tools.tree;
 using System.IO;
 
 namespace BioGTK

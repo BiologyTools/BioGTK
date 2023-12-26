@@ -496,8 +496,7 @@ namespace BioGTK
        /// @return The response type of the dialog.
         protected async void openImagesMenuClick(object sender, EventArgs a)
         {
-            filechooser.Title = "Choose file to open";
-            filechooser.Action = FileChooserAction.Open;
+            filechooser = new FileChooserDialog("Choose file to open", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             string[] sts = filechooser.Filenames;
@@ -516,8 +515,7 @@ namespace BioGTK
         /// @return The response type of the dialog.
         protected async void openOMEImagesMenuClick(object sender, EventArgs a)
         {
-            filechooser.Title = "Choose OME file to open";
-            filechooser.Action = FileChooserAction.Open;
+            filechooser = new FileChooserDialog("Choose OME file to open", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
@@ -535,8 +533,7 @@ namespace BioGTK
         /// @return A list of file names.
         protected async void openOMESeriesMenuClick(object sender, EventArgs a)
         {
-            filechooser.Title = "Choose OME Series file to open";
-            filechooser.Action = FileChooserAction.Open;
+            filechooser = new FileChooserDialog("Choose OME Series file to open", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
@@ -556,8 +553,7 @@ namespace BioGTK
         /// @return The response type of the dialog.
         protected async void openSeriesMenuClick(object sender, EventArgs a)
         {
-            filechooser.Title = "Choose series file to open";
-            filechooser.Action = FileChooserAction.Open;
+            filechooser = new FileChooserDialog("Choose series file to open", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
@@ -577,16 +573,15 @@ namespace BioGTK
         /// @return The response type of the filechooser dialog.
         protected async void addImagesToTabMenuClick(object sender, EventArgs a)
         {
-            filechooser.Title = "Choose file to add to current tab.";
-            filechooser.Action = FileChooserAction.Open;
+            filechooser = new FileChooserDialog("Choose file to add to current tab.", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
+            filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
                 await BioImage.OpenAsync(item, false, false, true);
             }
             this.ShowAll();
-            filechooser.Hide();
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file as an
         /// OME image, and adds it to the currently selected viewer
@@ -597,8 +592,7 @@ namespace BioGTK
         /// @return The response type of the filechooser dialog.
         protected async void addOMEImagesToTabClick(object sender, EventArgs a)
         {
-            filechooser.Title = "Choose OME file to add to current tab.";
-            filechooser.Action = FileChooserAction.Open;
+            filechooser = new FileChooserDialog("Choose OME file to add to current tab.", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
@@ -618,12 +612,11 @@ namespace BioGTK
         /// @return The response type of the dialog.
         protected async void saveSelectedTiffClick(object sender, EventArgs a)
         {
-            filechooser.Action = FileChooserAction.Save;
-            filechooser.Title = "Save Selected Image To TIFF";
+            filechooser = new FileChooserDialog("Save Selected Image To TIFF", this, FileChooserAction.Save, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            await BioImage.SaveAsync(filechooser.Filename,ImageView.SelectedImage.ID, 0, false);
             filechooser.Hide();
+            await BioImage.SaveAsync(filechooser.Filename,ImageView.SelectedImage.ID, 0, false);
         }
         /// This function saves the selected image in the OME-TIFF format
         /// 
@@ -633,12 +626,11 @@ namespace BioGTK
         /// @return The response type of the filechooser dialog.
         protected async void saveSelectedOMEClick(object sender, EventArgs a)
         {
-            filechooser.Action = FileChooserAction.Save;
-            filechooser.Title = "Save Selected Image to File";
+            filechooser = new FileChooserDialog("Save Selected OME Image to File", this, FileChooserAction.Save, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            await BioImage.SaveAsync(filechooser.Filename, ImageView.SelectedImage.ID, 0, true);
             filechooser.Hide();
+            await BioImage.SaveAsync(filechooser.Filename, ImageView.SelectedImage.ID, 0, true);
         }
         /// This function saves the current series of images to an OME-TIFF file
         /// 
@@ -648,12 +640,11 @@ namespace BioGTK
         /// @return The response from the filechooser dialog.
         protected async void saveTabOMEClick(object sender, EventArgs a)
         {
-            filechooser.Action = FileChooserAction.Save;
-            filechooser.Title = "Save File";
+            filechooser = new FileChooserDialog("Save Tab as an OME image.", this, FileChooserAction.Save, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, true);
             filechooser.Hide();
+            await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, true);
         }
         /// It saves the current tab as a tiff file
         /// 
@@ -663,12 +654,11 @@ namespace BioGTK
         /// @return The response type of the filechooser dialog.
         protected async void saveTabTiffMenuClick(object sender, EventArgs a)
         {
-            filechooser.Action = FileChooserAction.Save;
-            filechooser.Title = "Save Tab as a series to file.";
+            filechooser = new FileChooserDialog("Save Tab as an image.", this, FileChooserAction.Save, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, false);
             filechooser.Hide();
+            await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, false);           
         }
         /// This function is called when the user clicks the "Save Series" menu item
         /// 
@@ -676,12 +666,11 @@ namespace BioGTK
         /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         protected async void saveSeriesMenuClick(object sender, EventArgs a)
         {
-            filechooser.Action = FileChooserAction.Save;
-            filechooser.Title = "Save Series to File";
+            filechooser = new FileChooserDialog("Save TIFF series.", this, FileChooserAction.Save, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, true);
             filechooser.Hide();
+            await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, true);
         }
         /// This function is called when the user clicks the "Images to Stack" button
         /// 
@@ -698,6 +687,7 @@ namespace BioGTK
             filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
+            filechooser.Hide();
             BioImage b = BioImage.ImagesToStack(filechooser.Filenames, true);
             AddTab(b);
         }

@@ -82,11 +82,12 @@ namespace BioGTK
 
             minBox.Value = (int)Channels[0].stats[0].StackMin;
             maxBox.Value = (int)Channels[0].stats[0].StackMax;
+            binBox.Value = 1;
+            binBox.Adjustment = new Adjustment(1, 1, 255, 1, 1, 1);
             hist = HistogramControl.Create(Channels[0]);
             hist.GraphMax = (int)maxBox.Value;
             graphMax.Value = (int)maxBox.Value;
             hist.Show();
-
 
             minBox.ButtonPressEvent += minBox_ValueChanged;
             //meanStackBox.Clicked += MeanStackBox_Clicked;

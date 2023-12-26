@@ -23,8 +23,6 @@ using Color = AForge.Color;
 using Rectangle = AForge.Rectangle;
 using System.IO;
 using loci.plugins;
-using Mapsui.Tiling.Fetcher;
-using Mapsui;
 
 namespace BioGTK
 {
@@ -316,11 +314,11 @@ namespace BioGTK
                     {
                         if (openSlide)
                         {
-                            //byte[] bts = _openSlideBase.GetSlice(new SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight, Resolution));
-                            byte[] bts = _openSlideBase.GetSlice(new SliceInfo(MapView.Navigator.Viewport.CenterX, MapView.Navigator.Viewport.CenterY, imageBox.AllocatedWidth, imageBox.AllocatedHeight, MapView.Navigator.Viewport.Resolution));
+                            byte[] bts = _openSlideBase.GetSlice(new SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight, Resolution));
+                            //byte[] bts = _openSlideBase.GetSlice(new SliceInfo(MapView.Navigator.Viewport.CenterX, MapView.Navigator.Viewport.CenterY, imageBox.AllocatedWidth, imageBox.AllocatedHeight, MapView.Navigator.Viewport.Resolution));
                             if (bts != null)
                             {
-                                bitmap = new Bitmap((int)Math.Ceiling(OpenSlideBase.destExtent.Width), (int)Math.Ceiling(OpenSlideBase.destExtent.Height), PixelFormat.Format24bppRgb, bts, new ZCT(), "");
+                                bitmap = new Bitmap((int)Math.Round(OpenSlideBase.destExtent.Width), (int)Math.Round(OpenSlideBase.destExtent.Height), PixelFormat.Format24bppRgb, bts, new ZCT(), "");
                                 //bitmap = new Bitmap((int)OpenSlideBase.destExtent.Width,(int)OpenSlideBase.destExtent.Height, PixelFormat.Format32bppArgb, bts, new ZCT(), "");Wheel
                                 b.Buffers[index] = bitmap;
                             }
@@ -335,6 +333,12 @@ namespace BioGTK
                             //b.Buffers[index].Dispose();
                             b.Buffers[index] = bf;
                         }
+                        BioImage.AutoThreshold(b, true);
+                        if (b.bitsPerPixel > 8)
+                            b.StackThreshold(true);
+                        else
+                            b.StackThreshold(false);
+                        bitmap = b.GetFiltered(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
                     }
                     else
                     {
@@ -345,12 +349,28 @@ namespace BioGTK
                 {
                     if (SelectedImage.isPyramidal)
                     {
-                        AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, (int)Level, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
-                        if (bf != null)
+                        if (openSlide)
                         {
+                            byte[] bts = _openSlideBase.GetSlice(new SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight, Resolution));
+                            //byte[] bts = _openSlideBase.GetSlice(new SliceInfo(MapView.Navigator.Viewport.CenterX, MapView.Navigator.Viewport.CenterY, imageBox.AllocatedWidth, imageBox.AllocatedHeight, MapView.Navigator.Viewport.Resolution));
+                            if (bts != null)
+                            {
+                                bitmap = new Bitmap((int)Math.Round(OpenSlideBase.destExtent.Width), (int)Math.Round(OpenSlideBase.destExtent.Height), PixelFormat.Format24bppRgb, bts, new ZCT(), "");
+                                //bitmap = new Bitmap((int)OpenSlideBase.destExtent.Width,(int)OpenSlideBase.destExtent.Height, PixelFormat.Format32bppArgb, bts, new ZCT(), "");Wheel
+                                b.Buffers[index] = bitmap;
+                            }
+                        }
+                        else
+                        {
+
+                            AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, (int)Level, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                            if (bf == null)
+                                return;
                             bitmap = bf.ImageRGB;
+                            //b.Buffers[index].Dispose();
                             b.Buffers[index] = bf;
                         }
+                        bitmap = b.GetRGBBitmap(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
                     }
                     else
                         bitmap = b.GetRGBBitmap(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
@@ -359,10 +379,25 @@ namespace BioGTK
                 {
                     if (SelectedImage.isPyramidal)
                     {
-                        AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, (int)Level, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
-                        if (bf != null)
+                        if (openSlide)
                         {
+                            byte[] bts = _openSlideBase.GetSlice(new SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight, Resolution));
+                            //byte[] bts = _openSlideBase.GetSlice(new SliceInfo(MapView.Navigator.Viewport.CenterX, MapView.Navigator.Viewport.CenterY, imageBox.AllocatedWidth, imageBox.AllocatedHeight, MapView.Navigator.Viewport.Resolution));
+                            if (bts != null)
+                            {
+                                bitmap = new Bitmap((int)Math.Round(OpenSlideBase.destExtent.Width), (int)Math.Round(OpenSlideBase.destExtent.Height), PixelFormat.Format24bppRgb, bts, new ZCT(), "");
+                                //bitmap = new Bitmap((int)OpenSlideBase.destExtent.Width,(int)OpenSlideBase.destExtent.Height, PixelFormat.Format32bppArgb, bts, new ZCT(), "");Wheel
+                                b.Buffers[index] = bitmap;
+                            }
+                        }
+                        else
+                        {
+
+                            AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, (int)Level, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                            if (bf == null)
+                                return;
                             bitmap = bf.ImageRGB;
+                            //b.Buffers[index].Dispose();
                             b.Buffers[index] = bf;
                         }
                     }
@@ -373,20 +408,39 @@ namespace BioGTK
                 {
                     if (SelectedImage.isPyramidal)
                     {
-                        AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, (int)Level, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
-                        if (bf != null)
+                        if (openSlide)
                         {
+                            byte[] bts = _openSlideBase.GetSlice(new SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight, Resolution));
+                            //byte[] bts = _openSlideBase.GetSlice(new SliceInfo(MapView.Navigator.Viewport.CenterX, MapView.Navigator.Viewport.CenterY, imageBox.AllocatedWidth, imageBox.AllocatedHeight, MapView.Navigator.Viewport.Resolution));
+                            if (bts != null)
+                            {
+                                bitmap = new Bitmap((int)Math.Round(OpenSlideBase.destExtent.Width), (int)Math.Round(OpenSlideBase.destExtent.Height), PixelFormat.Format24bppRgb, bts, new ZCT(), "");
+                                //bitmap = new Bitmap((int)OpenSlideBase.destExtent.Width,(int)OpenSlideBase.destExtent.Height, PixelFormat.Format32bppArgb, bts, new ZCT(), "");Wheel
+                                b.Buffers[index] = bitmap;
+                            }
+                        }
+                        else
+                        {
+
+                            AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, (int)Level, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                            if (bf == null)
+                                return;
                             bitmap = bf.ImageRGB;
+                            //b.Buffers[index].Dispose();
                             b.Buffers[index] = bf;
                         }
+                        BioImage.AutoThreshold(b, true);
+                        if (b.bitsPerPixel > 8)
+                            b.StackThreshold(true);
+                        else
+                            b.StackThreshold(false);
+                        bitmap = b.GetEmission(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
                     }
                     else
                         bitmap = b.GetEmission(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
                 }
                 if (bitmap == null)
                     return;
-                if (bitmap.PixelFormat == PixelFormat.Format16bppGrayScale || bitmap.PixelFormat == PixelFormat.Format48bppRgb)
-                    bitmap = AForge.Imaging.Image.Convert16bppTo8bpp(bitmap);
                 AForge.Bitmap bm = bitmap.ImageRGB;
                 Pixbuf pixbuf = new Pixbuf(bm.Bytes, true, 8, bm.Width, bm.Height, bm.Stride);
                 Bitmaps.Add(pixbuf);
@@ -1043,13 +1097,9 @@ namespace BioGTK
        /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-size-allocation.html.en
         private void PictureBox_SizeAllocated(object o, SizeAllocatedArgs args)
         {
+            if(SelectedImage==null) return;
             if (SelectedImage.isPyramidal)
             {
-                if (openSlide)
-                {
-                    MapView.Navigator.SetSize(imageBox.AllocatedWidth, imageBox.AllocatedHeight);
-                    MapView.Navigator.OverridePanBounds = new Mapsui.MRect(-SelectedImage.Resolutions[Level].SizeX, -SelectedImage.Resolutions[Level].SizeY, SelectedImage.Resolutions[Level].SizeX, SelectedImage.Resolutions[Level].SizeY);
-                }
                 UpdateImage();
             }
             if (!initialized)
@@ -1087,16 +1137,7 @@ namespace BioGTK
         {
             return new Cairo.Color((double)color.R / 255, (double)color.G / 255, (double)color.B / 255);
         }
-        static byte[] ImageToByteArray(Image<Rgb24> image)
-        {
-            using (MemoryStream memoryStream = new MemoryStream())
-            {
-                // Save the image to the MemoryStream using PNG format
-                // You can change the format to JPEG or any other supported format
-                image.Save(memoryStream, new PngEncoder());
-                return memoryStream.ToArray();
-            }
-        }
+
         /// The function is called when the picturebox is drawn. It checks if the bitmaps are up to
         /// date, and if not, it updates them. It then draws the image, and then draws the annotations. 
         /// 
@@ -1130,6 +1171,7 @@ namespace BioGTK
                 e.Cr.Translate(pictureBox.AllocatedWidth / 2, pictureBox.AllocatedHeight / 2);
             }
             RectangleD rr = ToViewSpace(PointD.MinX, PointD.MinY, PointD.MaxX - PointD.MinX, PointD.MaxY - PointD.MinY);
+            
             e.Cr.Rectangle(rr.X, rr.Y,Math.Abs(rr.W),Math.Abs(rr.H));
             e.Cr.Stroke();
             int i = 0;
@@ -1588,13 +1630,17 @@ namespace BioGTK
             if (args.Event.State.HasFlag(ModifierType.ControlMask) && SelectedImage.isPyramidal)
                 if (args.Event.Direction == ScrollDirection.Up)
                 {
-                    Resolution *= 0.98;
-                    MapView.Navigator.ZoomTo(Resolution, new Mapsui.MPoint((double)imageBox.AllocatedWidth / 2, (double)imageBox.AllocatedHeight / 2));
+                    if (OpenSlide)
+                        Resolution *= 0.98;
+                    else
+                        Resolution--;
                 }
                 else
                 {
-                    Resolution *= 1.02;
-                    MapView.Navigator.ZoomTo(Resolution, new Mapsui.MPoint((double)imageBox.AllocatedWidth / 2, (double)imageBox.AllocatedHeight / 2));
+                    if (OpenSlide)
+                        Resolution *= 1.02;
+                    else
+                        Resolution++;
                 }
         }
 
@@ -1817,6 +1863,7 @@ namespace BioGTK
                 return new PointD((Origin.X - ((pictureBox.AllocatedWidth / 2) * pxWmicron)), (Origin.Y - ((pictureBox.AllocatedHeight / 2) * pxHmicron)));
             }
         }
+
         public PointD PyramidalOriginTransformed
         {
             get { return new PointD(PyramidalOrigin.X * resolution, PyramidalOrigin.Y * resolution); }
@@ -1827,25 +1874,25 @@ namespace BioGTK
         {
             get 
             {
-                if (OpenSlide)
-                    return new PointD(MapView.Navigator.Viewport.CenterX, MapView.Navigator.Viewport.CenterY);
-                return 
-                    pyramidalOrigin;
+                return pyramidalOrigin;
             }
             set
             {
                 if (!AllowNavigation)
                     return;
-                MapView.Navigator.CenterOn(new Mapsui.MPoint(value.X, value.Y));
-                pyramidalOrigin = value;
                 if (scrollH.Adjustment.Upper > value.X && value.X > -1)
                 {
                     scrollH.Adjustment.Value = value.X;
                 }
+                else
+                    return;
                 if (scrollV.Adjustment.Upper > value.Y && value.Y > -1)
                 {
                     scrollV.Adjustment.Value = value.Y;
                 }
+                else
+                    return;
+                pyramidalOrigin = value;
                 UpdateImage();
                 UpdateView();
             }
@@ -1920,31 +1967,37 @@ namespace BioGTK
         {
             get 
             {
-                if (OpenSlide)
-                    return MapView.Navigator.Viewport.Resolution;
                 return resolution;
             }
             set
             {
-                double x, y;
-                int res = LevelFromResolution(value);
-                if (value > resolution)
+                if (value < 0) return;
+                if (openSlide)
                 {
-                    //++Level zoom out
-                    if (!openSlide)
+                    double dp = Resolution / value;
+                    PyramidalOrigin = new PointD((dp * PyramidalOrigin.X), (dp * PyramidalOrigin.Y));
+                }
+                else
+                {
+                    if(SelectedImage.MacroResolution.HasValue)
                     {
+                        if (value >= MacroResolution - 1) 
+                            return;
+                    }
+                    double x, y;
+                    int res = LevelFromResolution(value);
+                    if (value > resolution)
+                    {
+                        //++Level zoom out
                         x = ((double)PyramidalOrigin.X / (double)SelectedImage.Resolutions[Level].SizeX) * (double)SelectedImage.Resolutions[res].SizeX;
                         y = ((double)PyramidalOrigin.Y / (double)SelectedImage.Resolutions[Level].SizeY) * (double)SelectedImage.Resolutions[res].SizeY;
                         double wd = (double)imageBox.AllocatedWidth / 4;
                         double hd = (double)imageBox.AllocatedHeight / 4;
                         PyramidalOrigin = new PointD((int)x - wd, (int)y - hd);
                     }
-                }
-                else
-                {
-                    //--Level zoom in
-                    if (!openSlide)
+                    else
                     {
+                        //--Level zoom in
                         x = ((double)PyramidalOrigin.X / (double)SelectedImage.Resolutions[Level].SizeX) * (double)SelectedImage.Resolutions[res].SizeX;
                         y = ((double)PyramidalOrigin.Y / (double)SelectedImage.Resolutions[Level].SizeY) * (double)SelectedImage.Resolutions[res].SizeY;
                         double wd = (double)imageBox.AllocatedWidth / 2;
@@ -1954,8 +2007,6 @@ namespace BioGTK
                 }
                 
                 resolution = value;
-                MapView.Navigator.OverridePanBounds = new Mapsui.MRect(-SelectedImage.Resolutions[res].SizeX, -SelectedImage.Resolutions[res].SizeY, SelectedImage.Resolutions[res].SizeX * 2, SelectedImage.Resolutions[res].SizeY * 2);
-                MapView.Navigator.ZoomTo(resolution);
                 // update ui on main UI thread
                 Application.Invoke(delegate
                 {
@@ -2096,7 +2147,7 @@ namespace BioGTK
             MouseMoveInt = new PointD((int)e.Event.X, (int)e.Event.Y);
             MouseMove = new PointD(e.Event.X,e.Event.Y);
             PointD p = ImageToViewSpace(e.Event.X, e.Event.Y);
-            PointD ip = new PointD((p.X - TopRightOrigin.X) / pxWmicron, (p.Y - TopRightOrigin.Y) / pxHmicron);
+            PointD ip = SelectedImage.ToImageSpace(p);
             App.tools.ToolMove(p, e);
             Tools.currentTool.Rectangle = new RectangleD(mouseDown.X, mouseDown.Y, p.X - mouseDown.X, p.Y - mouseDown.Y);
             mousePoint = "(" + (p.X.ToString("F")) + ", " + (p.Y.ToString("F")) + ")";
@@ -2175,7 +2226,7 @@ namespace BioGTK
 
             if (Tools.currentTool != null)
             {
-                if (Tools.currentTool.type == Tools.Tool.Type.brush && Modifiers == ModifierType.Button1Mask)
+                if (Tools.currentTool.type == Tools.Tool.Type.brush && e.Event.State.HasFlag(ModifierType.Button1Mask))
                 {
                     Tools.Tool tool = Tools.currentTool;
                     Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(SelectedBuffer);
@@ -2184,7 +2235,7 @@ namespace BioGTK
                     UpdateImage();
                 }
                 else
-                if (Tools.currentTool.type == Tools.Tool.Type.eraser && Modifiers == ModifierType.Button1Mask)
+                if (Tools.currentTool.type == Tools.Tool.Type.eraser && e.Event.State.HasFlag(ModifierType.Button1Mask))
                 {
                     Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(ImageView.SelectedBuffer);
                     Bio.Graphics.Pen pen = new Bio.Graphics.Pen(Tools.EraseColor, (int)Tools.StrokeWidth, ImageView.SelectedBuffer.BitsPerPixel);
@@ -2281,7 +2332,7 @@ namespace BioGTK
             MouseDownInt = new PointD(e.Event.X, e.Event.Y);
             pd = pointer;
             mouseDown = pd;
-            mouseD = new PointD(((pointer.X - TopRightOrigin.X) / SelectedImage.Volume.Width)*SelectedImage.SizeX,((pointer.Y - TopRightOrigin.Y) / SelectedImage.Volume.Height) * SelectedImage.SizeY);
+            mouseD = SelectedImage.ToImageSpace(pd);
             
             if (SelectedImage == null)
                 return;
@@ -2381,52 +2432,40 @@ namespace BioGTK
             }
             if (e.Event.Button == 1)
             {
-                Point s = new Point(SelectedImage.SizeX, SelectedImage.SizeY);
-                if ((mouseD.X < s.X && (mouseD.Y < s.Y) || (mouseD.X >= 0 && (mouseD.Y >= 0))))
+                PointD s = new PointD(e.Event.X, e.Event.Y);
+                if ((s.X < SelectedImage.SizeX && (s.Y < SelectedImage.SizeY)) || (s.X >= 0 && (s.Y >= 0)))
                 {
                     int zc = SelectedImage.Coordinate.Z;
                     int cc = SelectedImage.Coordinate.C;
                     int tc = SelectedImage.Coordinate.T;
                     if (SelectedImage.isPyramidal)
                     {
-                        int x = (int)pointer.X;
-                        int y = (int)pointer.Y;
                         if (SelectedImage.isRGB)
                         {
-                            
-                            if (x < SelectedImage.SizeX && y < SelectedImage.SizeY)
-                            {
-                                int r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc, (int)mouseD.X, (int)mouseD.Y, 0);
-                                int g = SelectedImage.GetValueRGB(zc, GChannel.Index, tc, (int)mouseD.X, (int)mouseD.Y, 1);
-                                int b = SelectedImage.GetValueRGB(zc, BChannel.Index, tc, (int)mouseD.X, (int)mouseD.Y, 2);
-                                mouseColor = ", " + r + "," + g + "," + b;
-                            }
-                            else
-                                mouseColor = "";
-                        }
-                        else
-                        {
-                            if (x < SelectedImage.SizeX && y < SelectedImage.SizeY)
-                            {
-                                int r = SelectedImage.GetValueRGB(zc, (int)cBar.Value, tc, x, y, 0);
-                                mouseColor = ", " + r;
-                            }
-                            else
-                                mouseColor = "";
-                        }
-                    }
-                    else
-                    {
-                        if (SelectedImage.isRGB)
-                        {
-                            int r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc, (int)mouseD.X, (int)mouseD.Y, 0);
-                            int g = SelectedImage.GetValueRGB(zc, GChannel.Index, tc, (int)mouseD.X, (int)mouseD.Y, 1);
-                            int b = SelectedImage.GetValueRGB(zc, BChannel.Index, tc, (int)mouseD.X, (int)mouseD.Y, 2);
+                            int r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc, (int)s.X, (int)s.Y, 0);
+                            int g = SelectedImage.GetValueRGB(zc, GChannel.Index, tc, (int)s.X, (int)s.Y, 1);
+                            int b = SelectedImage.GetValueRGB(zc, BChannel.Index, tc, (int)s.X, (int)s.Y, 2);
                             mouseColor = ", " + r + "," + g + "," + b;
                         }
                         else
                         {
                             int r = SelectedImage.GetValueRGB(zc, (int)cBar.Value, tc, (int)mouseD.X, (int)mouseD.Y, 0);
+                            mouseColor = ", " + r;
+                        }
+                    }
+                    else
+                    {
+                        s = mouseD;
+                        if (SelectedImage.isRGB)
+                        {
+                            int r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc, (int)s.X, (int)s.Y, 0);
+                            int g = SelectedImage.GetValueRGB(zc, GChannel.Index, tc, (int)s.X, (int)s.Y, 1);
+                            int b = SelectedImage.GetValueRGB(zc, BChannel.Index, tc, (int)s.X, (int)s.Y, 2);
+                            mouseColor = ", " + r + "," + g + "," + b;
+                        }
+                        else
+                        {
+                            int r = SelectedImage.GetValueRGB(zc, (int)cBar.Value, tc, (int)s.X, (int)s.Y, 0);
                             mouseColor = ", " + r;
                         }
                     }
@@ -2444,8 +2483,9 @@ namespace BioGTK
                     else
                     {
                         Resolution rs = SelectedImage.Resolutions[(int)Level];
-                        double dx = ((e.Event.X) / overview.Width) * rs.SizeX;
-                        double dy = ((e.Event.Y) / overview.Height) * rs.SizeY;
+                        double r = rs.PhysicalSizeX / resolution;
+                        double dx = ((e.Event.X) / overview.Width) * rs.SizeX * r;
+                        double dy = ((e.Event.Y) / overview.Height) * rs.SizeY * r;
                         double w = imageBox.AllocatedWidth / 2;
                         double h = imageBox.AllocatedHeight / 2;
                         PyramidalOrigin = new PointD(dx - w, dy - h);
@@ -2874,8 +2914,6 @@ namespace BioGTK
         #region OpenSlide
         private OpenSlideBase _openSlideBase;
         private ISlideSource _slideSource;
-        private Mapsui.Map map = new Mapsui.Map();
-        public Map MapView { get { return map; } }
         /// <summary>
         /// Open slide file
         /// </summary>
@@ -2905,9 +2943,6 @@ namespace BioGTK
                 {
                     Resolution = _openSlideBase.Schema.Resolutions[0].UnitsPerPixel;
                 }
-                MapView.Layers.Add(new SlideTileLayer(_slideSource, dataFetchStrategy: new MinimalDataFetchStrategy()));
-                MapView.Layers.Add(new SlideSliceLayer(_slideSource) { Enabled = false, Opacity = 0.5 });
-                MapView.Navigator.ZoomTo(Resolution,new Mapsui.MPoint((double)imageBox.AllocatedWidth/2, (double)imageBox.AllocatedHeight / 2));
             }
         }
         #endregion

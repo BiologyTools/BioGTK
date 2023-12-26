@@ -364,21 +364,37 @@ namespace BioGTK
                 g.SetSourceRGB(0, 0, 0);
                 if (axisNumbers)
                 {
-                    for (float x = 0; x < graphMax; x += 2000)
+                    if (graphMax <= 255)
                     {
-                        g.MoveTo((fx * x), 0);
-                        g.LineTo((fx * x), tick + 3);
-                        g.Stroke();
+                        for (float x = 0; x < graphMax; x += 50)
+                        {
+                            TextExtents ex = g.TextExtents(x.ToString());
+                            g.MoveTo((fx * x) - (ex.Width / 2), tick + 10);
+                            g.ShowText(x.ToString());
+                            g.Stroke();
+                            g.MoveTo((fx * x), 0);
+                            g.LineTo((fx * x), tick);
+                            g.Stroke();
+                        }
                     }
-                    for (float x = 0; x < graphMax; x += 1000)
+                    else
                     {
-                        TextExtents ex = g.TextExtents(x.ToString());
-                        g.MoveTo((fx * x) - (ex.Width / 2), tick + 10);
-                        g.ShowText(x.ToString());
-                        g.Stroke();
-                        g.MoveTo((fx * x), 0);
-                        g.LineTo((fx * x), tick);
-                        g.Stroke();
+                        for (float x = 0; x < graphMax; x += 2000)
+                        {
+                            g.MoveTo((fx * x), 0);
+                            g.LineTo((fx * x), tick + 3);
+                            g.Stroke();
+                        }
+                        for (float x = 0; x < graphMax; x += 1000)
+                        {
+                            TextExtents ex = g.TextExtents(x.ToString());
+                            g.MoveTo((fx * x) - (ex.Width / 2), tick + 10);
+                            g.ShowText(x.ToString());
+                            g.Stroke();
+                            g.MoveTo((fx * x), 0);
+                            g.LineTo((fx * x), tick);
+                            g.Stroke();
+                        }
                     }
                 }
                 if (graphMax <= 16383)
