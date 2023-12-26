@@ -530,4 +530,26 @@
       </object>
     </child>
   </object>
+  <object class="GtkMenu" id="contextMenu">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <child>
+      <object class="GtkImageMenuItem" id="tabClose">
+        <property name="label">Close</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="tabDuplicate">
+        <property name="label">Duplicate</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+  </object>
 </interface>

@@ -2226,6 +2226,10 @@ namespace BioGTK
 
             if (Tools.currentTool != null)
             {
+                if(SelectedImage.isPyramidal)
+                {
+                    ip = new PointD(e.Event.X, e.Event.Y);
+                }
                 if (Tools.currentTool.type == Tools.Tool.Type.brush && e.Event.State.HasFlag(ModifierType.Button1Mask))
                 {
                     Tools.Tool tool = Tools.currentTool;

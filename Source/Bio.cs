@@ -152,8 +152,15 @@ namespace BioGTK
             if (im == null)
                 return;
             images.Remove(im);
-            //im.Dispose();
-            im = null;
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                // update ui on main UI thread
+                Application.Invoke(delegate
+                {
+                    App.nodeView.UpdateItems();
+                    App.tabsView.RemoveTab(im.Filename);
+                });
+            });
             Recorder.AddLine("BioGTK.Table.RemoveImage(" + '"' + id + '"' + ");");
         }
         /// It updates an image from the table

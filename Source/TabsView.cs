@@ -129,16 +129,22 @@ namespace BioGTK
         [Builder.Object]
         private Notebook tabsView;
 
+        [Builder.Object]
+        private Menu contextMenu;
+        [Builder.Object]
+        private MenuItem tabClose;
+        [Builder.Object]
+        private MenuItem tabDuplicate;
 #pragma warning restore 649
 
         #endregion
 
         #region Constructors / Destructors
-        
-       /// It creates a new instance of the TabsView class, which is a class that inherits from
-       /// Gtk.Window
-       /// 
-       /// @return A new instance of the TabsView class.
+
+        /// It creates a new instance of the TabsView class, which is a class that inherits from
+        /// Gtk.Window
+        /// 
+        /// @return A new instance of the TabsView class.
         public static TabsView Create()
         {
             Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/TabsView.glade", FileMode.Open));
@@ -247,13 +253,43 @@ namespace BioGTK
 
             aboutMenu.ButtonPressEvent += AboutClick;
 
+            tabClose.ButtonPressEvent += TabClose_ButtonPressEvent;
+            tabDuplicate.ButtonPressEvent += TabDuplicate_ButtonPressEvent;
             this.Focused += TabsView_Focused;
             rgbMenu.ButtonPressEvent += RgbMenu_ButtonPressEvent;
             filteredMenu.ButtonPressEvent += FilteredMenu_ButtonPressEvent;
             rawMenu.ButtonPressEvent += RawMenu_ButtonPressEvent;
             emissionMenu.ButtonPressEvent += EmissionMenu_ButtonPressEvent;
             tabsView.SwitchPage += TabsView_SwitchPage;
+            tabsView.ButtonPressEvent += TabsView_ButtonPressEvent;
             this.WindowStateEvent += TabsView_WindowStateEvent;
+        }
+
+        private void TabsView_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            contextMenu.Popup();
+        }
+
+        private void TabDuplicate_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            List<BioImage> bm = new List<BioImage>();
+            foreach (BioImage item in App.viewer.Images)
+            {
+                bm.Add(item.Copy());
+            }
+            Images.AddImage(bm[0],true);
+            for (int i = 1; i < bm.Count; i++)
+            {
+                Images.AddImage(bm[i],false);
+            }
+        }
+
+        private void TabClose_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            foreach (BioImage item in App.viewer.Images)
+            {
+                Images.RemoveImage(item);
+            }
         }
 
         private void RunSAMMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
