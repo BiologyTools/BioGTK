@@ -14,6 +14,92 @@ namespace BioGTK
 {
     public static class ImageJ
     {
+        public static class Macro
+        {
+            public class Command
+            {
+                public string Name {  get; set; }
+                public string Arguments { get; set; }
+                public string Description { get; set; }
+                public Command(string name, string args, string description)
+                {
+                    Name = name;
+                    Arguments = args;
+                    Description = description;
+                }
+                public override string ToString()
+                {
+                    return Name.ToString();
+                }
+            }
+            public class Function
+            {
+                public string Name { get; set; }
+                public string Arguments { get; set; }
+                public string Description { get; set; }
+                public Function(string name, string args, string description)
+                {
+                    Name = name;
+                    Arguments = args;
+                    Description = description;
+                }
+                public override string ToString()
+                {
+                    return Name.ToString();
+                }
+            }
+            public static Dictionary<string,Command> Commands = new Dictionary<string,Command>();
+            public static Dictionary<string, List<Function>> Functions = new Dictionary<string, List<Function>>();
+            internal static void Initialize()
+            {
+                string[] sts = File.ReadAllLines("macro-functions.txt");
+                foreach (string s in sts)
+                {
+                    string com = "";
+                    string args = "";
+                    string doc = "";
+                    bool indoc = false, inargs = false;
+                    if (!s.StartsWith('#'))
+                    {
+                        for (int i = 0; i < s.Length; i++)
+                        {
+                            if (!inargs)
+                            {
+                                if (s[i] != '(')
+                                    com += s[i];
+                                else
+                                    inargs = true;
+                                if (s[i] == ' ')
+                                {
+                                    inargs = true;
+                                    indoc = true;
+                                }
+                            }
+                            else
+                            if (!indoc)
+                                if (s[i] != ')')
+                                    args += s[i];
+                                else
+                                    indoc = true;
+                            else
+                                doc += s[i];
+                        }
+                        if (!Functions.ContainsKey(com))
+                            Functions.Add(com, new List<Function>() { new Function(com,args, doc) });
+                        else
+                            Functions[com].Add(new Function(com, args, doc));
+                    }
+                }
+                string[] cs = File.ReadAllLines("macro-commands.csv");
+                foreach (string s in cs)
+                {
+                    string[] v = s.Split(',');
+                    Commands.Add(v[0], new Command(v[0], v[1], ""));
+                }
+            }
+        }
+        static bool init = false;
+        public static bool Initialized { get { return init; } private set { } }
         public static string ImageJPath;
         public static List<Process> processes = new List<Process>();
         private static Random rng = new Random();
@@ -25,9 +111,9 @@ namespace BioGTK
         /// @return The macro is being returned.
         public static void RunMacro(string file, string param)
         {
-            if (ImageJPath == "")
+            if (!Initialized)
             {
-                if (!App.SetImageJPath())
+                if (!Initialize(""))
                     return;
             }
             file.Replace("/", "\\");
@@ -47,10 +133,9 @@ namespace BioGTK
         /// @return Nothing.
         public static void RunString(string con, string param, bool headless)
         {
-
-            if (ImageJPath == "")
+            if (!Initialized)
             {
-                if (!App.SetImageJPath())
+                if (!Initialize(""))
                     return;
             }
             Process pr = new Process();
@@ -105,11 +190,9 @@ namespace BioGTK
         /// @return The image is being returned as a new tab.
         public static void RunOnImage(string con, int index, bool headless, bool onTab, bool bioformats, bool resultInNewTab)
         {
-            if (OperatingSystem.IsMacOS())
-                bioformats = false;
-            if (ImageJPath == "")
+            if (!Initialized)
             {
-                if (!App.SetImageJPath())
+                if (!Initialize(""))
                     return;
             }
             string filename = "";
@@ -127,8 +210,13 @@ namespace BioGTK
                 file = dir + "/" + filename + ".tif";
             string donepath = Path.GetDirectoryName(Environment.ProcessPath);
             donepath = donepath.Replace("\\", "/");
+            string op = dir + "/" + ImageView.SelectedImage.ID.Replace("\\", "/");
+            if(!File.Exists(op))
+            {
+                BioImage.SaveOME(ImageView.SelectedImage, op);
+            }
             string st =
-            "run(\"Bio-Formats Importer\", \"open=" + dir + "/" + ImageView.SelectedImage.ID + " autoscale color_mode=Default open_all_series display_rois rois_import=[ROI manager] view=Hyperstack stack_order=XYCZT\"); " + con +
+            "run(\"Bio-Formats Importer\", \"open=" + op + " autoscale color_mode=Default open_all_series display_rois rois_import=[ROI manager] view=Hyperstack stack_order=XYCZT\"); " + con +
             "run(\"Bio-Formats Exporter\", \"save=" + file + " export compression=Uncompressed\"); " +
             "dir = \"" + donepath + "\"" +
             "File.saveString(\"done\", dir + \"/done.txt\");";
@@ -143,38 +231,27 @@ namespace BioGTK
             RunString(st, dir + "/" + ImageView.SelectedImage.ID, headless);
             if (!File.Exists(file))
                 return;
-            
-            string s = filename;
-            if (bioformats)
-                s += "-temp.ome.tif";
-            else
-                s += ".tif";
-            string f = dir + "/" + s;
-            f = f.Replace("\\", "/");
-            string fn = filename + ".tif";
-            if (bioformats)
-                fn = filename + ".ome.tif";
             //If not in images we add it to a new tab.
-            if (Images.GetImage(fn) == null)
+            if (Images.GetImage(file) == null)
             {
-                BioImage bm = BioImage.OpenFile(f, index, false, false);
-                bm.Filename = fn;
-                bm.ID = fn;
-                bm.file = dir + "/" + fn;
+                BioImage bm = BioImage.OpenFile(file, index, false, false);
+                bm.ID = Path.GetFileName(file).Replace("-temp","");
+                bm.Filename = bm.ID;
+                bm.file = file;
                 Images.AddImage(bm,true);
             }
             else
             {
-                BioImage b = BioImage.OpenFile(f, index, onTab, false);
+                BioImage b = BioImage.OpenFile(file, index, onTab, false);
                 b.ID = ImageView.SelectedImage.ID;
-                b.Filename = ImageView.SelectedImage.ID;
-                b.file = dir + "/" + fn;
+                b.Filename = ImageView.SelectedImage.Filename;
+                b.file = dir + "/" + ImageView.SelectedImage.ID;
                 Images.UpdateImage(b);
                 App.viewer.Images[App.viewer.SelectedIndex] = b;
             }
             //If using bioformats we delete the temp file.
             if(bioformats)
-            File.Delete(f);
+            File.Delete(file);
             // update image on main UI thread
             if (App.viewer != null)
             {
@@ -184,20 +261,53 @@ namespace BioGTK
                     App.viewer.UpdateView();
                 });
             }
-            Recorder.AddLine("ImageJ.RunOnImage(\"" + con + "\"," + headless + "," + onTab + "," + bioformats + "," + resultInNewTab + ");");
+            Recorder.AddLine("ImageJ.RunOnImage(\"" + con + "\"," + index + "," + headless + "," + onTab + "," + bioformats + "," + resultInNewTab + ");");
         }
 
         public static void RunOnImage(string con, bool headless, bool onTab, bool bioformats, bool resultInNewTab)
         {
             RunOnImage(con,0,headless,onTab,bioformats,resultInNewTab);
-            Recorder.AddLine("ImageJ.RunOnImage(\"" + con + "\"," + 0 + "," + headless + "," + onTab + "," + bioformats + "," + resultInNewTab + ");");
         }
         /// This function is used to initialize the path of the ImageJ.exe file
         /// 
         /// @param path The path to the ImageJ executable.
-        public static void Initialize(string path)
+        public static bool Initialize(string path)
         {
-            ImageJPath = path;
+            if (path == null || path == "")
+            {
+                if (!SetImageJPath())
+                    return false;
+            }
+            else
+                ImageJPath = path;
+            Macro.Initialize();
+            init = true;
+            Initialized = true;
+            return true;
+        }
+
+        /// This function creates a file chooser dialog that allows the user to select the location of
+        /// the ImageJ executable
+        /// 
+        /// @return A boolean value.
+        public static bool SetImageJPath()
+        {
+            string title = "Select ImageJ Executable Location";
+            if (OperatingSystem.IsMacOS())
+                title = "Select ImageJ Executable Location (Fiji.app/Contents/MacOS/ImageJ-macosx)";
+            Gtk.FileChooserDialog filechooser =
+    new Gtk.FileChooserDialog(title, Scripting.window,
+        FileChooserAction.Open,
+        "Cancel", ResponseType.Cancel,
+        "Save", ResponseType.Accept);
+            filechooser.SetCurrentFolder(System.IO.Path.GetDirectoryName(Environment.ProcessPath));
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return false;
+            ImageJ.ImageJPath = filechooser.Filename;
+            filechooser.Destroy();
+            Settings.AddSettings("ImageJPath", filechooser.Filename);
+            Settings.Save();
+            return true;
         }
 
         public class RoiDecoder

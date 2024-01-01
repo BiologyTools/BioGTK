@@ -315,17 +315,14 @@ namespace BioGTK
                         if (openSlide)
                         {
                             byte[] bts = _openSlideBase.GetSlice(new SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight, Resolution));
-                            //byte[] bts = _openSlideBase.GetSlice(new SliceInfo(MapView.Navigator.Viewport.CenterX, MapView.Navigator.Viewport.CenterY, imageBox.AllocatedWidth, imageBox.AllocatedHeight, MapView.Navigator.Viewport.Resolution));
                             if (bts != null)
                             {
                                 bitmap = new Bitmap((int)Math.Round(OpenSlideBase.destExtent.Width), (int)Math.Round(OpenSlideBase.destExtent.Height), PixelFormat.Format24bppRgb, bts, new ZCT(), "");
-                                //bitmap = new Bitmap((int)OpenSlideBase.destExtent.Width,(int)OpenSlideBase.destExtent.Height, PixelFormat.Format32bppArgb, bts, new ZCT(), "");Wheel
                                 b.Buffers[index] = bitmap;
                             }
                         }
                         else
                         {
-                            
                             AForge.Bitmap bf = BioImage.GetTile(SelectedImage, c, (int)Level, (int)PyramidalOrigin.X, (int)PyramidalOrigin.Y, imageBox.AllocatedWidth, imageBox.AllocatedHeight);
                             if (bf == null)
                                 return;

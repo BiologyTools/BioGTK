@@ -34,6 +34,9 @@ namespace BioGTK
         {
             Console.WriteLine("Initializing components.");
             BioImage.Initialize();
+            Console.WriteLine("Loading settings.");
+            Settings.Load();
+            ImageJ.Initialize(Settings.GetSettings("ImageJPath"));
             tools = Tools.Create();
             filters = FiltersView.Create();
             roiManager = ROIManager.Create();
@@ -47,34 +50,6 @@ namespace BioGTK
             setTool = SetTool.Create();
             recorder = Recorder.Create();
             //color = ColorTool.Create();
-            Console.WriteLine("Loading settings.");
-            Settings.Load();
-            ImageJ.ImageJPath = Settings.GetSettings("ImageJPath");
-        }
-
-        /// This function creates a file chooser dialog that allows the user to select the location of
-        /// the ImageJ executable
-        /// 
-        /// @return A boolean value.
-        public static bool SetImageJPath()
-        {
-            string title = "Select ImageJ Executable Location";
-            if (OperatingSystem.IsMacOS())
-                title = "Select ImageJ Executable Location (Fiji.app/Contents/MacOS/ImageJ-macosx)";
-                Gtk.FileChooserDialog filechooser =
-        new Gtk.FileChooserDialog(title, Scripting.window,
-            FileChooserAction.Open,
-            "Cancel", ResponseType.Cancel,
-            "Save", ResponseType.Accept);
-            filechooser.SetCurrentFolder(System.IO.Path.GetDirectoryName(Environment.ProcessPath));
-            if (filechooser.Run() != (int)ResponseType.Accept)
-                return false;
-            ImageJ.ImageJPath = filechooser.Filename;
-            filechooser.Destroy();
-            Settings.AddSettings("ImageJPath", filechooser.Filename);
-            Settings.Save();
-            
-            return true;
         }
 
         /// The function FindItem takes a Menu object and a label as input, and returns the MenuItem

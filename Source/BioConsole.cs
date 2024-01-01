@@ -1,6 +1,8 @@
 ﻿using BioGTK;
 using Gtk;
+using Pango;
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace BioGTK
@@ -11,12 +13,16 @@ namespace BioGTK
 
         /// <summary> Used to load in the glade file resource as a window. </summary>
         private Builder _builder;
+        private string pred = "";
+        private List<string> preds = new List<string>();
         public static bool onTab = false;
         public static bool useBioformats = true;
         public static bool headless = false;
         public static bool resultInNewTab = false;
         int line = 0;
 #pragma warning disable 649
+        [Builder.Object]
+        private Label predLabel;
         [Builder.Object]
         private Button imagejBut;
         [Builder.Object]
@@ -41,15 +47,11 @@ namespace BioGTK
 
         #region Constructors / Destructors
       
-        /// > Create a new BioConsole object using the Glade file "BioGTK.Glade.Console.glade"
-        /// 
-        /// The first line of the function is a comment. Comments are ignored by the compiler. They are
-        /// used to document the code
-        /// 
+        /// Create a new BioConsole object using the Glade file "BioGTK.Glade.BioConsole.glade"
         /// @return A new instance of the BioConsole class.
         public static BioConsole Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Console.glade", FileMode.Open));
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/BioConsole.glade", FileMode.Open));
             return new BioConsole(builder, builder.GetObject("console").Handle);
         }
 
@@ -76,10 +78,92 @@ namespace BioGTK
             resultsBox.Clicked += ResultsBox_Clicked;
             selRadioBut.Clicked += SelRadioBox_Clicked;
             tabRadioBut.Clicked += TabRadioBox_Clicked;
-            this.KeyPressEvent += Console_KeyPressEvent;
+            consoleBox.Buffer.Changed += Buffer_Changed;
+            consoleBox.KeyPressEvent += Console_KeyPressEvent;
             this.DeleteEvent += BioConsole_DeleteEvent;
-            if (OperatingSystem.IsMacOS())
-                bioformatsBox.Active = false;
+        }
+
+        private int Measure(string s)
+        {
+            // Create a Pango layout using the label's context
+            using (var layout = new Pango.Layout(predLabel.PangoContext))
+            {
+                // Set the text and font description of the layout
+                layout.SetText(s);
+                layout.FontDescription = FontDescription.FromString("Sans 12"); // Specify your desired font here
+                // Get the size of the layout
+                int width, height;
+                layout.GetPixelSize(out width, out height);
+                return width;
+            }
+        }
+
+        bool skip = false;
+        string chs = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        private void Buffer_Changed(object sender, EventArgs e)
+        {
+            if (consoleBox.Buffer.CharCount == 0)
+                return;
+            if(skip)
+            {
+                skip = false;
+                return;
+            }
+            pred = pred.Replace("\t", "").Replace("\r","").Replace("\n","");
+            if (pred.Contains(' '))
+            pred = consoleBox.Buffer.Text.Remove(0,consoleBox.Buffer.Text.LastIndexOf(' '));
+            else
+                pred = consoleBox.Buffer.Text.Replace("\t", "").Replace("\r", "").Replace("\n", "");
+            bool ends = false;
+            char ch = ' ';
+            int i = 0;
+            int ind = -1;
+            foreach (Char cs in pred)
+            {
+                ends = false;
+                foreach (Char c in chs)
+                {
+                    if (cs == c)
+                    {
+                        ends = true;
+                        ch = c;
+                    }
+                }
+                if (!ends)
+                    ind = i;
+                i++;
+            }
+            if (ind!=-1)
+                pred = pred.Remove(0, ind+1);
+            
+            preds.Clear();
+            i = 0;
+            ind = -1;
+            foreach(var cs in ImageJ.Macro.Commands)
+            {
+                if (cs.Value.Name.StartsWith(pred))
+                    preds.Add(cs.Value.Name);
+            }
+            foreach (var cs in ImageJ.Macro.Functions)
+            {
+                if (cs.Value[0].Name.StartsWith(pred))
+                    preds.Add(cs.Value[0].Name);
+            }
+            predLabel.Text = "";
+            foreach(var item in preds)
+            {
+                if (this.AllocatedWidth > Measure(predLabel.Text))
+                {
+                    predLabel.Text += item + ", ";
+                }
+                else break;
+            }
+            if(consoleBox.Buffer.Text.EndsWith('\t'))
+            {
+                string s = consoleBox.Buffer.Text.TrimEnd('\t');
+                skip = true;
+                consoleBox.Buffer.Text = s.Remove(s.Length - pred.Length, pred.Length) + preds[0];
+            }
         }
 
         /// If the user clicks the checkbox, then the resultInNewTab variable is set to the value of the

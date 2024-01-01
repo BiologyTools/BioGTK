@@ -1,7 +1,7 @@
 ﻿using AForge;
 using Bio;
-using com.google.common.@base;
 using Gtk;
+using ikvm.runtime;
 using loci.formats.gui;
 using System;
 using System.Collections.Generic;
@@ -24,7 +24,12 @@ namespace BioGTK
             get { return App.viewer; }
         }
 #pragma warning disable 649
-
+        [Builder.Object]
+        public MenuBar ImageJMenu;
+        [Builder.Object]
+        private MenuItem recentMenu;
+        [Builder.Object]
+        private MenuItem commandsMenu;
         [Builder.Object]
         public MenuBar MainMenu;
         [Builder.Object]
@@ -150,7 +155,7 @@ namespace BioGTK
             Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/TabsView.glade", FileMode.Open));
             return new TabsView(builder, builder.GetObject("TabsView").Handle);
         }
-
+        Menu recent = new Menu();
         /* Setting up the UI. */
         protected TabsView(Builder builder, IntPtr handle) : base(handle)
         {
@@ -176,6 +181,45 @@ namespace BioGTK
             }
             rotateFlipMenu.Submenu = m;
             rotateFlipMenu.ShowAll();
+            string a = "ABCDEFGHIJKLNOPQRSTUVWXYZ";
+            Menu me = new Menu();
+            foreach (char c in a)
+            {
+                MenuItem mi = new MenuItem(c.ToString());
+                Menu men = new Menu();
+                foreach (ImageJ.Macro.Command command in ImageJ.Macro.Commands.Values)
+                {
+                    if (command.Name.StartsWith(c))
+                    {
+                        MenuItem menuItem = new MenuItem(command.Name.ToString());
+                        menuItem.ButtonPressEvent += CommandMenuItem_ButtonPressEvent;
+                        men.Append(menuItem);
+                    }
+                }
+                mi.Submenu = men;
+                me.Append(mi);
+            }
+            commandsMenu.Submenu = me;
+            commandsMenu.ShowAll();
+            recentMenu.Submenu = recent;
+        }
+
+        private void CommandMenuItem_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            if (ImageView.SelectedImage == null) return;
+            MenuItem m = (MenuItem)o;
+            ImageJ.RunOnImage("run(\"" + m.Label + "\");", false, false, true, false);
+            MenuItem mi = new MenuItem(m.Label);
+            mi.ButtonPressEvent += CommandMenuItem_ButtonPressEvent;
+            bool con = false;
+            foreach (MenuItem item in recent.Children)
+            {
+                if (item.Label == m.Label)
+                    con = true;
+            }
+            if(!con)
+            recent.Append(mi);
+            recentMenu.ShowAll();
         }
 
         /// When the user clicks on a menu item, the selected image is rotated or flipped according to

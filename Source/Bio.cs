@@ -87,17 +87,14 @@ namespace BioGTK
         /// @return The number of images that contain the name of the image.
         public static int GetImageCountByName(string s)
         {
+            string name = Path.GetFileName(s);
+            string ext = Path.GetExtension(s);
+            if(name.Split('-').Length > 2)
+                name = name.Remove(name.LastIndexOf('-'),name.Length - name.LastIndexOf('-'));
             int i = 0;
             for (int im = 0; im < images.Count; im++)
             {
-                string name = images[im].ID;
-                int sti = name.LastIndexOf("-");
-                string st = name;
-                if (sti != -1)
-                {
-                    st = name.Remove(sti);
-                }
-                if (images[im].ID.Contains(st))
+                if (images[im].ID.Contains(name) && images[im].ID.EndsWith(ext))
                     i++;
             }
             return i;
@@ -114,25 +111,16 @@ namespace BioGTK
             if (i == 0)
                 return Path.GetFileName(s);
             string name = Path.GetFileNameWithoutExtension(s);
-            string ext = Path.GetExtension(s);
-            int sti = name.LastIndexOf("-");
-            if (sti == -1)
+            if (Path.GetFileNameWithoutExtension(name)!=name)
+                name = Path.GetFileNameWithoutExtension(name);
+            string ext = s.Substring(s.IndexOf('.'),s.Length-s.IndexOf('.'));
+            if(name.Split('-').Length > 2)
             {
-                return name + "-" + (i) + ext;
+                string sts = name.Remove(name.LastIndexOf('-'),name.Length-name.LastIndexOf('-'));
+                return sts + "-" + i + ext;
             }
             else
-            {
-                string stb = name.Substring(0, sti);
-                string sta = name.Substring(sti + 1, name.Length - sti - 1);
-                int ind;
-                if (int.TryParse(sta, out ind))
-                {
-                    return stb + "-" + (i+1).ToString() + ext;
-                }
-                else
-                    return name + "-" + (i+1) + ext;
-            }
-            //
+                return name + "-" + i + ext;
         }
         /// This function removes an image from the table
         /// 
@@ -161,7 +149,7 @@ namespace BioGTK
                     App.tabsView.RemoveTab(im.Filename);
                 });
             });
-            Recorder.AddLine("BioGTK.Table.RemoveImage(" + '"' + id + '"' + ");");
+            Recorder.AddLine("BioGTK.Images.RemoveImage(" + '"' + id + '"' + ");");
         }
         /// It updates an image from the table
         /// 
@@ -4347,10 +4335,12 @@ namespace BioGTK
         /// @return A BioImage object.
         public static BioImage OpenFile(string file)
         {
+            Recorder.AddLine("BioGTK.BioImage.OpenFile(\"" + file + "\");");
             return OpenFile(file, 0, true, true);
         }
         public static BioImage OpenFile(string file, bool tab)
         {
+            Recorder.AddLine("BioGTK.BioImage.OpenFile(\"" + file + "\"," + tab.ToString() + ");");
             return OpenFile(file, 0, tab, true);
         }
         /// It opens a TIFF file and returns a BioImage object
@@ -5204,7 +5194,8 @@ namespace BioGTK
                 for (int bu = 0; bu < b.Buffers.Count; bu++)
                 {
                     progressValue = (float)bu / (float)b.Buffers.Count;
-                    writer.saveBytes(bu, b.Buffers[bu].GetSaveBytes(BitConverter.IsLittleEndian));
+                    byte[] bts = b.Buffers[bu].GetSaveBytes(BitConverter.IsLittleEndian);
+                    writer.saveBytes(bu, bts);
                 }
             }
             bool stop = false;
@@ -6617,7 +6608,7 @@ namespace BioGTK
         static int sserie;
         static void SaveThread()
         {
-            if (omes)
+            if (some)
                 SaveOME(savefile, saveid);
             else
                 SaveFile(savefile, saveid);
