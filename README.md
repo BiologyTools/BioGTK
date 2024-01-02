@@ -173,6 +173,7 @@ using System;
 using BioGTK;
 using System.Threading;
 using AForge;
+using Gdk;
 public class Loader {
 
 //Point ROI Tool Example
@@ -196,7 +197,6 @@ public string Load()
 					an.Text = "Point" + ind;
 					ind++;
 					BioGTK.Scripting.LogLine(s.ToString() + " Point");
-					//ImageView.viewer.UpdateOverlay();
 				}
 				else
 				if (s.type == BioGTK.Scripting.Event.Up)
@@ -208,10 +208,14 @@ public string Load()
 				{
 					BioGTK.Scripting.LogLine(s.ToString());
 				}
+				if(s.key == Key.r)
+				{
+					BioGTK.Scripting.LogLine("KeyDown");
+				}
 				s.processed = true;
 			}
 		}
-		if(BioGTK.Scripting.Exit("points.cs"))
+		if(BioGTK.Scripting.Exit("test.cs"))
 		{	
 			return "OK";
 		}
