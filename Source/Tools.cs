@@ -443,6 +443,7 @@ namespace BioGTK
                 ti = TextInput.Create();
                 ti.ShowAll();
                 ti.Run();
+                AddROI(selectedROI);
             }
             else
             if (buts.Event.Button == 2)

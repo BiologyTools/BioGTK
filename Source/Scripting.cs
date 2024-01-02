@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
-
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -412,6 +411,7 @@ namespace BioGTK
             public PointD p;
             public uint buts;
             public bool processed = false;
+            public Gdk.Key? key;
             public override string ToString()
             {
                 return type.ToString() + " ,(" + p.X.ToString() + ", " + p.Y.ToString() + "), " + buts.ToString();
@@ -647,8 +647,7 @@ namespace BioGTK
         /// It runs the program.
         /// 
         /// @param sender The object that raised the event.
-        /// @param EventArgs The EventArgs class is the base class for classes containing event data.
-        
+        /// @param EventArgs The EventArgs class is the base class for classes containing event data.       
         private void runToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Run();
@@ -657,18 +656,12 @@ namespace BioGTK
         /// 
         /// @param sender The object that raised the event.
         /// @param EventArgs The event arguments.
-
         private void openScriptFolderToolStripMenuItem_Click(object sender, EventArgs e)
         {
             string path = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "\\Scripts";
             System.Diagnostics.Process.Start("explorer.exe", path);
         }
         /// It refreshes the items in the list view.
-        /// 
-        /// @param sender The object that raised the event.
-        /// @param EventArgs The event arguments.
-
-        /// RefreshItems() is a function that refreshes the list of items in the listbox
         /// 
         /// @param sender The object that raised the event.
         /// @param EventArgs The event arguments.

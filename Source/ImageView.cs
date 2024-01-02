@@ -1576,6 +1576,11 @@ namespace BioGTK
                         item.PerformFunction(false);
                 }
             }
+            Scripting.State st = new Scripting.State();
+            st.key = e.Event.Key;
+            st.p = mouseDown;
+            st.type = Scripting.Event.Down;
+            Scripting.UpdateState(st);
             UpdateView();
         }
         /// The function is called when the user presses a key on the keyboard
@@ -1586,6 +1591,11 @@ namespace BioGTK
         private void ImageView_KeyUpEvent(object o, KeyPressEventArgs e)
         {
             keyDown = Gdk.Key.Key_3270_Test;
+            Scripting.State st = new Scripting.State();
+            st.key = e.Event.Key;
+            st.p = mouseUp;
+            st.type = Scripting.Event.Up;
+            Scripting.UpdateState(st);
         }
         /// The function is called when the user scrolls the mouse wheel. If the user is holding down
         /// the control key, the function will change the Level of the image. If the user is not

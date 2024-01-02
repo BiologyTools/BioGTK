@@ -3,7 +3,6 @@ using Gtk;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using java.nio.channels;
 using Gdk;
 
 namespace BioGTK
@@ -103,7 +102,25 @@ namespace BioGTK
             textBox.Buffer.Changed += Buffer_Changed;
             imagejRadioBut.Clicked += ImagejRadioBut_Clicked;
             bioRadioBut.Clicked += BioRadioBut_Clicked;
+            this.KeyPressEvent += Functions_KeyPressEvent;
             this.DeleteEvent += Functions_DeleteEvent;
+        }
+        int i = 0;
+        private bool IterateComboBoxItems(ITreeModel model, TreePath path, TreeIter iter)
+        {
+            // Retrieve the value from the model
+            string item = (string)model.GetValue(iter, 0);
+            if (item == func.Key.ToString())
+                keysBox.Active = i;
+            i++;
+            // Return false to continue iterating
+            return false;
+        }
+        private void Functions_KeyPressEvent(object o, KeyPressEventArgs args)
+        {
+            i = 0;
+            func.Key = args.Event.Key;
+            keysBox.Model.Foreach(new TreeModelForeachFunc(IterateComboBoxItems));
         }
 
         /// This function is called when the user clicks the close button on the window

@@ -226,7 +226,7 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         private void SelRadioBox_Clicked(object sender, EventArgs e)
         {
-            onTab = selRadioBut.Active;
+            onTab = !selRadioBut.Active;
         }
         private void HeadlessBox_Clicked(object sender, EventArgs e)
         {
