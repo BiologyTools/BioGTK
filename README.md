@@ -7,7 +7,7 @@ A .NET application & library for editing & annotating various microscopy image f
 [![NuGet version (BioGTK)](https://img.shields.io/nuget/dt/BioGTK?color=g)](https://www.nuget.org/packages/BioGTK/3.9.0) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8122239.svg)](https://doi.org/10.5281/zenodo.8122239)
 ## Features
 
-- C# scripting with sample tool-script and other sample scripts in "/Scripts/" folder. [See samples](https://github.com/BioMicroscopy/BioImage-Scripts)
+- C# scripting with sample tool-script and other sample scripts in "/Scripts/" folder. [See samples.](https://github.com/BiologyTools/Bio-Scripts)
 
 - Supports running ImageJ macro commands on images open in Bio. Console to run ImageJ macro commands and Bio C# scripts.
 
@@ -48,6 +48,10 @@ A .NET application & library for editing & annotating various microscopy image f
 -  Open script editor and recorder from menu.
 -  Scripts saved in Scripts folder will be loaded into script runner.
 -  Use Script recorder to record program function calls and script runner to turn recorder text into working scripts. (See sample [scripts](https://github.com/BioMicroscopy/BioImage-Scripts)
+
+## Plugins
+- Save plugin DLL's into "StartupPath/Plugins"
+- See [example plugin](https://github.com/BiologyTools/PluginExample) to create your own plugins.
 
 ## Mac Installation
 - Install Mac package manager [homebrew.](https://brew.sh/)
