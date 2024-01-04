@@ -50,12 +50,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Source\Plugin.cs~RF57d613ca.TMP" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Content Include="bioformats_package.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       <Pack>True</Pack>
       <PackagePath>lib\net6.0</PackagePath>
     </Content>
@@ -417,7 +413,6 @@
 
   <ItemGroup>
     <PackageReference Include="AForgeBio" Version="1.5.0" />
-    <PackageReference Include="BioFormats.NET6" Version="7.0.1" />
     <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
     <PackageReference Include="CS-Script" Version="4.8.13" />
     <PackageReference Include="Dotnet.Bundle" Version="0.9.13" />
@@ -450,12 +445,6 @@
     <Reference Include="bioformats_package">
       <HintPath>bioformats_package.dll</HintPath>
     </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Update="C:\Users\Erikr\.nuget\packages\bioformats.net6\7.0.1\contentFiles\any\net6.0\bioformats_package.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
   <ItemGroup>
     <None Update="README.md">
