@@ -27,6 +27,9 @@ namespace BioGTK
         /// @param val The value of the setting
         public static void AddSettings(string name,string val)
         {
+            if(Default.ContainsKey(name))
+                Default[name] = val;
+            else
             Default.Add(name, val);
         }
         static string path = System.IO.Path.GetDirectoryName(Environment.ProcessPath);

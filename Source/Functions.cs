@@ -81,6 +81,7 @@ namespace BioGTK
             builder.Autoconnect(this);
             SetupHandlers();
             Init();
+            App.ApplyStyles(this);
         }
 
         #endregion

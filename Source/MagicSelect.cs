@@ -62,6 +62,7 @@ namespace Bio
             thBox.PackStart(renderer, false);
             thBox.AddAttribute(renderer, "text", 0);
             thBox.Active = index;
+            App.ApplyStyles(this);
         }
 
         #endregion

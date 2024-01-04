@@ -82,6 +82,7 @@ namespace BioGTK
             }
             if (stackABox.Children.Length > 0)
                 stackABox.Active = 0;
+            App.ApplyStyles(this);
         }
 
         /// If the user clicks the "In Place" button, then apply the changes to the current file

@@ -38,9 +38,9 @@ namespace BioGTK
         [Builder.Object]
         private CheckButton resultsBox;
         [Builder.Object]
-        private RadioButton selRadioBut;
+        private CheckButton selRadioBut;
         [Builder.Object]
-        private RadioButton tabRadioBut;
+        private CheckButton tabRadioBut;
 #pragma warning restore 649
 
         #endregion
@@ -63,6 +63,7 @@ namespace BioGTK
             _builder = builder;
             builder.Autoconnect(this);
             SetupHandlers();
+            App.ApplyStyles(this);
         }
 
         #endregion
@@ -218,6 +219,7 @@ namespace BioGTK
         private void TabRadioBox_Clicked(object sender, EventArgs e)
         {
             onTab = tabRadioBut.Active;
+            selRadioBut.Active = !onTab;
         }
 
         /// If the user clicks on the "Select" radio button, the variable "onTab" is set to true
@@ -227,6 +229,7 @@ namespace BioGTK
         private void SelRadioBox_Clicked(object sender, EventArgs e)
         {
             onTab = !selRadioBut.Active;
+            tabRadioBut.Active = onTab;
         }
         private void HeadlessBox_Clicked(object sender, EventArgs e)
         {

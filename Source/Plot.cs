@@ -169,6 +169,7 @@ namespace BioGTK
                 plots[name] = this;
             else
                 plots.Add(name,this);
+            App.ApplyStyles(this);
         }
 
         /// The function saves data in CSV format to a user-selected file.

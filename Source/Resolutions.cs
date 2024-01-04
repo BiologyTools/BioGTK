@@ -60,6 +60,7 @@ namespace BioGTK
             resolutionsBox.Adjustment.StepIncrement = 1;
             resolutionsBox.Adjustment.PageIncrement = 1;
             SetupHandlers();
+            App.ApplyStyles(this);
         }
 
      

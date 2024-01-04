@@ -282,6 +282,7 @@ namespace BioGTK
             var rendererb = new CellRendererText();
             bBox.PackStart(rendererb, false);
             bBox.AddAttribute(rendererb, "text", 0);
+            App.ApplyStyles(this);
         }
         #endregion
 

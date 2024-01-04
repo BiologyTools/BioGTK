@@ -166,6 +166,7 @@ namespace Bio
             selBox.Adjustment.Upper = 100;
             selBox.Adjustment.StepIncrement = 1;
             InitItems();
+            App.ApplyStyles(this);
         }
 
         private void ROIManager_DeleteEvent(object o, DeleteEventArgs args)

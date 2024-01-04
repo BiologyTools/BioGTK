@@ -51,6 +51,7 @@ namespace BioGTK
             _builder = builder;
             builder.Autoconnect(this);
             SetupHandlers();
+            App.ApplyStyles(this);
         }
 
      

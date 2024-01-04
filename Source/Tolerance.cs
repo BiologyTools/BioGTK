@@ -73,6 +73,7 @@ namespace BioGTK
             bBox.Adjustment.Upper = ushort.MaxValue;
             bBox.Adjustment.StepIncrement = 1;
             bBox.Adjustment.PageIncrement = 10;
+            App.ApplyStyles(this);
         }
 
         #endregion

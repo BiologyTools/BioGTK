@@ -87,6 +87,7 @@ namespace BioGTK
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "//" + "Tools");
             InitItems();
             scriptLabel.Text = "NewScript.cs";
+            App.ApplyStyles(this);
         }
 
         /// When the user switches tabs, the text in the textview is updated to the current log, error,

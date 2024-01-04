@@ -59,6 +59,7 @@ namespace BioGTK
             currentTool = GetTool(Tool.Type.move);
             floodFiller = new QueueLinearFloodFiller(floodFiller);
             magicSel = MagicSelect.Create(0);
+            App.ApplyStyles(this);
         }
 
         #endregion

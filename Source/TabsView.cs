@@ -31,6 +31,11 @@ namespace BioGTK
         [Builder.Object]
         private MenuItem commandsMenu;
         [Builder.Object]
+        private MenuItem runMenu;
+        [Builder.Object]
+        private MenuItem searchMenu;
+
+        [Builder.Object]
         public MenuBar MainMenu;
         [Builder.Object]
         private MenuItem openImagesMenu;
@@ -118,8 +123,6 @@ namespace BioGTK
         private MenuItem filtersMenu;
 
         [Builder.Object]
-        private MenuItem runMenu;
-        [Builder.Object]
         private MenuItem functionsToolMenu;
         [Builder.Object]
         private MenuItem consoleMenu;
@@ -181,7 +184,7 @@ namespace BioGTK
             }
             rotateFlipMenu.Submenu = m;
             rotateFlipMenu.ShowAll();
-            string a = "ABCDEFGHIJKLNOPQRSTUVWXYZ";
+            string a = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
             Menu me = new Menu();
             foreach (char c in a)
             {
@@ -202,13 +205,42 @@ namespace BioGTK
             commandsMenu.Submenu = me;
             commandsMenu.ShowAll();
             recentMenu.Submenu = recent;
+            App.ApplyStyles(this);
+            Menu rm = new Menu();
+            foreach(Scripting.Script s in Scripting.scripts.Values)
+            {
+                MenuItem mi = new MenuItem(s.name);
+                mi.ButtonPressEvent += Mi_ButtonPressEvent;
+                rm.Append(mi);
+            }
+            foreach (ImageJ.Macro.Command c in ImageJ.Macros)
+            {
+                MenuItem mi = new MenuItem(c.Name);
+                mi.ButtonPressEvent += Mi_ButtonPressEvent;
+                rm.Append(mi);
+            }
+            runMenu.Submenu = rm;
+            runMenu.ShowAll();
+            Plugins.Initialize();
+        }
+
+        private void Mi_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            MenuItem m = (MenuItem)o;
+            if (m.Label.EndsWith(".ijm") || m.Label.EndsWith(".txt") && !m.Label.EndsWith(".cs"))
+            {
+                string ma = File.ReadAllText(m.Label);
+                ImageJ.RunOnImage(ma, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
+            }
+            else
+                Scripting.RunByName(m.Label);
         }
 
         private void CommandMenuItem_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             if (ImageView.SelectedImage == null) return;
             MenuItem m = (MenuItem)o;
-            ImageJ.RunOnImage("run(\"" + m.Label + "\");", false, false, true, false);
+            ImageJ.RunOnImage("run(\"" + m.Label + "\");", BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
             MenuItem mi = new MenuItem(m.Label);
             mi.ButtonPressEvent += CommandMenuItem_ButtonPressEvent;
             bool con = false;
@@ -307,6 +339,14 @@ namespace BioGTK
             tabsView.SwitchPage += TabsView_SwitchPage;
             tabsView.ButtonPressEvent += TabsView_ButtonPressEvent;
             this.WindowStateEvent += TabsView_WindowStateEvent;
+
+            searchMenu.ButtonPressEvent += SearchMenu_ButtonPressEvent;
+        }
+
+        private void SearchMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Search search = Search.Create();
+            search.Show();
         }
 
         private void TabsView_ButtonPressEvent(object o, ButtonPressEventArgs args)

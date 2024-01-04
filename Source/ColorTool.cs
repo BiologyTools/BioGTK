@@ -98,6 +98,7 @@ namespace BioGTK
                 bBar.Adjustment.Value = Tools.eraseColor.B;
             }
             image.QueueDraw();
+            App.ApplyStyles(this);
         }
 
         #endregion

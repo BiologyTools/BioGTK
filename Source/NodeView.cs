@@ -56,8 +56,9 @@ namespace BioGTK
             System.IO.Directory.CreateDirectory(st + "/Scripts");
             System.IO.Directory.CreateDirectory(st + "/Functions");
             System.IO.Directory.CreateDirectory(st + "/Tools");
+            System.IO.Directory.CreateDirectory(st + "/Plugins");
             App.nodeView = this;
-            App.Initialize();
+            App.Initialize(true);
             SetupHandlers();
             Console.WriteLine("Parsing arguments.");
             if(args.Length > 0)
@@ -70,6 +71,7 @@ namespace BioGTK
             }
             Console.WriteLine("Initializing nodes.");    
             InitItems();
+            App.ApplyStyles(this);
         }
 
         /// It takes a list of images, and for each image, it takes a list of bitmaps, and for each

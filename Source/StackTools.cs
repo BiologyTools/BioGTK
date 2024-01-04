@@ -83,6 +83,7 @@ namespace BioGTK
             var renderer2 = new CellRendererText();
             stackBBox.PackStart(renderer2, false);
             stackBBox.AddAttribute(renderer2, "text", 0);
+            App.ApplyStyles(this);
         }
 
         private void StackTools_FocusInEvent(object o, FocusInEventArgs args)

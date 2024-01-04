@@ -43,6 +43,7 @@ namespace BioGTK
             this.FocusActivated += SetTool_FocusActivated;
             this.DeleteEvent += SetTool_DeleteEvent;
             InitItems();
+            App.ApplyStyles(this);
         }
 
         /// The function is called when the user clicks the close button on the window. It sets the

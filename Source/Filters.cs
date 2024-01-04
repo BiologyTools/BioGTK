@@ -39,6 +39,7 @@ namespace BioGTK
             InitItems();
             tree.RowActivated += Tree_RowActivated;
             this.DeleteEvent += FiltersView_DeleteEvent;
+            App.ApplyStyles(this);
         }
 
         private void FiltersView_DeleteEvent(object o, DeleteEventArgs args)

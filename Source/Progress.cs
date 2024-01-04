@@ -91,6 +91,7 @@ namespace BioGTK
             this.statusLabel.Text = status;
             this.progLabel.Text = state;
             this.DeleteEvent += Progress_DeleteEvent;
+            App.ApplyStyles(this);
         }
 
         /// The function Progress_DeleteEvent is called when the user clicks the close button on the

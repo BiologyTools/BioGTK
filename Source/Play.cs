@@ -81,6 +81,7 @@ namespace BioGTK
             endZ.Value = ImageView.endz;
             endC.Value = ImageView.endc;
             endT.Value = ImageView.endt;
+            App.ApplyStyles(this);
         }
 
         #endregion

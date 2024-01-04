@@ -53,6 +53,7 @@ namespace BioGTK
             bar.Adjustment.StepIncrement = 1;
             SelectedValue = start;
             Show();
+            App.ApplyStyles(this);
         }
 
         private void Bar_ValueChanged(object sender, EventArgs e)

@@ -172,7 +172,7 @@
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <child>
-                      <object class="GtkRadioMenuItem" id="rgbMenu">
+                      <object class="GtkCheckMenuItem" id="rgbMenu">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="label" translatable="yes">RGB</property>
@@ -180,7 +180,7 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkRadioMenuItem" id="filteredMenu">
+                      <object class="GtkCheckMenuItem" id="filteredMenu">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="label" translatable="yes">Filtered</property>
@@ -188,7 +188,7 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkRadioMenuItem" id="rawMenu">
+                      <object class="GtkCheckMenuItem" id="rawMenu">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="label" translatable="yes">Raw</property>
@@ -196,7 +196,7 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkRadioMenuItem" id="emissionMenu">
+                      <object class="GtkCheckMenuItem" id="emissionMenu">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="label" translatable="yes">Emission</property>
@@ -489,33 +489,19 @@
               </object>
             </child>
             <child>
-              <object class="GtkMenuItem" id="imageMenu">
-                <property name="name">fileMenu</property>
+              <object class="GtkMenuItem" id="runMenu">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="margin-bottom">1</property>
-                <property name="label" translatable="yes">Image</property>
+                <property name="label" translatable="yes">Run</property>
+                <property name="use-underline">True</property>
               </object>
             </child>
             <child>
-              <object class="GtkMenuItem" id="ProcessMenu">
+              <object class="GtkMenuItem">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="label" translatable="yes">Process</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkMenuItem" id="analyzeMenu">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="label" translatable="yes">Analyze</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkMenuItem" id="pluginsMenu">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="label" translatable="yes">Plugins</property>
+                <property name="label" translatable="yes">Find</property>
+                <property name="use-underline">True</property>
               </object>
             </child>
           </object>

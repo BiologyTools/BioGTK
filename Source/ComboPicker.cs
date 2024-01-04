@@ -70,6 +70,7 @@ namespace BioGTK
             comboBox.PackStart(renderer2, false);
             comboBox.AddAttribute(renderer2, "text", 0);
             comboBox.Active = 0;
+            App.ApplyStyles(this);
         }
         /* The constructor for the ComboPicker class. */
         protected ComboPicker(Builder builder, IntPtr handle, string[] sts) : base(handle)
@@ -91,6 +92,7 @@ namespace BioGTK
             comboBox.PackStart(renderer2, false);
             comboBox.AddAttribute(renderer2, "text", 0);
             comboBox.Active = 0;
+            App.ApplyStyles(this);
         }
 
         /// When the Cancel button is pressed, the dialog box is closed

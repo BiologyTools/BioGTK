@@ -129,6 +129,7 @@ namespace BioGTK
             maxUintBox2.PackStart(rend2, false);
             maxUintBox2.AddAttribute(rend2, "text", 0);
             ShowAll();
+            App.ApplyStyles(this);
         }
 
         /// The function is called when the user changes the value of the sample box

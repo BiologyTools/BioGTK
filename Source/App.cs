@@ -30,13 +30,13 @@ namespace BioGTK
         public static Recorder recorder;
 
         /// Initialize() is a function that initializes the BioImage Suite Web
-        public static void Initialize()
+        public static void Initialize(bool requireImageJ = false)
         {
             Console.WriteLine("Initializing components.");
             BioImage.Initialize();
             Console.WriteLine("Loading settings.");
             Settings.Load();
-            ImageJ.Initialize(Settings.GetSettings("ImageJPath"));
+            ImageJ.Initialize(requireImageJ);
             tools = Tools.Create();
             filters = FiltersView.Create();
             roiManager = ROIManager.Create();
@@ -50,6 +50,25 @@ namespace BioGTK
             setTool = SetTool.Create();
             recorder = Recorder.Create();
             //color = ColorTool.Create();
+        }
+
+        public static void ApplyStyles(Widget widget)
+        {
+            if (widget != null)
+            {
+                widget.ModifyBg(StateType.Normal, new Gdk.Color(49, 91, 138));
+                widget.ModifyFg(StateType.Normal, new Gdk.Color(255, 255, 255));
+            }
+            try
+            {
+                foreach (var child in ((Container)widget).Children)
+                {
+                    ApplyStyles(child);
+                }
+            }
+            catch (Exception)
+            {
+            }
         }
 
         /// The function FindItem takes a Menu object and a label as input, and returns the MenuItem
@@ -306,6 +325,20 @@ namespace BioGTK
             {
                 Function f = Function.Functions[ts.Label];
                 f.PerformFunction(true);
+            }
+            else
+            {
+                if (ts.Label.EndsWith(".dll"))
+                {
+                    try
+                    {
+                        Plugin.Plugins[ts.Label].Execute();
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.ToString());
+                    }
+                }
             }
         }
     }

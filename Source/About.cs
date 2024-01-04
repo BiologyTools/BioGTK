@@ -47,6 +47,7 @@ namespace BioGTK
             label.Text = "BioGTK " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString() + " by Erik Repo, Github.com/BiologyTools/BioGTK.";
             image.Drawn += Image_Drawn;
             this.DeleteEvent += About_DeleteEvent;
+            App.ApplyStyles(this);
         }
 
         /// The function "About_DeleteEvent" sets the "RetVal" property of the "args" parameter to true

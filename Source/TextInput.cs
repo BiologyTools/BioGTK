@@ -47,6 +47,7 @@ namespace BioGTK
             okBut.ButtonPressEvent += OkBut_ButtonPressEvent;
             cancelBut.ButtonPressEvent += CancelBut_ButtonPressEvent;
             textinputBox.Activated += TextinputBox_Activated;
+            App.ApplyStyles(this);
         }
 
         private void TextinputBox_Activated(object sender, EventArgs e)

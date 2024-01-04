@@ -102,6 +102,7 @@ namespace BioGTK
         public static bool Initialized { get { return init; } private set { } }
         public static string ImageJPath;
         public static List<Process> processes = new List<Process>();
+        public static List<Macro.Command> Macros = new List<Macro.Command>();
         private static Random rng = new Random();
         /// It runs a macro in ImageJ
         /// 
@@ -113,7 +114,7 @@ namespace BioGTK
         {
             if (!Initialized)
             {
-                if (!Initialize(""))
+                if (!Initialize(true))
                     return;
             }
             file.Replace("/", "\\");
@@ -135,7 +136,7 @@ namespace BioGTK
         {
             if (!Initialized)
             {
-                if (!Initialize(""))
+                if (!Initialize(true))
                     return;
             }
             Process pr = new Process();
@@ -192,7 +193,7 @@ namespace BioGTK
         {
             if (!Initialized)
             {
-                if (!Initialize(""))
+                if (!Initialize(true))
                     return;
             }
             string filename = "";
@@ -263,7 +264,10 @@ namespace BioGTK
             }
             Recorder.AddLine("ImageJ.RunOnImage(\"" + con + "\"," + index + "," + headless + "," + onTab + "," + bioformats + "," + resultInNewTab + ");");
         }
-
+        public static void RunOnImage(string s)
+        {
+            RunOnImage(s, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
+        }
         public static void RunOnImage(string con, bool headless, bool onTab, bool bioformats, bool resultInNewTab)
         {
             RunOnImage(con,0,headless,onTab,bioformats,resultInNewTab);
@@ -271,18 +275,19 @@ namespace BioGTK
         /// This function is used to initialize the path of the ImageJ.exe file
         /// 
         /// @param path The path to the ImageJ executable.
-        public static bool Initialize(string path)
+        public static bool Initialize(bool imagej)
         {
-            if (path == null || path == "")
-            {
-                if (!SetImageJPath())
-                    return false;
-            }
-            else
-                ImageJPath = path;
+            if (!imagej)
+                return false;
+            if (!SetImageJPath())
+                return false;
             Macro.Initialize();
-            init = true;
-            Initialized = true;
+            string[] ds = Directory.GetFiles(Path.GetDirectoryName(ImageJPath) + "/macros");
+            foreach (string s in ds)
+            {
+                if(s.EndsWith(".ijm") || s.EndsWith(".txt"))
+                Macros.Add(new Macro.Command(Path.GetFileName(s), "", ""));
+            }
             return true;
         }
 
@@ -292,6 +297,11 @@ namespace BioGTK
         /// @return A boolean value.
         public static bool SetImageJPath()
         {
+            if(Settings.GetSettings("ImageJPath")!="")
+            {
+                Initialized = true;
+                ImageJPath = Settings.GetSettings("ImageJPath");
+            }
             string title = "Select ImageJ Executable Location";
             if (OperatingSystem.IsMacOS())
                 title = "Select ImageJ Executable Location (Fiji.app/Contents/MacOS/ImageJ-macosx)";
@@ -307,6 +317,7 @@ namespace BioGTK
             filechooser.Destroy();
             Settings.AddSettings("ImageJPath", filechooser.Filename);
             Settings.Save();
+            Initialized = true;
             return true;
         }
 
