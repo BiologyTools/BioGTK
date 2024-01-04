@@ -312,6 +312,7 @@ namespace BioGTK
         {
             if (App.viewer == null || currentTool == null || ImageView.SelectedImage == null)
                 return;
+            Plugins.MouseDown(ImageView.SelectedImage, e, buts);
             Scripting.UpdateState(Scripting.State.GetDown(e, buts.Event.Button));
             PointF p = new PointF((float)e.X, (float)e.Y);
             if (currentTool.type == Tool.Type.line && buts.Event.Button == 1)
@@ -461,6 +462,7 @@ namespace BioGTK
         /// @return The return type is void.
         public void ToolUp(PointD e, ButtonReleaseEventArgs buts)
         {
+            Plugins.MouseUp(ImageView.SelectedImage, e, buts);
             PointD p = new PointD((float)e.X, (float)e.Y);
             PointD mouseU = ImageView.SelectedImage.ToImageSpace(p);
             if (App.viewer == null || currentTool == null || ImageView.SelectedImage == null || selectedROI == null)
@@ -607,7 +609,8 @@ namespace BioGTK
         {
             if (App.viewer == null)
                 return;
-            if(buts.Event.State == ModifierType.Button1Mask)
+            Plugins.MouseMove(ImageView.SelectedImage, e, buts);
+            if (buts.Event.State == ModifierType.Button1Mask)
                 Scripting.UpdateState(Scripting.State.GetMove(e, 1));
             if (buts.Event.State == ModifierType.Button2Mask)
                 Scripting.UpdateState(Scripting.State.GetMove(e, 2));

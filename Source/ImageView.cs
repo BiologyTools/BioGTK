@@ -1169,7 +1169,7 @@ namespace BioGTK
                 e.Cr.Translate(pictureBox.AllocatedWidth / 2, pictureBox.AllocatedHeight / 2);
             }
             RectangleD rr = ToViewSpace(PointD.MinX, PointD.MinY, PointD.MaxX - PointD.MinX, PointD.MaxY - PointD.MinY);
-            
+            Plugins.Drawn(o, e);
             e.Cr.Rectangle(rr.X, rr.Y,Math.Abs(rr.W),Math.Abs(rr.H));
             e.Cr.Stroke();
             int i = 0;
@@ -1491,6 +1491,7 @@ namespace BioGTK
         /// @return The key that was pressed.
         private void ImageView_KeyPressEvent(object o, KeyPressEventArgs e)
         {
+            Plugins.KeyDownEvent(o, e);
             keyDown = e.Event.Key;
             double moveAmount = 5 * Scale.Width;
             double zoom = Level;
@@ -1591,6 +1592,7 @@ namespace BioGTK
         /// https://developer.gnome.org/gtk-sharp/stable/Gtk.KeyPressEventArgs.html
         private void ImageView_KeyUpEvent(object o, KeyPressEventArgs e)
         {
+            Plugins.KeyUpEvent(o, e);
             keyDown = Gdk.Key.Key_3270_Test;
             Scripting.State st = new Scripting.State();
             st.key = e.Event.Key;
@@ -1607,6 +1609,7 @@ namespace BioGTK
         /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-scroll-events.html.en
         private void ImageView_ScrollEvent(object o, ScrollEventArgs args)
         {
+            Plugins.ScrollEvent(o, args);
             float dx = Scale.Width / 50;
             float dy = Scale.Height / 50;
             if (!SelectedImage.isPyramidal)

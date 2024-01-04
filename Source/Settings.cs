@@ -30,7 +30,7 @@ namespace BioGTK
             if(Default.ContainsKey(name))
                 Default[name] = val;
             else
-            Default.Add(name, val);
+                Default.Add(name, val);
         }
         static string path = System.IO.Path.GetDirectoryName(Environment.ProcessPath);
         /// It takes the values in the dictionary and writes them to a file

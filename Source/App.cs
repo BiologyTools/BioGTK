@@ -332,7 +332,7 @@ namespace BioGTK
                 {
                     try
                     {
-                        Plugin.Plugins[ts.Label].Execute();
+                        Plugin.Plugins[ts.Label].Execute(new string[] { });
                     }
                     catch (Exception e)
                     {
