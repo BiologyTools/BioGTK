@@ -25,6 +25,7 @@ using Gtk;
 using System.Linq;
 using NetVips;
 using System.Threading.Tasks;
+using static BioGTK.ImageView;
 
 namespace BioGTK
 {
@@ -520,7 +521,6 @@ namespace BioGTK
             micron
         }
         public Type type;
-        public Gdk.Pixbuf mask;
         public static float selectBoxSize = 8f;
         private List<PointD> Points = new List<PointD>();
         public List<PointD> PointsD
@@ -560,7 +560,120 @@ namespace BioGTK
         public bool closed = false;
         public bool selected = false;
         public bool subPixel = false;
-
+        public Mask roiMask { get; set; }
+        /// <summary>
+        /// Represents a Mask layer.
+        /// </summary>
+        public class Mask
+        {
+            public float min = 0;
+            float[] mask;
+            int width;
+            int height;
+            public int Width { get { return width; } set { width = value; } }
+            public int Height { get { return height; } set { height = value; } }
+            public double PhysicalSizeX { get; set; }
+            public double PhysicalSizeY { get; set; }
+            public bool IsSelected(int x, int y)
+            {
+                int ind = y * width + x;
+                if (mask[ind]>min)
+                {
+                    return true;
+                }
+                return false;
+            }
+            public float GetValue(int x, int y)
+            {
+                return mask[y * width + x];
+            }
+            public Mask(float[] fts, int width, int height, double physX, double physY)
+            {
+                this.width = width;
+                this.height = height;
+                PhysicalSizeX = physX;
+                PhysicalSizeY = physY;
+                mask = fts;
+            }
+            public Mask(byte[] bts, int width, int height, double physX, double physY)
+            {
+                this.width = width;
+                this.height = height;
+                PhysicalSizeX = physX;
+                PhysicalSizeY = physY;
+                mask = new float[bts.Length];
+                for (int y = 0; y < height; y++)
+                {
+                    for (int x = 0; x < width; x++)
+                    {
+                        int ind = y * width + x;
+                        mask[ind] = (float)BitConverter.ToSingle(bts, ind * 4);
+                    }
+                }
+            }
+            public Gdk.Pixbuf Pixbuf
+            {
+                get
+                {
+                    byte[] pixelData = new byte[width * height * 4];
+                    for (int y = 0; y < height; y++)
+                    {
+                        for (int x = 0; x < width; x++)
+                        {
+                            int ind = y * width + x;
+                            if (mask[ind] > 0)
+                            {
+                                pixelData[4 * ind] = (byte)(mask[ind] / 255);// Blue
+                                pixelData[4 * ind + 1] = (byte)(mask[ind] / 255);// Green
+                                pixelData[4 * ind + 2] = (byte)(mask[ind] / 255);// Red
+                                pixelData[4 * ind + 3] = 125;// Alpha
+                            }
+                            else
+                                pixelData[4 * ind + 3] = 0;
+                        }
+                    }
+                    return new Gdk.Pixbuf(pixelData, true, 8, width, height, width * 4);
+                }
+            }
+            public Gdk.Pixbuf GetColored(AForge.Color col)
+            {
+                byte[] pixelData = new byte[width * height * 4];
+                for (int y = 0; y < height; y++)
+                {
+                    for (int x = 0; x < width; x++)
+                    {
+                        int ind = y * width + x;
+                        if (mask[ind] > 0)
+                        {
+                            pixelData[4 * ind] = col.R;
+                            pixelData[4 * ind + 1] = col.G;
+                            pixelData[4 * ind + 2] = col.B;
+                            pixelData[4 * ind + 3] = 125;
+                        }
+                        else
+                            pixelData[4 * ind + 3] = 0;
+                    }
+                }
+                return new Gdk.Pixbuf(pixelData, true, 8, width, height, width * 4);
+            }
+            public byte[] GetBytes()
+            {
+                byte[] pixelData = new byte[width * height * 4];
+                for (int y = 0; y < height; y++)
+                {
+                    for (int x = 0; x < width; x++)
+                    {
+                        int ind = y * width + x;
+                        byte[] bt = BitConverter.GetBytes(mask[ind]);
+                        pixelData[4 * ind] = bt[0];
+                        pixelData[4 * ind + 1] = bt[1];
+                        pixelData[4 * ind + 2] = bt[2];
+                        pixelData[4 * ind + 3] = bt[3];
+                    }
+                }
+                return pixelData;
+            }
+        }
         /*
         public Size TextSize
         {
@@ -643,6 +756,8 @@ namespace BioGTK
         /// @return A rectangle with the following properties:
         public RectangleD GetSelectBound(double scaleX,double scaleY)
         {
+            if (type == Type.Mask)
+                return BoundingBox;
             double fx = scaleX / 2;
             double fy = scaleY / 2;
             return new RectangleD(BoundingBox.X - fx, BoundingBox.Y - fy, BoundingBox.W + scaleX, BoundingBox.H + scaleY);
@@ -771,7 +886,26 @@ namespace BioGTK
             an.closed = true;
             return an;
         }
-
+        public static ROI CreateMask(ZCT coord, float[] mask,int width,int height,PointD loc, double physicalX, double physicalY)
+        {
+            ROI an = new ROI();
+            an.coord = coord;
+            an.type = Type.Mask;
+            an.roiMask = new Mask(mask, width, height,physicalX,physicalY);
+            an.AddPoint(loc);
+            an.UpdateBoundingBox();
+            return an;
+        }
+        public static ROI CreateMask(ZCT coord, byte[] mask,int width,int height,PointD loc,double physicalX,double physicalY)
+        {
+            ROI an = new ROI();
+            an.coord = coord;
+            an.type = Type.Mask;
+            an.roiMask = new Mask(mask, width, height, physicalX, physicalY);
+            an.AddPoint(loc);
+            an.UpdateBoundingBox();
+            return an;
+        }
         /// This function updates the point at the specified index
         /// 
         /// @param PointD A class that contains an X and Y coordinate.
@@ -871,7 +1005,10 @@ namespace BioGTK
             Points = inds;
             UpdateBoundingBox();
         }
-
+        public void ClearPoints()
+        {
+            Points.Clear();
+        }
         /// This function returns the number of points in the polygon
         /// 
         /// @return The number of points in the list.
@@ -924,6 +1061,31 @@ namespace BioGTK
         /// 
         public void UpdateBoundingBox()
         {
+            if(type == Type.Mask)
+            {
+                Tuple<PointD, float> tmin = new Tuple<PointD, float>(new PointD(float.MaxValue, float.MaxValue), float.MaxValue);
+                Tuple<PointD, float> tmax = new Tuple<PointD, float>(new PointD(float.MinValue, float.MinValue), float.MinValue);
+                for (int y = 0; y < roiMask.Height; y++)
+                {
+                    for (int x = 0; x < roiMask.Width; x++)
+                    {
+                        if (roiMask.IsSelected(x, y))
+                        {
+                            if (tmin.Item1.X > x)
+                                tmin = new Tuple<PointD, float>(new PointD(x, tmin.Item1.Y), roiMask.GetValue(x, (int)tmin.Item1.Y));
+                            if (tmin.Item1.Y > y)
+                                tmin = new Tuple<PointD, float>(new PointD(tmin.Item1.X, y), roiMask.GetValue((int)tmin.Item1.X, y));
+                            if (tmax.Item1.X < x)
+                                tmax = new Tuple<PointD, float>(new PointD(x, tmax.Item1.Y), roiMask.GetValue(x, (int)tmax.Item1.Y));
+                            if (tmax.Item1.Y < y)
+                                tmax = new Tuple<PointD, float>(new PointD(tmax.Item1.X, y), roiMask.GetValue((int)tmax.Item1.X, y));
+                        }
+                    }
+                }
+                BoundingBox = new RectangleD(PointsD[0].X + (tmin.Item1.X * roiMask.PhysicalSizeX), PointsD[0].Y + (tmin.Item1.Y * roiMask.PhysicalSizeY),
+                    (tmax.Item1.X - tmin.Item1.X) * roiMask.PhysicalSizeX, (tmax.Item1.Y - tmin.Item1.Y) * roiMask.PhysicalSizeY);
+                return;
+            }
             PointD min = new PointD(double.MaxValue, double.MaxValue);
             PointD max = new PointD(double.MinValue, double.MinValue);
             foreach (PointD p in Points)
@@ -2037,7 +2199,53 @@ namespace BioGTK
                     return Channels[0];
             }
         }
-
+        private List<ROI> annotationsR = new List<ROI>();
+        public List<ROI> AnnotationsR
+        {
+            get
+            {
+                return GetAnnotations(Coordinate.Z, RChannel.Index, Coordinate.T);
+            }
+        }
+        private List<ROI> annotationsG = new List<ROI>();
+        public List<ROI> AnnotationsG
+        {
+            get
+            {
+                return GetAnnotations(Coordinate.Z, GChannel.Index, Coordinate.T);
+            }
+        }
+        private List<ROI> annotationsB = new List<ROI>();
+        public List<ROI> AnnotationsB
+        {
+            get
+            {
+                return GetAnnotations(Coordinate.Z, BChannel.Index, Coordinate.T);
+            }
+        }
+        public List<ROI> AnnotationsRGB
+        {
+            get
+            {
+                if (SelectedImage == null)
+                    return null;
+                List<ROI> ans = new List<ROI>();
+                if (App.viewer.Mode == ViewMode.RGBImage)
+                {
+                    if (App.viewer.showRROIs)
+                        ans.AddRange(AnnotationsR);
+                    if (App.viewer.showGROIs)
+                        ans.AddRange(AnnotationsG);
+                    if (App.viewer.showBROIs)
+                        ans.AddRange(AnnotationsB);
+                }
+                else
+                {
+                    ans.AddRange(GetAnnotations(Coordinate));
+                }
+                return ans;
+            }
+        }
         public class ImageJDesc
         {
             public string ImageJ;
@@ -5147,6 +5355,39 @@ namespace BioGTK
                         ome.xml.model.primitives.Color colf = new ome.xml.model.primitives.Color(an.fillColor.R, an.fillColor.G, an.fillColor.B, an.fillColor.A);
                         omexml.setLabelFillColor(colf, i, serie);
                     }
+                    else
+                    if (an.type == ROI.Type.Mask || an.roiMask != null)
+                    {
+                        if (an.id != "")
+                            omexml.setMaskID(an.id, i, serie);
+                        else
+                            omexml.setMaskID("Shape:" + i + ":" + serie, i, serie);
+                        omexml.setMaskX(java.lang.Double.valueOf(b.ToImageSpaceX(an.Rect.X)), i, serie);
+                        omexml.setMaskY(java.lang.Double.valueOf(b.ToImageSpaceY(an.Rect.Y)), i, serie);
+                        omexml.setMaskTheZ(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.Z)), i, serie);
+                        omexml.setMaskTheC(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.C)), i, serie);
+                        omexml.setMaskTheT(new NonNegativeInteger(java.lang.Integer.valueOf(an.coord.T)), i, serie);
+                        omexml.setMaskWidth(new java.lang.Double(an.W), i, serie);
+                        omexml.setMaskHeight(new java.lang.Double(an.H), i, serie);
+                        if (an.Text != "")
+                            omexml.setMaskText(an.Text, i, serie);
+                        else
+                            omexml.setMaskText(i.ToString(), i, serie);
+                        ome.units.quantity.Length fl = new ome.units.quantity.Length(java.lang.Double.valueOf(an.fontSize), ome.units.UNITS.PIXEL);
+                        omexml.setMaskFontSize(fl, i, serie);
+                        ome.xml.model.primitives.Color col = new ome.xml.model.primitives.Color(an.strokeColor.R, an.strokeColor.G, an.strokeColor.B, an.strokeColor.A);
+                        omexml.setMaskStrokeColor(col, i, serie);
+                        ome.units.quantity.Length sw = new ome.units.quantity.Length(java.lang.Double.valueOf(an.strokeWidth), ome.units.UNITS.PIXEL);
+                        omexml.setMaskStrokeWidth(sw, i, serie);
+                        ome.xml.model.primitives.Color colf = new ome.xml.model.primitives.Color(an.fillColor.R, an.fillColor.G, an.fillColor.B, an.fillColor.A);
+                        omexml.setMaskFillColor(colf, i, serie);
+                        byte[] bts = an.roiMask.GetBytes();
+                        omexml.setMaskBinData(bts, i, serie);
+                        omexml.setMaskBinDataBigEndian(new java.lang.Boolean(!BitConverter.IsLittleEndian), i, serie);
+                        omexml.setMaskBinDataLength(new NonNegativeLong(new java.lang.Long(bts.Length)), i, serie);
+                        omexml.setMaskBinDataCompression(ome.xml.model.enums.Compression.ZLIB, i, serie);
+                    }
+
                     i++;
                 }
 
@@ -5849,7 +6090,6 @@ namespace BioGTK
                         ome.xml.model.primitives.Color colf = b.meta.getPointStrokeColor(im, sc);
                         if (colf != null)
                             an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
-                        continue;
                     }
                     else
                     if (type == "Line")
@@ -5888,7 +6128,6 @@ namespace BioGTK
                         ome.xml.model.primitives.Color colf = b.meta.getLineFillColor(im, sc);
                         if (colf != null)
                             an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
-                        continue;
                     }
                     else
                     if (type == "Rectangle")
@@ -5928,7 +6167,6 @@ namespace BioGTK
                         if (colf != null)
                             an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                         ome.xml.model.enums.FillRule fr = b.meta.getRectangleFillRule(im, sc);
-                        continue;
                     }
                     else
                     if (type == "Ellipse")
@@ -6088,8 +6326,42 @@ namespace BioGTK
                         an.AddPoint(b.ToStageSpace(p));
                         an.Text = b.meta.getLabelText(im, sc);
                     }
-                    if (b.Volume.Intersects(new PointD(an.BoundingBox.X, an.BoundingBox.Y)))
-                        b.Annotations.Add(an);
+                    else
+                    if (type == "Mask")
+                    {
+                        byte[] bts = b.meta.getMaskBinData(im, sc);
+                        bool end = b.meta.getMaskBinDataBigEndian(im, sc).booleanValue();
+                        an = ROI.CreateMask(co, bts, b.Resolutions[0].SizeX, b.Resolutions[0].SizeY,new PointD(b.StageSizeX,b.StageSizeY),b.PhysicalSizeX,b.PhysicalSizeY); 
+                        an.Text = b.meta.getMaskText(im, sc);
+                        an.id = b.meta.getMaskID(im, sc);
+                        ome.xml.model.primitives.NonNegativeInteger nz = b.meta.getMaskTheZ(im, sc);
+                        if (nz != null)
+                            co.Z = nz.getNumberValue().intValue();
+                        ome.xml.model.primitives.NonNegativeInteger nc = b.meta.getMaskTheC(im, sc);
+                        if (nc != null)
+                            co.C = nc.getNumberValue().intValue();
+                        ome.xml.model.primitives.NonNegativeInteger nt = b.meta.getMaskTheT(im, sc);
+                        if (nt != null)
+                            co.T = nt.getNumberValue().intValue();
+                        an.coord = co;
+
+                        ome.units.quantity.Length fl = b.meta.getMaskFontSize(im, sc);
+                        if (fl != null)
+                            an.fontSize = fl.value().intValue();
+                        ome.xml.model.enums.FontFamily ff = b.meta.getMaskFontFamily(im, sc);
+                        if (ff != null)
+                            an.family = ff.name();
+                        ome.xml.model.primitives.Color col = b.meta.getMaskStrokeColor(im, sc);
+                        if (col != null)
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                        ome.units.quantity.Length fw = b.meta.getMaskStrokeWidth(im, sc);
+                        if (fw != null)
+                            an.strokeWidth = (float)fw.value().floatValue();
+                        ome.xml.model.primitives.Color colf = b.meta.getMaskFillColor(im, sc);
+                        if (colf != null)
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
+                    }
+                    b.Annotations.Add(an);
                 }
             }
 
@@ -7104,6 +7376,41 @@ namespace BioGTK
                         PointD p = new PointD(meta.getLabelX(im, sc).doubleValue(), meta.getLabelY(im, sc).doubleValue());
                         an.AddPoint(ToStageSpace(p, physicalSizeX, physicalSizeY, volume.Location.X, volume.Location.Y));
                         an.Text = meta.getLabelText(im, sc);
+                    }
+                    else
+                    if (type == "Mask")
+                    {
+                        byte[] bts = meta.getMaskBinData(im, sc);
+                        bool end = meta.getMaskBinDataBigEndian(im, sc).booleanValue();
+                        an = ROI.CreateMask(co, bts, SizeX, SizeY, new PointD(stageSizeX, stageSizeY),physicalSizeX,physicalSizeY);
+                        an.Text = meta.getMaskText(im, sc);
+                        an.id = meta.getMaskID(im, sc);
+                        ome.xml.model.primitives.NonNegativeInteger nz = meta.getMaskTheZ(im, sc);
+                        if (nz != null)
+                            co.Z = nz.getNumberValue().intValue();
+                        ome.xml.model.primitives.NonNegativeInteger nc = meta.getMaskTheC(im, sc);
+                        if (nc != null)
+                            co.C = nc.getNumberValue().intValue();
+                        ome.xml.model.primitives.NonNegativeInteger nt = meta.getMaskTheT(im, sc);
+                        if (nt != null)
+                            co.T = nt.getNumberValue().intValue();
+                        an.coord = co;
+
+                        ome.units.quantity.Length fl = meta.getMaskFontSize(im, sc);
+                        if (fl != null)
+                            an.fontSize = fl.value().intValue();
+                        ome.xml.model.enums.FontFamily ff = meta.getMaskFontFamily(im, sc);
+                        if (ff != null)
+                            an.family = ff.name();
+                        ome.xml.model.primitives.Color col = meta.getMaskStrokeColor(im, sc);
+                        if (col != null)
+                            an.strokeColor = Color.FromArgb(col.getAlpha(), col.getRed(), col.getGreen(), col.getBlue());
+                        ome.units.quantity.Length fw = meta.getMaskStrokeWidth(im, sc);
+                        if (fw != null)
+                            an.strokeWidth = (float)fw.value().floatValue();
+                        ome.xml.model.primitives.Color colf = meta.getMaskFillColor(im, sc);
+                        if (colf != null)
+                            an.fillColor = Color.FromArgb(colf.getAlpha(), colf.getRed(), colf.getGreen(), colf.getBlue());
                     }
                 }
             }

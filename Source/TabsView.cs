@@ -229,11 +229,21 @@ namespace BioGTK
             MenuItem m = (MenuItem)o;
             if (m.Label.EndsWith(".ijm") || m.Label.EndsWith(".txt") && !m.Label.EndsWith(".cs"))
             {
-                string ma = File.ReadAllText(m.Label);
+                string file = ImageJ.ImageJMacroPath + m.Label;
+                string ma = File.ReadAllText(file);
                 ImageJ.RunOnImage(ma, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
             }
             else
                 Scripting.RunByName(m.Label);
+            bool con = false;
+            foreach (MenuItem item in recent.Children)
+            {
+                if (item.Label == m.Label)
+                    con = true;
+            }
+            if (!con)
+                recent.Append(m);
+            recentMenu.ShowAll();
         }
 
         private void CommandMenuItem_ButtonPressEvent(object o, ButtonPressEventArgs args)

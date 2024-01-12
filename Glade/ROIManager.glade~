@@ -61,8 +61,8 @@
                 <property name="valign">center</property>
               </object>
               <packing>
-                <property name="x">283</property>
-                <property name="y">29</property>
+                <property name="x">89</property>
+                <property name="y">14</property>
               </packing>
             </child>
             <child>
@@ -103,7 +103,6 @@
                 <property name="can-focus">True</property>
                 <property name="climb-rate">1</property>
                 <property name="digits">8</property>
-                <property name="numeric">True</property>
               </object>
               <packing>
                 <property name="x">38</property>
@@ -268,7 +267,7 @@
               </object>
               <packing>
                 <property name="x">269</property>
-                <property name="y">261</property>
+                <property name="y">267</property>
               </packing>
             </child>
             <child>
@@ -281,7 +280,7 @@
               </object>
               <packing>
                 <property name="x">134</property>
-                <property name="y">261</property>
+                <property name="y">266</property>
               </packing>
             </child>
             <child>
@@ -294,7 +293,7 @@
               </object>
               <packing>
                 <property name="x">3</property>
-                <property name="y">262</property>
+                <property name="y">266</property>
               </packing>
             </child>
             <child>
@@ -420,7 +419,7 @@
                 <property name="digits">3</property>
               </object>
               <packing>
-                <property name="x">279</property>
+                <property name="x">284</property>
                 <property name="y">440</property>
               </packing>
             </child>
@@ -524,8 +523,8 @@
                 <property name="digits">1</property>
               </object>
               <packing>
-                <property name="x">189</property>
-                <property name="y">513</property>
+                <property name="x">231</property>
+                <property name="y">517</property>
               </packing>
             </child>
             <child>
@@ -537,8 +536,8 @@
                 <property name="label" translatable="yes">Select Box Size</property>
               </object>
               <packing>
-                <property name="x">184</property>
-                <property name="y">494</property>
+                <property name="x">232</property>
+                <property name="y">491</property>
               </packing>
             </child>
             <child>
@@ -547,7 +546,7 @@
                 <property name="can-focus">False</property>
               </object>
               <packing>
-                <property name="x">324</property>
+                <property name="x">39</property>
                 <property name="y">313</property>
               </packing>
             </child>

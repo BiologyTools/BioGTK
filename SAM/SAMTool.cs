@@ -15,9 +15,10 @@ namespace BioGTK
 
     public class SAMTool : Gtk.Window
     {
+        static Random rng = new Random();
         #region Properties
         ImageView view;
-        SAM mSam = SAM.Instance();
+        static SAM mSam = SAM.Instance();
         List<Promotion> mPromotionList = new List<Promotion>();
         public bool init = false;
         int id = 1;
@@ -31,9 +32,13 @@ namespace BioGTK
                     return roi.Last();
                 return null;
             }
+            set
+            {
+                List<ROI> roi = view.GetSelectedROIs();
+                roi[0] = value;
+            }
         }
         private AForge.Point _startPoint;
-        Pixbuf pf;
         private Builder _builder;
         Gtk.FileChooserDialog filechooser;
 #pragma warning disable 649
@@ -105,6 +110,7 @@ namespace BioGTK
             "OK", ResponseType.Accept);
             SetupHandlers();
             Init();
+            App.ApplyStyles(this);
             init = true;
         }
 
@@ -124,15 +130,14 @@ namespace BioGTK
             textBox.Changed += TextBox_Changed;
             toROIMenu.ButtonPressEvent += ToROIMenu_ButtonPressEvent;
         }
-
         private void ToROIMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             List<ROI> rois = new List<ROI>();
-            foreach (ROI r in view.AnnotationsRGB)
+            foreach (ROI r in ImageView.SelectedImage.AnnotationsRGB)
             {
-                if (r.mask == null)
+                if (r.roiMask == null)
                     continue;
-                List<PointD> ps = GetEdgePolygonFromMask(new Bitmap("",r.mask.Width,r.mask.Height,PixelFormat.Format32bppArgb, r.mask.PixelBytes.Data, App.viewer.GetCoordinate(), 0));
+                List<PointD> ps = GetEdgePolygonFromMask(new Bitmap("",r.roiMask.Width,r.roiMask.Height,PixelFormat.Format32bppArgb, r.roiMask.GetBytes(), App.viewer.GetCoordinate(), 0));
                 for (int i = 0; i < ps.Count; i++)
                 {
                     ps[i] = new PointD(ps[i].X * ImageView.SelectedImage.PhysicalSizeX, ps[i].Y * ImageView.SelectedImage.PhysicalSizeY);
@@ -239,11 +244,13 @@ namespace BioGTK
         {
             if (ImageView.SelectedImage == null)
                 return;
-            this.ShowStatus("Loading ONNX Model");
-            this.mSam.LoadONNXModel();
-            this.ShowStatus("ONNX Model Loaded");
-            this.mSam.Encode(ImageView.SelectedImage);//Image Embedding
-            this.ShowStatus("Image Embedding Calculation Finished");
+            Thread th = new Thread(mSam.LoadONNXModel);
+            th.Start();
+        }
+
+        internal static void Encode()
+        {
+            mSam.Encode(ImageView.SelectedImage);//Image Embedding
         }
 
         /// The function handles the button release event for a picture box and performs various
@@ -265,7 +272,7 @@ namespace BioGTK
                 return;
             if (SelectedROI == null)
                 return;
-            if (Tools.currentTool.type == Tools.Tool.Type.point && view.AnnotationsRGB.Count > 0 && e.Event.State.HasFlag(ModifierType.Button1Mask))
+            if (Tools.currentTool.type == Tools.Tool.Type.point && ImageView.SelectedImage.AnnotationsRGB.Count > 0 && e.Event.State.HasFlag(ModifierType.Button1Mask))
             {
                 OpType type = this.addMaskMenu.Active == true ? OpType.ADD : OpType.REMOVE;
                 Promotion promtt = new PointPromotion(type);
@@ -274,7 +281,7 @@ namespace BioGTK
                 Transforms trs = new Transforms(1024);
                 PointPromotion ptn = trs.ApplyCoords((promtt as PointPromotion), ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 this.mPromotionList.Add(ptn);
-                float[] maskk = this.mSam.Decode(ImageView.SelectedImage, this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
+                float[] maskk = mSam.Decode(ImageView.SelectedImage, this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 this.ShowMask(maskk, ImageView.SelectedBuffer.Width,ImageView.SelectedBuffer.Height);
                 this.mPromotionList.Clear();
             }
@@ -299,7 +306,7 @@ namespace BioGTK
                 Transforms ts = new Transforms(1024);
                 var pb = ts.ApplyBox(promt, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 this.mPromotionList.Add(pb);
-                float[] mask = this.mSam.Decode(ImageView.SelectedImage, this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
+                float[] mask = mSam.Decode(ImageView.SelectedImage, this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 ShowMask(mask, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 this.mPromotionList.Clear();
             }
@@ -328,11 +335,11 @@ namespace BioGTK
                 return;
             if (Environment.OSVersion.Platform == PlatformID.Win32NT)
             {
-                SelectedROI.mask.Save(filechooser.Filename, "png");
+                SelectedROI.roiMask.Pixbuf.Save(filechooser.Filename, "png");
             }
             else
             {
-                SelectedROI.mask.Save(filechooser.Filename, "tiff");
+                SelectedROI.roiMask.Pixbuf.Save(filechooser.Filename, "tiff");
             }
             filechooser.Hide();
         }
@@ -348,45 +355,30 @@ namespace BioGTK
         /// rows in the mask array.
         void ShowMask(float[] mask, int width, int height)
         {
-            Bitmap bp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
-            byte[] pixelData = new byte[width * height * 4];
-            Array.Clear(pixelData, 0, pixelData.Length);
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    int ind = y * width + x;
-                    if (mask[ind] > thresholdBar.Value)
-                    {
-                        pixelData[4 * ind] = 255;// Blue
-                        pixelData[4 * ind + 1] = 255;// Green
-                        pixelData[4 * ind + 2] = 255;// Red
-                        pixelData[4 * ind + 3] = 255;// Alpha
-                    }
-                    else
-                        pixelData[4 * ind + 3] = 0;
-                }
-            }
-            Pixbuf pf = new Pixbuf(pixelData, true, 8, width, height, width*4);
-            this.SelectedROI.mask = pf;
+            if (SelectedROI.type != ROI.Type.Point && SelectedROI.type != ROI.Type.Rectangle)
+                return;
+            SelectedROI = ROI.CreateMask(App.viewer.GetCoordinate(),mask,width,height,
+                new PointD(ImageView.SelectedImage.StageSizeX,ImageView.SelectedImage.StageSizeY),ImageView.SelectedImage.PhysicalSizeX,ImageView.SelectedImage.PhysicalSizeY);
+            byte r = (byte)rng.Next(0, 255);
+            byte g = (byte)rng.Next(0, 255);
+            byte b = (byte)rng.Next(0, 255);
+            SelectedROI.fillColor.R = r;
+            SelectedROI.fillColor.G = g;
+            SelectedROI.fillColor.B = b;
+            
             if (autoSaveMenu.Active)
             {
                 //Saving Tiff can cause a crash on Windows so we check the platform.
                 if (Environment.OSVersion.Platform == PlatformID.Win32NT)
                 {
-                    pf.Save(autoSavePath + "/" + textBox.Text + id + ".png", "png");
+                    SelectedROI.roiMask.Pixbuf.Save(autoSavePath + "/" + textBox.Text + id + ".png", "png");
                 }
                 else
                 {
-                    pf.Save(autoSavePath + "/" + textBox.Text + id + ".tiff", "tiff");
+                    SelectedROI.roiMask.Pixbuf.Save(autoSavePath + "/" + textBox.Text + id + ".tiff", "tiff");
                 }
                 id++;
             }
-        }
-
-        void ShowStatus(string message)
-        {
-            view.Title = ImageView.SelectedImage.Filename + " " + message;
         }
     }
 }

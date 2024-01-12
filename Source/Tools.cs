@@ -241,7 +241,6 @@ namespace BioGTK
                 width = value;
             }
         }
-
         public static RectangleD selectionRect;
         public static TextInput ti = null;
 
@@ -282,6 +281,7 @@ namespace BioGTK
                 roi.serie = App.viewer.Level;
             else
                 roi.serie = ImageView.SelectedImage.series;
+            
             ImageView.SelectedImage.Annotations.Add(roi);
         }
         /// The function is called when the user clicks the mouse button. 
@@ -452,7 +452,6 @@ namespace BioGTK
             {
                 currentTool = GetTool(Tool.Type.pan);
             }
-            selectedROI.selected = true;
         }
         /// The function is called when the mouse button is released
         /// 
@@ -594,7 +593,6 @@ namespace BioGTK
                     DrawColor = ImageView.SelectedBuffer.GetPixel((int)mouseU.X, (int)mouseU.Y);
                 }
             }
-            selectedROI.selected = true;
             UpdateView();
         }
         /// This function is called when the mouse is moved. It is used to update the view when the user
@@ -622,7 +620,6 @@ namespace BioGTK
                 Scripting.UpdateState(Scripting.State.GetMove(e, 5));
             if (buts.Event.State == ModifierType.None)
                 Scripting.UpdateState(Scripting.State.GetMove(e, 0));
-
             if ((Tools.currentTool.type == Tools.Tool.Type.pan && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask)) || buts.Event.State.HasFlag(Gdk.ModifierType.Button2Mask))
             {
                 if (ImageView.SelectedImage.isPyramidal)
@@ -707,7 +704,7 @@ namespace BioGTK
                 PointD d = new PointD(e.X - ImageView.mouseDown.X, e.Y - ImageView.mouseDown.Y);
                 Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(ImageView.mouseDown.X, ImageView.mouseDown.Y,Math.Abs(d.X),Math.Abs(d.Y));
                 RectangleD r = Tools.GetTool(Tools.Tool.Type.select).Rectangle;
-                foreach (ROI an in App.viewer.AnnotationsRGB)
+                foreach (ROI an in ImageView.SelectedImage.AnnotationsRGB)
                 {
                     if (an.GetSelectBound(ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeX, ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeY).IntersectsWith(r))
                     {
@@ -770,8 +767,6 @@ namespace BioGTK
                 Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(ImageView.mouseDown.X, ImageView.mouseDown.Y, d.X, d.Y);
                 UpdateView();
             }
-            selectedROI.selected = true;
-            
         }
 
         Gdk.RGBA selectColor = new Gdk.RGBA();
@@ -863,6 +858,8 @@ namespace BioGTK
                 if (t.bounds.IntersectsWith(new PointD(args.Event.X, args.Event.Y)))
                 {
                     tool = t;
+                    if (selectedROI != null)
+                        selectedROI.selected = false;
                     t.selected = true;
                 }
                 else

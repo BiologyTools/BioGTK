@@ -51,6 +51,7 @@ namespace BioGTK
 
             string decode_model_path = exePath + "/decoder-quant.onnx";
             this.mDecoder = new InferenceSession(decode_model_path);
+            SAMTool.Encode();
         }
 
         /// The Encode function takes a BioImage object, applies a transformation to it, converts it to
@@ -76,11 +77,18 @@ namespace BioGTK
                 if (msgBox.Run() != (int)ResponseType.Ok)
                     return;
             }
+            Progress pr = Progress.Create("Encoding Image", "Transforming", "");
+            // update ui on main UI thread
+            Application.Invoke(delegate
+            {
+                pr.Show();
+                pr.Present();
+            });
+            int i = 0;
             foreach (Bitmap bu in b.Buffers)
             {
                 Transforms tranform = new Transforms(1024);
                 float[] img = tranform.ApplyImage(bu);
-
                 var tensor = new DenseTensor<float>(img, new[] { 1, 3, 1024, 1024 });
                 var inputs = new List<NamedOnnxValue>
                 {
@@ -96,7 +104,10 @@ namespace BioGTK
                 l.Add(results.First().AsTensor<float>().ToArray());
                 b.Tag = l;
                 results.Dispose();
+                pr.ProgressValue = (double)i/b.Buffers.Count;
+                i++;
             }
+            pr.Hide();
             this.mReady = true;
         }
 

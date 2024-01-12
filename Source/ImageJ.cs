@@ -99,8 +99,9 @@ namespace BioGTK
             }
         }
         static bool init = false;
-        public static bool Initialized { get { return init; } private set { } }
+        public static bool Initialized { get { return init; } private set { init = true; } }
         public static string ImageJPath;
+        public static string ImageJMacroPath { get { return System.IO.Path.GetDirectoryName(ImageJPath) + "/macros/"; }}
         public static List<Process> processes = new List<Process>();
         public static List<Macro.Command> Macros = new List<Macro.Command>();
         private static Random rng = new Random();
@@ -297,10 +298,12 @@ namespace BioGTK
         /// @return A boolean value.
         public static bool SetImageJPath()
         {
-            if(Settings.GetSettings("ImageJPath")!="")
+            string st = Settings.GetSettings("ImageJPath");
+            if(st!="")
             {
                 Initialized = true;
                 ImageJPath = Settings.GetSettings("ImageJPath");
+                return true;
             }
             string title = "Select ImageJ Executable Location";
             if (OperatingSystem.IsMacOS())
@@ -314,8 +317,8 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return false;
             ImageJ.ImageJPath = filechooser.Filename;
-            filechooser.Destroy();
             Settings.AddSettings("ImageJPath", filechooser.Filename);
+            filechooser.Destroy();
             Settings.Save();
             Initialized = true;
             return true;

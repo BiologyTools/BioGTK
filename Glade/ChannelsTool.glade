@@ -35,21 +35,19 @@
                 <property name="label" translatable="yes">Channel</property>
               </object>
               <packing>
-                <property name="x">15</property>
+                <property name="x">13</property>
                 <property name="y">12</property>
               </packing>
             </child>
             <child>
               <object class="GtkLabel" id="sampleLabel">
-                <property name="width-request">100</property>
-                <property name="height-request">80</property>
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="label" translatable="yes">Sample</property>
               </object>
               <packing>
-                <property name="x">-11</property>
-                <property name="y">22</property>
+                <property name="x">14</property>
+                <property name="y">51</property>
               </packing>
             </child>
             <child>

@@ -1,5 +1,6 @@
 ﻿using Bio;
 using Gtk;
+using loci.poi.poifs.property;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -56,14 +57,21 @@ namespace BioGTK
         {
             if (widget != null)
             {
-                widget.ModifyBg(StateType.Normal, new Gdk.Color(49, 91, 138));
-                widget.ModifyFg(StateType.Normal, new Gdk.Color(255, 255, 255));
+                if (widget is not Button || widget is not SpinButton)
+                {
+                    widget.ModifyBg(StateType.Normal, new Gdk.Color(49, 91, 138));
+                    widget.ModifyFg(StateType.Normal, new Gdk.Color(255, 255, 255));
+                }
             }
             try
             {
-                foreach (var child in ((Container)widget).Children)
+                if (widget is Container)
                 {
-                    ApplyStyles(child);
+                    foreach (var child in ((Container)widget).Children)
+                    {
+                        if(child is not Button || child is not SpinButton)
+                        ApplyStyles(child);
+                    }
                 }
             }
             catch (Exception)

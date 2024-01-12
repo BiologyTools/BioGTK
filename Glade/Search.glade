@@ -4,9 +4,11 @@
   <requires lib="gtk+" version="3.24"/>
   <object class="GtkWindow" id="search">
     <property name="can-focus">False</property>
+    <property name="title" translatable="yes">Search</property>
     <child>
       <object class="GtkBox">
-        <property name="width-request">100</property>
+        <property name="width-request">300</property>
+        <property name="height-request">400</property>
         <property name="visible">True</property>
         <property name="can-focus">False</property>
         <property name="hexpand">True</property>
@@ -14,9 +16,9 @@
         <property name="orientation">vertical</property>
         <child>
           <object class="GtkSearchEntry" id="searchBox">
-            <property name="width-request">100</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
+            <property name="hexpand">True</property>
             <property name="primary-icon-name">edit-find-symbolic</property>
             <property name="primary-icon-activatable">False</property>
             <property name="primary-icon-sensitive">False</property>
@@ -29,8 +31,6 @@
         </child>
         <child>
           <object class="GtkScrolledWindow">
-            <property name="width-request">168</property>
-            <property name="height-request">137</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
             <property name="shadow-type">in</property>
@@ -49,7 +49,7 @@
             </child>
           </object>
           <packing>
-            <property name="expand">False</property>
+            <property name="expand">True</property>
             <property name="fill">True</property>
             <property name="position">1</property>
           </packing>

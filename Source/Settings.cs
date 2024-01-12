@@ -18,7 +18,11 @@ namespace BioGTK
         /// @return The value of the key in the dictionary.
         public static string GetSettings(string name)
         {
-            if(Default.ContainsKey(name)) return Default[name];
+            if (Default.Keys.Count == 0)
+            {
+                Load();
+            }
+            if (Default.ContainsKey(name)) return Default[name];
             return "";
         }
         /// It adds a new setting to the settings file
@@ -27,7 +31,7 @@ namespace BioGTK
         /// @param val The value of the setting
         public static void AddSettings(string name,string val)
         {
-            if(Default.ContainsKey(name))
+            if (Default.ContainsKey(name))
                 Default[name] = val;
             else
                 Default.Add(name, val);

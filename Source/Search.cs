@@ -67,7 +67,7 @@ namespace BioGTK
             if (treeView.Model.GetIter(out iter, args.Path))
             {
                 string itemName = (string)treeView.Model.GetValue(iter, 0);
-                if(itemName.EndsWith(".txt") || itemName.EndsWith(".ijm") && itemName.EndsWith(".cs"))
+                if(!itemName.EndsWith(".txt") || !itemName.EndsWith(".ijm") && !itemName.EndsWith(".cs"))
                 {
                     ImageJ.RunOnImage("run(\"" + itemName + "\")",BioConsole.headless,BioConsole.onTab,BioConsole.useBioformats,BioConsole.resultInNewTab);
                 }
