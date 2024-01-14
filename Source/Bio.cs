@@ -150,6 +150,7 @@ namespace BioGTK
                     App.tabsView.RemoveTab(im.Filename);
                 });
             });
+            im.Dispose();
             Recorder.AddLine("BioGTK.Images.RemoveImage(" + '"' + id + '"' + ");");
         }
         /// It updates an image from the table
@@ -381,7 +382,7 @@ namespace BioGTK
     }
 
     /* The ROI class is a class that contains a list of points, a bounding box, and a type */
-    public class ROI
+    public class ROI : IDisposable
     {
         /* Defining an enum. */
         public enum Type
@@ -558,13 +559,14 @@ namespace BioGTK
         public double strokeWidth = 1;
         public int shapeIndex = 0;
         public bool closed = false;
-        public bool selected = false;
+        bool selected = false;
+        public bool Selected { get { return selected; } set { roiMask.Selected = value; } }
         public bool subPixel = false;
         public Mask roiMask { get; set; }
         /// <summary>
         /// Represents a Mask layer.
         /// </summary>
-        public class Mask
+        public class Mask : IDisposable
         {
             public float min = 0;
             float[] mask;
@@ -574,9 +576,28 @@ namespace BioGTK
             public int Height { get { return height; } set { height = value; } }
             public double PhysicalSizeX { get; set; }
             public double PhysicalSizeY { get; set; }
+            bool updatePixbuf = true;
+            bool updateColored = true;
+            Gdk.Pixbuf pixbuf;
+            Gdk.Pixbuf colored;
+            bool selected = false;
+            internal bool Selected 
+            { 
+                get { return selected; } 
+                set 
+                { 
+                    selected = value;
+                    if (selected)
+                        UpdateColored(Color.Blue);
+                    else
+                        updateColored = true;
+                } 
+            }
             public bool IsSelected(int x, int y)
             {
                 int ind = y * width + x;
+                if (ind > mask.Length)
+                    throw new ArgumentException("Point " + x + "," + y + " is outside the mask.");
                 if (mask[ind]>min)
                 {
                     return true;
@@ -585,7 +606,19 @@ namespace BioGTK
             }
             public float GetValue(int x, int y)
             {
-                return mask[y * width + x];
+                int ind = y * width + x;
+                if (ind > mask.Length)
+                    throw new ArgumentException("Point " + x + "," + y + " is outside the mask.");
+                return mask[ind];
+            }
+            public void SetValue(int x, int y, float val)
+            {
+                int ind = y * width + x;
+                if (ind > mask.Length)
+                    throw new ArgumentException("Point " + x + "," + y + " is outside the mask.");
+                mask[ind] = val;
+                updatePixbuf = true;
+                updateColored = true;
             }
             public Mask(float[] fts, int width, int height, double physX, double physY)
             {
@@ -615,27 +648,36 @@ namespace BioGTK
             {
                 get
                 {
-                    byte[] pixelData = new byte[width * height * 4];
-                    for (int y = 0; y < height; y++)
+                    if (updatePixbuf)
                     {
-                        for (int x = 0; x < width; x++)
+                        if (pixbuf != null)
+                            pixbuf.Dispose();
+                        byte[] pixelData = new byte[width * height * 4];
+                        for (int y = 0; y < height; y++)
                         {
-                            int ind = y * width + x;
-                            if (mask[ind] > 0)
+                            for (int x = 0; x < width; x++)
                             {
-                                pixelData[4 * ind] = (byte)(mask[ind] / 255);// Blue
-                                pixelData[4 * ind + 1] = (byte)(mask[ind] / 255);// Green
-                                pixelData[4 * ind + 2] = (byte)(mask[ind] / 255);// Red
-                                pixelData[4 * ind + 3] = 125;// Alpha
+                                int ind = y * width + x;
+                                if (mask[ind] > 0)
+                                {
+                                    pixelData[4 * ind] = (byte)(mask[ind] / 255);// Blue
+                                    pixelData[4 * ind + 1] = (byte)(mask[ind] / 255);// Green
+                                    pixelData[4 * ind + 2] = (byte)(mask[ind] / 255);// Red
+                                    pixelData[4 * ind + 3] = 125;// Alpha
+                                }
+                                else
+                                    pixelData[4 * ind + 3] = 0;
                             }
-                            else
-                                pixelData[4 * ind + 3] = 0;
                         }
+                        pixbuf = new Gdk.Pixbuf(pixelData, true, 8, width, height, width * 4);
+                        updatePixbuf = false;
+                        return pixbuf;
                     }
-                    return new Gdk.Pixbuf(pixelData, true, 8, width, height, width * 4);
+                    else
+                        return pixbuf;
                 }
             }
-            public Gdk.Pixbuf GetColored(AForge.Color col)
+            void UpdateColored(AForge.Color col)
             {
                 byte[] pixelData = new byte[width * height * 4];
                 for (int y = 0; y < height; y++)
@@ -654,7 +696,18 @@ namespace BioGTK
                             pixelData[4 * ind + 3] = 0;
                     }
                 }
-                return new Gdk.Pixbuf(pixelData, true, 8, width, height, width * 4);
+                colored = new Gdk.Pixbuf(pixelData, true, 8, width, height, width * 4);
+                updateColored = false;
+            }
+            public Gdk.Pixbuf GetColored(AForge.Color col, bool forceUpdate = false)
+            {
+                if (updateColored || forceUpdate)
+                {
+                    UpdateColored(col);
+                    return colored;
+                }
+                else
+                    return colored;
             }
             public byte[] GetBytes()
             {
@@ -672,6 +725,14 @@ namespace BioGTK
                     }
                 }
                 return pixelData;
+            }
+            public void Dispose()
+            {
+                if(pixbuf!=null)
+                    pixbuf.Dispose();
+                if(colored!=null)
+                    colored.Dispose();
+                mask = null;
             }
         }
         /*
@@ -694,7 +755,7 @@ namespace BioGTK
             copy.strokeColor = strokeColor;
             copy.fillColor = fillColor;
             copy.Points = Points;
-            copy.selected = selected;
+            copy.Selected = Selected;
             copy.shapeIndex = shapeIndex;
             copy.closed = closed;
             copy.family = family;
@@ -720,7 +781,7 @@ namespace BioGTK
             copy.strokeColor = strokeColor;
             copy.fillColor = fillColor;
             copy.Points.AddRange(Points);
-            copy.selected = selected;
+            copy.Selected = Selected;
             copy.shapeIndex = shapeIndex;
             copy.closed = closed;
             copy.family = family;
@@ -893,7 +954,6 @@ namespace BioGTK
             an.type = Type.Mask;
             an.roiMask = new Mask(mask, width, height,physicalX,physicalY);
             an.AddPoint(loc);
-            an.UpdateBoundingBox();
             return an;
         }
         public static ROI CreateMask(ZCT coord, byte[] mask,int width,int height,PointD loc,double physicalX,double physicalY)
@@ -903,7 +963,6 @@ namespace BioGTK
             an.type = Type.Mask;
             an.roiMask = new Mask(mask, width, height, physicalX, physicalY);
             an.AddPoint(loc);
-            an.UpdateBoundingBox();
             return an;
         }
         /// This function updates the point at the specified index
@@ -1038,7 +1097,6 @@ namespace BioGTK
             }
             return pts.ToArray();
         }
-
         /// This function takes a BioImage object and returns a string of the points in the image space
         /// 
         /// @param BioImage The image that the ROI is on
@@ -1063,27 +1121,29 @@ namespace BioGTK
         {
             if(type == Type.Mask)
             {
-                Tuple<PointD, float> tmin = new Tuple<PointD, float>(new PointD(float.MaxValue, float.MaxValue), float.MaxValue);
-                Tuple<PointD, float> tmax = new Tuple<PointD, float>(new PointD(float.MinValue, float.MinValue), float.MinValue);
+                double minx = double.MaxValue;
+                double miny = double.MaxValue;
+                double maxx = double.MinValue;
+                double maxy = double.MinValue;
                 for (int y = 0; y < roiMask.Height; y++)
                 {
                     for (int x = 0; x < roiMask.Width; x++)
                     {
                         if (roiMask.IsSelected(x, y))
                         {
-                            if (tmin.Item1.X > x)
-                                tmin = new Tuple<PointD, float>(new PointD(x, tmin.Item1.Y), roiMask.GetValue(x, (int)tmin.Item1.Y));
-                            if (tmin.Item1.Y > y)
-                                tmin = new Tuple<PointD, float>(new PointD(tmin.Item1.X, y), roiMask.GetValue((int)tmin.Item1.X, y));
-                            if (tmax.Item1.X < x)
-                                tmax = new Tuple<PointD, float>(new PointD(x, tmax.Item1.Y), roiMask.GetValue(x, (int)tmax.Item1.Y));
-                            if (tmax.Item1.Y < y)
-                                tmax = new Tuple<PointD, float>(new PointD(tmax.Item1.X, y), roiMask.GetValue((int)tmax.Item1.X, y));
+                            if (minx > x)
+                                minx = x;
+                            if (miny > y)
+                                miny = y;
+                            if (maxx < x)
+                                maxx = x;
+                            if (maxy < y)
+                                maxy = y;
                         }
                     }
                 }
-                BoundingBox = new RectangleD(PointsD[0].X + (tmin.Item1.X * roiMask.PhysicalSizeX), PointsD[0].Y + (tmin.Item1.Y * roiMask.PhysicalSizeY),
-                    (tmax.Item1.X - tmin.Item1.X) * roiMask.PhysicalSizeX, (tmax.Item1.Y - tmin.Item1.Y) * roiMask.PhysicalSizeY);
+                BoundingBox = new RectangleD(PointsD[0].X + (minx * roiMask.PhysicalSizeX), PointsD[0].Y + (miny * roiMask.PhysicalSizeY),
+                    (maxx - minx) * roiMask.PhysicalSizeX, (maxy - miny) * roiMask.PhysicalSizeY);
                 return;
             }
             PointD min = new PointD(double.MaxValue, double.MaxValue);
@@ -1111,7 +1171,13 @@ namespace BioGTK
                 r.H = 1;
             BoundingBox = r;
         }
-
+        public void Dispose()
+        {
+            if(roiMask!=null)
+            {
+                roiMask.Dispose();
+            }
+        }
         public override string ToString()
         {
             double w = Math.Round(W, 2, MidpointRounding.ToZero);
@@ -7859,6 +7925,10 @@ namespace BioGTK
             for (int i = 0; i < Channels.Count; i++)
             {
                 Channels[i].Dispose();
+            }
+            for (int i = 0; i < Annotations.Count; i++)
+            {
+                Annotations[i].Dispose();
             }
         }
         /// This function returns the filename of the object, and the location of the object in the 3D

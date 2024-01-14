@@ -34,8 +34,11 @@ namespace BioGTK
             }
             set
             {
-                List<ROI> roi = view.GetSelectedROIs();
-                roi[0] = value;
+                for (int i = 0; i < ImageView.SelectedImage.Annotations.Count; i++)
+                {
+                    if (ImageView.SelectedImage.Annotations[i].Selected)
+                        ImageView.SelectedImage.Annotations[i] = value;
+                }
             }
         }
         private AForge.Point _startPoint;
@@ -57,10 +60,19 @@ namespace BioGTK
         [Builder.Object]
         private Gtk.CheckMenuItem autoSaveMenu;
         [Builder.Object]
+        private Gtk.Button runButton;
+        [Builder.Object]
+        private Gtk.Button clearButton;
+        [Builder.Object]
         private Gtk.Entry textBox;
         [Builder.Object]
         private Gtk.Scale thresholdBar;
-        
+        [Builder.Object]
+        private Gtk.Scale pointsBar;
+        [Builder.Object]
+        private Gtk.Scale predictionBar;
+        [Builder.Object]
+        private Gtk.Scale stabilityBar;
 #pragma warning restore 649
 
         #endregion
@@ -101,6 +113,18 @@ namespace BioGTK
                 thresholdBar.Adjustment.Upper = ushort.MaxValue;
             else
                 thresholdBar.Adjustment.Upper = 255;
+            stabilityBar.Adjustment.Lower = 0;
+            stabilityBar.Adjustment.Upper = 1;
+            stabilityBar.Adjustment.StepIncrement = 0.05;
+            stabilityBar.Value = 0.5;
+            predictionBar.Adjustment.Lower = 0;
+            predictionBar.Adjustment.Upper = 1;
+            predictionBar.Adjustment.StepIncrement = 0.05;
+            predictionBar.Value = 0.5;
+            pointsBar.Adjustment.Lower = 0;
+            pointsBar.Adjustment.Upper = 100;
+            pointsBar.Adjustment.StepIncrement = 1;
+            pointsBar.Value = 4;
             Directory.CreateDirectory("Masks");
             filechooser =
             new Gtk.FileChooserDialog("Choose file to open",
@@ -129,7 +153,57 @@ namespace BioGTK
             this.DeleteEvent += SAMTool_DeleteEvent;
             textBox.Changed += TextBox_Changed;
             toROIMenu.ButtonPressEvent += ToROIMenu_ButtonPressEvent;
+            runButton.ButtonPressEvent += AutoSAMMenu_ButtonPressEvent;
+            clearButton.ButtonPressEvent += ClearButton_ButtonPressEvent;
         }
+
+        private void ClearButton_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            List<ROI> masks = new List<ROI>();
+            foreach (ROI item in ImageView.SelectedImage.Annotations)
+            {
+                if(item.type == ROI.Type.Mask || item.type == ROI.Type.Rectangle)
+                    masks.Add(item);
+            }
+            foreach (ROI mask in masks)
+            {
+                ImageView.SelectedImage.Annotations.Remove(mask);
+                mask.Dispose();
+            }
+        }
+
+        private void AutoSAMMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            AutoSAM asm = new AutoSAM((int)pointsBar.Value,64,(float)predictionBar.Value,(float)stabilityBar.Value,1,0.7f,0,0.7f,0.3413333f,1,null,0,"binary_mask");
+            for (int b = 0; b < ImageView.SelectedImage.Buffers.Count; b++)
+            {
+                MaskData md = asm.Generate(ImageView.SelectedImage,b);
+                for (int i = 0; i < md.mfinalMask.Count; i++)
+                {
+                    PointD loc = new PointD(ImageView.SelectedImage.StageSizeX, ImageView.SelectedImage.StageSizeY);
+                    /*
+                    int width = md.mBox[(i * 4) + 2];
+                    int height = md.mBox[(i * 4) + 3];
+                    int x = md.mBox[i * 4];
+                    int y = md.mBox[(i * 4) + 1];
+                    
+                    ROI roi = ROI.CreateRectangle(ImageView.SelectedImage.Buffers[b].Coordinate,loc.X + (x * ImageView.SelectedImage.PhysicalSizeX), loc.Y + (x * ImageView.SelectedImage.PhysicalSizeY),
+                        width * ImageView.SelectedImage.PhysicalSizeX, height * ImageView.SelectedImage.PhysicalSizeY);
+                    ImageView.SelectedImage.Annotations.Add(roi);
+                    */
+                    ROI an = ROI.CreateMask(ImageView.SelectedImage.Buffers[b].Coordinate, md.mfinalMask[i].ToArray(), ImageView.SelectedImage.SizeX, ImageView.SelectedImage.SizeY, loc, ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY);
+                    byte r = (byte)rng.Next(0, 255);
+                    byte g = (byte)rng.Next(0, 255);
+                    byte bb = (byte)rng.Next(0, 255);
+                    an.fillColor.R = r;
+                    an.fillColor.G = g;
+                    an.fillColor.B = bb;
+                    ImageView.SelectedImage.Annotations.Add(an);
+                    
+                }
+            }
+        }
+
         private void ToROIMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             List<ROI> rois = new List<ROI>();
@@ -357,28 +431,29 @@ namespace BioGTK
         {
             if (SelectedROI.type != ROI.Type.Point && SelectedROI.type != ROI.Type.Rectangle)
                 return;
-            SelectedROI = ROI.CreateMask(App.viewer.GetCoordinate(),mask,width,height,
+            ROI an = ROI.CreateMask(App.viewer.GetCoordinate(),mask,width,height,
                 new PointD(ImageView.SelectedImage.StageSizeX,ImageView.SelectedImage.StageSizeY),ImageView.SelectedImage.PhysicalSizeX,ImageView.SelectedImage.PhysicalSizeY);
             byte r = (byte)rng.Next(0, 255);
             byte g = (byte)rng.Next(0, 255);
             byte b = (byte)rng.Next(0, 255);
-            SelectedROI.fillColor.R = r;
-            SelectedROI.fillColor.G = g;
-            SelectedROI.fillColor.B = b;
+            an.fillColor.R = r;
+            an.fillColor.G = g;
+            an.fillColor.B = b;
             
             if (autoSaveMenu.Active)
             {
                 //Saving Tiff can cause a crash on Windows so we check the platform.
                 if (Environment.OSVersion.Platform == PlatformID.Win32NT)
                 {
-                    SelectedROI.roiMask.Pixbuf.Save(autoSavePath + "/" + textBox.Text + id + ".png", "png");
+                    an.roiMask.Pixbuf.Save(autoSavePath + "/" + textBox.Text + id + ".png", "png");
                 }
                 else
                 {
-                    SelectedROI.roiMask.Pixbuf.Save(autoSavePath + "/" + textBox.Text + id + ".tiff", "tiff");
+                    an.roiMask.Pixbuf.Save(autoSavePath + "/" + textBox.Text + id + ".tiff", "tiff");
                 }
                 id++;
             }
+            SelectedROI = an;
         }
     }
 }

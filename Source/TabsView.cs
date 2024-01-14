@@ -391,6 +391,7 @@ namespace BioGTK
             SAMTool sam = SAMTool.Create();
             if(sam.init)
             sam.Show();
+            App.samTool = sam;
         }
 
         private async void SavePyramidalMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)

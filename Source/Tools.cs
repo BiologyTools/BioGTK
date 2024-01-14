@@ -475,7 +475,7 @@ namespace BioGTK
                 an.AddPoint(new PointD(e.X, e.Y));
                 an.type = ROI.Type.Point;
                 an.coord = App.viewer.GetCoordinate();
-                an.selected = true;
+                an.Selected = true;
                 
                 //ImageView.SelectedImage.Annotations.Add(an);
                 AddROI(an);
@@ -710,7 +710,7 @@ namespace BioGTK
                     {
                         an.selectedPoints.Clear();
                         ImageView.selectedAnnotations.Add(an);
-                        an.selected = true;
+                        an.Selected = true;
                         RectangleD[] sels = an.GetSelectBoxes(App.viewer.Scale.Width);
                         for (int i = 0; i < sels.Length; i++)
                         {
@@ -722,7 +722,7 @@ namespace BioGTK
                     }
                     else
                     {
-                        an.selected = false;
+                        an.Selected = false;
                         an.selectedPoints.Clear();
                     }
                 }
@@ -859,7 +859,7 @@ namespace BioGTK
                 {
                     tool = t;
                     if (selectedROI != null)
-                        selectedROI.selected = false;
+                        selectedROI.Selected = false;
                     t.selected = true;
                 }
                 else

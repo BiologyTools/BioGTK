@@ -861,7 +861,7 @@ namespace BioGTK
             foreach (ROI item in SelectedImage.AnnotationsRGB)
             {
                 Bio.Graphics.Pen p = new Bio.Graphics.Pen(Tools.DrawColor, (int)Tools.StrokeWidth, SelectedBuffer.BitsPerPixel);
-                if (item.selected)
+                if (item.Selected)
                 {
                     if (item.type == ROI.Type.Line)
                     {
@@ -901,7 +901,7 @@ namespace BioGTK
             {
                 Bio.Graphics.Pen p = new Bio.Graphics.Pen(Tools.DrawColor, (int)Tools.StrokeWidth, SelectedBuffer.BitsPerPixel);
                 g.pen = p;
-                if (item.selected)
+                if (item.Selected)
                 {
                     if (item.type == ROI.Type.Line)
                     {
@@ -1240,7 +1240,7 @@ namespace BioGTK
                     }
                     else if (zBar.Value != an.coord.Z || cBar.Value != an.coord.C || tBar.Value != an.coord.T)
                         continue;
-                    if (an.selected)
+                    if (an.Selected)
                     {
                         e.Cr.SetSourceColor(FromColor(Color.Magenta));
                     }
@@ -1252,14 +1252,10 @@ namespace BioGTK
                     if (an.type == ROI.Type.Mask || an.roiMask != null)
                     {
                         Pixbuf p;
-                        if(an.selected)
-                            p = an.roiMask.GetColored(Color.Blue);
-                        else
-                            p = an.roiMask.GetColored(an.fillColor);
+                        p = an.roiMask.GetColored(an.fillColor);
                         Pixbuf s = p.ScaleSimple((int)r.W, (int)r.H, InterpType.Bilinear);
                         Gdk.CairoHelper.SetSourcePixbuf(e.Cr, s, r.X, r.Y);
                         e.Cr.Paint();
-                        p.Dispose();
                         s.Dispose();
                     }
                     if (an.type == ROI.Type.Point)
@@ -1384,7 +1380,7 @@ namespace BioGTK
                     }
 
                     e.Cr.SetSourceColor(FromColor(Color.Red));
-                    if(!(an.type == ROI.Type.Freeform && !an.selected) && an.type != ROI.Type.Mask)
+                    if(!(an.type == ROI.Type.Freeform && !an.Selected) && an.type != ROI.Type.Mask)
                     foreach (RectangleD re in an.GetSelectBoxes(width))
                     {
                         RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
@@ -1752,7 +1748,7 @@ namespace BioGTK
             string s = "";
             foreach (ROI item in SelectedImage.AnnotationsRGB)
             {
-                if (item.selected)
+                if (item.Selected)
                 {
                     copys.Add(item);
                     s += BioImage.ROIToString(item);
@@ -2102,7 +2098,7 @@ namespace BioGTK
             List<ROI> roi = new List<ROI>();
             foreach (ROI r in SelectedImage.AnnotationsRGB)
             {
-                if(r.selected)
+                if(r.Selected)
                 {
                     roi.Add(r);
                 }
@@ -2131,7 +2127,7 @@ namespace BioGTK
             {
                 foreach (ROI an in SelectedImage.AnnotationsRGB)
                 {
-                    if(an.selected)
+                    if(an.Selected)
                     if (an.selectedPoints.Count > 0 && an.selectedPoints.Count < an.GetPointCount())
                     {
                         //If the selection is rectangle or ellipse we resize the annotation based on corners
@@ -2372,14 +2368,14 @@ namespace BioGTK
                     foreach (ROI an in bi.AnnotationsRGB)
                     {
                         if (!Modifiers.HasFlag(ModifierType.ControlMask))
-                            an.selected = false;
+                            an.Selected = false;
                         if((an.coord == GetCoordinate() && Mode != ViewMode.RGBImage) || (an.coord.Z == GetCoordinate().Z && an.coord.T == GetCoordinate().T && Mode == ViewMode.RGBImage))
                         if (an.GetSelectBound(ROI.selectBoxSize * SelectedImage.PhysicalSizeX, ROI.selectBoxSize * SelectedImage.PhysicalSizeY).IntersectsWith(new RectangleD((float)pointer.X, (float)pointer.Y,SelectedImage.PhysicalSizeX, SelectedImage.PhysicalSizeY)))
                         {
                             //We clicked inside an ROI so selection should not be cleared.
                             clearSel = false;
                             selectedAnnotations.Add(an);
-                            an.selected = true;
+                            an.Selected = true;
                             Tools.selectedROI = an;
                             RectangleD[] sels = an.GetSelectBoxes(width);
                             RectangleD r = new RectangleD((float)pointer.X, (float)pointer.Y, (float)sels[0].W, (float)sels[0].H);
@@ -2402,7 +2398,7 @@ namespace BioGTK
                     {
                         foreach (ROI an in bi.Annotations)
                         {
-                            an.selected = false;
+                            an.Selected = false;
                             an.selectedPoints.Clear();
                         }
                     }

@@ -29,7 +29,7 @@ namespace BioGTK
         public static SetTool setTool;
         public static Resolutions resolutions;
         public static Recorder recorder;
-
+        public static SAMTool samTool;
         /// Initialize() is a function that initializes the BioImage Suite Web
         public static void Initialize(bool requireImageJ = false)
         {

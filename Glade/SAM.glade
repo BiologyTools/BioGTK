@@ -87,16 +87,14 @@
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="label" translatable="yes">Auto Save</property>
-                        <property name="active">True</property>
                       </object>
                     </child>
                     <child>
-                      <object class="GtkImageMenuItem" id="toROIMenu">
-                        <property name="label">To ROI</property>
+                      <object class="GtkMenuItem" id="toROIMenu">
                         <property name="name">openImagesMenu</property>
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
-                        <property name="use-stock">False</property>
+                        <property name="label" translatable="yes">To ROI</property>
                       </object>
                     </child>
                   </object>
@@ -144,6 +142,110 @@
             <property name="expand">False</property>
             <property name="fill">True</property>
             <property name="position">3</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">AutoSAM: Stability</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">4</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkScale" id="stabilityBar">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="round-digits">1</property>
+            <property name="digits">2</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">5</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">AutoSAM: Prediction</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">6</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkScale" id="predictionBar">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="round-digits">1</property>
+            <property name="digits">2</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">7</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">AutoSAM: Points Per Side</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">8</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkScale" id="pointsBar">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="round-digits">1</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">9</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkFixed">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <child>
+              <object class="GtkButton" id="runButton">
+                <property name="label" translatable="yes">Run</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkButton" id="clearButton">
+                <property name="label" translatable="yes">Clear Masks</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="x">56</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">10</property>
           </packing>
         </child>
       </object>
