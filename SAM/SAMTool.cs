@@ -162,7 +162,7 @@ namespace BioGTK
             List<ROI> masks = new List<ROI>();
             foreach (ROI item in ImageView.SelectedImage.Annotations)
             {
-                if(item.type == ROI.Type.Mask || item.type == ROI.Type.Rectangle)
+                if(item.type == ROI.Type.Mask)
                     masks.Add(item);
             }
             foreach (ROI mask in masks)
