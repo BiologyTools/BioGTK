@@ -560,7 +560,16 @@ namespace BioGTK
         public int shapeIndex = 0;
         public bool closed = false;
         bool selected = false;
-        public bool Selected { get { return selected; } set { roiMask.Selected = value; } }
+        public bool Selected 
+        { 
+            get { return selected; } 
+            set 
+            { 
+                if (roiMask != null)
+                roiMask.Selected = value;
+                selected = value;
+            } 
+        }
         public bool subPixel = false;
         public Mask roiMask { get; set; }
         /// <summary>
@@ -2798,6 +2807,7 @@ namespace BioGTK
                 for (int i = 0; i < Buffers.Count; i++)
                 {
                     Buffers[i].Image = AForge.Imaging.Image.Convert16bppTo8bpp(Buffers[i]);
+                    Buffers[i].SwitchRedBlue();
                 }
             }
             else
@@ -2824,7 +2834,7 @@ namespace BioGTK
                     for (int i = 0; i < Buffers.Count; i++)
                     {
                         Bitmap bs = new Bitmap(ID, SizeX, SizeY, Buffers[i].PixelFormat, Buffers[i].Bytes, new ZCT(Buffers[i].Coordinate.Z, 0, Buffers[i].Coordinate.T), i, Buffers[i].Plane);
-                        Bitmap bbs = Bitmap.RGB16To48(bs);
+                        Bitmap bbs = Bitmap.RGB8To24(bs);
                         bs.Dispose();
                         bs = null;
                         bfs.Add(bbs);
@@ -2849,7 +2859,7 @@ namespace BioGTK
                 Buffers = bfs;
                 UpdateCoords(SizeZ, 1, SizeT);
             }
-            Recorder.AddLine("BioGTK.Images.GetImage(" + '"' + ID + '"' + ")" + "." + "To24Bit();");
+            Recorder.AddLine("BioGTK.Images.GetImage(" + '"' + ID + '"' + ")" + ".To24Bit();");
             AutoThreshold(this, true);
             StackThreshold(false);
             App.viewer.UpdateGUI();
@@ -2935,11 +2945,12 @@ namespace BioGTK
                 Channels.Add(c);
             }
             else
-            if (Buffers[0].PixelFormat == PixelFormat.Format24bppRgb)
+            if (Buffers[0].PixelFormat == PixelFormat.Format24bppRgb || Buffers[0].PixelFormat == PixelFormat.Format32bppArgb)
             {
                 for (int i = 0; i < Buffers.Count; i++)
                 {
                     Buffers[i].Image = AForge.Imaging.Image.Convert8bppTo16bpp(Buffers[i]);
+                    Buffers[i].SwitchRedBlue();
                     Statistics.CalcStatistics(Buffers[i]);
                 }
                 for (int c = 0; c < Channels.Count; c++)
@@ -7099,7 +7110,6 @@ namespace BioGTK
             FieldValue[] f = image.GetField(TiffTag.IMAGEDESCRIPTION);
             return f[0].ToString();
         }
-
         /// It reads the OME-XML file and converts the ROIs to a list of ROI objects
         /// 
         /// @param file the path to the OME-TIFF file
@@ -7954,7 +7964,14 @@ namespace BioGTK
             }
             return a;
         }
-
+        public static BioImage operator *(BioImage a, float b)
+        {
+            for (int i = 0; i < a.Buffers.Count; i++)
+            {
+                a.Buffers[i] = a.Buffers[i] / b;
+            }
+            return a;
+        }
         /// This function adds a constant value to each pixel in the image
         /// 
         /// @param BioImage a class that contains a list of buffers (float[])
@@ -7983,6 +8000,7 @@ namespace BioGTK
             }
             return a;
         }
+
 
         /// This function divides each pixel in the image by the value of the color
         /// 

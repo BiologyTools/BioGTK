@@ -92,6 +92,10 @@ namespace BioGTK
         private MenuItem importROIsFromImageJMenu;
         [Builder.Object]
         private MenuItem exportROIsFromImageJMenu;
+        [Builder.Object]
+        private MenuItem importROIQuPath;
+        [Builder.Object]
+        private MenuItem exportROIQuPath;
 
         [Builder.Object]
         private MenuItem autoThresholdAllMenu;
@@ -317,6 +321,8 @@ namespace BioGTK
             exportROIsOfFolderOfImagesMenu.ButtonPressEvent += exportROIsOfFolderOfImagesMenuClick;
             importROIsFromImageJMenu.ButtonPressEvent += ImportROIsFromImageJMenu_ButtonPressEvent;
             exportROIsFromImageJMenu.ButtonPressEvent += ExportROIsFromImageJMenu_ButtonPressEvent;
+            importROIQuPath.ButtonPressEvent += ImportROIQuPath_ButtonPressEvent;
+            exportROIQuPath.ButtonPressEvent += ExportROIQuPath_ButtonPressEvent;
 
             autoThresholdAllMenu.ButtonPressEvent += autoThresholdAllMenuClick;
             channelsToolMenu.ButtonPressEvent += channelsToolMenuClick;
@@ -351,6 +357,43 @@ namespace BioGTK
             this.WindowStateEvent += TabsView_WindowStateEvent;
 
             searchMenu.ButtonPressEvent += SearchMenu_ButtonPressEvent;
+        }
+
+        private void ExportROIQuPath_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Gtk.FileChooserDialog filechooser =
+        new Gtk.FileChooserDialog("Choose QuPath ROI(.geojson) file to save to.",
+            this,
+            FileChooserAction.Save,
+            "Cancel", ResponseType.Cancel,
+            "Open", ResponseType.Accept);
+            filechooser.SelectMultiple = true;
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            QuPath.Save(filechooser.Filename, ImageView.SelectedImage);
+            filechooser.Hide();
+        }
+
+        private void ImportROIQuPath_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Gtk.FileChooserDialog filechooser =
+        new Gtk.FileChooserDialog("Choose QuPath ROI(.geojson) file to open",
+            this,
+            FileChooserAction.Open,
+            "Cancel", ResponseType.Cancel,
+            "Open", ResponseType.Accept);
+            filechooser.SelectMultiple = true;
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            foreach (string item in filechooser.Filenames)
+            {
+                ROI[] rois = QuPath.ReadROI(item,ImageView.SelectedImage);
+                foreach (ROI r in rois)
+                {
+                    ImageView.SelectedImage.Annotations.Add(r);
+                }
+            }
+            filechooser.Hide();
         }
 
         private void SearchMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
