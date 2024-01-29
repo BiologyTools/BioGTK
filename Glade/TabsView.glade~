@@ -286,6 +286,19 @@
                         <property name="label" translatable="yes">Export ImageJ ROI</property>
                       </object>
                     </child>
+                    <child>
+                      <object class="GtkMenuItem" id="importROIQuPath">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Import Qupath ROI</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkMenuItem" id="exportROIQuPath">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>
