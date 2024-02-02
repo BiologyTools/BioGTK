@@ -1006,6 +1006,7 @@ namespace BioGTK
             foreach (var item in selectedAnnotations)
             {
                 SelectedImage.Annotations.Remove(item);
+                Tools.selectedROI = null;
             }
             UpdateView();
         }
@@ -2394,6 +2395,7 @@ namespace BioGTK
                 if (clearSel)
                 {
                     selectedAnnotations.Clear();
+                    Tools.selectedROI = null;
                     foreach (BioImage bi in Images)
                     {
                         foreach (ROI an in bi.Annotations)

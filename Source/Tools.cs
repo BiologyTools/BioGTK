@@ -274,7 +274,7 @@ namespace BioGTK
         }
 
         /* Creating a new ROI object called selectedROI. */
-        public static ROI selectedROI = new ROI();
+        public static ROI selectedROI = null;
         void AddROI(ROI roi)
         {
             if (ImageView.SelectedImage.isPyramidal)
@@ -317,42 +317,48 @@ namespace BioGTK
             PointF p = new PointF((float)e.X, (float)e.Y);
             if (currentTool.type == Tool.Type.line && buts.Event.Button == 1)
             {
-                if (selectedROI.GetPointCount() == 0)
-                {
-                    selectedROI = new ROI();
-                    selectedROI.type = ROI.Type.Line;
-                    selectedROI.AddPoint(new PointD(e.X, e.Y));
-                    selectedROI.AddPoint(new PointD(e.X, e.Y));
-                    selectedROI.coord = App.viewer.GetCoordinate();
+                selectedROI = new ROI();
+                selectedROI.type = ROI.Type.Line;
+                selectedROI.AddPoint(new PointD(e.X, e.Y));
+                selectedROI.AddPoint(new PointD(e.X, e.Y));
+                selectedROI.coord = App.viewer.GetCoordinate();
+                if (ImageView.SelectedImage.isPyramidal)
                     selectedROI.serie = App.viewer.Level;
-                    //ImageView.SelectedImage.Annotations.Add(selectedROI);
-                    AddROI(selectedROI);
-                }
+                else
+                    selectedROI.serie = ImageView.SelectedImage.series;
+                //ImageView.SelectedImage.Annotations.Add(selectedROI);
+                AddROI(selectedROI);
             }
             else
             if (currentTool.type == Tool.Type.polygon && buts.Event.Button == 1)
             {
-                if (selectedROI.GetPointCount() == 0 || selectedROI.type != ROI.Type.Polygon)
+                if (selectedROI == null)
                 {
                     selectedROI = new ROI();
                     selectedROI.type = ROI.Type.Polygon;
                     selectedROI.AddPoint(new PointD(e.X, e.Y));
                     selectedROI.coord = App.viewer.GetCoordinate();
-                    selectedROI.serie = App.viewer.Level;
-                    //ImageView.SelectedImage.Annotations.Add(selectedROI);
+                    if (ImageView.SelectedImage.isPyramidal)
+                        selectedROI.serie = App.viewer.Level;
+                    else
+                        selectedROI.serie = ImageView.SelectedImage.series;
                     AddROI(selectedROI);
                 }
                 else
                 {
                     //If we click on a point 1 we close this polygon
-                    RectangleD d = new RectangleD(e.X, e.Y, ROI.selectBoxSize, ROI.selectBoxSize);
-                    if (d.IntersectsWith(selectedROI.Point))
+                    float width = (float)App.viewer.ToScreenScaleW(ROI.selectBoxSize);
+                    RectangleD[] rds = selectedROI.GetSelectBoxes(width);
+                    if (rds[0].IntersectsWith(e.X,e.Y))
                     {
                         selectedROI.closed = true;
-                        selectedROI = new ROI();
+                        selectedROI.Selected = false;
+                        selectedROI = null;
+                        return;
                     }
                     else
                     {
+                        if(selectedROI.closed == false)
                         selectedROI.AddPoint(new PointD(e.X, e.Y));
                     }
                 }
@@ -367,7 +373,10 @@ namespace BioGTK
                     selectedROI.AddPoint(new PointD(e.X, e.Y));
                     selectedROI.coord = App.viewer.GetCoordinate();
                     selectedROI.closed = true;
-                    selectedROI.serie = App.viewer.Level;
+                    if (ImageView.SelectedImage.isPyramidal)
+                        selectedROI.serie = App.viewer.Level;
+                    else
+                        selectedROI.serie = ImageView.SelectedImage.series;
                     AddROI(selectedROI);
                 }
                 else
@@ -382,9 +391,11 @@ namespace BioGTK
                 selectedROI.type = ROI.Type.Rectangle;
                 selectedROI.Rect = new RectangleD(e.X, e.Y, 1, 1);
                 selectedROI.coord = App.viewer.GetCoordinate();
+                if (ImageView.SelectedImage.isPyramidal)
+                    selectedROI.serie = App.viewer.Level;
+                else
+                    selectedROI.serie = ImageView.SelectedImage.series;
                 AddROI(selectedROI);
-                //ImageView.SelectedImage.Annotations.Add(selectedROI);
-                //ImageView.SelectedImage.AddROI(selectedROI);
             }
             else
             if (currentTool.type == Tool.Type.ellipse && buts.Event.Button == 1)
@@ -393,8 +404,10 @@ namespace BioGTK
                 selectedROI.type = ROI.Type.Ellipse;
                 selectedROI.Rect = new RectangleD(e.X, e.Y, 1, 1);
                 selectedROI.coord = App.viewer.GetCoordinate();
-                selectedROI.serie = App.viewer.Level;
-                //ImageView.SelectedImage.Annotations.Add(selectedROI);
+                if (ImageView.SelectedImage.isPyramidal)
+                    selectedROI.serie = App.viewer.Level;
+                else
+                    selectedROI.serie = ImageView.SelectedImage.series;
                 AddROI(selectedROI);
             }
             else
@@ -442,6 +455,10 @@ namespace BioGTK
                 else
                     selectedROI.UpdatePoint(new PointD(e.X, e.Y), 0);
                 selectedROI.coord = App.viewer.GetCoordinate();
+                if (ImageView.SelectedImage.isPyramidal)
+                    selectedROI.serie = App.viewer.Level;
+                else
+                    selectedROI.serie = ImageView.SelectedImage.series;
                 ti = TextInput.Create();
                 ti.ShowAll();
                 ti.Run();
@@ -464,7 +481,7 @@ namespace BioGTK
             Plugins.MouseUp(ImageView.SelectedImage, e, buts);
             PointD p = new PointD((float)e.X, (float)e.Y);
             PointD mouseU = ImageView.SelectedImage.ToImageSpace(p);
-            if (App.viewer == null || currentTool == null || ImageView.SelectedImage == null || selectedROI == null)
+            if (App.viewer == null || currentTool == null || ImageView.SelectedImage == null)
                 return;
             Scripting.UpdateState(Scripting.State.GetUp(e, buts.Event.Button));
             if (currentTool.type == Tool.Type.pan && buts.Event.Button == 2)
@@ -476,7 +493,7 @@ namespace BioGTK
                 an.type = ROI.Type.Point;
                 an.coord = App.viewer.GetCoordinate();
                 an.Selected = true;
-                
+                selectedROI = an;
                 //ImageView.SelectedImage.Annotations.Add(an);
                 AddROI(an);
             }
@@ -486,7 +503,7 @@ namespace BioGTK
                 if (selectedROI.GetPointCount() > 0)
                 {
                     selectedROI.UpdatePoint(new PointD(e.X, e.Y), 1);
-                    selectedROI = new ROI();
+                    selectedROI = null;
                 }
             }
             else
@@ -494,7 +511,7 @@ namespace BioGTK
             {
                 if (selectedROI.GetPointCount() == 4)
                 {
-                    selectedROI = new ROI();
+                    selectedROI = null;
                 }
             }
             else
@@ -502,13 +519,13 @@ namespace BioGTK
             {
                 if (selectedROI.GetPointCount() == 4)
                 {
-                    selectedROI = new ROI();
+                    selectedROI = null;
                 }
             }
             else
             if (currentTool.type == Tool.Type.freeform && selectedROI.type == ROI.Type.Freeform && buts.Event.Button == 1)
             {
-                selectedROI = new ROI();
+                selectedROI = null;
             }
             else
             if (Tools.currentTool.type == Tools.Tool.Type.magic && buts.Event.Button == 1)
@@ -595,6 +612,7 @@ namespace BioGTK
             }
             UpdateView();
         }
+        
         /// This function is called when the mouse is moved. It is used to update the view when the user
         /// is panning, drawing a line, drawing a freeform, drawing a rectangle, drawing an ellipse,
         /// selecting a rectangle, deleting an annotation, drawing a magic wand selection, and erasing
@@ -651,7 +669,7 @@ namespace BioGTK
             {
                 for (int i = 0; i < selectedROI.PointsD.Count; i++)
                 {
-                    PointD pd = new PointD(ImageView.mouseDown.X - e.X, ImageView.mouseDown.Y - e.Y);
+                    PointD pd = new PointD(e.X - ImageView.mouseDown.X, e.Y - ImageView.mouseDown.Y);
                     selectedROI.UpdatePoint(new PointD(selectedROI.PointsD[i].X + pd.X, selectedROI.PointsD[i].Y + pd.Y), i);
                 }
                 UpdateView();
@@ -752,7 +770,6 @@ namespace BioGTK
                             {
                                 an.closed = false;
                                 an.RemovePoints(an.selectedPoints.ToArray());
-
                             }
                         }
                     }

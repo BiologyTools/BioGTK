@@ -69,7 +69,7 @@ namespace BioGTK
                 return g;
             }
         }
-        public static PointD[] GetPoints(GeoJsonGeometry p,double physX, double physY)
+        public static PointD[] GetPoints(GeoJsonGeometry p,BioImage b)
         {
             if (p.type == "Point")
             {
@@ -78,7 +78,7 @@ namespace BioGTK
                 points.Add(new PointD(gs[0], gs[1]));
                 for (int i = 0; i < points.Count; i++)
                 {
-                    points[i] = new PointD(points[i].X * physX, points[i].Y * physY);
+                    points[i] = new PointD(b.StageSizeX + (points[i].X / b.SizeX) * b.Volume.Width, b.StageSizeY + (points[i].Y / b.SizeY) * b.Volume.Height);
                 }
                 return points.ToArray();
             }
@@ -92,7 +92,7 @@ namespace BioGTK
                 }
                 for (int i = 0; i < points.Count; i++)
                 {
-                    points[i] = new PointD(points[i].X * physX, points[i].Y * physY);
+                    points[i] = new PointD(b.StageSizeX + (points[i].X / b.SizeX)*b.Volume.Width, b.StageSizeY + (points[i].Y / b.SizeY) * b.Volume.Height);
                 }
                 return points.ToArray();
             }
@@ -106,7 +106,7 @@ namespace BioGTK
                 }
                 for (int i = 0; i < points.Count; i++)
                 {
-                    points[i] = new PointD(points[i].X * physX, points[i].Y * physY);
+                    points[i] = new PointD(b.StageSizeX + (points[i].X / b.SizeX) * b.Volume.Width, b.StageSizeY + (points[i].Y / b.SizeY) * b.Volume.Height);
                 }
                 return points.ToArray();
             }
@@ -154,14 +154,26 @@ namespace BioGTK
             public GeoJsonPlane plane { get; set; }
             public static GeoJsonPolygon FromROI(ROI roi, BioImage b)
             {
+                int pc = roi.PointsD.Count;
+                if (roi.PointsD.Last() != roi.PointsD.First())
+                    pc = roi.PointsD.Count + 1;
                 GeoJsonPolygon g = new GeoJsonPolygon();
                 double[][][] dds = new double[1][][];
-                double[][] ds = new double[roi.PointsD.Count][];
-                for (int i = 0; i < roi.PointsD.Count; i++)
+                double[][] ds = new double[pc][];
+                for (int i = 0; i < pc; i++)
                 {
-                    PointD po = b.ToImageSpace(roi.PointsD[i]);
-                    ds[i] = new double[2] { po.X, po.Y };
+                    if (i >= roi.PointsD.Count)
+                    {
+                        PointD po = b.ToImageSpace(roi.PointsD[0]);
+                        ds[i] = new double[2] { (int)po.X, (int)po.Y };
+                    }
+                    else
+                    {
+                        PointD po = b.ToImageSpace(roi.PointsD[i]);
+                        ds[i] = new double[2] { (int)po.X, (int)po.Y };
+                    }
                 }
+                
                 dds[0] = ds;
                 g.coordinates = dds;
                 g.type = "Polygon";
@@ -194,12 +206,12 @@ namespace BioGTK
                     GeoJsonPoint p = GeoJsonPoint.FromROI(roi,b);
                     j+= JsonConvert.SerializeObject(p);
                 }
-                else if (roi.type == ROI.Type.Rectangle || roi.type == ROI.Type.Polygon || roi.type == ROI.Type.Polyline || roi.type == ROI.Type.Freeform)
+                else if (roi.type == ROI.Type.Rectangle || (roi.type == ROI.Type.Polygon && roi.closed) || roi.type == ROI.Type.Freeform)
                 {
                     GeoJsonPolygon p = GeoJsonPolygon.FromROI(roi, b);
                     j += JsonConvert.SerializeObject(p);
                 }
-                else if (roi.type == ROI.Type.Polyline || roi.type == ROI.Type.Line)
+                else if (roi.type == ROI.Type.Polyline || roi.type == ROI.Type.Line || roi.type == ROI.Type.Polygon)
                 {
                     GeoJsonLineString p = GeoJsonLineString.FromROI(roi, b);
                     j += JsonConvert.SerializeObject(p);
@@ -225,20 +237,25 @@ namespace BioGTK
                 {
                     r.type = ROI.Type.Polygon;
                     r.closed = true;
-                    r.AddPoints(GetPoints(f.geometry,b.PhysicalSizeX,b.PhysicalSizeY));
-                    r.coord = f.geometry.GetZCT();
+                    r.AddPoints(GetPoints(f.geometry,b));
+                    if(f.geometry.plane != null)
+                        r.coord = f.geometry.GetZCT();
                 }
                 else if(f.geometry.type == "LineString")
                 {
                     r.type = ROI.Type.Line;
-                    r.AddPoints(GetPoints(f.geometry, b.PhysicalSizeX, b.PhysicalSizeY));
-                    r.coord = f.geometry.GetZCT();
+                    r.AddPoints(GetPoints(f.geometry, b));
+                    if (r.PointsD.Count > 2)
+                        r.type = ROI.Type.Polyline;
+                    if (f.geometry.plane != null)
+                        r.coord = f.geometry.GetZCT();
                 }
                 else
                 {
                     r.type = ROI.Type.Point;
-                    r.AddPoints(GetPoints(f.geometry, b.PhysicalSizeX, b.PhysicalSizeY));
-                    r.coord = f.geometry.GetZCT();
+                    r.AddPoints(GetPoints(f.geometry, b));
+                    if (f.geometry.plane != null)
+                        r.coord = f.geometry.GetZCT();
                 }
                 rois.Add(r);
             }

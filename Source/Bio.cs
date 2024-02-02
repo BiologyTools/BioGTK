@@ -402,20 +402,11 @@ namespace BioGTK
         {
             get
             {
-                if (Points.Count == 0)
-                    return new PointD(0, 0);
-                if (type == Type.Line || type == Type.Ellipse || type == Type.Label || type == Type.Freeform)
-                    return new PointD(BoundingBox.X, BoundingBox.Y);
                 return Points[0];
             }
             set
             {
-                if (Points.Count == 0)
-                {
-                    AddPoint(value);
-                }
-                else
-                    UpdatePoint(value, 0);
+                UpdatePoint(value, 0);
                 UpdateBoundingBox();
             }
         }
@@ -4426,17 +4417,12 @@ namespace BioGTK
         {
             //We initialize OME on a seperate thread so the user doesn't have to wait for initialization to
             //view images. 
-            if (RuntimeInformation.ProcessArchitecture != Architecture.Arm64)
-            {
-                System.Threading.Thread t = new System.Threading.Thread(new System.Threading.ThreadStart(InitFactory));
-                t.Start();
-                System.Threading.Thread t3 = new System.Threading.Thread(new System.Threading.ThreadStart(InitReader));
-                t3.Start();
-                System.Threading.Thread t4 = new System.Threading.Thread(new System.Threading.ThreadStart(InitWriter));
-                t4.Start();
-            }
-            else
-                initialized = true;
+            System.Threading.Thread t = new System.Threading.Thread(new System.Threading.ThreadStart(InitFactory));
+            t.Start();
+            System.Threading.Thread t3 = new System.Threading.Thread(new System.Threading.ThreadStart(InitReader));
+            t3.Start();
+            System.Threading.Thread t4 = new System.Threading.Thread(new System.Threading.ThreadStart(InitWriter));
+            t4.Start();
         }
         static bool inf = false, inr = false, inw = false;
         /// > Initialize the OME-XML library

@@ -50,11 +50,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="bioformats_package.dll">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-      <Pack>True</Pack>
-      <PackagePath>lib\net6.0</PackagePath>
-    </Content>
     <Content Include="Glade\ComboPicker.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Pack>True</Pack>
@@ -412,12 +407,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="BioFormats.NET6" Version="7.1.0.2" />
     <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
     <PackageReference Include="CS-Script" Version="4.8.13" />
     <PackageReference Include="Dotnet.Bundle" Version="0.9.13" />
     <PackageReference Include="GeoJSON.Net" Version="1.2.19" />
     <PackageReference Include="GtkSharp" Version="3.24.24.95" />
-    <PackageReference Include="IKVM" Version="8.6.4" />
+    <PackageReference Include="IKVM" Version="8.7.5" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.16.3" />
     <PackageReference Include="NetVips" Version="2.4.0" />
@@ -440,16 +436,10 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.6" />
     <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="2.88.6" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\..\Shared\AForgeBio\AForgeBio\AForgeBio\AForgeBio.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Reference Include="bioformats_package">
-      <HintPath>bioformats_package.dll</HintPath>
-    </Reference>
-  </ItemGroup>
   <ItemGroup>
     <None Update="README.md">
       <Pack>True</Pack>
