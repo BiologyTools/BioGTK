@@ -407,6 +407,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AForgeBio" Version="1.5.0" />
     <PackageReference Include="BioFormats.NET6" Version="7.1.0.2" />
     <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
     <PackageReference Include="CS-Script" Version="4.8.13" />
@@ -435,9 +436,6 @@
     <PackageReference Include="SkiaSharp" Version="2.88.6" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.6" />
     <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="2.88.6" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\Shared\AForgeBio\AForgeBio\AForgeBio\AForgeBio.csproj" />
   </ItemGroup>
 
   <ItemGroup>

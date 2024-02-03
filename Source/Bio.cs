@@ -2014,8 +2014,14 @@ namespace BioGTK
                 coordinate = value;
             }
         }
-
+        public enum ImageType
+        {
+            stack,
+            pyramidal,
+            well,
+        }
         private string id;
+        public ImageType Type { get; set; }
         public List<Channel> Channels = new List<Channel>();
         public List<Resolution> Resolutions = new List<Resolution>();
         public List<AForge.Bitmap> Buffers = new List<AForge.Bitmap>();
@@ -2057,7 +2063,6 @@ namespace BioGTK
         public long loadTimeMS = 0;
         public long loadTimeTicks = 0;
         public bool selected = false;
-        private bool ispyramidal = false;
         public Statistics Statistics
         {
             get
@@ -2531,11 +2536,10 @@ namespace BioGTK
         {
             get
             {
-                return ispyramidal;
-            }
-            set
-            {
-                ispyramidal = value;
+                if (Type == ImageType.pyramidal)
+                    return true;
+                else
+                    return false;
             }
         }
         public string file;
@@ -4771,7 +4775,8 @@ namespace BioGTK
             }
             b.series = series;
             b.file = file;
-            b.ispyramidal = tiled;
+            if (tiled)
+                b.Type = ImageType.pyramidal;
             string fn = Path.GetFileNameWithoutExtension(file);
             string dir = Path.GetDirectoryName(file);
             if (File.Exists(fn + ".csv"))
@@ -5902,6 +5907,7 @@ namespace BioGTK
             progressValue = 0;
             progFile = file;
             BioImage b = new BioImage(file);
+            b.Type = ImageType.stack;
             b.Loading = true;
             if (b.meta == null)
                 b.meta = service.createOMEXMLMetadata();
@@ -5916,14 +5922,14 @@ namespace BioGTK
                 reader.setId(f);
                 pr.Status = "Reading Metadata";
             }
+            if (reader.getOptimalTileWidth() != reader.getSizeX())
+            {
+                b.Type = ImageType.pyramidal;
+                tile = true;
+            }
             //status = "Reading OME Metadata.";
             reader.setSeries(serie);
             int RGBChannelCount = reader.getRGBChannelCount();
-            if (reader.getOptimalTileWidth() != reader.getSizeX())
-            {
-                b.ispyramidal = true;
-                tile = true;
-            }
             //OME reader.getBitsPerPixel(); sometimes returns incorrect bits per pixel, like when opening ImageJ images.
             //So we check the pixel type from xml metadata and if it fails we use the readers value.
             PixelFormat PixelFormat;
@@ -6037,6 +6043,11 @@ namespace BioGTK
             b.Coords = new int[b.SizeZ, b.SizeC, b.SizeT];
 
             int resc = reader.getResolutionCount();
+            int wells = b.meta.getWellCount(0);
+            if(wells>0)
+            {
+                b.Type = ImageType.well;
+            }
             for (int s = 0; s < b.seriesCount; s++)
             {
                 reader.setSeries(s);
@@ -6490,9 +6501,9 @@ namespace BioGTK
                     int cc = 0; int zc = 0; int tc = 0;
                     if (b.meta.getPlaneTheC(serie, bi) != null)
                         cc = b.meta.getPlaneTheC(serie, bi).getNumberValue().intValue();
-                    if (b.meta.getPlaneTheC(serie, bi) != null)
+                    if (b.meta.getPlaneTheZ(serie, bi) != null)
                         zc = b.meta.getPlaneTheZ(serie, bi).getNumberValue().intValue();
-                    if (b.meta.getPlaneTheC(serie, bi) != null)
+                    if (b.meta.getPlaneTheT(serie, bi) != null)
                         tc = b.meta.getPlaneTheT(serie, bi).getNumberValue().intValue();
                     pl.Coordinate = new ZCT(zc, cc, tc);
                     if (b.meta.getPlaneDeltaT(serie, bi) != null)
@@ -6824,7 +6835,6 @@ namespace BioGTK
             {
                 bs = new BioImage[1];
                 bs[0] = OpenOME(file, 0, tab, addToImages, true, 0, 0, 1920, 1080);
-                bs[0].isPyramidal = true;
                 Images.AddImage(bs[0], tab);
                 return bs;
             }
@@ -8046,4 +8056,5 @@ namespace BioGTK
             return a;
         }
     }
+
 }

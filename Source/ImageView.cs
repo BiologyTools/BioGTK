@@ -39,7 +39,7 @@ namespace BioGTK
         {
             if (SelectedImage == null)
                 return;
-            if (z > SelectedImage.SizeZ - 1)
+            if (z > SelectedImage.SizeZ - 1 && SelectedImage.Type == BioImage.ImageType.well)
                 zBar.Value = zBar.Adjustment.Upper;
             else
                 zBar.Value = z;
@@ -51,7 +51,10 @@ namespace BioGTK
                 tBar.Value = tBar.Adjustment.Upper;
             else
                 tBar.Value = t;
-            SelectedImage.Coordinate = new ZCT((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
+            if (SelectedImage.Type == BioImage.ImageType.well)
+                SelectedImage.Coordinate = new ZCT(0, (int)cBar.Value, (int)tBar.Value);
+            else
+                SelectedImage.Coordinate = new ZCT((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
             UpdateImage();
             UpdateView();
         }
@@ -88,6 +91,7 @@ namespace BioGTK
                     pictureBox.HeightRequest = im.Resolutions[0].SizeY;
                 }
             } 
+            
             UpdateGUI();
             UpdateImages();
             GoToImage(Images.Count - 1);
@@ -271,7 +275,6 @@ namespace BioGTK
             //pictureBox.HeightRequest = im.SizeY;
             Function.InitializeContextMenu();
             this.Scale = new SizeF(1, 1);
-
             // Set the text column to display for comboboxs.
             var rendererr = new CellRendererText();
             rBox.PackStart(rendererr, false);
@@ -283,6 +286,10 @@ namespace BioGTK
             bBox.PackStart(rendererb, false);
             bBox.AddAttribute(rendererb, "text", 0);
             App.ApplyStyles(this);
+            if(im.Type == BioImage.ImageType.well)
+            {
+                Resolution = 0;
+            }
         }
         #endregion
 
@@ -337,6 +344,11 @@ namespace BioGTK
                         else
                             b.StackThreshold(false);
                         bitmap = b.GetFiltered(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
+                    }
+                    else if(b.Type == BioImage.ImageType.well)
+                    {
+                        bitmap = BioImage.GetTile(SelectedImage, c, (int)Resolution, 0, 0, b.SizeX, b.SizeY);
+                        bitmap = bitmap.GetFiltered(b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
                     }
                     else
                     {
@@ -1695,7 +1707,6 @@ namespace BioGTK
             rBox.Model = store;
             gBox.Model = store;
             bBox.Model = store;
-
             if (SelectedImage.Channels.Count > 2)
             {
                 rBox.Active = 0;
@@ -1983,13 +1994,16 @@ namespace BioGTK
         }
         public double Resolution
         {
-            get 
+            get
             {
                 return resolution;
             }
             set
             {
                 if (value < 0) return;
+                if(SelectedImage.Type == BioImage.ImageType.well && value > SelectedImage.Resolutions.Count - 1)
+                    return;
+                else
                 if (openSlide)
                 {
                     double dp = Resolution / value;
@@ -2066,8 +2080,16 @@ namespace BioGTK
         /// It updates the status of the user.
         public void UpdateStatus()
         {
+            if(SelectedImage.Type == BioImage.ImageType.well)
+            {
+                statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
+                mousePoint + mouseColor + ", " + SelectedImage.Buffers[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") " 
+                + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2") + " , Well:" + Resolution;
+            }
+            else
             statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
-                mousePoint + mouseColor + ", " + SelectedImage.Buffers[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") " + Origin.ToString();
+                mousePoint + mouseColor + ", " + SelectedImage.Buffers[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") "
+                + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2");
         }
         /// It updates the view.
         public void UpdateView()
@@ -2317,6 +2339,9 @@ namespace BioGTK
                 contextMenu.Popup();
             if (e.Event.Button == 4 && Mode != ViewMode.RGBImage)
             {
+                if (SelectedImage.Type == BioImage.ImageType.well)
+                    Resolution++;
+                else
                 if (cBar.Value < cBar.Adjustment.Upper)
                     cBar.Value++;
                 x1State = true;
@@ -2332,6 +2357,9 @@ namespace BioGTK
 
             if (e.Event.Button == 5 && Mode != ViewMode.RGBImage)
             {
+                if (SelectedImage.Type == BioImage.ImageType.well)
+                    Resolution--;
+                else
                 if (cBar.Value > cBar.Adjustment.Lower)
                     cBar.Value--;
                 x2State = true;
