@@ -2029,7 +2029,28 @@ namespace BioGTK
         public int Resolution
         {
             get { return resolution; }
-            set { resolution = value; }
+            set 
+            { 
+                resolution = value;
+                if(Type == ImageType.well)
+                {
+                    reader.setId(file);
+                    reader.setSeries(value);
+                    // read the image data bytes
+                    int pages = reader.getImageCount();
+                    bool inter = reader.isInterleaved();
+                    PixelFormat pf = Buffers[0].PixelFormat;
+                    int w = Buffers[0].SizeX; int h = Buffers[0].SizeY;
+                    Buffers.Clear();
+                    for (int p = 0; p < pages; p++)
+                    {
+                        Bitmap bf;
+                        byte[] bytes = reader.openBytes(p);
+                        bf = new Bitmap(file, w, h, pf, bytes, new ZCT(), p, null, littleEndian, inter);
+                        Buffers.Add(bf);
+                    }
+                }
+            }
         }
         public VolumeD Volume;
         public List<ROI> Annotations = new List<ROI>();
@@ -4118,7 +4139,8 @@ namespace BioGTK
                 BioImage.filter16.InRed = r;
                 BioImage.filter16.InGreen = g;
                 BioImage.filter16.InBlue = b;
-                return BioImage.filter16.Apply(Buffers[ind]);
+                Bitmap bm = BioImage.filter16.Apply(Buffers[ind]);
+                return bm;
             }
             else
             {
@@ -6050,6 +6072,7 @@ namespace BioGTK
                 if(wells>0)
                 {
                     b.Type = ImageType.well;
+                    tile = false;
                 }
             }
             catch (Exception)
