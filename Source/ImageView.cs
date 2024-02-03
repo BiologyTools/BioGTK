@@ -22,7 +22,6 @@ using SizeF = AForge.SizeF;
 using Color = AForge.Color;
 using Rectangle = AForge.Rectangle;
 using System.IO;
-using loci.plugins;
 
 namespace BioGTK
 {
@@ -292,7 +291,31 @@ namespace BioGTK
             }
         }
         #endregion
-
+        public Bitmap GetRGBBitmap(BioImage b,ZCT coord, IntRange rf, IntRange gf, IntRange bf)
+        {
+            int index = b.Coords[coord.Z, coord.C, coord.T];
+            if (b.Buffers[0].RGBChannelsCount == 1)
+            {
+                if (b.Channels.Count >= 3)
+                {
+                    Bitmap[] bs = new Bitmap[3];
+                    bs[2] = b.Buffers[index + RChannel.Index];
+                    bs[1] = b.Buffers[index + GChannel.Index];
+                    bs[0] = b.Buffers[index + BChannel.Index];
+                    return Bitmap.GetRGBBitmap(bs, rf, gf, bf);
+                }
+                else
+                {
+                    Bitmap[] bs = new Bitmap[3];
+                    bs[2] = b.Buffers[index + RChannel.Index];
+                    bs[1] = b.Buffers[index + RChannel.Index + 1];
+                    bs[0] = b.Buffers[index + RChannel.Index + 2];
+                    return Bitmap.GetRGBBitmap(bs, rf, gf, bf);
+                }
+            }
+            else
+                return b.Buffers[index];
+        }
         /// It updates the images.
         public void UpdateImages()
         {
@@ -370,6 +393,11 @@ namespace BioGTK
                                 b.Buffers[index] = bitmap;
                             }
                         }
+                        else if (b.Type == BioImage.ImageType.well)
+                        {
+                            bitmap = BioImage.GetTile(SelectedImage, c, (int)Resolution, 0, 0, b.SizeX, b.SizeY);
+                            bitmap = GetRGBBitmap(SelectedImage, c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
+                        }
                         else
                         {
 
@@ -400,6 +428,10 @@ namespace BioGTK
                                 b.Buffers[index] = bitmap;
                             }
                         }
+                        else if (b.Type == BioImage.ImageType.well)
+                        {
+                            bitmap = BioImage.GetTile(SelectedImage, c, (int)Resolution, 0, 0, b.SizeX, b.SizeY);
+                        }
                         else
                         {
 
@@ -428,6 +460,17 @@ namespace BioGTK
                                 //bitmap = new Bitmap((int)OpenSlideBase.destExtent.Width,(int)OpenSlideBase.destExtent.Height, PixelFormat.Format32bppArgb, bts, new ZCT(), "");Wheel
                                 b.Buffers[index] = bitmap;
                             }
+                        }
+                        else if (b.Type == BioImage.ImageType.well)
+                        {
+                            bitmap = BioImage.GetTile(SelectedImage, c, (int)Resolution, 0, 0, b.SizeX, b.SizeY);
+                            Bitmap[] bs = new Bitmap[b.Channels.Count];
+                            for (int cc = 0; cc < b.Channels.Count; cc++)
+                            {
+                                int indexx = b.Coords[c.Z, cc, c.T];
+                                bs[cc] = b.Buffers[indexx];
+                            }
+                            bitmap = Bitmap.GetEmissionBitmap(bs, b.Channels.ToArray());
                         }
                         else
                         {

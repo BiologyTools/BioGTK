@@ -6043,11 +6043,20 @@ namespace BioGTK
             b.Coords = new int[b.SizeZ, b.SizeC, b.SizeT];
 
             int resc = reader.getResolutionCount();
-            int wells = b.meta.getWellCount(0);
-            if(wells>0)
+
+            try
             {
-                b.Type = ImageType.well;
+                int wells = b.meta.getWellCount(0);
+                if(wells>0)
+                {
+                    b.Type = ImageType.well;
+                }
             }
+            catch (Exception)
+            {
+
+            }
+            
             for (int s = 0; s < b.seriesCount; s++)
             {
                 reader.setSeries(s);
