@@ -67,7 +67,7 @@ namespace BioGTK
             }
             foreach (string item in args)
             {
-                BioImage.OpenAsync(item, false, true, true);
+                BioImage.OpenAsync(item, false, true, true,0);
             }
             Console.WriteLine("Initializing nodes.");    
             InitItems();

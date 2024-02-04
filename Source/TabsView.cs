@@ -677,7 +677,7 @@ namespace BioGTK
             filechooser.Hide();
             foreach (string item in sts)
             {
-                await BioImage.OpenAsync(item,false,true,true);
+                await BioImage.OpenAsync(item,false,true,true,0);
             }
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file and adds
@@ -695,7 +695,7 @@ namespace BioGTK
             filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
-                await BioImage.OpenAsync(item, true, true, true);
+                await BioImage.OpenAsync(item, true, true, true,0);
             }
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file as a
@@ -707,13 +707,17 @@ namespace BioGTK
         /// @return A list of file names.
         protected async void openOMESeriesMenuClick(object sender, EventArgs a)
         {
-            filechooser = new FileChooserDialog("Choose OME Series file to open", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
+            filechooser = new FileChooserDialog("Choose OME Series file to open.", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
-                await BioImage.OpenAsync(item, true, true, true);
+                int s = BioImage.GetSeriesCount(item);
+                for (int i = 0; i < s; i++)
+                {
+                    await BioImage.OpenAsync(item, true, true, true, i);
+                }
             }
             tabsView.ShowAll();
             
@@ -733,7 +737,7 @@ namespace BioGTK
             filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
-                await BioImage.OpenAsync(item, false, true, true);
+                await BioImage.OpenAsync(item, false, true, true, 0);
             }
             tabsView.Show();
         }
@@ -753,7 +757,7 @@ namespace BioGTK
             filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
-                await BioImage.OpenAsync(item, false, false, true);
+                await BioImage.OpenAsync(item, false, false, true, 0);
             }
             this.ShowAll();
         }
@@ -772,7 +776,7 @@ namespace BioGTK
             filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
-                await BioImage.OpenAsync(item, true, false, true);
+                await BioImage.OpenAsync(item, true, false, true, 0);
             }
             this.Show();
         }

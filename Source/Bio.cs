@@ -4476,6 +4476,14 @@ namespace BioGTK
             if (inf && inr && inw)
                 initialized = true;
         }
+
+        public static int GetSeriesCount(string file)
+        {
+            reader.setId(file);
+            int i = reader.getSeriesCount();
+            reader.close();
+            return i;
+        }
         /// This function takes a string array of file names and a string ID and saves the files to the
         /// database
         /// 
@@ -6137,11 +6145,7 @@ namespace BioGTK
                         tile = true;
                 }
             }
-            if (b.Resolutions.Count > 1)
-            {
-                b.Type = ImageType.pyramidal;
-                tile = true;
-            }
+            reader.setSeries(serie);
             b.Volume = new VolumeD(new Point3D(b.StageSizeX, b.StageSizeY, b.StageSizeZ), new Point3D(b.PhysicalSizeX * SizeX, b.PhysicalSizeY * SizeY, b.PhysicalSizeZ * SizeZ));
             pr.Status = "Reading ROIs";
             int rc = b.meta.getROICount();
@@ -6860,22 +6864,8 @@ namespace BioGTK
                 Scripting.LogLine(e.Message);
                 return null;
             }
-
-            bool tile = false;
-            if (reader.getOptimalTileWidth() != reader.getSizeX())
-                tile = true;
             int count = reader.getSeriesCount();
-            BioImage[] bs = null;
-            if (tile)
-            {
-                bs = new BioImage[1];
-                bs[0] = OpenOME(file, 0, tab, addToImages, true, 0, 0, 1920, 1080);
-                Images.AddImage(bs[0], tab);
-                return bs;
-            }
-            else
-                bs = new BioImage[count];
-            reader.close();
+            BioImage[] bs = new BioImage[count];
             for (int i = 0; i < count; i++)
             {
                 bs[i] = OpenOME(file, i, tab, addToImages, false, 0, 0, 0, 0);
@@ -6887,12 +6877,13 @@ namespace BioGTK
         /// It opens a file in a new thread.
         /// 
         /// @param file The file to open
-        public static async Task OpenAsync(string file, bool OME, bool newtab, bool images)
+        public static async Task OpenAsync(string file, bool OME, bool newtab, bool images, int series)
         {
             openfile = file;
             omes = OME;
             tab = newtab;
             add = images;
+            serie = series;
             await Task.Run(OpenThread);
         }
         /// It opens a file asynchronously
@@ -6902,7 +6893,7 @@ namespace BioGTK
         {
             foreach (string file in files)
             {
-                await OpenAsync(file, OME, tab, images);
+                await OpenAsync(file, OME, tab, images,0);
             }
         }
         /// It opens a file
