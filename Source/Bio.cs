@@ -5944,11 +5944,7 @@ namespace BioGTK
                 reader.setId(f);
                 pr.Status = "Reading Metadata";
             }
-            if (reader.getOptimalTileWidth() != reader.getSizeX())
-            {
-                b.Type = ImageType.pyramidal;
-                tile = true;
-            }
+            
             //status = "Reading OME Metadata.";
             reader.setSeries(serie);
             int RGBChannelCount = reader.getRGBChannelCount();
@@ -6065,7 +6061,7 @@ namespace BioGTK
             b.Coords = new int[b.SizeZ, b.SizeC, b.SizeT];
 
             int resc = reader.getResolutionCount();
-
+            
             try
             {
                 int wells = b.meta.getWellCount(0);
@@ -6079,7 +6075,7 @@ namespace BioGTK
             {
 
             }
-            
+
             for (int s = 0; s < b.seriesCount; s++)
             {
                 reader.setSeries(s);
@@ -6137,7 +6133,14 @@ namespace BioGTK
                         Console.WriteLine("No Stage Coordinates. PhysicalSize:(" + res.PhysicalSizeX + "," + res.PhysicalSizeY + "," + res.PhysicalSizeZ + ")");
                     }
                     b.Resolutions.Add(res);
+                    if (res.SizeInBytes > 1800000000)
+                        tile = true;
                 }
+            }
+            if (b.Resolutions.Count > 1)
+            {
+                b.Type = ImageType.pyramidal;
+                tile = true;
             }
             b.Volume = new VolumeD(new Point3D(b.StageSizeX, b.StageSizeY, b.StageSizeZ), new Point3D(b.PhysicalSizeX * SizeX, b.PhysicalSizeY * SizeY, b.PhysicalSizeZ * SizeZ));
             pr.Status = "Reading ROIs";
