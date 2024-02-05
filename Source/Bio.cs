@@ -6141,11 +6141,20 @@ namespace BioGTK
                         Console.WriteLine("No Stage Coordinates. PhysicalSize:(" + res.PhysicalSizeX + "," + res.PhysicalSizeY + "," + res.PhysicalSizeZ + ")");
                     }
                     b.Resolutions.Add(res);
-                    if (res.SizeInBytes > 1800000000)
-                        tile = true;
                 }
             }
             reader.setSeries(serie);
+
+            //We need to determine if this image is pyramidal or not.
+            //We do this by seeing if the resolutions are downsampled or not.
+            if(b.Resolutions.Count > 1)
+            if (b.Resolutions[0].PhysicalSizeX < b.Resolutions[1].PhysicalSizeX)
+            {
+                b.Type = ImageType.pyramidal;
+                tile = true;
+            }
+            
+
             b.Volume = new VolumeD(new Point3D(b.StageSizeX, b.StageSizeY, b.StageSizeZ), new Point3D(b.PhysicalSizeX * SizeX, b.PhysicalSizeY * SizeY, b.PhysicalSizeZ * SizeZ));
             pr.Status = "Reading ROIs";
             int rc = b.meta.getROICount();
@@ -6487,6 +6496,8 @@ namespace BioGTK
                 string st = OpenSlideGTK.OpenSlideImage.DetectVendor(file);
                 if(st != null)
                 b.openSlideImage = OpenSlideGTK.OpenSlideImage.Open(file);
+                b.Type = ImageType.pyramidal;
+                tile = true;
             }
             catch (Exception e)
             {
