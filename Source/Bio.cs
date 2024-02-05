@@ -6147,7 +6147,7 @@ namespace BioGTK
 
             //We need to determine if this image is pyramidal or not.
             //We do this by seeing if the resolutions are downsampled or not.
-            if(b.Resolutions.Count > 1)
+            if(b.Resolutions.Count > 1 && b.Type != ImageType.well)
             if (b.Resolutions[0].PhysicalSizeX < b.Resolutions[1].PhysicalSizeX)
             {
                 b.Type = ImageType.pyramidal;
@@ -6494,10 +6494,12 @@ namespace BioGTK
             try
             {
                 string st = OpenSlideGTK.OpenSlideImage.DetectVendor(file);
-                if(st != null)
-                b.openSlideImage = OpenSlideGTK.OpenSlideImage.Open(file);
-                b.Type = ImageType.pyramidal;
-                tile = true;
+                if (st != null)
+                {
+                    b.openSlideImage = OpenSlideGTK.OpenSlideImage.Open(file);
+                    b.Type = ImageType.pyramidal;
+                    tile = true;
+                }
             }
             catch (Exception e)
             {

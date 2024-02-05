@@ -3,8 +3,8 @@
     <TargetFramework>net6.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RuntimeIdentifiers>osx-x64;linux-x64;win-x64;win-arm64;linux-arm64;osx-arm64;</RuntimeIdentifiers>
-    <AssemblyVersion>4.3.0</AssemblyVersion>
-    <FileVersion>4.3.0</FileVersion>
+    <AssemblyVersion>4.3.1</AssemblyVersion>
+    <FileVersion>4.3.1</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>BioGTK</PackageId>
     <Title>BioGTK</Title>
@@ -17,11 +17,11 @@
     <PackageLicenseExpression> GPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Description>A .NET application &amp; library for editing &amp; annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters &amp; macro functions. Supports Windows, Linux and Mac.</Description>
-    <Version>4.3.0</Version>
+    <Version>4.3.1</Version>
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>QuPath GeoJson ROI support. Full Arm64 support for BioFormats.</PackageReleaseNotes>
+    <PackageReleaseNotes>Well plate support. Support for non-pyramidal multi-resolution files.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
