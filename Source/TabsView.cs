@@ -671,6 +671,7 @@ namespace BioGTK
         protected async void openImagesMenuClick(object sender, EventArgs a)
         {
             filechooser = new FileChooserDialog("Choose file to open", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
+            filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             string[] sts = filechooser.Filenames;
@@ -690,6 +691,7 @@ namespace BioGTK
         protected async void openOMEImagesMenuClick(object sender, EventArgs a)
         {
             filechooser = new FileChooserDialog("Choose OME file to open", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
+            filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
@@ -708,6 +710,7 @@ namespace BioGTK
         protected async void openOMESeriesMenuClick(object sender, EventArgs a)
         {
             filechooser = new FileChooserDialog("Choose OME Series file to open.", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
+            filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
@@ -732,6 +735,7 @@ namespace BioGTK
         protected async void openSeriesMenuClick(object sender, EventArgs a)
         {
             filechooser = new FileChooserDialog("Choose series file to open", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
+            filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
@@ -752,6 +756,7 @@ namespace BioGTK
         protected async void addImagesToTabMenuClick(object sender, EventArgs a)
         {
             filechooser = new FileChooserDialog("Choose file to add to current tab.", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
+            filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
@@ -771,6 +776,7 @@ namespace BioGTK
         protected async void addOMEImagesToTabClick(object sender, EventArgs a)
         {
             filechooser = new FileChooserDialog("Choose OME file to add to current tab.", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
+            filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();

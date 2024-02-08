@@ -410,32 +410,31 @@
     <PackageReference Include="AForgeBio" Version="1.5.0" />
     <PackageReference Include="BioFormats.NET6" Version="7.1.0.2" />
     <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
-    <PackageReference Include="CS-Script" Version="4.8.13" />
+    <PackageReference Include="CS-Script" Version="4.8.14" />
     <PackageReference Include="Dotnet.Bundle" Version="0.9.13" />
-    <PackageReference Include="GeoJSON.Net" Version="1.2.19" />
     <PackageReference Include="GtkSharp" Version="3.24.24.95" />
     <PackageReference Include="IKVM" Version="8.7.5" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.16.3" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.17.0" />
     <PackageReference Include="NetVips" Version="2.4.0" />
-    <PackageReference Include="NetVips.Native" Version="8.15.0" />
-    <PackageReference Include="NetVips.Native.linux-arm64" Version="8.15.0" />
-    <PackageReference Include="NetVips.Native.linux-x64" Version="8.15.0" />
-    <PackageReference Include="NetVips.Native.osx-arm64" Version="8.15.0" />
-    <PackageReference Include="NetVips.Native.osx-x64" Version="8.15.0" />
-    <PackageReference Include="NetVips.Native.win-arm64" Version="8.15.0" />
-    <PackageReference Include="NetVips.Native.win-x64" Version="8.15.0" />
+    <PackageReference Include="NetVips.Native" Version="8.15.1" />
+    <PackageReference Include="NetVips.Native.linux-arm64" Version="8.15.1" />
+    <PackageReference Include="NetVips.Native.linux-x64" Version="8.15.1" />
+    <PackageReference Include="NetVips.Native.osx-arm64" Version="8.15.1" />
+    <PackageReference Include="NetVips.Native.osx-x64" Version="8.15.1" />
+    <PackageReference Include="NetVips.Native.win-arm64" Version="8.15.1" />
+    <PackageReference Include="NetVips.Native.win-x64" Version="8.15.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="NuGet.Build.Tasks.Pack" Version="6.8.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="OpenSlideGTK" Version="1.3.1" />
-    <PackageReference Include="ScottPlot" Version="5.0.9-beta" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.1" />
-    <PackageReference Include="SkiaSharp" Version="2.88.6" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.6" />
-    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="2.88.6" />
+    <PackageReference Include="ScottPlot" Version="5.0.21" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.2" />
+    <PackageReference Include="SkiaSharp" Version="2.88.7" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.7" />
+    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="2.88.7" />
   </ItemGroup>
 
   <ItemGroup>
