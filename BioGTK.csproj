@@ -408,7 +408,7 @@
 
   <ItemGroup>
     <PackageReference Include="AForgeBio" Version="1.5.0" />
-    <PackageReference Include="BioFormats.NET6" Version="7.1.0.2" />
+    <PackageReference Include="BioFormats.NET6" Version="7.2.0" />
     <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
     <PackageReference Include="CS-Script" Version="4.8.14" />
     <PackageReference Include="Dotnet.Bundle" Version="0.9.13" />

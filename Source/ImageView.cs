@@ -22,7 +22,6 @@ using SizeF = AForge.SizeF;
 using Color = AForge.Color;
 using Rectangle = AForge.Rectangle;
 using System.IO;
-using org.checkerframework.checker.units.qual;
 
 namespace BioGTK
 {
