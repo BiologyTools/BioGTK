@@ -2001,6 +2001,76 @@ namespace BioGTK
     }
     public class BioImage : IDisposable
     {
+        public class WellPlate
+        {
+            public class Well
+            {
+                public string ID { get; set; }
+                public int Index { get; set; }
+                public int Column { get; set; }
+                public int Row { get; set; }
+                public System.Drawing.Color Color { get; set; }
+                public List<Sample> Samples = new List<Sample>();
+                public class Sample
+                {
+                    public string ID { get; set; }
+                    public int Index { get; set; }
+                    public PointD Position { get; set; }
+                    public Timestamp Time { get; set; }
+                }
+            }
+            public List<Well> Wells = new List<Well>();
+
+            public PointD Origin;
+            public string ID;
+            public string Name;
+            public WellPlate(BioImage b)
+            {
+                ID = b.meta.getPlateID(b.series);
+                Name = b.meta.getPlateName(b.series);
+                double x, y;
+                if (b.meta.getPlateWellOriginX(b.series) != null)
+                    x = b.meta.getPlateWellOriginX(b.series).value().doubleValue();
+                else
+                    x = 0;
+                if (b.meta.getPlateWellOriginY(b.series) != null)
+                    y = b.meta.getPlateWellOriginY(b.series).value().doubleValue();
+                else
+                    y = 0;
+                Origin = new PointD(x, y);
+                int ws = b.meta.getWellCount(b.series);
+                for (int i = 0; i < ws; i++)
+                {
+                    Well w = new Well();
+                    w.ID = b.meta.getWellID(b.series, i);
+                    w.Column = b.meta.getWellColumn(b.series, i).getNumberValue().intValue();
+                    w.Row = b.meta.getWellRow(b.series, i).getNumberValue().intValue();
+                    int wsc = b.meta.getWellSampleCount(b.series, i);
+                    for (int s = 0; s < wsc; s++)
+                    {
+                        Well.Sample sa = new Well.Sample();
+                        sa.Time = b.meta.getWellSampleTimepoint(b.series, i, s);
+                        sa.Index = b.meta.getWellSampleIndex(b.series, i, s).getNumberValue().intValue();
+                        double sx, sy;
+                        if (b.meta.getWellSamplePositionX(b.series, i, s) != null)
+                            sx = b.meta.getWellSamplePositionX(b.series, i, s).value().doubleValue();
+                        else sx = 0;
+                        if (b.meta.getWellSamplePositionY(b.series, i, s) != null)
+                            sy = b.meta.getWellSamplePositionY(b.series, i, s).value().doubleValue();
+                        else sy = 0;
+                        sa.Position = new PointD(sx, sy);
+                        sa.ID = b.meta.getWellSampleID(b.series, i, s);
+                        w.Samples.Add(sa);
+                    }
+                    ome.xml.model.primitives.Color c = b.meta.getWellColor(b.series, i);
+                    if (c != null)
+                        w.Color = System.Drawing.Color.FromArgb(c.getAlpha(), c.getRed(), c.getGreen(), c.getBlue());
+                    Wells.Add(w);
+                }
+
+            }
+        }
+        public WellPlate Plate = null;
         public int[,,] Coords;
         private ZCT coordinate;
         public ZCT Coordinate
@@ -6076,6 +6146,7 @@ namespace BioGTK
                 if(wells>0)
                 {
                     b.Type = ImageType.well;
+                    b.Plate = new WellPlate(b);
                     tile = false;
                 }
             }

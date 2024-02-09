@@ -79,6 +79,8 @@ namespace BioGTK
         private MenuItem setToolMenu;
         [Builder.Object]
         private MenuItem runSAMMenu;
+        [Builder.Object]
+        private MenuItem plateToolMenu;
 
         [Builder.Object]
         private MenuItem roiManagerMenu;
@@ -314,6 +316,7 @@ namespace BioGTK
             toolsMenu.ButtonPressEvent += toolsMenuClick;
             setToolMenu.ButtonPressEvent += setToolMenuClick;
             runSAMMenu.ButtonPressEvent += RunSAMMenu_ButtonPressEvent;
+            plateToolMenu.ButtonPressEvent += PlateToolMenu_ButtonPressEvent;
 
             roiManagerMenu.ButtonPressEvent += roiManagerMenuClick;
             exportROIsToCSVMenu.ButtonPressEvent += exportROIsToCSVMenuClick;
@@ -357,6 +360,11 @@ namespace BioGTK
             this.WindowStateEvent += TabsView_WindowStateEvent;
 
             searchMenu.ButtonPressEvent += SearchMenu_ButtonPressEvent;
+        }
+
+        private void PlateToolMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            PlateTool pl = PlateTool.Create();
         }
 
         private void ExportROIQuPath_ButtonPressEvent(object o, ButtonPressEventArgs args)
