@@ -34,7 +34,7 @@ namespace BioGTK
     {
         public static void Initialize()
         {
-            foreach (string s in Directory.GetFiles("Plugins"))
+            foreach (string s in Directory.GetFiles(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/Plugins"))
             {
                 if (!s.EndsWith(".dll") || Plugin.Plugins.ContainsKey(Path.GetFileName(s)))
                     continue;

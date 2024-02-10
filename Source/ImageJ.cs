@@ -9,6 +9,7 @@ using CSScripting;
 using Gtk;
 using AForge;
 using BioGTK;
+using System.Runtime.InteropServices;
 
 namespace BioGTK
 {
@@ -52,7 +53,7 @@ namespace BioGTK
             public static Dictionary<string, List<Function>> Functions = new Dictionary<string, List<Function>>();
             internal static void Initialize()
             {
-                string[] sts = File.ReadAllLines("macro-functions.txt");
+                string[] sts = File.ReadAllLines(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/macro-functions.txt");
                 foreach (string s in sts)
                 {
                     string com = "";
@@ -90,7 +91,7 @@ namespace BioGTK
                             Functions[com].Add(new Function(com, args, doc));
                     }
                 }
-                string[] cs = File.ReadAllLines("macro-commands.csv");
+                string[] cs = File.ReadAllLines(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/macro-commands.csv");
                 foreach (string s in cs)
                 {
                     string[] v = s.Split(',');
@@ -101,7 +102,20 @@ namespace BioGTK
         static bool init = false;
         public static bool Initialized { get { return init; } private set { init = true; } }
         public static string ImageJPath;
-        public static string ImageJMacroPath { get { return System.IO.Path.GetDirectoryName(ImageJPath) + "/macros/"; }}
+        public static string ImageJMacroPath 
+        { 
+            get 
+            { 
+                if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                {
+                    string p = System.IO.Path.GetDirectoryName(ImageJPath);
+                    p = p.Remove(p.IndexOf("Fiji.app"), p.Length - p.IndexOf("Fiji.app"));
+                    return p + "/Fiji.app/macros";
+                }
+                else
+                    return System.IO.Path.GetDirectoryName(ImageJPath) + "/macros/"; 
+            }
+        }
         public static List<Process> processes = new List<Process>();
         public static List<Macro.Command> Macros = new List<Macro.Command>();
         private static Random rng = new Random();
@@ -283,7 +297,7 @@ namespace BioGTK
             if (!SetImageJPath())
                 return false;
             Macro.Initialize();
-            string[] ds = Directory.GetFiles(Path.GetDirectoryName(ImageJPath) + "/macros");
+            string[] ds = Directory.GetFiles(ImageJMacroPath);
             foreach (string s in ds)
             {
                 if(s.EndsWith(".ijm") || s.EndsWith(".txt"))
