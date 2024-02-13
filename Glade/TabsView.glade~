@@ -231,6 +231,14 @@
                         <property name="label" translatable="yes">Run SAM</property>
                       </object>
                     </child>
+                    <child>
+                      <object class="GtkMenuItem" id="plateToolMenu">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Plate Tool</property>
+                        <property name="use-underline">True</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>

@@ -34,6 +34,8 @@ namespace BioGTK
         private MenuItem runMenu;
         [Builder.Object]
         private MenuItem searchMenu;
+        [Builder.Object]
+        private MenuItem updateMenu;
 
         [Builder.Object]
         public MenuBar MainMenu;
@@ -360,6 +362,12 @@ namespace BioGTK
             this.WindowStateEvent += TabsView_WindowStateEvent;
 
             searchMenu.ButtonPressEvent += SearchMenu_ButtonPressEvent;
+            updateMenu.ButtonPressEvent += UpdateMenu_ButtonPressEvent;
+        }
+
+        private void UpdateMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            App.updater.Show();
         }
 
         private void PlateToolMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)

@@ -36,26 +36,36 @@ namespace BioGTK
         {
             foreach (string s in Directory.GetFiles(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/Plugins"))
             {
-                if (!s.EndsWith(".dll") || Plugin.Plugins.ContainsKey(Path.GetFileName(s)))
-                    continue;
-                // Load the plugin assembly
-                Assembly pluginAssembly = Assembly.LoadFile(Environment.CurrentDirectory + "/" + s);
-                // Find the type which implements the IPlugin interface
-                var pluginType = pluginAssembly.GetTypes().FirstOrDefault(t => typeof(IPlugin).IsAssignableFrom(t) && !t.IsInterface);
-                if (pluginType != null)
+                try
                 {
-                    // Create an instance of this type
-                    IPlugin pluginInstance = Activator.CreateInstance(pluginType) as IPlugin;
-                    Plugin.Plugins.Add(Path.GetFileName(s), pluginInstance);
-                    if (pluginInstance.ContextMenu)
-                        App.AddContextMenu(pluginInstance.MenuPath);
+                    if (!s.EndsWith(".dll") || Plugin.Plugins.ContainsKey(Path.GetFileName(s)))
+                        continue;
+                    string dir = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/Plugins/" + Path.GetFileName(s);
+                    dir.Replace("\\", "/");
+                    // Load the plugin assembly
+                    Assembly pluginAssembly = Assembly.LoadFile(dir);
+                    // Find the type which implements the IPlugin interface
+                    var pluginType = pluginAssembly.GetTypes().FirstOrDefault(t => typeof(IPlugin).IsAssignableFrom(t) && !t.IsInterface);
+                    if (pluginType != null)
+                    {
+                        // Create an instance of this type
+                        IPlugin pluginInstance = Activator.CreateInstance(pluginType) as IPlugin;
+                        Plugin.Plugins.Add(Path.GetFileName(s), pluginInstance);
+                        if (pluginInstance.ContextMenu)
+                            App.AddContextMenu(pluginInstance.MenuPath);
+                        else
+                            App.AddMenu(pluginInstance.MenuPath);                   
+                    }
                     else
-                        App.AddMenu(pluginInstance.MenuPath);                   
+                    {
+                        Console.WriteLine("No plugin found in the assembly: " + s);
+                    }
                 }
-                else
+                catch (Exception e)
                 {
-                    Console.WriteLine("No plugin found in the assembly: " + s);
+                    Console.WriteLine(e.Message.ToString());
                 }
+                
             }
         }
         public static void KeyUpEvent(object o, KeyPressEventArgs e)

@@ -526,6 +526,13 @@
                 <property name="use-underline">True</property>
               </object>
             </child>
+            <child>
+              <object class="GtkMenuItem" id="updateMenu">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Update</property>
+              </object>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>

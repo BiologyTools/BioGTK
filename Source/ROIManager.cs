@@ -314,7 +314,7 @@ namespace Bio
                 }
             }
             roiView.Model = store;
-
+            
         }
         /// It takes a list of images, and for each image, it takes a list of annotations, and for each
         /// annotation, it adds the annotation to a dictionary, and then adds the annotation to a
