@@ -171,6 +171,48 @@ BioImage.SaveFile("file","path");
 //To convert between different pixel formats we can call for example To24Bit.
 b.To24Bit();
 ```
+## Sample Plugin
+
+```
+using AForge;
+using BioGTK;
+using Gdk;
+using Gtk;
+namespace PluginExample
+{
+    public class PluginExample : BioGTK.Plugin.IPlugin
+    {
+        public string Name => "PluginExample";
+        public string MenuPath => "Tools/" + Name + ".dll";
+        public bool ContextMenu => false;
+        public void Execute(string[] args)
+        {
+        }
+        public void KeyUpEvent(object o, KeyPressEventArgs e)
+        {
+        }
+        public void KeyDownEvent(object o, KeyPressEventArgs e)
+        {
+        }
+        public void ScrollEvent(object o, ScrollEventArgs args)
+        {
+        }
+        public void Drawn(object o, DrawnArgs e)
+        {
+        }
+        public void MouseMove(object o, PointD e, MotionNotifyEventArgs buts)
+        {
+        }
+        public void MouseUp(object o, PointD e, ButtonReleaseEventArgs buts)
+        {
+        }
+        public void MouseDown(object o, PointD e, ButtonPressEventArgs buts)
+        {
+        }
+        
+    }
+}
+```
 
 ## Sample Tool Script
 ```
