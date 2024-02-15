@@ -58,8 +58,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - Install Mac package manager [homebrew.](https://brew.sh/)
 - From brew install [GTK3.](https://formulae.brew.sh/formula/gtk+3#default)
 - Download the BioGTK application for either OSX-x64 or OSX-Arm from releases.
-- Make the file executable by opening terminal in the extracted folder and running "chmod 755 BioGTKApp"
-- Ensure correct security policy for loaded libraries by running "sudo xattr -r -d com.apple.quarantine ./"
+- Make the .app bundle executable by opening terminal in the Contents/MacOS folder then run "chmod 755 BioGTKApp"
 - Optionally install [OpenSlide](https://formulae.brew.sh/formula/openslide) for better navigation of whole-slide-images.
 - Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance and functions with whole-slide-images.
 
