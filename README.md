@@ -61,6 +61,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - Make the .app bundle executable by opening terminal in the Contents/MacOS folder then run "chmod 755 BioGTKApp"
 - Optionally install [OpenSlide](https://formulae.brew.sh/formula/openslide) for better navigation of whole-slide-images.
 - Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance and functions with whole-slide-images.
+- Optionally for SAM install ONNX Runtime by running "brew install onnxruntime".
 
 
 ## Windows Installation
