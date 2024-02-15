@@ -70,7 +70,6 @@ namespace BioGTK
             builder.Autoconnect(this);
             scriptView.RowActivated += ScriptView_RowActivated;
             scriptView.ButtonPressEvent += ScriptView_ButtonPressEvent;
-            this.DeleteEvent += Scripting_DeleteEvent;
             this.KeyPressEvent += Scripting_KeyPressEvent;
             saveBut.ButtonPressEvent += SaveBut_ButtonPressEvent;
             runBut.ButtonPressEvent += runButton_Click;
@@ -132,16 +131,6 @@ namespace BioGTK
         private void SaveBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Save();
-        }
-
-        /// It hides the window when the user clicks the close button.
-        /// 
-        /// @param o The object that triggered the event.
-        /// @param DeleteEventArgs The event arguments.
-        private void Scripting_DeleteEvent(object o, DeleteEventArgs args)
-        {
-            args.RetVal = true;
-            Hide();
         }
 
         /// If the user presses the "s" key while holding down the control key, then call the Save()

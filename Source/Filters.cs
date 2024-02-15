@@ -38,14 +38,7 @@ namespace BioGTK
             builder.Autoconnect(this);
             InitItems();
             tree.RowActivated += Tree_RowActivated;
-            this.DeleteEvent += FiltersView_DeleteEvent;
             App.ApplyStyles(this);
-        }
-
-        private void FiltersView_DeleteEvent(object o, DeleteEventArgs args)
-        {
-            args.RetVal = true;
-            Hide();
         }
 
         /// It creates a new instance of the ApplyFilter class, passing in the filter that was selected

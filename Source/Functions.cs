@@ -607,7 +607,7 @@ namespace BioGTK
         /// them to the Functions dictionary
         public static void InitializeMainMenu()
         {
-            string st = Environment.CurrentDirectory + "/Functions";
+            string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/Functions";
             if (!Directory.Exists(st))
                 Directory.CreateDirectory(st);
             string[] sts = Directory.GetFiles(st);
@@ -624,7 +624,7 @@ namespace BioGTK
         /// them to the Functions dictionary
         public static void InitializeContextMenu()
         {
-            string st = Environment.CurrentDirectory + "/Functions";
+            string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/Functions";
             if (!Directory.Exists(st))
                 Directory.CreateDirectory(st);
             string[] sts = Directory.GetFiles(st);
@@ -640,7 +640,7 @@ namespace BioGTK
         /// It saves all the functions in the Functions dictionary to a file
         public static void SaveAll()
         {
-            string st = Environment.CurrentDirectory;
+            string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath);
 
             if (!Directory.Exists(st + "/Functions"))
             {
@@ -654,7 +654,7 @@ namespace BioGTK
         /// It saves the function to a file
         public void Save()
         {
-            string st = Environment.CurrentDirectory;
+            string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath);
             if (!Directory.Exists(st + "/Functions"))
             {
                 Directory.CreateDirectory(st + "/Functions");

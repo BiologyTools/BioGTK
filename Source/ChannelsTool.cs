@@ -105,7 +105,6 @@ namespace BioGTK
             resetBut.ButtonPressEvent += ResetButton_ButtonPressEvent;
             this.ButtonPressEvent += ChannelsTool_MouseDown;
             this.FocusActivated += ChannelsTool_Activated;
-            this.DeleteEvent += ChannelsTool_DeleteEvent;
             channelsBox.Changed += ChannelsBox_Changed;
             sampleBox.Changed += SampleBox_Changed;
             meanStackBox.Clicked += MeanStackBox_Clicked;
@@ -139,17 +138,6 @@ namespace BioGTK
         private void SampleBox_Changed(object sender, EventArgs e)
         {
             UpdateValues();
-        }
-
-        /// The function is called when the user clicks the close button on the window. It sets the
-        /// return value of the event to true, which tells the window to close
-        /// 
-        /// @param o The object that the event is being fired from.
-        /// @param DeleteEventArgs The event arguments.
-        private void ChannelsTool_DeleteEvent(object o, DeleteEventArgs args)
-        {
-            args.RetVal = true;
-            Hide();
         }
 
        /// When the user clicks the checkbox, the program will set the histogram's stack histogram

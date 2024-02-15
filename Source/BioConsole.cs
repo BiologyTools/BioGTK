@@ -81,7 +81,6 @@ namespace BioGTK
             tabRadioBut.Clicked += TabRadioBox_Clicked;
             consoleBox.Buffer.Changed += Buffer_Changed;
             consoleBox.KeyPressEvent += Console_KeyPressEvent;
-            this.DeleteEvent += BioConsole_DeleteEvent;
         }
 
         private int Measure(string s)
@@ -175,18 +174,6 @@ namespace BioGTK
         private void ResultsBox_Clicked(object sender, EventArgs e)
         {
             resultInNewTab = resultsBox.Active;
-        }
-
-        /// The BioConsole_DeleteEvent function is called when the user clicks the close button on the
-        /// BioConsole window. The function hides the BioConsole window and returns true to the
-        /// DeleteEventArgs object
-        /// 
-        /// @param o The object that fired the event.
-        /// @param DeleteEventArgs This is the event that is being passed to the event handler.
-        private void BioConsole_DeleteEvent(object o, DeleteEventArgs args)
-        {
-            Hide();
-            args.RetVal = true;
         }
 
         /// If the user presses the "w" key, the line variable is incremented and the textBox is set to

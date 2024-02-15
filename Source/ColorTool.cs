@@ -118,7 +118,6 @@ namespace BioGTK
             image.Drawn += Image_Drawn;
             cancelBut.Clicked += CancelBut_Clicked;
             okBut.Clicked += OkBut_Clicked;
-            this.DeleteEvent += ColorTool_DeleteEvent;
         }
 
         /// The OkBut_Clicked function is called when the Ok button is clicked
@@ -140,18 +139,6 @@ namespace BioGTK
         {
             this.DefaultResponse = ResponseType.Cancel;
             this.Destroy();
-        }
-
-        /// The function is called when the user clicks the close button on the window. It sets the
-        /// default response to cancel and hides the window
-        /// 
-        /// @param o The object that triggered the event.
-        /// @param DeleteEventArgs This is the event arguments that are passed to the event handler.
-        private void ColorTool_DeleteEvent(object o, DeleteEventArgs args)
-        {
-            DefaultResponse = ResponseType.Cancel;
-            args.RetVal = true;
-            Hide();
         }
 
         /// The function takes the image and draws a rectangle on it with the color specified by the

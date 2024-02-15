@@ -705,24 +705,7 @@ namespace Bio
             App.viewer.showBROIs = showBBox.Active;
             UpdateView();
         }
-        /*
-        private void deleteToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            for (int i = 0; i < roiView.SelectedItems.Count; i++)
-            {
-                ImageView.SelectedImage.Annotations.Remove((ROI)roiView.SelectedItems[i].Tag);
-            }
-            UpdateAnnotationList();
-            UpdateView();
-        }
-
-        private void copyToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            List<ROI> annotations = new List<ROI>();
-            ROI an = (ROI)roiView.SelectedItems[0].Tag;
-            Clipboard.(BioImage.ROIToString(an));
-        }
-        */
+       
         /// This function saves the current file
         /// 
         /// @param sender The object that raised the event.

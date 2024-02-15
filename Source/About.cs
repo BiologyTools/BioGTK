@@ -41,27 +41,11 @@ namespace BioGTK
         {
             _builder = builder;
             builder.Autoconnect(this);
-            Console.WriteLine(Environment.CurrentDirectory);
             string s = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/";
             pixbuf = new Pixbuf(s + "Images/banner.jpg");
             label.Text = "BioGTK " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString() + " by Erik Repo, Github.com/BiologyTools/BioGTK.";
             image.Drawn += Image_Drawn;
-            this.DeleteEvent += About_DeleteEvent;
             App.ApplyStyles(this);
-        }
-
-        /// The function "About_DeleteEvent" sets the "RetVal" property of the "args" parameter to true
-        /// and hides the current form.
-        /// 
-        /// @param o The "o" parameter is of type object and represents the object that raised the
-        /// event. In this case, it is not being used in the method.
-        /// @param DeleteEventArgs DeleteEventArgs is an event argument class that is used to pass
-        /// information about a delete event. It contains properties and methods that provide access to
-        /// the event data.
-        private void About_DeleteEvent(object o, DeleteEventArgs args)
-        {
-            args.RetVal = true;
-            Hide();
         }
 
         /// The function resizes an image and draws it onto a Cairo context.

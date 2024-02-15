@@ -73,7 +73,6 @@ namespace BioGTK
             mergeZBut.Clicked += MergeZBut_Clicked;
             mergeTBut.Clicked += MergeTBut_Clicked;
             mergeBut.Clicked += MergeBut_Clicked;
-            this.DeleteEvent += StackTools_DeleteEvent;
             this.FocusInEvent += StackTools_FocusInEvent;
             // Set the text column to display
             var renderer = new CellRendererText();
@@ -89,12 +88,6 @@ namespace BioGTK
         private void StackTools_FocusInEvent(object o, FocusInEventArgs args)
         {
             UpdateStacks();
-        }
-
-        private void StackTools_DeleteEvent(object o, DeleteEventArgs args)
-        {
-            args.RetVal = true;
-            Hide();
         }
         #endregion
         /// If the user selects the same image for both A and B, then display a message box and reset

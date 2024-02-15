@@ -90,20 +90,7 @@ namespace BioGTK
             this.Title = title;
             this.statusLabel.Text = status;
             this.progLabel.Text = state;
-            this.DeleteEvent += Progress_DeleteEvent;
             App.ApplyStyles(this);
-        }
-
-        /// The function Progress_DeleteEvent is called when the user clicks the close button on the
-        /// progress window. The function sets the return value of the event to true, which tells the
-        /// program to continue running. The function then hides the progress window
-        /// 
-        /// @param o The object that the event is being fired from.
-        /// @param DeleteEventArgs The event arguments.
-        private void Progress_DeleteEvent(object o, DeleteEventArgs args)
-        {
-            args.RetVal = true;
-            Hide();
         }
 
         #endregion

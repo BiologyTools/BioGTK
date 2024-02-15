@@ -61,13 +61,16 @@ namespace BioGTK
             App.Initialize(true);
             SetupHandlers();
             Console.WriteLine("Parsing arguments.");
-            if(args.Length > 0)
+            if (args != null)
             {
-                TabsView.Create();
-            }
-            foreach (string item in args)
-            {
-                BioImage.OpenAsync(item, false, true, true,0);
+                if (args.Length > 0)
+                {
+                    App.tabsView = TabsView.Create();
+                }
+                foreach (string item in args)
+                {
+                    BioImage.OpenAsync(item, false, true, true, 0);
+                }
             }
             Console.WriteLine("Initializing nodes.");    
             InitItems();

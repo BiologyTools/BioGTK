@@ -797,17 +797,7 @@ namespace BioGTK
         {
             this.ButtonPressEvent += Tools_ButtonPressEvent;
             ti = TextInput.Create();
-            view.DeleteEvent += View_DeleteEvent;
             view.Drawn += View_Drawn;
-        }
-
-        /// The function View_DeleteEvent is called when the user clicks the close button on the window
-        /// 
-        /// @param o The object that emitted the signal.
-        /// @param DeleteEventArgs The event arguments.
-        private void View_DeleteEvent(object o, DeleteEventArgs args)
-        {
-            Destroy();
         }
 
         static int gridW = 2;

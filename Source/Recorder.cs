@@ -62,10 +62,8 @@ namespace BioGTK
         /// It sets up the event handlers for the delete event and the clear button.
         protected void SetupHandlers()
         {
-            DeleteEvent += OnLocalDeleteEvent;
             clearBut.Clicked += ClearBut_Clicked;
             this.FocusInEvent += Recorder_FocusActivated;
-            this.DeleteEvent += Recorder_DeleteEvent;
         }
 
         /// The function is called when the user clicks the close button on the recorder window. It
@@ -96,16 +94,6 @@ namespace BioGTK
         {
             textBox.Buffer.Text = "";
             log = "";
-        }
-
-        /// When the user clicks the X button on the window, the application will quit.
-        /// 
-        /// @param sender The object that raised the event.
-        /// @param DeleteEventArgs This is the event arguments that are passed to the event handler.
-        protected void OnLocalDeleteEvent(object sender, DeleteEventArgs a)
-        {
-            a.RetVal = true;
-            Hide();
         }
 
         #endregion

@@ -76,9 +76,23 @@ namespace BioGTK
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                Console.WriteLine(e.Message.ToString());
             }
+            if(widget is Window)
+            {
+                var window = (Window)widget;
+                window.DeleteEvent += Window_DeleteEvent;
+            }
+        }
+
+        private static void Window_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            Window w = (Window)o;
+            w.Hide();
+            w.Close();
+            w.Destroy();
         }
 
         /// The function FindItem takes a Menu object and a label as input, and returns the MenuItem

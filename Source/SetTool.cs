@@ -41,20 +41,8 @@ namespace BioGTK
             builder.Autoconnect(this);
             tree.RowActivated += TreeView_RowActivated;
             this.FocusActivated += SetTool_FocusActivated;
-            this.DeleteEvent += SetTool_DeleteEvent;
             InitItems();
             App.ApplyStyles(this);
-        }
-
-        /// The function is called when the user clicks the close button on the window. It sets the
-        /// return value of the event to true, which tells the window to close
-        /// 
-        /// @param o The object that triggered the event.
-        /// @param DeleteEventArgs The event arguments.
-        private void SetTool_DeleteEvent(object o, DeleteEventArgs args)
-        {
-            args.RetVal = true;
-            Hide();
         }
 
         /// When the user clicks on the "Focus" button, the function "SetTool_FocusActivated" is called

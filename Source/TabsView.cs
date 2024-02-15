@@ -310,10 +310,10 @@ namespace BioGTK
             savePyramidalMenu.ButtonPressEvent += SavePyramidalMenu_ButtonPressEvent;
             imagesToStack.ButtonPressEvent += imagesToStackClick;
 
-            rgbMenu.ButtonPressEvent += rgbMenuClick;
-            filteredMenu.ButtonPressEvent += filteredMenuClick;
-            rawMenu.ButtonPressEvent += rawMenuClick;
-            emissionMenu.ButtonPressEvent += emissionMenuClick;
+            rgbMenu.ButtonPressEvent += RgbMenu_ButtonPressEvent;
+            filteredMenu.ButtonPressEvent += FilteredMenu_ButtonPressEvent;
+            rawMenu.ButtonPressEvent += RawMenu_ButtonPressEvent;
+            emissionMenu.ButtonPressEvent += EmissionMenu_ButtonPressEvent;
 
             toolsMenu.ButtonPressEvent += toolsMenuClick;
             setToolMenu.ButtonPressEvent += setToolMenuClick;
@@ -360,7 +360,7 @@ namespace BioGTK
             tabsView.SwitchPage += TabsView_SwitchPage;
             tabsView.ButtonPressEvent += TabsView_ButtonPressEvent;
             this.WindowStateEvent += TabsView_WindowStateEvent;
-
+            
             searchMenu.ButtonPressEvent += SearchMenu_ButtonPressEvent;
             updateMenu.ButtonPressEvent += UpdateMenu_ButtonPressEvent;
         }
@@ -492,6 +492,7 @@ namespace BioGTK
         /// https://developer.gnome.org/gtk3/stable/GtkButton.html#GtkButton-clicked
         private void ScriptRecorderMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
+            App.recorder = Recorder.Create();
             App.recorder.Show();
             App.recorder.Present();
         }
@@ -605,6 +606,7 @@ namespace BioGTK
             filteredMenu.Active = false;
             rawMenu.Active = false;
             rgbMenu.Active = false;
+            App.viewer.Mode = ImageView.ViewMode.Emission;
         }
         /// If the rawMenu is active, then set it to inactive. Otherwise, set it to active
         /// 
@@ -620,6 +622,7 @@ namespace BioGTK
             filteredMenu.Active = false;
             rgbMenu.Active = false;
             emissionMenu.Active = false;
+            App.viewer.Mode = ImageView.ViewMode.Raw;
         }
         /// If the filtered menu is active, then deactivate it. Otherwise, activate it. Deactivate all
         /// other menus
@@ -636,6 +639,7 @@ namespace BioGTK
             rgbMenu.Active = false;
             rawMenu.Active = false;
             emissionMenu.Active = false;
+            App.viewer.Mode = ImageView.ViewMode.Filtered;
         }
         /// If the rgbMenu is active, then set it to inactive. Otherwise, set it to active
         /// 
@@ -651,6 +655,7 @@ namespace BioGTK
             filteredMenu.Active = false;
             rawMenu.Active = false;
             emissionMenu.Active = false;
+            App.viewer.Mode = ImageView.ViewMode.RGBImage;
         }
 
         /// It adds a new tab to the tab control
@@ -891,38 +896,6 @@ namespace BioGTK
             BioImage b = BioImage.ImagesToStack(filechooser.Filenames, true);
             AddTab(b);
         }
-        /// When the user clicks on the RGB menu item, the viewer's mode is set to RGB
-        /// 
-        /// @param sender The object that raised the event.
-        /// @param EventArgs The event arguments.
-        protected void rgbMenuClick(object sender, EventArgs a)
-        {
-            App.viewer.Mode = ImageView.ViewMode.RGBImage;
-        }
-        /// When the user clicks on the "Filtered" menu item, the viewer's mode is set to "Filtered"
-        /// 
-        /// @param sender The object that raised the event.
-        /// @param EventArgs The event arguments.
-        protected void filteredMenuClick(object sender, EventArgs a)
-        {
-            App.viewer.Mode = ImageView.ViewMode.Filtered;
-        }
-        /// When the user clicks on the "Raw" menu item, the viewer's mode is set to "Raw"
-        /// 
-        /// @param sender The object that triggered the event.
-        /// @param EventArgs This is the event arguments that are passed to the event handler.
-        protected void rawMenuClick(object sender, EventArgs a)
-        {
-            App.viewer.Mode = ImageView.ViewMode.Raw;
-        }
-        /// When the user clicks on the emission menu item, the viewer's mode is set to emission
-        /// 
-        /// @param sender The object that raised the event.
-        /// @param EventArgs The event arguments.
-        protected void emissionMenuClick(object sender, EventArgs a)
-        {
-            App.viewer.Mode = ImageView.ViewMode.Emission;
-        }
 
         /// If the tools window is not open, open it
         /// 
@@ -930,7 +903,6 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         protected void toolsMenuClick(object sender, EventArgs a)
         {
-            if(!App.tools.Visible)
             App.tools = Tools.Create();
             App.tools.Show();
             App.tools.Present();
@@ -941,6 +913,7 @@ namespace BioGTK
         /// @param EventArgs This is the event arguments that are passed to the event handler.
         protected void setToolMenuClick(object sender, EventArgs a)
         {
+            App.setTool = SetTool.Create();
             App.setTool.Show();
             App.setTool.Present();
         }
@@ -951,6 +924,7 @@ namespace BioGTK
         /// @param EventArgs This is the class that contains the event data.
         protected void roiManagerMenuClick(object sender, EventArgs a)
         {
+            App.roiManager = ROIManager.Create();   
             App.roiManager.Show();
             App.roiManager.Present();
         }
@@ -1044,8 +1018,7 @@ namespace BioGTK
         {
             if (App.viewer == null)
                 return;
-            if (App.channelsTool == null)
-                App.channelsTool = ChannelsTool.Create();
+            App.channelsTool = ChannelsTool.Create();
             App.channelsTool.Show();
             App.channelsTool.Present();
         }
@@ -1069,6 +1042,7 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         protected void stackToolMenuClick(object sender, EventArgs a)
         {
+            App.stack = StackTools.Create();
             App.stack.Show();
             App.stack.Present();
         }
@@ -1120,6 +1094,7 @@ namespace BioGTK
         /// @param EventArgs The EventArgs class is the base class for classes that contain event data.
         protected void filtersMenuClick(object sender, EventArgs a)
         {
+            App.filters = FiltersView.Create();
             App.filters.Show();
             App.filters.Present();
         }
@@ -1130,6 +1105,7 @@ namespace BioGTK
         /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         protected void functionsToolMenuClick(object sender, EventArgs a)
         {
+            App.funcs = Functions.Create();
             App.funcs.Show();
             App.funcs.Present();
         }
@@ -1139,6 +1115,7 @@ namespace BioGTK
         /// @param EventArgs This is the event arguments that are passed to the event handler.
         protected void consoleMenuClick(object sender, EventArgs a)
         {
+            App.console = BioConsole.Create();
             App.console.Show();
             App.console.Present();
         }
@@ -1148,6 +1125,7 @@ namespace BioGTK
         /// @param EventArgs This is the event arguments.
         protected void scriptRunnerMenuClick(object sender, EventArgs a)
         {
+            App.scripting = Scripting.Create();
             App.scripting.Show();
             App.scripting.Present();
         }
@@ -1158,6 +1136,7 @@ namespace BioGTK
         /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         protected void AboutClick(object sender, EventArgs a)
         {
+            App.about = About.Create();
             App.about.Show();
             App.about.Present();
         }
