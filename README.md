@@ -53,6 +53,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - Save plugin DLL's into "StartupPath/Plugins"
 - Add plugins from Github repositories by clicking Update and add the url of the repository which you want to add.
 - See [example plugin](https://github.com/BiologyTools/PluginExample) to create your own plugins.
+- Add the BioGTK plugin repository "https://github.com/BiologyTools/BioGTK-Plugins" to your updater list.
 
 ## Mac Installation
 - Install Mac package manager [homebrew.](https://brew.sh/)
