@@ -1,6 +1,5 @@
 ﻿using Bio;
 using Gtk;
-using loci.poi.poifs.property;
 using System;
 using System.Collections.Generic;
 using System.Linq;
