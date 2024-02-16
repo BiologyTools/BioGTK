@@ -6154,7 +6154,7 @@ namespace BioGTK
             {
 
             }
-
+            List<Resolution> rss = new List<Resolution>();
             for (int s = 0; s < b.seriesCount; s++)
             {
                 reader.setSeries(s);
@@ -6168,7 +6168,7 @@ namespace BioGTK
                         PixelFormat px;
                         try
                         {
-                            px = GetPixelFormat(rgbc, b.meta.getPixelsType(s));
+                            px = GetPixelFormat(rgbc, b.meta.getPixelsType(r));
                         }
                         catch (Exception)
                         {
@@ -6177,30 +6177,30 @@ namespace BioGTK
                         res.PixelFormat = px;
                         res.SizeX = reader.getSizeX();
                         res.SizeY = reader.getSizeY();
-                        if (b.meta.getPixelsPhysicalSizeX(s) != null)
+                        if (b.meta.getPixelsPhysicalSizeX(r) != null)
                         {
-                            res.PhysicalSizeX = b.meta.getPixelsPhysicalSizeX(s).value().doubleValue();
+                            res.PhysicalSizeX = b.meta.getPixelsPhysicalSizeX(r).value().doubleValue();
                         }
                         else
                             res.PhysicalSizeX = (96 / 2.54) / 1000;
-                        if (b.meta.getPixelsPhysicalSizeY(s) != null)
+                        if (b.meta.getPixelsPhysicalSizeY(r) != null)
                         {
-                            res.PhysicalSizeY = b.meta.getPixelsPhysicalSizeY(s).value().doubleValue();
+                            res.PhysicalSizeY = b.meta.getPixelsPhysicalSizeY(r).value().doubleValue();
                         }
                         else
                             res.PhysicalSizeY = (96 / 2.54) / 1000;
 
-                        if (b.meta.getStageLabelX(s) != null)
-                            res.StageSizeX = b.meta.getStageLabelX(s).value().doubleValue();
-                        if (b.meta.getStageLabelY(s) != null)
-                            res.StageSizeY = b.meta.getStageLabelY(s).value().doubleValue();
-                        if (b.meta.getStageLabelZ(s) != null)
-                            res.StageSizeZ = b.meta.getStageLabelZ(s).value().doubleValue();
+                        if (b.meta.getStageLabelX(r) != null)
+                            res.StageSizeX = b.meta.getStageLabelX(r).value().doubleValue();
+                        if (b.meta.getStageLabelY(r) != null)
+                            res.StageSizeY = b.meta.getStageLabelY(r).value().doubleValue();
+                        if (b.meta.getStageLabelZ(r) != null)
+                            res.StageSizeZ = b.meta.getStageLabelZ(r).value().doubleValue();
                         else
                             res.StageSizeZ = 1;
-                        if (b.meta.getPixelsPhysicalSizeZ(s) != null)
+                        if (b.meta.getPixelsPhysicalSizeZ(r) != null)
                         {
-                            res.PhysicalSizeZ = b.meta.getPixelsPhysicalSizeZ(s).value().doubleValue();
+                            res.PhysicalSizeZ = b.meta.getPixelsPhysicalSizeZ(r).value().doubleValue();
                         }
                         else
                         {
@@ -6211,19 +6211,49 @@ namespace BioGTK
                     {
                         Console.WriteLine("No Stage Coordinates. PhysicalSize:(" + res.PhysicalSizeX + "," + res.PhysicalSizeY + "," + res.PhysicalSizeZ + ")");
                     }
-                    b.Resolutions.Add(res);
+                    rss.Add(res);
                 }
             }
             reader.setSeries(serie);
 
+
             //We need to determine if this image is pyramidal or not.
             //We do this by seeing if the resolutions are downsampled or not.
-            if(b.Resolutions.Count > 1 && b.Type != ImageType.well)
-            if (b.Resolutions[0].PhysicalSizeX < b.Resolutions[1].PhysicalSizeX)
+            if(rss.Count > 1 && b.Type != ImageType.well)
+            if (rss[0].SizeX > rss[1].SizeX)
             {
                 b.Type = ImageType.pyramidal;
                 tile = true;
+                //We need to determine number of pyramids in this image and which belong to the series we are opening.
+                List<Tuple<int, int>> ims = new List<Tuple<int, int>>();
+                int? sr = null;
+                for (int r = 0; r < rss.Count-1; r++)
+                {
+                    if (rss[r].SizeX > rss[r+1].SizeX)
+                    {
+                        if (sr == null)
+                        {
+                            sr = r;
+                            ims.Add(new Tuple<int, int>(r, 0));
+                        }
+                    }
+                    else
+                    {
+                        ims[ims.Count - 1] = new Tuple<int, int>(ims[ims.Count - 1].Item1, r);
+                        sr = null;
+                    }
+                }
+                for (int r = ims[serie].Item1; r < ims[serie].Item2; r++)
+                {
+                    b.Resolutions.Add(rss[r]);
+                }
+                if(b.Resolutions.Last().PixelFormat == b.Resolutions.First().PixelFormat && rss.Last().PixelFormat != b.Resolutions.Last().PixelFormat)
+                {
+                    b.Resolutions.Add(rss.Last());
+                    b.Resolutions.Add(rss[rss.Count - 2]);
+                }
             }
+            
             
 
             b.Volume = new VolumeD(new Point3D(b.StageSizeX, b.StageSizeY, b.StageSizeZ), new Point3D(b.PhysicalSizeX * SizeX, b.PhysicalSizeY * SizeY, b.PhysicalSizeZ * SizeZ));
@@ -6758,6 +6788,7 @@ namespace BioGTK
                 if (bm != null)
                     bm.Dispose();
                 bm = new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, null, littleEndian, interleaved);
+                
                 return bm;
             }
             catch (Exception e)
@@ -7056,6 +7087,8 @@ namespace BioGTK
         static int serie;
         static void OpenThread()
         {
+            if(omes)
+                OpenOME(openfile,serie,tab,add,false,0,0,0,0);
             OpenFile(openfile, serie, tab, add);
         }
         static string savefile, saveid;

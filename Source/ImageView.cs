@@ -72,11 +72,6 @@ namespace BioGTK
             Images.Add(im);
             selectedIndex = Images.Count - 1;
             selectedImage = im;
-            if (im.isPyramidal)
-            {
-                scrollH.Adjustment.Upper = im.Resolutions[(int)Level].SizeX;
-                scrollV.Adjustment.Upper = im.Resolutions[(int)Level].SizeY;
-            }
             if(im.Resolutions[0].SizeX <= 1920 && im.Resolutions[0].SizeY <= 1080)
             {
                 if (im.isPyramidal)
@@ -89,8 +84,9 @@ namespace BioGTK
                     pictureBox.WidthRequest = im.Resolutions[0].SizeX;
                     pictureBox.HeightRequest = im.Resolutions[0].SizeY;
                 }
-            } 
-            
+            }
+            if (im.Type == BioImage.ImageType.pyramidal)
+                UpdateScrollBars();
             UpdateGUI();
             UpdateImages();
             GoToImage(Images.Count - 1);
@@ -262,7 +258,7 @@ namespace BioGTK
             pxWmicron = SelectedImage.PhysicalSizeX;
             pxHmicron = SelectedImage.PhysicalSizeY;
             AddImage(im);
-            if (im.isPyramidal)
+            if (im.Type == BioImage.ImageType.pyramidal)
             {
                 viewStack.VisibleChild = viewStack.Children[1];
                 InitPreview();
@@ -325,6 +321,7 @@ namespace BioGTK
                             if (bts != null)
                             {
                                 bitmap = new Bitmap((int)Math.Round(OpenSlideBase.destExtent.Width), (int)Math.Round(OpenSlideBase.destExtent.Height), PixelFormat.Format24bppRgb, bts, new ZCT(), "");
+                                bitmap.SwitchRedBlue();
                                 b.Buffers[index] = bitmap;
                             }
                         }
@@ -1913,21 +1910,17 @@ namespace BioGTK
             {
                 if (!AllowNavigation)
                     return;
+                pyramidalOrigin = value;
+                UpdateImage();
+                UpdateView();
                 if (scrollH.Adjustment.Upper > value.X && value.X > -1)
                 {
                     scrollH.Adjustment.Value = value.X;
                 }
-                else
-                    return;
                 if (scrollV.Adjustment.Upper > value.Y && value.Y > -1)
                 {
                     scrollV.Adjustment.Value = value.Y;
                 }
-                else
-                    return;
-                pyramidalOrigin = value;
-                UpdateImage();
-                UpdateView();
             }
         }
         double resolution = 1;
@@ -2058,7 +2051,7 @@ namespace BioGTK
         {
             get
             {
-                if (_openSlideBase == null)
+                if (!openSlide)
                     return (int)resolution;
                 return OpenSlideGTK.TileUtil.GetLevel(_openSlideBase.Schema.Resolutions, Resolution);
                 //return LevelFromResolution(resolution);
@@ -2940,6 +2933,7 @@ namespace BioGTK
             if (_openSlideBase == null)
             {
                 Console.WriteLine("Unable to open with OpenSlide, opening with Bioformats instead.");
+                resolution = 0;
                 openSlide = false;
             }
             else
