@@ -6253,6 +6253,10 @@ namespace BioGTK
                     b.Resolutions.Add(rss[rss.Count - 2]);
                 }
             }
+            else
+            {
+                b.Resolutions.AddRange(rss);
+            }
             
             
 
