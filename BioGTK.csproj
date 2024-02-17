@@ -11,7 +11,7 @@
     <PackageProjectUrl>https://github.com/BiologyTools/BioGTK</PackageProjectUrl>
     <PackageIcon>banner.jpg</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageVersion>4.5.1</PackageVersion>
+    <PackageVersion>4.5.2</PackageVersion>
     <RepositoryUrl>https://github.com/BiologyTools/BioGTK</RepositoryUrl>
     <PackageTags>Biology; GTK; ImageJ; Bio-Formats; Image-Stacks; Microscopy; Whole-Slide-Image; Segment-Anything; SAM; QuPath;</PackageTags>
     <PackageLicenseExpression> GPL-3.0-only</PackageLicenseExpression>
