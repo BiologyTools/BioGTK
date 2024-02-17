@@ -6262,6 +6262,10 @@ namespace BioGTK
                             sr = null;
                         }
                     }
+                    if (ims[serie].Item2 == 0)
+                    {
+                        ims[serie] = new Tuple<int, int>(ims[serie].Item1, rss.Count);
+                    }
                     for (int r = ims[serie].Item1; r < ims[serie].Item2; r++)
                     {
                         b.Resolutions.Add(rss[r]);
@@ -6618,6 +6622,7 @@ namespace BioGTK
             serFiles.AddRange(reader.getSeriesUsedFiles());
 
             b.Buffers = new List<Bitmap>();
+            if(!file.EndsWith("ome.tif"))
             try
             {
                 string st = OpenSlideGTK.OpenSlideImage.DetectVendor(file);
@@ -6758,9 +6763,9 @@ namespace BioGTK
                 return ExtractRegionFromTiledTiff(b, tilex, tiley, tileSizeX, tileSizeY, serie);
             }
             //We check if we can open this with OpenSlide as this is faster than Bioformats with IKVM.
-            if(b.openSlideImage != null)
+            if (b.openSlideImage != null && !b.file.EndsWith("ome.tif"))
             {
-                return new Bitmap(tileSizeX, tileSizeY, AForge.PixelFormat.Format32bppArgb, b.openSlideImage.ReadRegion(serie, tilex, tiley, tileSizeX, tileSizeY),coord,"");
+                return new Bitmap(tileSizeX, tileSizeY, AForge.PixelFormat.Format32bppArgb, b.openSlideImage.ReadRegion(serie, tilex, tiley, tileSizeX, tileSizeY), new ZCT(), "");
             }
 
             string curfile = reader.getCurrentFile();
@@ -6831,7 +6836,7 @@ namespace BioGTK
                 return ExtractRegionFromTiledTiff(b, tilex, tiley, tileSizeX, tileSizeY, serie);
             }
             //We check if we can open this with OpenSlide as this is faster than Bioformats with IKVM.
-            if (b.openSlideImage != null)
+            if (b.openSlideImage != null && !b.file.EndsWith("ome.tif"))
             {
                 return new Bitmap(tileSizeX, tileSizeY, AForge.PixelFormat.Format32bppArgb, b.openSlideImage.ReadRegion(serie, tilex, tiley, tileSizeX, tileSizeY), new ZCT(), "");
             }

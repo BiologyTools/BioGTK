@@ -412,12 +412,13 @@ namespace BioGTK
             }
             else
             {
-                double aspx = (double)Images[0].Resolutions[0].SizeX / (double)Images[0].Resolutions[0].SizeY;
-                double aspy = (double)Images[0].Resolutions[0].SizeY / (double)Images[0].Resolutions[0].SizeX;
+                Resolution res = Images[0].Resolutions.Last();
+                double aspx = (double)res.SizeX / (double)res.SizeY;
+                double aspy = (double)res.SizeY / (double)res.SizeX;
                 overview = new Rectangle(0, 0, (int)(aspx * 120), (int)(aspy * 120));
                 Bitmap bm;
                 ResizeNearestNeighbor re = new ResizeNearestNeighbor(overview.Width, overview.Height);
-                bm = re.Apply(BioImage.GetTile(Images[0], GetCoordinate(), 0, 0, 0, Images[0].Resolutions[0].SizeX, Images[0].Resolutions[0].SizeY).ImageRGB);
+                bm = re.Apply(BioImage.GetTile(Images[0], GetCoordinate(), 0, 0, 0, res.SizeX, res.SizeY).ImageRGB);
                 overviewBitmap = new Pixbuf(bm.Bytes, true, 8, bm.Width, bm.Height, bm.Stride);
             }
             showOverview = true;
@@ -1875,6 +1876,8 @@ namespace BioGTK
             set
             {
                 if (value < 0) return;
+                if (!openSlide && value >= SelectedImage.Resolutions.Count)
+                    return;
                 if(SelectedImage.Type == BioImage.ImageType.well && value > SelectedImage.Resolutions.Count - 1)
                     return;
                 else
