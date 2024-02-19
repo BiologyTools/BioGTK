@@ -27,6 +27,7 @@ using NetVips;
 using System.Threading.Tasks;
 using static BioGTK.ImageView;
 using OpenSlideGTK;
+using Bio;
 
 namespace BioGTK
 {
@@ -2097,14 +2098,23 @@ namespace BioGTK
         public List<Resolution> Resolutions = new List<Resolution>();
         public List<AForge.Bitmap> Buffers = new List<AForge.Bitmap>();
         public List<NetVips.Image> vipPages = new List<NetVips.Image>();
+        int level = 0;
         public int Level
         {
-            get { return level; }
+            get 
+            {
+                if (openslideBase != null)
+                    return OpenSlideGTK.TileUtil.GetLevel(openslideBase.Schema.Resolutions, Resolution);
+                else
+                    if (slideBase != null)
+                        return LevelFromResolution(Resolution);
+                return level;
+            }
             set 
             { 
-                level = value;
                 if(Type == ImageType.well)
                 {
+                    level = value;
                     reader.setId(file);
                     reader.setSeries(value);
                     // read the image data bytes
@@ -2168,9 +2178,19 @@ namespace BioGTK
         }
         private int sizeZ, sizeC, sizeT;
         private Statistics statistics;
-        private int level = 0;
         private double resolution = 1;
-        public double Resolution { get { return resolution; } set { resolution = value; } }
+        public double Resolution 
+        { 
+            get { return resolution; }
+            set 
+            {
+                if (value < 0)
+                    return;
+                resolution = value;
+                if(Type == ImageType.pyramidal)
+                UpdateBuffersPyramidal();
+            } 
+        }
         
         ImageInfo imageInfo = new ImageInfo();
         /// It copies the BioImage b and returns a new BioImage object.
@@ -2278,6 +2298,39 @@ namespace BioGTK
             bi.statistics = b.statistics;
             return bi;
         }
+        /// <summary>
+        /// Get the downsampling factor of a given level.
+        /// </summary>
+        /// <param name="level">The desired level.</param>
+        /// <return>
+        /// The downsampling factor for this level.
+        /// </return> 
+        /// <exception cref="OpenSlideException"/>
+        public double GetLevelDownsample(int level)
+        {
+            int originalWidth = Resolutions[0].SizeX; // Width of the original level
+            int nextLevelWidth = Resolutions[level].SizeX; // Width of the next level (downsampled)
+            return (double)originalWidth / (double)nextLevelWidth;
+        }
+        /// <summary>
+        /// Returns the level of a given resolution.
+        /// </summary>
+        /// <param name="Resolution"></param>
+        /// <returns></returns>
+        public int LevelFromResolution(double Resolution)
+        {
+            double[] ds = new double[Resolutions.Count];
+            for (int i = 0; i < Resolutions.Count; i++)
+            {
+                ds[i] = Resolutions[0].PhysicalSizeX * GetLevelDownsample(i);
+            }
+            for (int i = 0; i < ds.Length; i++)
+            {
+                if (ds[i] > Resolution)
+                    return i - 1;
+            }
+            return 0;
+        }
         public string ID
         {
             get { return id; }
@@ -2322,36 +2375,16 @@ namespace BioGTK
         }
         Size s = new Size(1920, 1080);
         public Size PyramidalSize { get { return s; } set { s = value; } }
-        PointD p = new PointD(0, 0);
+        PointD pyramidalOrigin = new PointD(0, 0);
         public PointD PyramidalOrigin
         {
-            get { return p; }
+            get { return pyramidalOrigin; }
             set
             {
-                for (int i = 0; i < Buffers.Count; i++)
-                {
-                    Buffers[i].Dispose();
-                }
-                Buffers.Clear();
-                for (int i = 0; i < imagesPerSeries; i++)
-                {
-                    if (openSlideImage != null)
-                    {
-                        byte[] bts = openslideBase.GetSlice(new SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, PyramidalSize.Width, PyramidalSize.Height, resolution));
-                        Buffers.Add(new Bitmap((int)Math.Round(OpenSlideBase.destExtent.Width), (int)Math.Round(OpenSlideBase.destExtent.Height), PixelFormat.Format24bppRgb, bts, new ZCT(), ""));
-                        Buffers.Last().SwitchRedBlue();
-                    }
-                    else
-                    {
-                        Buffers.Add(GetTile(this, i, level, (int)p.X, (int)p.Y, PyramidalSize.Width, PyramidalSize.Height));
-                    }
-                }
-                BioImage.AutoThreshold(this, true);
-                if (bitsPerPixel > 8)
-                    StackThreshold(true);
-                else
-                    StackThreshold(false);
-                p = value;
+                if (Resolutions[Level].SizeX < value.X || Resolutions[Level].SizeY < value.Y || value.X < 0 || value.Y < 0)
+                    return;
+                pyramidalOrigin = value;
+                UpdateBuffersPyramidal();
             }
         }
         public int series
@@ -2369,6 +2402,8 @@ namespace BioGTK
         static bool initialized = false;
         OpenSlideBase openslideBase;
         public OpenSlideBase OpenSlideBase { get { return openslideBase; } }
+        SlideBase slideBase;
+        public SlideBase SlideBase { get { return slideBase; } }
         public Channel RChannel
         {
             get
@@ -3466,8 +3501,8 @@ namespace BioGTK
             PointD pp = new PointD();
             if (isPyramidal)
             {
-                pp.X = ((p.X * Resolutions[level].PhysicalSizeX) + Volume.Location.X);
-                pp.Y = ((p.Y * Resolutions[level].PhysicalSizeY) + Volume.Location.Y);
+                pp.X = ((p.X * Resolutions[Level].PhysicalSizeX) + Volume.Location.X);
+                pp.Y = ((p.Y * Resolutions[Level].PhysicalSizeY) + Volume.Location.Y);
                 return pp;
             }
             else
@@ -5281,7 +5316,7 @@ namespace BioGTK
                 BioImage b = files[fi];
                 if (b.isPyramidal)
                 {
-                    b = OpenOME(b.file, b.level, false, false, true, (int)App.viewer.PyramidalOrigin.X, (int)App.viewer.PyramidalOrigin.Y, App.viewer.AllocatedWidth, App.viewer.AllocatedHeight);
+                    b = OpenOME(b.file, b.Level, false, false, true, (int)App.viewer.PyramidalOrigin.X, (int)App.viewer.PyramidalOrigin.Y, App.viewer.AllocatedWidth, App.viewer.AllocatedHeight);
                 }
                 // create OME-XML metadata store
 
@@ -6000,7 +6035,7 @@ namespace BioGTK
         /// @param tileSizeY The tileSizeY parameter is the height of each tile in pixels when tiling
         /// the images. <summary>
         /// The function "OpenOME" opens a bioimage file, with options to specify the series, whether to
-        public static BioImage OpenOME(string file, int serie, bool tab, bool addToImages, bool tile, int tilex, int tiley, int tileSizeX, int tileSizeY)
+        public static BioImage OpenOME(string file, int serie, bool tab, bool addToImages, bool tile, int tilex, int tiley, int tileSizeX, int tileSizeY, bool useOpenSlide = true)
         {
             if (file == null || file == "")
                 throw new InvalidDataException("File is empty or null");
@@ -6037,7 +6072,16 @@ namespace BioGTK
             {
                 reader.close();
                 reader.setMetadataStore(b.meta);
-                reader.setId(f);
+                try
+                {
+                    reader.setId(f);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    return null;
+                }
+                
                 pr.Status = "Reading Metadata";
             }
             
@@ -6622,21 +6666,24 @@ namespace BioGTK
             serFiles.AddRange(reader.getSeriesUsedFiles());
 
             b.Buffers = new List<Bitmap>();
-            if(!file.EndsWith("ome.tif"))
+            if(b.Type == ImageType.pyramidal)
             try
             {
-                string st = OpenSlideGTK.OpenSlideImage.DetectVendor(file);
-                if (st != null)
+                string st = OpenSlideImage.DetectVendor(file);
+                if (st != null && !file.EndsWith("ome.tif") && useOpenSlide)
                 {
-                    b.openSlideImage = OpenSlideGTK.OpenSlideImage.Open(file);
-                    b.openslideBase = (OpenSlideGTK.OpenSlideBase)OpenSlideGTK.SlideSourceBase.Create(file);
-                    b.Type = ImageType.pyramidal;
-                    tile = true;
+                    b.openSlideImage = OpenSlideImage.Open(file);
+                    b.openslideBase = (OpenSlideBase)OpenSlideGTK.SlideSourceBase.Create(file);
+                }
+                else
+                {
+                    b.slideBase = new SlideBase(b);
                 }
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.Message.ToString());
+                b.slideBase = new SlideBase(b);
             }
             
             // read the image data bytes
@@ -6741,7 +6788,7 @@ namespace BioGTK
         }
         public ImageReader imRead;
         public Tiff tifRead;
-        public OpenSlideGTK.OpenSlideImage openSlideImage;
+        public OpenSlideImage openSlideImage;
         static Bitmap bm;
         /// It reads a tile from a file, and returns a bitmap
         /// 
@@ -6797,6 +6844,7 @@ namespace BioGTK
             int p = b.Coords[coord.Z, coord.C, coord.T];
             bool littleEndian = reader.isLittleEndian();
             PixelFormat PixelFormat = b.Resolutions[serie].PixelFormat;
+            bool interleaved = reader.isInterleaved();
             if (tilex < 0)
                 tilex = 0;
             if (tiley < 0)
@@ -6819,7 +6867,6 @@ namespace BioGTK
             try
             {
                 byte[] bytesr = reader.openBytes(b.Coords[coord.Z, coord.C, coord.T], tilex, tiley, sx, sy);
-                bool interleaved = reader.isInterleaved();
                 return new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, null, littleEndian, interleaved);
             }
             catch (Exception e)
@@ -6868,6 +6915,7 @@ namespace BioGTK
             int SizeY = reader.getSizeY();
             bool flat = reader.hasFlattenedResolutions();
             bool littleEndian = reader.isLittleEndian();
+            bool interleaved = reader.isInterleaved();
             PixelFormat PixelFormat = b.Resolutions[serie].PixelFormat;
             if (tilex < 0)
                 tilex = 0;
@@ -6891,7 +6939,6 @@ namespace BioGTK
             try
             {
                 byte[] bytesr = reader.openBytes(index, tilex, tiley, sx, sy);
-                bool interleaved = reader.isInterleaved();
                 return new Bitmap(b.file, sx, sy, PixelFormat, bytesr, new ZCT(), index, null, littleEndian, interleaved);
             }
             catch (Exception e)
@@ -7178,6 +7225,45 @@ namespace BioGTK
         public static void Update(BioImage b)
         {
             b = OpenFile(b.file);
+        }
+        /// <summary>
+        /// Updates the Buffers based on current pyramidal origin and resolution.
+        /// </summary>
+        public void UpdateBuffersPyramidal()
+        {
+            for (int i = 0; i < Buffers.Count; i++)
+            {
+                Buffers[i].Dispose();
+            }
+            Buffers.Clear();
+            for (int i = 0; i < imagesPerSeries; i++)
+            {
+                if (openSlideImage != null)
+                {
+                    byte[] bts = openslideBase.GetSlice(new OpenSlideGTK.SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, PyramidalSize.Width, PyramidalSize.Height, resolution));
+                    Buffers.Add(new Bitmap((int)Math.Round(OpenSlideBase.destExtent.Width), (int)Math.Round(OpenSlideBase.destExtent.Height), PixelFormat.Format24bppRgb, bts, new ZCT(), ""));
+                }
+                else
+                {
+                    start:
+                    byte[] bts = slideBase.GetSlice(new Bio.SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, PyramidalSize.Width, PyramidalSize.Height, resolution));
+                    if(bts == null)
+                    {
+                        if(PyramidalOrigin.X == 0 && PyramidalOrigin.Y == 0)
+                        {
+                            Resolution = 1;
+                        }
+                        pyramidalOrigin = new PointD(0, 0);
+                        goto start;
+                    }
+                    Buffers.Add(new Bitmap((int)Math.Round(SlideBase.destExtent.Width), (int)Math.Round(SlideBase.destExtent.Height), PixelFormat.Format24bppRgb, bts, new ZCT(), ""));
+                }
+            }
+            BioImage.AutoThreshold(this, true);
+            if (bitsPerPixel > 8)
+                StackThreshold(true);
+            else
+                StackThreshold(false);
         }
         /// > Update() is a function that calls the Update() function of the parent class
         public void Update()
