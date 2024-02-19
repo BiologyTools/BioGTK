@@ -22,7 +22,6 @@ using SizeF = AForge.SizeF;
 using Color = AForge.Color;
 using Rectangle = AForge.Rectangle;
 using System.IO;
-using com.sun.tools.javac.util;
 
 namespace BioGTK
 {
@@ -2759,11 +2758,11 @@ namespace BioGTK
                 if (MacroResolution.HasValue)
                 {
                     int lev = MacroResolution.Value - 1;
-                    Resolution = SelectedImage.GetUnitPerPixel(lev);
+                    Resolution = Math.Round(SelectedImage.GetUnitPerPixel(lev),2);
                 }
                 else
                 {
-                    Resolution = SelectedImage.GetUnitPerPixel(SelectedImage.Resolutions.Count-1);
+                    Resolution = Math.Round(SelectedImage.GetUnitPerPixel(SelectedImage.Resolutions.Count-1),2);
                 }
             }
         }

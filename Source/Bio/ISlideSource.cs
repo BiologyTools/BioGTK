@@ -126,9 +126,9 @@ namespace Bio
                 for (int x = 0; x < width; x++)
                 {
                     Rgb24 pixel = image[x, y];
-                    rgbBytes[byteIndex++] = pixel.R;
-                    rgbBytes[byteIndex++] = pixel.G;
                     rgbBytes[byteIndex++] = pixel.B;
+                    rgbBytes[byteIndex++] = pixel.G;
+                    rgbBytes[byteIndex++] = pixel.R;
                 }
             }
 
