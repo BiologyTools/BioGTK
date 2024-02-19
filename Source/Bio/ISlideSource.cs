@@ -62,7 +62,7 @@ namespace Bio
         public static bool UseVips = true;
         public virtual byte[] GetSlice(SliceInfo sliceInfo)
         {
-            var curLevel = OpenSlideGTK.TileUtil.GetLevel(Schema.Resolutions, sliceInfo.Resolution, (OpenSlideGTK.SampleMode)sliceInfo.Parame.SampleMode);
+            var curLevel = ImageView.SelectedImage.Level;
             var curUnitsPerPixel = Schema.Resolutions[curLevel].UnitsPerPixel;
             var tileInfos = Schema.GetTileInfos(sliceInfo.Extent, curLevel);
             List<Tuple<Extent, byte[]>> tiles = new List<Tuple<Extent, byte[]>>();

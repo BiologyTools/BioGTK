@@ -322,6 +322,8 @@ namespace BioGTK
             int bi = 0;
             if (SelectedImage.isPyramidal && (imageBox.AllocatedWidth <= 1 || imageBox.AllocatedHeight <= 1))
                 return;
+            if (SelectedImage.isPyramidal)
+                SelectedImage.UpdateBuffersPyramidal();
             foreach (BioImage b in Images)
             {
                 ZCT c = GetCoordinate();
@@ -351,6 +353,7 @@ namespace BioGTK
                 bi++;
             }
             UpdateView();
+
         }
         /// It updates the image.
         public void UpdateImage()
@@ -2677,6 +2680,33 @@ namespace BioGTK
         {
             if (Images.Count <= i)
                 return;
+            if(SelectedImage.Type == BioImage.ImageType.pyramidal)
+            {
+                if (SelectedImage.OpenSlideBase != null)
+                {
+                    if (MacroResolution.HasValue)
+                    {
+                        int lev = MacroResolution.Value - 2;
+                        Resolution = _openSlideBase.Schema.Resolutions[lev].UnitsPerPixel;
+                    }
+                    else
+                    {
+                        Resolution = _openSlideBase.Schema.Resolutions[0].UnitsPerPixel;
+                    }
+                }
+                else
+                {
+                    if (MacroResolution.HasValue)
+                    {
+                        int lev = MacroResolution.Value - 1;
+                        Resolution = SelectedImage.GetUnitPerPixel(lev);
+                    }
+                    else
+                    {
+                        Resolution = SelectedImage.GetUnitPerPixel(SelectedImage.Resolutions.Count - 1);
+                    }
+                }
+            }
             double dx = Images[i].Volume.Width / 2;
             double dy = Images[i].Volume.Height / 2;
             Origin = new PointD((Images[i].Volume.Location.X)+dx, (Images[i].Volume.Location.Y)+dy);
@@ -2728,12 +2758,12 @@ namespace BioGTK
                 openSlide = false;
                 if (MacroResolution.HasValue)
                 {
-                    int lev = MacroResolution.Value - 2;
-                    Resolution = _slideBase.Schema.Resolutions[lev].UnitsPerPixel;
+                    int lev = MacroResolution.Value - 1;
+                    Resolution = SelectedImage.GetUnitPerPixel(lev);
                 }
                 else
                 {
-                    Resolution = Math.Round(_slideBase.Schema.Resolutions[_slideBase.Schema.Resolutions.Count-1].UnitsPerPixel,1);
+                    Resolution = SelectedImage.GetUnitPerPixel(SelectedImage.Resolutions.Count-1);
                 }
             }
         }

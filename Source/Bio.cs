@@ -2187,8 +2187,6 @@ namespace BioGTK
                 if (value < 0)
                     return;
                 resolution = value;
-                if(Type == ImageType.pyramidal)
-                UpdateBuffersPyramidal();
             } 
         }
         
@@ -2331,6 +2329,15 @@ namespace BioGTK
             }
             return 0;
         }
+        /// <summary>
+        /// Get Unit Per Pixel for pyramidal images.
+        /// </summary>
+        /// <param name="level"></param>
+        /// <returns></returns>
+        public double GetUnitPerPixel(int level)
+        {
+            return Resolutions[0].PhysicalSizeX * GetLevelDownsample(level);
+        }
         public string ID
         {
             get { return id; }
@@ -2384,7 +2391,6 @@ namespace BioGTK
                 if (Resolutions[Level].SizeX < value.X || Resolutions[Level].SizeY < value.Y || value.X < 0 || value.Y < 0)
                     return;
                 pyramidalOrigin = value;
-                UpdateBuffersPyramidal();
             }
         }
         public int series
