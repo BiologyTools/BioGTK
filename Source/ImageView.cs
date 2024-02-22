@@ -272,6 +272,7 @@ namespace BioGTK
         a handle, and a BioImage object as parameters. */
         protected ImageView(Builder builder, IntPtr handle, BioImage im, bool hardwareAcc) : base(handle)
         {
+            acceleration = hardwareAcc;
             _builder = builder;
             selectedImage = im;
             App.viewer = this;
