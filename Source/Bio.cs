@@ -28,6 +28,7 @@ using System.Threading.Tasks;
 using static BioGTK.ImageView;
 using OpenSlideGTK;
 using Bio;
+using SkiaSharp;
 
 namespace BioGTK
 {

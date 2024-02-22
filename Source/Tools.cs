@@ -366,13 +366,12 @@ namespace BioGTK
             else
             if (currentTool.type == Tool.Type.freeform && buts.Event.Button == 1)
             {
-                if (selectedROI.GetPointCount() == 0)
+                if (selectedROI == null)
                 {
                     selectedROI = new ROI();
                     selectedROI.type = ROI.Type.Freeform;
                     selectedROI.AddPoint(new PointD(e.X, e.Y));
                     selectedROI.coord = App.viewer.GetCoordinate();
-                    selectedROI.closed = true;
                     if (ImageView.SelectedImage.isPyramidal)
                         selectedROI.serie = App.viewer.Level;
                     else

@@ -24,6 +24,7 @@ namespace BioGTK
             void KeyDownEvent(object o, KeyPressEventArgs e);
             void ScrollEvent(object o, ScrollEventArgs args);
             void Drawn(object o, DrawnArgs e);
+            void Render(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e);
             void MouseMove(object o, PointD e, MotionNotifyEventArgs buts);
             void MouseUp(object o, PointD e, ButtonReleaseEventArgs buts);
             void MouseDown(object o, PointD e, ButtonPressEventArgs buts);
@@ -94,6 +95,13 @@ namespace BioGTK
             foreach (IPlugin p in Plugin.Plugins.Values)
             {
                 p.Drawn(o, e);
+            }
+        }
+        public static void Render(object o, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e)
+        {
+            foreach (IPlugin p in Plugin.Plugins.Values)
+            {
+                p.Render(o, e);
             }
         }
         public static void MouseMove(object o, PointD e, MotionNotifyEventArgs buts)
