@@ -277,12 +277,21 @@ namespace BioGTK
             selectedImage = im;
             App.viewer = this;
             builder.Autoconnect(this);
+            if (hardwareAcc)
+            {
+                viewStack.Add(sk);
+                viewStack.ShowAll();
+                sk.Show();
+                viewStack.VisibleChild = viewStack.Children[2];
+                acceleration = true;
+            }
             roi.Submenu = roiMenu;
             roi.ShowAll();
             pxWmicron = SelectedImage.PhysicalSizeX;
             pxHmicron = SelectedImage.PhysicalSizeY;
             if (im.Type == BioImage.ImageType.pyramidal)
             {
+                acceleration = false;
                 Initialize();
                 viewStack.VisibleChild = viewStack.Children[0];
                 InitPreview();
@@ -312,14 +321,7 @@ namespace BioGTK
             {
                 Resolution = 0;
             }
-            if (hardwareAcc)
-            {
-                viewStack.Add(sk);
-                viewStack.ShowAll();
-                sk.Show();
-                viewStack.VisibleChild = viewStack.Children[2];
-                acceleration = true;
-            }
+            
         }
         private static SkiaSharp.SKRect ToRectangle(float x1, float y1, float x2, float y2)
         {
