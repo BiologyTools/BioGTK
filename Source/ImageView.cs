@@ -24,6 +24,7 @@ using Rectangle = AForge.Rectangle;
 using System.IO;
 using SkiaSharp;
 using SkiaSharp.Views.Gtk;
+using System.Runtime.InteropServices;
 namespace BioGTK
 {
     public class ImageView : Gtk.Window
@@ -298,7 +299,12 @@ namespace BioGTK
                 //We try to initialize OpenSlide.
             }
             else
-                viewStack.VisibleChild = viewStack.Children[1];
+            {
+                if(HardwareAcceleration)
+                    viewStack.VisibleChild = viewStack.Children[2];
+                else
+                    viewStack.VisibleChild = viewStack.Children[1];
+            }
             AddImage(im);
             
             SetupHandlers();
@@ -545,7 +551,21 @@ namespace BioGTK
         }
 
         #endregion
+        public SKImage BitmapToSKImage(Bitmap bitmap)
+        {
+            // Step 1: Create an SKBitmap from the System.Drawing.Bitmap
+            var bitmapData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
 
+            var info = new SKImageInfo(bitmap.Width, bitmap.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+            var skBitmap = new SKBitmap(info);
+            skBitmap.InstallPixels(info, bitmapData.Scan0, bitmapData.Stride, delegate { bitmap.UnlockBits(bitmapData); }, null);
+
+            // Step 2: Create an SKImage from the SKBitmap
+            var skImage = SKImage.FromBitmap(skBitmap);
+
+            return skImage;
+        }
         /// It updates the images.
         public void UpdateImages()
         {
@@ -555,7 +575,8 @@ namespace BioGTK
             {
                 for (int i = 0; i < SkImages.Count; i++)
                 {
-                    SkImages[0].Dispose();
+                    SkImages[i].Dispose();
+                    SkImages[i] = null;
                 }
                 SkImages.Clear();
             }
@@ -563,6 +584,7 @@ namespace BioGTK
             {
                 for (int i = 0; i < Bitmaps.Count; i++)
                 {
+                    Bitmaps[i].Dispose();
                     Bitmaps[i] = null;
                 }
                 Bitmaps.Clear();
@@ -601,11 +623,7 @@ namespace BioGTK
                     return;
                 if (HardwareAcceleration)
                 {
-                    AForge.Bitmap bm = bitmap.ImageRGB;
-                    Pixbuf pixbuf = new Pixbuf(bm.Bytes, true, 8, bm.Width, bm.Height, bm.Stride);
-                    SkImages.Add(pixbuf.ToSKImage());
-                    pixbuf.Dispose();
-                    bm.Dispose();
+                    SkImages.Add(BitmapToSKImage(bitmap.ImageRGB));
                 }
                 else
                 {
@@ -613,10 +631,10 @@ namespace BioGTK
                     Pixbuf pixbuf = new Pixbuf(bm.Bytes, true, 8, bm.Width, bm.Height, bm.Stride);
                     Bitmaps.Add(pixbuf);
                 }
+                bitmap.Dispose();
+                bitmap = null;
                 bi++;
             }
-            UpdateView();
-
         }
         /// It updates the image.
         public void UpdateImage()
@@ -2050,7 +2068,6 @@ namespace BioGTK
                 }
             }
         }
-
         public PointD PyramidalOriginTransformed
         {
             get { return new PointD(PyramidalOrigin.X * Resolution, PyramidalOrigin.Y * Resolution); }
