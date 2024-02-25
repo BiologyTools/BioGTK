@@ -179,6 +179,7 @@ using AForge;
 using BioGTK;
 using Gdk;
 using Gtk;
+using SkiaSharp.Views.Desktop;
 namespace PluginExample
 {
     public class PluginExample : BioGTK.Plugin.IPlugin
@@ -198,9 +199,9 @@ namespace PluginExample
         public void ScrollEvent(object o, ScrollEventArgs args)
         {
         }
-        public void Drawn(object o, DrawnArgs e)
-        {
-        }
+        public void Render(object sender, SKPaintSurfaceEventArgs e)
+		{
+		}
         public void MouseMove(object o, PointD e, MotionNotifyEventArgs buts)
         {
         }
