@@ -2165,8 +2165,11 @@ namespace BioGTK
                     if (!OpenSlide)
                     {
                         Resolution rs = SelectedImage.Resolutions[(int)Level];
+                        double r = rs.PhysicalSizeX / Resolution;
                         double dx = ((e.Event.X) / overview.Width) * rs.SizeX;
                         double dy = ((e.Event.Y) / overview.Height) * rs.SizeY;
+                        double w = (sk.AllocatedWidth / 2);
+                        double h = (sk.AllocatedHeight / 2);
                         PyramidalOrigin = new PointD(dx, dy);
                     }
                     else
