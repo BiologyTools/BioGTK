@@ -442,7 +442,6 @@
     </PackageReference>
     <PackageReference Include="OpenSlideGTK" Version="1.5.0" />
     <PackageReference Include="ScottPlot" Version="5.0.21" />
-    <PackageReference Include="Silk.NET.OpenGL" Version="2.20.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.2" />
     <PackageReference Include="SkiaSharp" Version="2.88.7" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.7" />
