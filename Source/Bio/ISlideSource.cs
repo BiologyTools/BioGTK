@@ -8,29 +8,71 @@ using System.Threading.Tasks;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using BioGTK;
-using com.sun.tools.javac.code;
-using com.sun.istack.@internal.localization;
-using ucar.nc2.util.cache;
-
 namespace Bio
 {
+    public class LruCache<TKey, TValue>
+    {
+        private readonly int capacity;
+        private Dictionary<TKey, LinkedListNode<(TKey key, TValue value)>> cacheMap = new Dictionary<TKey, LinkedListNode<(TKey key, TValue value)>>();
+        private LinkedList<(TKey key, TValue value)> lruList = new LinkedList<(TKey key, TValue value)>();
+
+        public LruCache(int capacity)
+        {
+            this.capacity = capacity;
+        }
+
+        public TValue Get(TKey key)
+        {
+            if (cacheMap.TryGetValue(key, out var node))
+            {
+                lruList.Remove(node);
+                lruList.AddLast(node);
+                return node.Value.value;
+            }
+
+            return default(TValue);
+        }
+
+        public void Add(TKey key, TValue value)
+        {
+            if (cacheMap.Count >= capacity)
+            {
+                var oldest = lruList.First;
+                if (oldest != null)
+                {
+                    lruList.RemoveFirst();
+                    cacheMap.Remove(oldest.Value.key);
+                }
+            }
+
+            if (cacheMap.ContainsKey(key))
+            {
+                lruList.Remove(cacheMap[key]);
+            }
+
+            var newNode = new LinkedListNode<(TKey key, TValue value)>((key, value));
+            lruList.AddLast(newNode);
+            cacheMap[key] = newNode;
+        }
+    }
     public class TileCache
     {
-        private Dictionary<TileIndex, byte[]> cache;
+        private LruCache<TileIndex, byte[]> cache;
         private int capacity;
         ISlideSource source = null;
         public TileCache(ISlideSource source, int capacity = 10000)
         {
             this.source = source;
             this.capacity = capacity;
-            this.cache = new Dictionary<TileIndex, byte[]>();
+            this.cache = new LruCache<TileIndex, byte[]>(capacity);
         }
 
         public async Task<byte[]> GetTile(TileInfo info)
         {
-            if (cache.ContainsKey(info.Index))
+            byte[] data = cache.Get(info.Index);
+            if (data != null)
             {
-                return cache[info.Index];
+                return data;
             }
             byte[] tile = await LoadTile(info);
             AddTile(info.Index, tile);
@@ -39,15 +81,7 @@ namespace Bio
 
         private void AddTile(TileIndex tileId, byte[] tile)
         {
-            if (cache.Count >= capacity)
-            {
-                // Simple eviction policy: remove the first added tile
-                // For more complex scenarios, consider implementing LRU or another policy
-                TileIndex keyToRemove = new List<TileIndex>(cache.Keys)[0];
-                cache.Remove(keyToRemove);
-            }
-
-            cache[tileId] = tile;
+            cache.Add(tileId, tile);    
         }
 
         private async Task<byte[]> LoadTile(TileInfo tileId)
@@ -60,12 +94,6 @@ namespace Bio
             {
                 return null;
             }          
-        }
-
-        public void ClearCache()
-        {
-            cache.Clear();
-            Console.WriteLine("Cache cleared");
         }
     }
 
@@ -120,7 +148,7 @@ namespace Bio
         {
             if (cache == null)
                 cache = new TileCache(this);
-            var curLevel = ImageView.SelectedImage.Level;
+            var curLevel = Image.BioImage.LevelFromResolution(sliceInfo.Resolution);
             var curUnitsPerPixel = Schema.Resolutions[curLevel].UnitsPerPixel;
             var tileInfos = Schema.GetTileInfos(sliceInfo.Extent, curLevel);
             List<Tuple<Extent, byte[]>> tiles = new List<Tuple<Extent, byte[]>>();
@@ -229,11 +257,11 @@ namespace Bio
         {
             if (tileInfo == null)
                 return null;
-            var r = Schema.Resolutions[tileInfo.Index.Level].UnitsPerPixel;
+            var r = Schema.Resolutions[0].UnitsPerPixel;
             var tileWidth = Schema.Resolutions[tileInfo.Index.Level].TileWidth;
             var tileHeight = Schema.Resolutions[tileInfo.Index.Level].TileHeight;
-            var curLevelOffsetXPixel = tileInfo.Extent.MinX / MinUnitsPerPixel;
-            var curLevelOffsetYPixel = -tileInfo.Extent.MaxY / MinUnitsPerPixel;
+            var curLevelOffsetXPixel = tileInfo.Extent.MinX / Schema.Resolutions[tileInfo.Index.Level].UnitsPerPixel;
+            var curLevelOffsetYPixel = -tileInfo.Extent.MaxY / Schema.Resolutions[tileInfo.Index.Level].UnitsPerPixel;
             var curTileWidth = (int)(tileInfo.Extent.MaxX > Schema.Extent.Width ? tileWidth - (tileInfo.Extent.MaxX - Schema.Extent.Width) / r : tileWidth);
             var curTileHeight = (int)(-tileInfo.Extent.MinY > Schema.Extent.Height ? tileHeight - (-tileInfo.Extent.MinY - Schema.Extent.Height) / r : tileHeight);
             var bgraData = await Image.ReadRegionAsync(tileInfo.Index.Level, (long)curLevelOffsetXPixel, (long)curLevelOffsetYPixel, curTileWidth, curTileHeight);
@@ -324,7 +352,7 @@ namespace Bio
         /// <param name="unitsPerPixel">um/pixel</param>
         public SliceInfo(double xPixel, double yPixel, double widthPixel, double heightPixel, double unitsPerPixel)
         {
-            Extent = new Extent(xPixel, yPixel, xPixel + widthPixel, yPixel + heightPixel).PixelToWorldInvertedY(unitsPerPixel);
+            Extent = new Extent(xPixel, yPixel, widthPixel, heightPixel).PixelToWorldInvertedY(unitsPerPixel);
             Resolution = unitsPerPixel;
         }
 

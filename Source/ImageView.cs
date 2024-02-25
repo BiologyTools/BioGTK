@@ -2585,11 +2585,11 @@ namespace BioGTK
                     if (MacroResolution.HasValue)
                     {
                         int lev = MacroResolution.Value - 1;
-                        Resolution = SelectedImage.GetLevelDownsample(lev) * 0.98;
+                        Resolution = SelectedImage.GetLevelDownsamples()[lev];
                     }
                     else
                     {
-                        Resolution = SelectedImage.GetLevelDownsample(SelectedImage.Resolutions.Count - 1) * 0.98;
+                        Resolution = SelectedImage.GetLevelDownsamples()[SelectedImage.Resolutions.Count - 1];
                     }
                 }
                 return;
@@ -2645,12 +2645,13 @@ namespace BioGTK
                 openSlide = false;
                 if (MacroResolution.HasValue)
                 {
-                    int lev = MacroResolution.Value - 1;
-                    Resolution = SelectedImage.GetLevelDownsample(lev)*0.95;
+                    int lev = MacroResolution.Value - 2;
+                    double[] ds = SelectedImage.GetLevelDownsamples();
+                    Resolution = ds[lev];
                 }
                 else
                 {
-                    Resolution = SelectedImage.GetLevelDownsample(SelectedImage.Resolutions.Count-1)*0.95;
+                    Resolution = SelectedImage.GetLevelDownsamples()[SelectedImage.Resolutions.Count-1];
                 }
             }
         }

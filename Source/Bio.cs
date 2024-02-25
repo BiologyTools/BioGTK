@@ -2311,6 +2311,15 @@ namespace BioGTK
             int nextLevelWidth = Resolutions[level].SizeX; // Width of the next level (downsampled)
             return (double)originalWidth / (double)nextLevelWidth;
         }
+        public double[] GetLevelDownsamples()
+        {
+            double[] ds = new double[Resolutions.Count];
+            for (int i = 0; i < Resolutions.Count; i++)
+            {
+                ds[i] = Resolutions[0].PhysicalSizeX * GetLevelDownsample(i);
+            }
+            return ds;
+        }
         /// <summary>
         /// Returns the level of a given resolution.
         /// </summary>
@@ -2318,17 +2327,13 @@ namespace BioGTK
         /// <returns></returns>
         public int LevelFromResolution(double Resolution)
         {
-            double[] ds = new double[Resolutions.Count];
-            for (int i = 0; i < Resolutions.Count; i++)
-            {
-                ds[i] = Resolutions[0].PhysicalSizeX * GetLevelDownsample(i);
-            }
+            double[] ds = GetLevelDownsamples();
             for (int i = 0; i < ds.Length; i++)
             {
                 if (ds[i] > Resolution)
                     return i - 1;
             }
-            return 0;
+            return Resolutions.Count-1;
         }
         /// <summary>
         /// Get Unit Per Pixel for pyramidal images.

@@ -123,7 +123,7 @@ namespace Bio
                 var th = useInternalSize ? h : tileHeight;
                 resolutions.Add(i, new Resolution(i, MinUnitsPerPixel * SlideImage.GetLevelDownsample(i), tw, th));
                 */
-                resolutions.Add(i, new BruTile.Resolution(i, SlideImage.BioImage.GetUnitPerPixel(SlideImage.BioImage.Level), tileWidth, tileHeight));
+                resolutions.Add(i, new BruTile.Resolution(i, SlideImage.BioImage.GetUnitPerPixel(i), tileWidth, tileHeight));
             }
         }
 
