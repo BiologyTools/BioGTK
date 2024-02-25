@@ -3,18 +3,9 @@ using Gdk;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
 using AForge;
 using AForge.Imaging.Filters;
-using AForge.Math;
-using loci.formats;
-using CSScripting;
 using OpenSlideGTK;
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp;
 using Bio;
 using Point = AForge.Point;
 using PointF = AForge.PointF;
@@ -24,7 +15,7 @@ using Rectangle = AForge.Rectangle;
 using System.IO;
 using SkiaSharp;
 using SkiaSharp.Views.Gtk;
-using System.Runtime.InteropServices;
+using javax.imageio;
 namespace BioGTK
 {
     public class ImageView : Gtk.Window
@@ -35,7 +26,7 @@ namespace BioGTK
         private Builder _builder;
         public List<BioImage> Images = new List<BioImage>();
         //public List<SKImage> Bitmaps = new List<SKImage>();
-        public List<Pixbuf> Bitmaps = new List<Pixbuf>();
+        public List<Bitmap> Bitmaps = new List<Bitmap>();
         public List<SKImage> SkImages = new List<SKImage>();
         public void SetCoordinate(int z, int c, int t)
         {
@@ -77,31 +68,16 @@ namespace BioGTK
             selectedImage = im;
             if(im.Resolutions[0].SizeX <= 1920 && im.Resolutions[0].SizeY <= 1080)
             {
-                if (im.isPyramidal)
-                {
-                    imageBox.WidthRequest = im.Resolutions[0].SizeX;
-                    imageBox.HeightRequest = im.Resolutions[0].SizeY;
-                }
-                else
-                {
-                    if (!HardwareAcceleration)
-                    {
-                        pictureBox.WidthRequest = im.Resolutions[0].SizeX;
-                        pictureBox.HeightRequest = im.Resolutions[0].SizeY;
-                    }
-                    else
-                    {
-                        sk.WidthRequest = im.Resolutions[0].SizeX;
-                        sk.HeightRequest = im.Resolutions[0].SizeY;
-                    }
-                }
+                sk.WidthRequest = im.Resolutions[0].SizeX;
+                sk.HeightRequest = im.Resolutions[0].SizeY;
             }
-            
+            if(im.isPyramidal)
+            {
+                Initialize();
+                InitPreview();
+            }
             UpdateGUI();
             UpdateImages();
-            if (im.Type == BioImage.ImageType.pyramidal)
-                UpdateScrollBars();
-            else
             GoToImage(Images.Count - 1);
         }
         double pxWmicron = 5;
@@ -188,10 +164,6 @@ namespace BioGTK
         [Builder.Object]
         private Gtk.Label statusLabel;
         [Builder.Object]
-        private Gtk.DrawingArea pictureBox;
-        [Builder.Object]
-        private Gtk.DrawingArea imageBox;
-        [Builder.Object]
         private Gtk.Stack rgbStack;
         [Builder.Object]
         private Gtk.Grid grid;
@@ -209,10 +181,6 @@ namespace BioGTK
         private Gtk.ComboBox bBox;
         [Builder.Object]
         private Gtk.Stack viewStack;
-        [Builder.Object]
-        private Gtk.Scrollbar scrollV;
-        [Builder.Object]
-        private Gtk.Scrollbar scrollH;
         [Builder.Object]
         public Menu contextMenu;
         [Builder.Object]
@@ -260,53 +228,31 @@ namespace BioGTK
         /// possibly additional metadata related to the image.
         /// 
         /// @return The method is returning an instance of the ImageView class.
-        public static ImageView Create(BioImage bm, bool hardwareAcceleration = true)
+        public static ImageView Create(BioImage bm)
         {
             Console.WriteLine("Creating ImageView for " + bm.file);
             Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ImageView.glade", FileMode.Open));
-            ImageView v = new ImageView(builder, builder.GetObject("imageView").Handle, bm, hardwareAcceleration);
+            ImageView v = new ImageView(builder, builder.GetObject("imageView").Handle, bm);
             v.Title = bm.Filename;
             return v;
         }
 
         /* The above code is a constructor for the ImageView class in C#. It takes in a Builder object,
         a handle, and a BioImage object as parameters. */
-        protected ImageView(Builder builder, IntPtr handle, BioImage im, bool hardwareAcc) : base(handle)
+        protected ImageView(Builder builder, IntPtr handle, BioImage im) : base(handle)
         {
-            acceleration = hardwareAcc;
             _builder = builder;
             selectedImage = im;
             App.viewer = this;
             builder.Autoconnect(this);
-            if (hardwareAcc)
-            {
-                viewStack.Add(sk);
-                viewStack.ShowAll();
-                sk.Show();
-                viewStack.VisibleChild = viewStack.Children[2];
-                acceleration = true;
-            }
+            viewStack.Add(sk);
+            viewStack.ShowAll();
+            sk.Show();
             roi.Submenu = roiMenu;
             roi.ShowAll();
             pxWmicron = SelectedImage.PhysicalSizeX;
             pxHmicron = SelectedImage.PhysicalSizeY;
-            if (im.Type == BioImage.ImageType.pyramidal)
-            {
-                acceleration = false;
-                Initialize();
-                viewStack.VisibleChild = viewStack.Children[0];
-                InitPreview();
-                //We try to initialize OpenSlide.
-            }
-            else
-            {
-                if(HardwareAcceleration)
-                    viewStack.VisibleChild = viewStack.Children[2];
-                else
-                    viewStack.VisibleChild = viewStack.Children[1];
-            }
             AddImage(im);
-            
             SetupHandlers();
             //pictureBox.WidthRequest = im.SizeX;
             //pictureBox.HeightRequest = im.SizeY;
@@ -337,7 +283,7 @@ namespace BioGTK
                 Size = new SKSize(Math.Abs(x2 - x1), Math.Abs(y2 - y1))
             };
         }
-        private void Sk_PaintSurface(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e)
+        private void Render(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e)
         {
             var canvas = e.Surface.Canvas;
             canvas.Clear(SKColors.White);
@@ -361,10 +307,11 @@ namespace BioGTK
                 paint.StrokeWidth = 1;
                 if (SelectedImage.isPyramidal)
                 {
-                    canvas.DrawImage(SkImages[i],new SKPoint(0,0));
+                    canvas.DrawImage(SkImages[i],0,0,paint);
                     if (ShowOverview)
                     {
                         canvas.DrawImage(overviewImage, 0,0, paint);
+                        paint.Style = SKPaintStyle.Stroke;
                         paint.Color = SKColors.Gray;
                         canvas.DrawRect(overview.X, overview.Y, overview.Width, overview.Height,paint);
                         paint.Color = SKColors.Red;
@@ -373,8 +320,8 @@ namespace BioGTK
                             Resolution rs = SelectedImage.Resolutions[Level];
                             double dx = ((double)PyramidalOrigin.X / (rs.SizeX)) * overview.Width;
                             double dy = ((double)PyramidalOrigin.Y / (rs.SizeY)) * overview.Height;
-                            double dw = ((double)imageBox.AllocatedWidth / (rs.SizeX)) * overview.Width;
-                            double dh = ((double)imageBox.AllocatedHeight / (rs.SizeY)) * overview.Height;
+                            double dw = ((double)sk.AllocatedWidth / (rs.SizeX)) * overview.Width;
+                            double dh = ((double)sk.AllocatedHeight / (rs.SizeY)) * overview.Height;
                             canvas.DrawRect((float)dx, (float)dy, (float)dw, (float)dh, paint);
                         }
                         else
@@ -383,8 +330,8 @@ namespace BioGTK
                             Resolution rs = SelectedImage.Resolutions[Level];
                             double dx = ((double)PyramidalOrigin.X / (rs.SizeX * dsx)) * overview.Width;
                             double dy = ((double)PyramidalOrigin.Y / (rs.SizeY * dsx)) * overview.Height;
-                            double dw = ((double)imageBox.AllocatedWidth / (rs.SizeX * dsx)) * overview.Width;
-                            double dh = ((double)imageBox.AllocatedHeight / (rs.SizeY * dsx)) * overview.Height;
+                            double dw = ((double)sk.AllocatedWidth / (rs.SizeX * dsx)) * overview.Width;
+                            double dh = ((double)sk.AllocatedHeight / (rs.SizeY * dsx)) * overview.Height;
                             canvas.DrawRect((float)dx, (float)dy, (float)dw, (float)dh, paint);
                         }
                     }
@@ -571,31 +518,17 @@ namespace BioGTK
         {
             if (SelectedImage == null)
                 return;
-            if (HardwareAcceleration)
+            for (int i = 0; i < SkImages.Count; i++)
             {
-                for (int i = 0; i < SkImages.Count; i++)
-                {
-                    SkImages[i].Dispose();
-                    SkImages[i] = null;
-                }
-                SkImages.Clear();
+                SkImages[i].Dispose();
             }
-            else
-            {
-                for (int i = 0; i < Bitmaps.Count; i++)
-                {
-                    Bitmaps[i].Dispose();
-                    Bitmaps[i] = null;
-                }
-                Bitmaps.Clear();
-            }
+            SkImages.Clear();
+           
             if (zBar.Adjustment.Upper != SelectedImage.SizeZ - 1 || tBar.Adjustment.Upper != SelectedImage.SizeT - 1)
             {
                 UpdateGUI();
             }
             int bi = 0;
-            if (SelectedImage.isPyramidal && (imageBox.AllocatedWidth <= 1 || imageBox.AllocatedHeight <= 1))
-                return;
             if (SelectedImage.isPyramidal)
                 SelectedImage.UpdateBuffersPyramidal();
             foreach (BioImage b in Images)
@@ -621,16 +554,7 @@ namespace BioGTK
                 }
                 if (bitmap == null)
                     return;
-                if (HardwareAcceleration)
-                {
-                    SkImages.Add(BitmapToSKImage(bitmap.ImageRGB));
-                }
-                else
-                {
-                    AForge.Bitmap bm = bitmap.ImageRGB;
-                    Pixbuf pixbuf = new Pixbuf(bm.Bytes, true, 8, bm.Width, bm.Height, bm.Stride);
-                    Bitmaps.Add(pixbuf);
-                }
+                SkImages.Add(BitmapToSKImage(bitmap.ImageRGB));
                 bitmap.Dispose();
                 bitmap = null;
                 bi++;
@@ -641,9 +565,8 @@ namespace BioGTK
         {
             UpdateImages();
         }
-        bool showOverview;
+        bool showOverview = true;
         Rectangle overview;
-        Pixbuf overviewBitmap;
         SKImage overviewImage;
         /* A property that is used to set the value of the showOverview variable. */
         public bool ShowOverview
@@ -674,7 +597,7 @@ namespace BioGTK
                     bm = BioImage.GetTile(SelectedImage, GetCoordinate(), MacroResolution.Value - 3, 0, 0, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX, SelectedImage.Resolutions[MacroResolution.Value - 3].SizeY);
                 ResizeNearestNeighbor re = new ResizeNearestNeighbor(overview.Width, overview.Height);
                 bm = re.Apply(bm.ImageRGB);
-                overviewBitmap = new Pixbuf(bm.Bytes, true, 8, bm.Width, bm.Height, bm.Stride);
+                overviewImage = BitmapToSKImage(bm);
             }
             else
             {
@@ -688,10 +611,8 @@ namespace BioGTK
                 if(bts == null)
                     bts = BioImage.GetTile(SelectedImage, GetCoordinate(), SelectedImage.Resolutions.Count - 2, 0, 0, res.SizeX, res.SizeY);
                 bm = re.Apply(bts.ImageRGB);
-                overviewBitmap = new Pixbuf(bm.Bytes, true, 8, bm.Width, bm.Height, bm.Stride);
+                overviewImage = BitmapToSKImage(bm);
             }
-            if(HardwareAcceleration)
-                overviewImage = overviewBitmap.ToSKImage();
             showOverview = true;
             Console.WriteLine("Preview Initialized.");
         }
@@ -706,54 +627,17 @@ namespace BioGTK
             zBar.ScrollEvent += ZBar_ScrollEvent;
             cBar.ScrollEvent += CBar_ScrollEvent;
             tBar.ScrollEvent += TBar_ScrollEvent;
-
-            if (!SelectedImage.isPyramidal)
-            {
-                if (!HardwareAcceleration)
-                {
-                    pictureBox.MotionNotifyEvent += ImageView_MotionNotifyEvent;
-                    pictureBox.ButtonPressEvent += ImageView_ButtonPressEvent;
-                    pictureBox.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
-                    pictureBox.ScrollEvent += ImageView_ScrollEvent;
-                    pictureBox.Drawn += PictureBox_Drawn;
-                    pictureBox.SizeAllocated += PictureBox_SizeAllocated;
-                    pictureBox.AddEvents((int)
-                    (EventMask.ButtonPressMask
-                    | EventMask.ButtonReleaseMask
-                    | EventMask.KeyPressMask
-                    | EventMask.PointerMotionMask | EventMask.ScrollMask));
-                }
-                else
-                {
-                    sk.MotionNotifyEvent += ImageView_MotionNotifyEvent;
-                    sk.ButtonPressEvent += ImageView_ButtonPressEvent;
-                    sk.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
-                    sk.ScrollEvent += ImageView_ScrollEvent;
-                    sk.PaintSurface += Sk_PaintSurface;
-                    sk.SizeAllocated += PictureBox_SizeAllocated;
-                    sk.AddEvents((int)
-                    (EventMask.ButtonPressMask
-                    | EventMask.ButtonReleaseMask
-                    | EventMask.KeyPressMask
-                    | EventMask.PointerMotionMask | EventMask.ScrollMask));
-                }
-            }
-            else
-            {
-                imageBox.MotionNotifyEvent += ImageView_MotionNotifyEvent;
-                imageBox.ButtonPressEvent += ImageView_ButtonPressEvent;
-                imageBox.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
-                imageBox.ScrollEvent += ImageView_ScrollEvent;
-                imageBox.Drawn += PictureBox_Drawn;
-                imageBox.SizeAllocated += PictureBox_SizeAllocated;
-                imageBox.AddEvents((int)
-                (EventMask.ButtonPressMask
-                | EventMask.ButtonReleaseMask
-                | EventMask.KeyPressMask
-                | EventMask.PointerMotionMask | EventMask.ScrollMask));
-                scrollH.ButtonReleaseEvent += ScrollH_ButtonReleaseEvent;
-                scrollV.ButtonReleaseEvent += ScrollV_ButtonReleaseEvent;
-            }
+            sk.MotionNotifyEvent += ImageView_MotionNotifyEvent;
+            sk.ButtonPressEvent += ImageView_ButtonPressEvent;
+            sk.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
+            sk.ScrollEvent += ImageView_ScrollEvent;
+            sk.PaintSurface += Render;
+            sk.SizeAllocated += PictureBox_SizeAllocated;
+            sk.AddEvents((int)
+            (EventMask.ButtonPressMask
+            | EventMask.ButtonReleaseMask
+            | EventMask.KeyPressMask
+            | EventMask.PointerMotionMask | EventMask.ScrollMask));
             this.KeyPressEvent += ImageView_KeyPressEvent;
             this.DeleteEvent += ImageView_DeleteEvent;
             rBox.Changed += RBox_Changed;
@@ -779,6 +663,7 @@ namespace BioGTK
             zBar.ButtonPressEvent += ZBar_ButtonPressEvent;
             tBar.ButtonPressEvent += TBar_ButtonPressEvent;
             cBar.ButtonPressEvent += CBar_ButtonPressEvent;
+
         }
         int bar = 0;
         System.Threading.Thread threadZ = null;
@@ -1246,28 +1131,6 @@ namespace BioGTK
             UpdateView();
         }
 
-        /// When the user releases the mouse button, the scrollbar's value is used to set the origin of
-        /// the pyramidal image
-        /// 
-        /// @param o The object that the event is being called from.
-        /// @param ButtonReleaseEventArgs
-        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonReleaseEventArgs.html
-        private void ScrollV_ButtonReleaseEvent(object o, ButtonReleaseEventArgs args)
-        {
-            PyramidalOrigin = new PointD((int)scrollH.Value, (int)scrollV.Value);
-        }
-
-        /// When the user releases the scrollbar, the origin of the pyramidal image is updated to the
-        /// scrollbar's current value
-        /// 
-        /// @param o The object that the event is being called from.
-        /// @param ButtonReleaseEventArgs
-        /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonReleaseEventArgs.html
-        private void ScrollH_ButtonReleaseEvent(object o, ButtonReleaseEventArgs args)
-        {
-            PyramidalOrigin = new PointD((int)scrollH.Value, (int)scrollV.Value);
-        }
-
         bool initialized = false;
         /// If the image is pyramidal, update the image. If the image is not initialized, go to the
        /// image. Update the view
@@ -1280,7 +1143,7 @@ namespace BioGTK
             if(SelectedImage==null) return;
             if (SelectedImage.isPyramidal)
             {
-                SelectedImage.PyramidalSize = new AForge.Size(imageBox.AllocatedWidth, imageBox.AllocatedHeight);
+                SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
                 UpdateImage();
             }
             if (!initialized)
@@ -1288,7 +1151,6 @@ namespace BioGTK
                 GoToImage();
                 initialized = true;
             }
-
             UpdateView();
         }
 
@@ -1318,297 +1180,6 @@ namespace BioGTK
         public static Cairo.Color FromColor(Color color)
         {
             return new Cairo.Color((double)color.R / 255, (double)color.G / 255, (double)color.B / 255);
-        }
-
-        /// The function is called when the picturebox is drawn. It checks if the bitmaps are up to
-        /// date, and if not, it updates them. It then draws the image, and then draws the annotations. 
-        /// 
-        /// The annotations are drawn by looping through the list of annotations, and then drawing them
-        /// based on their type. 
-        /// 
-        /// The annotations are drawn in the view space, which is the space of the picturebox. 
-        /// 
-        /// The annotations are drawn in the view space by converting the coordinates of the annotation
-        /// to the view space. 
-        /// 
-        /// The coordinates of the annotation are converted to the view space by multiplying the
-        /// coordinates by the scale of the image. 
-        /// 
-        /// The scale of the image is the ratio of the size of the image to the size of the picturebox. 
-        /// 
-        /// The size of the image is the size of the image in pixels. 
-        /// 
-        /// The size of the picturebox is the size of the picturebox in pixels.
-        /// 
-        /// @param o The object that is being drawn
-        /// @param DrawnArgs This is a class that contains the Cairo context and the allocated width and
-        /// height of the picturebox.
-        private void PictureBox_Drawn(object o, DrawnArgs e)
-        {
-            if ((Bitmaps.Count == 0 || Bitmaps.Count != Images.Count))
-                UpdateImages();
-            if (!SelectedImage.isPyramidal)
-            {
-                e.Cr.Scale(Scale.Width, Scale.Height);
-                e.Cr.Translate(Width / 2, Height / 2);
-            }
-            RectangleD rr = ToViewSpace(PointD.MinX, PointD.MinY, PointD.MaxX - PointD.MinX, PointD.MaxY - PointD.MinY);
-            
-            e.Cr.Rectangle(rr.X, rr.Y,Math.Abs(rr.W),Math.Abs(rr.H));
-            e.Cr.Stroke();
-            int i = 0;
-            
-            //These ensure we always ask for min 2x2px pixels since Bioformats throws an error if we try to get 1x1px.
-            if (!SelectedImage.isPyramidal && (Width <= 1 || Height <= 1))
-                return;
-            if (SelectedImage.isPyramidal && (imageBox.AllocatedWidth <= 1 || imageBox.AllocatedHeight <= 1))
-                return;
-            foreach (BioImage im in Images)
-            {
-                RectangleD r = ToViewSpace(im.Volume.Location.X, im.Volume.Location.Y, im.Volume.Width, im.Volume.Height);
-                e.Cr.LineWidth = 1;
-                if (SelectedImage.isPyramidal)
-                {
-                    Gdk.CairoHelper.SetSourcePixbuf(e.Cr, Bitmaps[i], 0, 0);
-                    e.Cr.Paint();
-                    if(ShowOverview)
-                    {
-                        Gdk.CairoHelper.SetSourcePixbuf(e.Cr, overviewBitmap, 0, 0);
-                        e.Cr.Paint();
-                        e.Cr.SetSourceColor(FromColor(Color.Gray));
-                        e.Cr.Rectangle(overview.X, overview.Y, overview.Width, overview.Height);
-                        e.Cr.Stroke();
-                        e.Cr.SetSourceColor(FromColor(Color.Red));
-                        if (!openSlide)
-                        {
-                            Resolution rs = SelectedImage.Resolutions[Level];
-                            double dx = ((double)PyramidalOrigin.X / (rs.SizeX)) * overview.Width;
-                            double dy = ((double)PyramidalOrigin.Y / (rs.SizeY)) * overview.Height;
-                            double dw = ((double)imageBox.AllocatedWidth / (rs.SizeX)) * overview.Width;
-                            double dh = ((double)imageBox.AllocatedHeight / (rs.SizeY)) * overview.Height;
-                            e.Cr.Rectangle((int)dx, (int)dy, (int)dw, (int)dh);
-                            e.Cr.Stroke();
-                        }
-                        else
-                        {
-                            double dsx = _openSlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
-                            Resolution rs = SelectedImage.Resolutions[Level];
-                            double dx = ((double)PyramidalOrigin.X / (rs.SizeX * dsx)) * overview.Width;
-                            double dy = ((double)PyramidalOrigin.Y / (rs.SizeY * dsx)) * overview.Height;
-                            double dw = ((double)imageBox.AllocatedWidth / (rs.SizeX * dsx)) * overview.Width;
-                            double dh = ((double)imageBox.AllocatedHeight / (rs.SizeY * dsx)) * overview.Height;
-                            e.Cr.Rectangle((int)dx, (int)dy, (int)dw, (int)dh);
-                            e.Cr.Stroke();
-                        }
-                    }
-                }
-                else
-                {
-                    Pixbuf pf = Bitmaps[i].ScaleSimple((int)r.W,(int)r.H, InterpType.Bilinear);
-                    Gdk.CairoHelper.SetSourcePixbuf(e.Cr, pf, (int)r.X, (int)r.Y);
-                    pf.Dispose();
-                    e.Cr.Paint();
-                }
-                
-                foreach (ROI an in im.AnnotationsRGB)
-                {
-                    if (Mode == ViewMode.RGBImage)
-                    {
-                        if (!showRROIs && an.coord.C == 0)
-                            continue;
-                        if (!showGROIs && an.coord.C == 1)
-                            continue;
-                        if (!showBROIs && an.coord.C == 2)
-                            continue;
-                    }
-                    else if (zBar.Value != an.coord.Z || cBar.Value != an.coord.C || tBar.Value != an.coord.T)
-                        continue;
-                    if (an.Selected)
-                    {
-                        e.Cr.SetSourceColor(FromColor(Color.Magenta));
-                    }
-                    else
-                        e.Cr.SetSourceColor(FromColor(an.strokeColor));
-                    e.Cr.LineWidth = an.strokeWidth;
-                    PointF pc = new PointF((float)(an.BoundingBox.X + (an.BoundingBox.W / 2)), (float)(an.BoundingBox.Y + (an.BoundingBox.H / 2)));
-                    float width = (float)ToScreenScaleW(ROI.selectBoxSize);
-                    if (an.type == ROI.Type.Mask || an.roiMask != null)
-                    {
-                        Pixbuf p;
-                        p = an.roiMask.GetColored(an.fillColor);
-                        Pixbuf s = p.ScaleSimple((int)r.W, (int)r.H, InterpType.Bilinear);
-                        Gdk.CairoHelper.SetSourcePixbuf(e.Cr, s, r.X, r.Y);
-                        e.Cr.Paint();
-                        s.Dispose();
-                    }
-                    if (an.type == ROI.Type.Point)
-                    {
-                        RectangleD p1 = ToViewSpace(an.Point.X, an.Point.Y, 1, 1);
-                        RectangleD p2 = ToViewSpace(an.Point.X + 1, an.Point.Y + 1, 1, 1);
-                        e.Cr.MoveTo(p1.X, p1.Y);
-                        e.Cr.LineTo(p2.X, p2.Y);
-                        e.Cr.Stroke();
-                    }
-                    else
-                    if (an.type == ROI.Type.Line)
-                    {
-                        for (int p = 0; p < an.PointsD.Count - 1; p++)
-                        {
-                            RectangleD p1 = ToViewSpace(an.PointsD[p].X, an.PointsD[p].Y, 1, 1);
-                            RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
-                            e.Cr.MoveTo(p1.X, p1.Y);
-                            e.Cr.LineTo(p2.X, p2.Y);
-                            e.Cr.Stroke();
-                        }
-                    }
-                    else
-                    if (an.type == ROI.Type.Rectangle)
-                    {
-                        RectangleD p1 = ToViewSpace(an.PointsD[0].X, an.PointsD[0].Y, 0, 0);
-                        RectangleD p2 = ToViewSpace(an.PointsD[1].X, an.PointsD[1].Y, 0, 0);
-                        RectangleD p4 = ToViewSpace(an.PointsD[2].X, an.PointsD[2].Y, 0, 0);
-                        RectangleD p3 = ToViewSpace(an.PointsD[3].X, an.PointsD[3].Y, 0, 0);
-                        e.Cr.MoveTo(p1.X, p1.Y);
-                        e.Cr.LineTo(p2.X, p2.Y);
-                        e.Cr.Stroke();
-                        e.Cr.MoveTo(p2.X, p2.Y);
-                        e.Cr.LineTo(p3.X, p3.Y);
-                        e.Cr.Stroke();
-                        e.Cr.MoveTo(p3.X, p3.Y);
-                        e.Cr.LineTo(p4.X, p4.Y);
-                        e.Cr.Stroke();
-                        e.Cr.MoveTo(p4.X, p4.Y);
-                        e.Cr.LineTo(p1.X, p1.Y);
-                        e.Cr.Stroke();
-                    }
-                    else
-                    if (an.type == ROI.Type.Ellipse)
-                    {
-                        RectangleD rect = ToViewSpace(an.X + (an.W / 2), an.Y + (an.H / 2), an.W, an.H);
-                        DrawEllipse(e.Cr, rect.X, rect.Y, rect.W, rect.H);
-                    }
-                    else
-                    if ((an.type == ROI.Type.Polygon && an.closed))
-                    {
-                        for (int p = 0; p < an.PointsD.Count - 1; p++)
-                        {
-                            RectangleD p1 = ToViewSpace(an.PointsD[p].X, an.PointsD[p].Y, 1, 1);
-                            RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
-                            e.Cr.MoveTo(p1.X, p1.Y);
-                            e.Cr.LineTo(p2.X, p2.Y);
-                            e.Cr.Stroke();
-                        }
-
-                        RectangleD pp1 = ToViewSpace(an.PointsD[0].X, an.PointsD[0].Y, 1, 1);
-                        RectangleD pp2 = ToViewSpace(an.PointsD[an.PointsD.Count - 1].X, an.PointsD[an.PointsD.Count - 1].Y, 1, 1);
-                        e.Cr.MoveTo(pp1.X, pp1.Y);
-                        e.Cr.LineTo(pp2.X, pp2.Y);
-                        e.Cr.Stroke();
-                    }
-                    else
-                    if ((an.type == ROI.Type.Polygon && !an.closed) || an.type == ROI.Type.Polyline)
-                    {
-                        for (int p = 0; p < an.PointsD.Count - 1; p++)
-                        {
-                            RectangleD p1 = ToViewSpace(an.PointsD[p].X, an.PointsD[p].Y, 1, 1);
-                            RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
-                            e.Cr.MoveTo(p1.X, p1.Y);
-                            e.Cr.LineTo(p2.X, p2.Y);
-                            e.Cr.Stroke();
-                        }
-                    }
-                    else
-                    if (an.type == ROI.Type.Freeform)
-                    {
-                        for (int p = 0; p < an.PointsD.Count - 1; p++)
-                        {
-                            RectangleD p1 = ToViewSpace(an.PointsD[p].X, an.PointsD[p].Y, 1, 1);
-                            RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
-                            e.Cr.MoveTo(p1.X, p1.Y);
-                            e.Cr.LineTo(p2.X, p2.Y);
-                            e.Cr.Stroke();
-                        }
-                        RectangleD pp1 = ToViewSpace(an.PointsD[0].X, an.PointsD[0].Y, 1, 1);
-                        RectangleD pp2 = ToViewSpace(an.PointsD[an.PointsD.Count - 1].X, an.PointsD[an.PointsD.Count - 1].Y, 1, 1);
-                        e.Cr.MoveTo(pp1.X, pp1.Y);
-                        e.Cr.LineTo(pp2.X, pp2.Y);
-                        e.Cr.Stroke();
-                    }
-                    else
-                    if (an.type == ROI.Type.Label)
-                    {
-                        e.Cr.SetFontSize(an.fontSize);
-                        e.Cr.SelectFontFace(an.family, Cairo.FontSlant.Normal, Cairo.FontWeight.Normal);
-                        RectangleD p = ToViewSpace(an.Point.X, an.Point.Y, 1, 1);
-                        e.Cr.MoveTo(p.X, p.Y);
-                        e.Cr.ShowText(an.Text);
-                        e.Cr.Stroke();
-                    }
-                    
-                    if (ROIManager.showText)
-                    {
-                        e.Cr.SetFontSize(an.fontSize);
-                        e.Cr.SelectFontFace(an.family, Cairo.FontSlant.Normal, Cairo.FontWeight.Normal);
-                        RectangleD p = ToViewSpace(an.Rect.X, an.Rect.Y, 1, 1);
-                        e.Cr.MoveTo(p.X, p.Y);
-                        e.Cr.ShowText(an.Text);
-                        e.Cr.Stroke();
-                    }
-                    if (ROIManager.showBounds && an.type != ROI.Type.Rectangle && an.type != ROI.Type.Label)
-                    {
-                        RectangleD rrf = ToViewSpace(an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
-                        e.Cr.SetSourceColor(FromColor(Color.Green));
-                        e.Cr.Rectangle(rrf.X, rrf.Y, rrf.W, rrf.H);
-                        e.Cr.Stroke();
-                    }
-
-                    e.Cr.SetSourceColor(FromColor(Color.Red));
-                    if(!(an.type == ROI.Type.Freeform && !an.Selected) && an.type != ROI.Type.Mask)
-                    foreach (RectangleD re in an.GetSelectBoxes(width))
-                    {
-                        RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
-                        e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                        e.Cr.Stroke();
-                    }
-
-                    //Lets draw the selection Boxes.
-                    List<RectangleD> rects = new List<RectangleD>();
-                    RectangleD[] sels = an.GetSelectBoxes(width);
-                    for (int p = 0; p < an.selectedPoints.Count; p++)
-                    {
-                        if (an.selectedPoints[p] < an.GetPointCount())
-                        {
-                            rects.Add(sels[an.selectedPoints[p]]);
-                        }
-                    }
-                    //Lets draw selected selection boxes.
-                    e.Cr.SetSourceColor(FromColor(Color.Blue));
-                    if (rects.Count > 0)
-                    {
-                        int ind = 0;
-                        foreach (RectangleD re in an.GetSelectBoxes(width))
-                        {
-                            RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
-                            if (an.selectedPoints.Contains(ind))
-                            {
-                                e.Cr.Rectangle(recd.X, recd.Y, recd.W, recd.H);
-                                e.Cr.Stroke();
-                            }
-                            ind++;
-                        }
-                    }
-                    rects.Clear();
-                }
-
-                if (Tools.currentTool.type == Tools.Tool.Type.select && Modifiers == ModifierType.Button1Mask)
-                {
-                    RectangleD rrf = ToViewSpace(Tools.currentTool.Rectangle.X, Tools.currentTool.Rectangle.Y, Math.Abs(Tools.currentTool.Rectangle.W),Math.Abs(Tools.currentTool.Rectangle.H));
-                    e.Cr.SetSourceColor(FromColor(Color.Magenta));
-                    e.Cr.Rectangle(rrf.X, rrf.Y, rrf.W, rrf.H);
-                    e.Cr.Stroke();
-                }
-            }
-            Plugins.Drawn(o, e);
         }
 
         /// If the scroll direction is up, and the value of the scrollbar is less than the upper limit,
@@ -2013,11 +1584,6 @@ namespace BioGTK
                 UpdateView();
             }
         }
-        bool acceleration = false;
-        public bool HardwareAcceleration
-        {
-            get { return acceleration; }
-        }
         /* A property that returns the R channel of the selected image. */
         public Channel RChannel
         {
@@ -2058,14 +1624,7 @@ namespace BioGTK
         {
             get 
             {
-                if (!HardwareAcceleration)
-                {
-                    return new PointD((Origin.X - ((Width / 2) * pxWmicron)), (Origin.Y - ((Height / 2) * pxHmicron)));
-                }
-                else
-                {
-                    return new PointD((Origin.X - ((sk.AllocatedWidth / 2) * pxWmicron)), (Origin.Y - ((sk.AllocatedHeight / 2) * pxHmicron)));
-                }
+                return new PointD((Origin.X - ((sk.AllocatedWidth / 2) * pxWmicron)), (Origin.Y - ((sk.AllocatedHeight / 2) * pxHmicron)));
             }
         }
         public PointD PyramidalOriginTransformed
@@ -2087,27 +1646,6 @@ namespace BioGTK
                 SelectedImage.PyramidalOrigin = value;
                 UpdateImage();
                 UpdateView();
-                if (scrollH.Adjustment.Upper > value.X && value.X > -1)
-                {
-                    scrollH.Adjustment.Value = value.X;
-                }
-                if (scrollV.Adjustment.Upper > value.Y && value.Y > -1)
-                {
-                    scrollV.Adjustment.Value = value.Y;
-                }
-            }
-        }
-        private void UpdateScrollBars()
-        {
-            if (openSlide)
-            {
-                scrollH.Adjustment.Upper = SelectedImage.Resolutions[Level].SizeX;
-                scrollV.Adjustment.Upper = SelectedImage.Resolutions[Level].SizeY;
-            }
-            else
-            {
-                scrollH.Adjustment.Upper = SelectedImage.Resolutions[Level].SizeX;
-                scrollV.Adjustment.Upper = SelectedImage.Resolutions[Level].SizeY;
             }
         }
         /* Setting the Level of the image. */
@@ -2169,9 +1707,6 @@ namespace BioGTK
             }
             set
             {
-                if (value < 0) return;
-                if (!openSlide && value >= SelectedImage.Resolutions.Count)
-                    return;
                 if(SelectedImage.Type == BioImage.ImageType.well && value > SelectedImage.Resolutions.Count - 1)
                     return;
                 else
@@ -2188,7 +1723,6 @@ namespace BioGTK
                 {
                     UpdateImage();
                     UpdateView();
-                    UpdateScrollBars();
                 });
             }
         }
@@ -2242,13 +1776,10 @@ namespace BioGTK
         public void UpdateView()
         {
             if (SelectedImage.isPyramidal)
-                imageBox.QueueDraw();
+                sk.QueueDraw();
             else
             {
-                if (!HardwareAcceleration)
-                    pictureBox.QueueDraw();
-                else
-                    sk.QueueDraw();
+                sk.QueueDraw();
             }
         }
         private string mousePoint = "";
@@ -2643,8 +2174,8 @@ namespace BioGTK
                         double r = rs.PhysicalSizeX / Resolution;
                         double dx = ((e.Event.X) / overview.Width) * rs.SizeX;
                         double dy = ((e.Event.Y) / overview.Height) * rs.SizeY;
-                        double w = (imageBox.AllocatedWidth / 2);
-                        double h = (imageBox.AllocatedHeight / 2);
+                        double w = (sk.AllocatedWidth / 2);
+                        double h = (sk.AllocatedHeight / 2);
                         PyramidalOrigin = new PointD(dx - w, dy - h);
                     }
                 }
@@ -2659,20 +2190,14 @@ namespace BioGTK
         {
             get 
             { 
-                if (!HardwareAcceleration)
-                    return pictureBox.AllocatedWidth;
-                else
-                    return sk.AllocatedWidth;
+                return sk.AllocatedWidth;
             }
         }
         private int Height
         {
             get
             {
-                if (!HardwareAcceleration)
-                    return pictureBox.AllocatedHeight;
-                else
-                    return sk.AllocatedHeight;
+                return sk.AllocatedHeight;
             }
         }
         
@@ -3060,20 +2585,18 @@ namespace BioGTK
                     if (MacroResolution.HasValue)
                     {
                         int lev = MacroResolution.Value - 1;
-                        Resolution = SelectedImage.GetUnitPerPixel(lev);
+                        Resolution = SelectedImage.GetLevelDownsample(lev) * 0.98;
                     }
                     else
                     {
-                        Resolution = SelectedImage.GetUnitPerPixel(SelectedImage.Resolutions.Count - 1);
+                        Resolution = SelectedImage.GetLevelDownsample(SelectedImage.Resolutions.Count - 1) * 0.98;
                     }
                 }
+                return;
             }
             double dx = Images[i].Volume.Width / 2;
             double dy = Images[i].Volume.Height / 2;
-            if(HardwareAcceleration)
-                Origin = new PointD((Images[i].Volume.Location.X) - dx, (Images[i].Volume.Location.Y) - dy);
-            else
-                Origin = new PointD((Images[i].Volume.Location.X)+dx, (Images[i].Volume.Location.Y)+dy);
+            Origin = new PointD((Images[i].Volume.Location.X) - dx, (Images[i].Volume.Location.Y) - dy);
             PxWmicron = Images[i].PhysicalSizeX;
             PxHmicron = Images[i].PhysicalSizeY;
             if (Images[i].SizeX > 1080)
@@ -3123,11 +2646,11 @@ namespace BioGTK
                 if (MacroResolution.HasValue)
                 {
                     int lev = MacroResolution.Value - 1;
-                    Resolution = Math.Round(SelectedImage.GetUnitPerPixel(lev),2);
+                    Resolution = SelectedImage.GetLevelDownsample(lev)*0.95;
                 }
                 else
                 {
-                    Resolution = Math.Round(SelectedImage.GetUnitPerPixel(SelectedImage.Resolutions.Count-1),2);
+                    Resolution = SelectedImage.GetLevelDownsample(SelectedImage.Resolutions.Count-1)*0.95;
                 }
             }
         }

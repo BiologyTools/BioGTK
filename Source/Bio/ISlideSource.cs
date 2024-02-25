@@ -8,9 +8,66 @@ using System.Threading.Tasks;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using BioGTK;
+using com.sun.tools.javac.code;
+using com.sun.istack.@internal.localization;
+using ucar.nc2.util.cache;
 
 namespace Bio
 {
+    public class TileCache
+    {
+        private Dictionary<TileIndex, byte[]> cache;
+        private int capacity;
+        ISlideSource source = null;
+        public TileCache(ISlideSource source, int capacity = 10000)
+        {
+            this.source = source;
+            this.capacity = capacity;
+            this.cache = new Dictionary<TileIndex, byte[]>();
+        }
+
+        public async Task<byte[]> GetTile(TileInfo info)
+        {
+            if (cache.ContainsKey(info.Index))
+            {
+                return cache[info.Index];
+            }
+            byte[] tile = await LoadTile(info);
+            AddTile(info.Index, tile);
+            return tile;
+        }
+
+        private void AddTile(TileIndex tileId, byte[] tile)
+        {
+            if (cache.Count >= capacity)
+            {
+                // Simple eviction policy: remove the first added tile
+                // For more complex scenarios, consider implementing LRU or another policy
+                TileIndex keyToRemove = new List<TileIndex>(cache.Keys)[0];
+                cache.Remove(keyToRemove);
+            }
+
+            cache[tileId] = tile;
+        }
+
+        private async Task<byte[]> LoadTile(TileInfo tileId)
+        {
+            try
+            {
+                return await source.GetTileAsync(tileId);
+            }
+            catch (Exception e)
+            {
+                return null;
+            }          
+        }
+
+        public void ClearCache()
+        {
+            cache.Clear();
+            Console.WriteLine("Cache cleared");
+        }
+    }
 
     public abstract class SlideSourceBase : ISlideSource, IDisposable
     {
@@ -29,8 +86,10 @@ namespace Bio
             keyValuePairs.Add(extensionUpper, factory);
         }
 
-        public static ISlideSource Create(BioImage source, bool enableCache = true)
+
+        public static ISlideSource Create(BioImage source, SlideImage im, bool enableCache = true)
         {
+            
             var ext = Path.GetExtension(source.file).ToUpper();
             try
             {
@@ -38,7 +97,10 @@ namespace Bio
                     return factory.Invoke(source.file, enableCache);
 
                 if (!string.IsNullOrEmpty(SlideBase.DetectVendor(source.file)))
-                    return new SlideBase(source, enableCache);
+                {
+                    SlideBase b = new SlideBase(source, im, enableCache);
+                    
+                }
             }
             catch (Exception e) 
             { 
@@ -47,38 +109,26 @@ namespace Bio
             return null;
         }
         #endregion
-
-        public abstract byte[] GetTile(TileInfo tileInfo);
-
-        public abstract Task<byte[]> GetTileAsync(TileInfo tileInfo);
-
         public double MinUnitsPerPixel { get; protected set; }
-
-        public Dictionary<TileIndex, byte[]> _bgraCache = new Dictionary<TileIndex, byte[]>();
         public static byte[] LastSlice;
         public static Extent destExtent;
         public static Extent sourceExtent;
         public static double curUnitsPerPixel = 1;
         public static bool UseVips = true;
-        public virtual byte[] GetSlice(SliceInfo sliceInfo)
+        public static TileCache cache = null;
+        public async virtual Task<byte[]> GetSlice(SliceInfo sliceInfo)
         {
+            if (cache == null)
+                cache = new TileCache(this);
             var curLevel = ImageView.SelectedImage.Level;
             var curUnitsPerPixel = Schema.Resolutions[curLevel].UnitsPerPixel;
             var tileInfos = Schema.GetTileInfos(sliceInfo.Extent, curLevel);
             List<Tuple<Extent, byte[]>> tiles = new List<Tuple<Extent, byte[]>>();
             foreach (TileInfo t in tileInfos)
             {
-                byte[] cache = null;
-                if (_bgraCache.ContainsKey(t.Index))
-                {
-                    cache = _bgraCache[t.Index];
-                }
-                if (cache == null)
-                {
-                    cache = GetTile(t);
-                    _bgraCache.Add(t.Index, cache);
-                }
-                tiles.Add(Tuple.Create(t.Extent.WorldToPixelInvertedY(curUnitsPerPixel), cache));
+                byte[] c = await cache.GetTile(t);
+                if(c!=null)
+                tiles.Add(Tuple.Create(t.Extent.WorldToPixelInvertedY(curUnitsPerPixel), c));
             }
             var srcPixelExtent = sliceInfo.Extent.WorldToPixelInvertedY(curUnitsPerPixel);
             var dstPixelExtent = sliceInfo.Extent.WorldToPixelInvertedY(sliceInfo.Resolution);
@@ -135,6 +185,8 @@ namespace Bio
             return rgbBytes;
         }
 
+        public SlideImage Image { get; set; }
+
         public ITileSchema Schema { get; protected set; }
 
         public string Name { get; protected set; }
@@ -171,6 +223,40 @@ namespace Bio
         {
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public async Task<byte[]> GetTileAsync(TileInfo tileInfo)
+        {
+            if (tileInfo == null)
+                return null;
+            var r = Schema.Resolutions[tileInfo.Index.Level].UnitsPerPixel;
+            var tileWidth = Schema.Resolutions[tileInfo.Index.Level].TileWidth;
+            var tileHeight = Schema.Resolutions[tileInfo.Index.Level].TileHeight;
+            var curLevelOffsetXPixel = tileInfo.Extent.MinX / MinUnitsPerPixel;
+            var curLevelOffsetYPixel = -tileInfo.Extent.MaxY / MinUnitsPerPixel;
+            var curTileWidth = (int)(tileInfo.Extent.MaxX > Schema.Extent.Width ? tileWidth - (tileInfo.Extent.MaxX - Schema.Extent.Width) / r : tileWidth);
+            var curTileHeight = (int)(-tileInfo.Extent.MinY > Schema.Extent.Height ? tileHeight - (-tileInfo.Extent.MinY - Schema.Extent.Height) / r : tileHeight);
+            var bgraData = await Image.ReadRegionAsync(tileInfo.Index.Level, (long)curLevelOffsetXPixel, (long)curLevelOffsetYPixel, curTileWidth, curTileHeight);
+            //We check to see if the data is valid.
+            if (bgraData.Length != curTileWidth * curTileHeight * 4)
+                return null;
+            byte[] bm = ConvertRgbaToRgb(bgraData);
+            return bm;
+        }
+        public static byte[] ConvertRgbaToRgb(byte[] rgbaArray)
+        {
+            // Initialize a new byte array for RGB24 format
+            byte[] rgbArray = new byte[(rgbaArray.Length / 4) * 3];
+
+            for (int i = 0, j = 0; i < rgbaArray.Length; i += 4, j += 3)
+            {
+                // Copy the R, G, B values, skip the A value
+                rgbArray[j] = rgbaArray[i + 2];     // B
+                rgbArray[j + 1] = rgbaArray[i + 1]; // G
+                rgbArray[j + 2] = rgbaArray[i]; // R
+            }
+
+            return rgbArray;
         }
         #endregion
     }
@@ -218,7 +304,7 @@ namespace Bio
         /// </summary>
         /// <param name="sliceInfo">Slice info</param>
         /// <returns></returns>
-        byte[] GetSlice(SliceInfo sliceInfo);
+        Task<byte[]> GetSlice(SliceInfo sliceInfo);
     }
 
     /// <summary>

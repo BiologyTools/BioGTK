@@ -6684,13 +6684,13 @@ namespace BioGTK
                 }
                 else
                 {
-                    b.slideBase = new SlideBase(b);
+                    b.slideBase = new SlideBase(b,SlideImage.Open(b));
                 }
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.Message.ToString());
-                b.slideBase = new SlideBase(b);
+                b.slideBase = new SlideBase(b, SlideImage.Open(b));
             }
             
             // read the image data bytes
@@ -7236,7 +7236,7 @@ namespace BioGTK
         /// <summary>
         /// Updates the Buffers based on current pyramidal origin and resolution.
         /// </summary>
-        public void UpdateBuffersPyramidal()
+        public async void UpdateBuffersPyramidal()
         {
             for (int i = 0; i < Buffers.Count; i++)
             {
@@ -7253,7 +7253,7 @@ namespace BioGTK
                 else
                 {
                     start:
-                    byte[] bts = slideBase.GetSlice(new Bio.SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, PyramidalSize.Width, PyramidalSize.Height, resolution));
+                    byte[] bts = await slideBase.GetSlice(new Bio.SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, PyramidalSize.Width, PyramidalSize.Height, resolution));
                     if(bts == null)
                     {
                         if(PyramidalOrigin.X == 0 && PyramidalOrigin.Y == 0)

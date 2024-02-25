@@ -21,7 +21,7 @@
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>Hardware accelerated graphics.</PackageReleaseNotes>
+    <PackageReleaseNotes>Hardware accelerated graphics. Plugins now require SkiaSharp instead of GTK Drawn args.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   

@@ -14,14 +14,11 @@ namespace Bio
     public class SlideBase : SlideSourceBase
     {
         public readonly SlideImage SlideImage;
-        private readonly bool _enableCache;
-        private readonly MemoryCache<byte[]> _tileCache = new MemoryCache<byte[]>();
-
-        public SlideBase(BioGTK.BioImage source, bool enableCache = true)
+        public SlideBase(BioGTK.BioImage source, SlideImage im, bool enableCache = true)
         {
             Source = source.file;
-            _enableCache = enableCache;
-            SlideImage = SlideImage.Open(source);
+            SlideImage = im;
+            Image = im;
             double minUnitsPerPixel;
             if (source.PhysicalSizeX < source.PhysicalSizeY) minUnitsPerPixel = source.PhysicalSizeX; else minUnitsPerPixel = source.PhysicalSizeY;
             MinUnitsPerPixel = UseRealResolution ? minUnitsPerPixel : 1;
@@ -81,12 +78,8 @@ namespace Bio
 
             return image;
         }
-        public override byte[] GetTile(TileInfo tileInfo)
+        public byte[] GetTile(TileInfo tileInfo)
         {
-            if (tileInfo == null)
-                return null;
-            if (_enableCache && _tileCache.Find(tileInfo.Index) is byte[] output)
-                return output;
             var r = Schema.Resolutions[tileInfo.Index.Level].UnitsPerPixel;
             var tileWidth = Schema.Resolutions[tileInfo.Index.Level].TileWidth;
             var tileHeight = Schema.Resolutions[tileInfo.Index.Level].TileHeight;
@@ -99,8 +92,6 @@ namespace Bio
             if (bgraData.Length != curTileWidth * curTileHeight * 4)
                 return null;
             byte[] bm = ConvertRgbaToRgb(bgraData);
-            if (_enableCache && bgraData != null)
-                _tileCache.Add(tileInfo.Index, bm);
             return bm;
         }
         public static byte[] ConvertRgbaToRgb(byte[] rgbaArray)
@@ -117,11 +108,6 @@ namespace Bio
             }
 
             return rgbArray;
-        }
-
-        public override async Task<byte[]> GetTileAsync(TileInfo tileInfo)
-        {
-            throw new NotImplementedException();
         }
 
         protected void InitResolutions(IDictionary<int, BruTile.Resolution> resolutions, int tileWidth, int tileHeight)

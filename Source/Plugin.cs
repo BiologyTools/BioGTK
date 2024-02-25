@@ -23,17 +23,11 @@ namespace BioGTK
             void KeyUpEvent(object o, KeyPressEventArgs e);
             void KeyDownEvent(object o, KeyPressEventArgs e);
             void ScrollEvent(object o, ScrollEventArgs args);
-            void Drawn(object o, DrawnArgs e);
+            void Render(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e);
             void MouseMove(object o, PointD e, MotionNotifyEventArgs buts);
             void MouseUp(object o, PointD e, ButtonReleaseEventArgs buts);
             void MouseDown(object o, PointD e, ButtonPressEventArgs buts);
         }
-
-        public interface IPluginSkia : IPlugin
-        {
-            void Render(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e);
-        }
-
     }
     
     public static class Plugins
@@ -62,22 +56,6 @@ namespace BioGTK
                         else
                             App.AddMenu(pluginInstance.MenuPath);                   
                     }
-                    else
-                    {
-                        //If no type IPlugin let's look for type of IPluginSkia incase this is a SkiaSharp enabled plugin.
-                        var pluginSkiaType = pluginAssembly.GetTypes().FirstOrDefault(t => typeof(IPluginSkia).IsAssignableFrom(t) && !t.IsInterface);
-                        if (pluginSkiaType != null)
-                        {
-                            // Create an instance of this type
-                            IPluginSkia pluginInstance = Activator.CreateInstance(pluginType) as IPluginSkia;
-                            Plugin.Plugins.Add(Path.GetFileName(s), pluginInstance);
-                            if (pluginInstance.ContextMenu)
-                                App.AddContextMenu(pluginInstance.MenuPath);
-                            else
-                                App.AddMenu(pluginInstance.MenuPath);
-                        }
-                    }
-
                 }
                 catch (Exception e)
                 {
@@ -107,18 +85,11 @@ namespace BioGTK
                 p.ScrollEvent(o, args);
             }
         }
-        public static void Drawn(object o, DrawnArgs e)
-        {
-            foreach (IPlugin p in Plugin.Plugins.Values)
-            {
-                p.Drawn(o, e);
-            }
-        }
         public static void Render(object o, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e)
         {
             foreach (IPlugin p in Plugin.Plugins.Values)
             {
-                ((IPluginSkia)p).Render(o, e);
+                ((IPlugin)p).Render(o, e);
             }
         }
         public static void MouseMove(object o, PointD e, MotionNotifyEventArgs buts)

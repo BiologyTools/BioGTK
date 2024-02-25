@@ -44,7 +44,7 @@ namespace Bio
                 var bytes = _slideSource.GetSlice(sliceInfo);
                 if (bytes != null && _lastFeatures.FirstOrDefault() is IFeature feature)
                 {
-                    feature = new RasterFeature(new MRaster(bytes, box2));
+                    feature = new RasterFeature(new MRaster(bytes.Result, box2));
                 }
             }
             return _lastFeatures;
