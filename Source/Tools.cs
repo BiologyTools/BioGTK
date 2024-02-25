@@ -652,7 +652,7 @@ namespace BioGTK
                     {
                         if (App.viewer.MouseMoveInt.X != 0 || App.viewer.MouseMoveInt.Y != 0)
                         {
-                            App.viewer.PyramidalOrigin = new PointD(App.viewer.PyramidalOrigin.X + (ImageView.mouseDown.X - e.X), App.viewer.PyramidalOrigin.Y + (ImageView.mouseDown.Y - e.Y));
+                            App.viewer.PyramidalOriginTransformed = new PointD(App.viewer.PyramidalOriginTransformed.X + (ImageView.mouseDown.X - e.X), App.viewer.PyramidalOriginTransformed.Y + (ImageView.mouseDown.Y - e.Y));
                         }
                     }
                 }

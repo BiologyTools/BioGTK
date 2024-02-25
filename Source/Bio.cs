@@ -2394,8 +2394,6 @@ namespace BioGTK
             get { return pyramidalOrigin; }
             set
             {
-                if (Resolutions[Level].SizeX < value.X || Resolutions[Level].SizeY < value.Y || value.X < 0 || value.Y < 0)
-                    return;
                 pyramidalOrigin = value;
             }
         }

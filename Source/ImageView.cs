@@ -317,11 +317,12 @@ namespace BioGTK
                         paint.Color = SKColors.Red;
                         if (!openSlide)
                         {
+                            double dsx = _slideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
                             Resolution rs = SelectedImage.Resolutions[Level];
-                            double dx = ((double)PyramidalOrigin.X / (rs.SizeX)) * overview.Width;
-                            double dy = ((double)PyramidalOrigin.Y / (rs.SizeY)) * overview.Height;
-                            double dw = ((double)sk.AllocatedWidth / (rs.SizeX)) * overview.Width;
-                            double dh = ((double)sk.AllocatedHeight / (rs.SizeY)) * overview.Height;
+                            double dx = ((double)PyramidalOrigin.X / (rs.SizeX * dsx)) * overview.Width;
+                            double dy = ((double)PyramidalOrigin.Y / (rs.SizeY * dsx)) * overview.Height;
+                            double dw = ((double)sk.AllocatedWidth / (rs.SizeX * dsx)) * overview.Width;
+                            double dh = ((double)sk.AllocatedHeight / (rs.SizeY * dsx)) * overview.Height;
                             canvas.DrawRect((float)dx, (float)dy, (float)dw, (float)dh, paint);
                         }
                         else
@@ -589,10 +590,10 @@ namespace BioGTK
             overview = new Rectangle(0, 0, 120, 120);
             if (MacroResolution.HasValue)
             {
-                double aspx = (double)SelectedImage.Resolutions[MacroResolution.Value - 1].SizeX / (double)SelectedImage.Resolutions[MacroResolution.Value - 1].SizeY;
-                double aspy = (double)SelectedImage.Resolutions[MacroResolution.Value - 1].SizeY / (double)SelectedImage.Resolutions[MacroResolution.Value - 1].SizeX;
+                double aspx = (double)SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX / (double)SelectedImage.Resolutions[MacroResolution.Value - 2].SizeY;
+                double aspy = (double)SelectedImage.Resolutions[MacroResolution.Value - 2].SizeY / (double)SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX;
                 overview = new Rectangle(0, 0, (int)(aspx * 120), (int)(aspy * 120));
-                Bitmap bm = BioImage.GetTile(SelectedImage, GetCoordinate(), MacroResolution.Value - 1, 0, 0, SelectedImage.Resolutions[MacroResolution.Value - 1].SizeX, SelectedImage.Resolutions[MacroResolution.Value - 1].SizeY);
+                Bitmap bm = BioImage.GetTile(SelectedImage, GetCoordinate(), MacroResolution.Value - 2, 0, 0, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeY);
                 if (bm == null)
                     bm = BioImage.GetTile(SelectedImage, GetCoordinate(), MacroResolution.Value - 3, 0, 0, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX, SelectedImage.Resolutions[MacroResolution.Value - 3].SizeY);
                 ResizeNearestNeighbor re = new ResizeNearestNeighbor(overview.Width, overview.Height);
