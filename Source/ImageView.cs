@@ -65,7 +65,6 @@ namespace BioGTK
         {
             Images.Add(im);
             selectedIndex = Images.Count - 1;
-            selectedImage = im;
             if(im.Resolutions[0].SizeX <= 1920 && im.Resolutions[0].SizeY <= 1080)
             {
                 sk.WidthRequest = im.Resolutions[0].SizeX;
@@ -242,7 +241,6 @@ namespace BioGTK
         protected ImageView(Builder builder, IntPtr handle, BioImage im) : base(handle)
         {
             _builder = builder;
-            selectedImage = im;
             App.viewer = this;
             builder.Autoconnect(this);
             viewStack.Add(sk);
@@ -250,9 +248,9 @@ namespace BioGTK
             sk.Show();
             roi.Submenu = roiMenu;
             roi.ShowAll();
+            AddImage(im);
             pxWmicron = SelectedImage.PhysicalSizeX;
             pxHmicron = SelectedImage.PhysicalSizeY;
-            AddImage(im);
             SetupHandlers();
             //pictureBox.WidthRequest = im.SizeX;
             //pictureBox.HeightRequest = im.SizeY;
@@ -530,6 +528,7 @@ namespace BioGTK
                 UpdateGUI();
             }
             int bi = 0;
+            SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
             if (SelectedImage.isPyramidal)
                 SelectedImage.UpdateBuffersPyramidal();
             foreach (BioImage b in Images)
@@ -894,7 +893,7 @@ namespace BioGTK
             if(bar == 0)
             {
                 if (endz == 0)
-                    endz = selectedImage.SizeZ - 1;
+                    endz = SelectedImage.SizeZ - 1;
                 playZ = true;
                 threadZ = new System.Threading.Thread(PlayZ);
                 threadZ.Start();
@@ -902,7 +901,7 @@ namespace BioGTK
             else if (bar == 1)
             {
                 if (endt == 0)
-                    endt = selectedImage.SizeT - 1;
+                    endt = SelectedImage.SizeT - 1;
                 playT = true;
                 threadT = new System.Threading.Thread(PlayT);
                 threadT.Start();
@@ -910,7 +909,7 @@ namespace BioGTK
             else if (bar == 2)
             {
                 if (endc == 0)
-                    endc = selectedImage.SizeC - 1;
+                    endc = SelectedImage.SizeC - 1;
                 playC = true;
                 threadC = new System.Threading.Thread(PlayC);
                 threadC.Start();
@@ -1539,16 +1538,18 @@ namespace BioGTK
             get { return openSlide; }
             set { openSlide = value; }
         }
-        static BioImage selectedImage;
         public static BioImage SelectedImage
         {
             get
             {
-                return selectedImage;
+                if (App.viewer == null)
+                    return null;
+                if(App.viewer.Images.Count == 0)
+                    return null;
+                return App.viewer.Images[App.viewer.SelectedIndex];
             }
             set
             {
-                selectedImage = value;
                 App.viewer.Images[App.viewer.SelectedIndex] = value;
             }
         }
@@ -1820,6 +1821,7 @@ namespace BioGTK
         /// @param MotionNotifyEventArgs 
         private void ImageView_MotionNotifyEvent(object o, MotionNotifyEventArgs e)
         {
+            App.viewer = this;
             Modifiers = e.Event.State;
             MouseMoveInt = new PointD((int)e.Event.X, (int)e.Event.Y);
             MouseMove = new PointD(e.Event.X,e.Event.Y);
@@ -2064,7 +2066,6 @@ namespace BioGTK
                 if (r.IntersectsWith(pointer))
                 {
                     selectedIndex = ind;
-                    selectedImage = Images[selectedIndex];
                     UpdateGUI();
                     break;
                 }

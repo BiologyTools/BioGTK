@@ -53,9 +53,12 @@ namespace BioGTK
         {
             if (images.Contains(im)) return;
             im.Filename = GetImageName(im.ID);
-            im.ID = im.Filename;
+            int c = GetImageCountByName(im.ID);
+            if(c > 1)
+                im.ID = im.Filename + "-" + c;
+            else
+                im.ID = im.Filename;
             images.Add(im);
-
             if (App.tabsView != null)
             {
                 System.Threading.Tasks.Task.Run(() =>
@@ -4609,12 +4612,109 @@ namespace BioGTK
                 initialized = true;
         }
 
+        private static List<Resolution> GetResolutions()
+        {
+            List<Resolution> rss = new List<Resolution>();
+            int seriesCount = reader.getSeriesCount();
+            for (int s = 0; s < seriesCount; s++)
+            {
+                reader.setSeries(s);
+                IMetadata meta = (IMetadata)reader.getMetadataStore();
+                for (int r = 0; r < reader.getResolutionCount(); r++)
+                {
+                    Resolution res = new Resolution();
+                    try
+                    {
+                        int rgbc = reader.getRGBChannelCount();
+                        int bps = reader.getBitsPerPixel();
+                        PixelFormat px;
+                        try
+                        {
+                            px = GetPixelFormat(rgbc, meta.getPixelsType(r));
+                        }
+                        catch (Exception)
+                        {
+                            px = GetPixelFormat(rgbc, bps);
+                        }
+                        res.PixelFormat = px;
+                        res.SizeX = reader.getSizeX();
+                        res.SizeY = reader.getSizeY();
+                        if (meta.getPixelsPhysicalSizeX(r) != null)
+                        {
+                            res.PhysicalSizeX = meta.getPixelsPhysicalSizeX(r).value().doubleValue();
+                        }
+                        else
+                            res.PhysicalSizeX = (96 / 2.54) / 1000;
+                        if (meta.getPixelsPhysicalSizeY(r) != null)
+                        {
+                            res.PhysicalSizeY = meta.getPixelsPhysicalSizeY(r).value().doubleValue();
+                        }
+                        else
+                            res.PhysicalSizeY = (96 / 2.54) / 1000;
+
+                        if (meta.getStageLabelX(r) != null)
+                            res.StageSizeX = meta.getStageLabelX(r).value().doubleValue();
+                        if (meta.getStageLabelY(r) != null)
+                            res.StageSizeY = meta.getStageLabelY(r).value().doubleValue();
+                        if (meta.getStageLabelZ(r) != null)
+                            res.StageSizeZ = meta.getStageLabelZ(r).value().doubleValue();
+                        else
+                            res.StageSizeZ = 1;
+                        if (meta.getPixelsPhysicalSizeZ(r) != null)
+                        {
+                            res.PhysicalSizeZ = meta.getPixelsPhysicalSizeZ(r).value().doubleValue();
+                        }
+                        else
+                        {
+                            res.PhysicalSizeZ = 1;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("No Stage Coordinates. PhysicalSize:(" + res.PhysicalSizeX + "," + res.PhysicalSizeY + "," + res.PhysicalSizeZ + ")");
+                    }
+                    rss.Add(res);
+                }
+            }
+            return rss;
+        }
+        private static int GetPyramidCount()
+        {
+            List<Resolution> rss = GetResolutions();
+            //We need to determine if this image is pyramidal or not.
+            //We do this by seeing if the resolutions are downsampled or not.
+            //We also need to determine number of pyramids in this image and which belong to the series we are opening.
+            List<Tuple<int, int>> prs = new List<Tuple<int, int>>();
+            int? sr = null;
+            for (int r = 0; r < rss.Count - 1; r++)
+            {
+                if (rss[r].SizeX > rss[r + 1].SizeX && rss[r].PixelFormat == rss[r + 1].PixelFormat)
+                {
+                    if (sr == null)
+                    {
+                        sr = r;
+                        prs.Add(new Tuple<int, int>(r, 0));
+                    }
+                }
+                else
+                {
+                    if (rss[prs[prs.Count - 1].Item1].PixelFormat == rss[r].PixelFormat)
+                        prs[prs.Count - 1] = new Tuple<int, int>(prs[prs.Count - 1].Item1, r);
+                    sr = null;
+                }
+            }
+            return prs.Count;
+        }
         public static int GetSeriesCount(string file)
         {
             reader.setId(file);
             int i = reader.getSeriesCount();
+            int prs = GetPyramidCount();
             reader.close();
-            return i;
+            if (prs > 0)
+                return prs;
+            else
+                return i;
         }
         /// This function takes a string array of file names and a string ID and saves the files to the
         /// database
@@ -6046,7 +6146,6 @@ namespace BioGTK
         /// The function "OpenOME" opens a bioimage file, with options to specify the series, whether to
         public static BioImage OpenOME(string file, int serie, bool tab, bool addToImages, bool tile, int tilex, int tiley, int tileSizeX, int tileSizeY, bool useOpenSlide = true)
         {
-            reader = new ImageReader();
             if (file == null || file == "")
                 throw new InvalidDataException("File is empty or null");
             //We wait incase OME has not initialized.
@@ -6055,7 +6154,7 @@ namespace BioGTK
                 Thread.Sleep(10);
             } while (!initialized);
             Console.WriteLine("OpenOME " + file);
-
+            reader = new ImageReader();
             Progress pr = Progress.Create(file, "Opening OME", "Opening OME file.");
             // update ui on main UI thread
             Application.Invoke(delegate
@@ -6288,7 +6387,9 @@ namespace BioGTK
             }
             reader.setSeries(serie);
 
-
+            int pyramidCount = 0;
+            int pyramidResolutions = 0;
+            List<Tuple<int, int>> prs = new List<Tuple<int, int>>();
             //We need to determine if this image is pyramidal or not.
             //We do this by seeing if the resolutions are downsampled or not.
             if (rss.Count > 1 && b.Type != ImageType.well)
@@ -6298,29 +6399,35 @@ namespace BioGTK
                     b.Type = ImageType.pyramidal;
                     tile = true;
                     //We need to determine number of pyramids in this image and which belong to the series we are opening.
-                    List<Tuple<int, int>> ims = new List<Tuple<int, int>>();
                     int? sr = null;
                     for (int r = 0; r < rss.Count - 1; r++)
                     {
-                        if (rss[r].SizeX > rss[r + 1].SizeX)
+                        if (rss[r].SizeX > rss[r + 1].SizeX && rss[r].PixelFormat == rss[r + 1].PixelFormat)
                         {
                             if (sr == null)
                             {
                                 sr = r;
-                                ims.Add(new Tuple<int, int>(r, 0));
+                                prs.Add(new Tuple<int, int>(r, 0));
                             }
                         }
                         else
                         {
-                            ims[ims.Count - 1] = new Tuple<int, int>(ims[ims.Count - 1].Item1, r);
+                            if(rss[prs[prs.Count - 1].Item1].PixelFormat == rss[r].PixelFormat)
+                            prs[prs.Count - 1] = new Tuple<int, int>(prs[prs.Count - 1].Item1, r);
                             sr = null;
                         }
                     }
-                    if (ims[serie].Item2 == 0)
+                    pyramidCount = prs.Count;
+                    for (int p = 0; p < prs.Count; p++)
                     {
-                        ims[serie] = new Tuple<int, int>(ims[serie].Item1, rss.Count);
+                        pyramidResolutions += (prs[p].Item2 - prs[p].Item1)+1;
                     }
-                    for (int r = ims[serie].Item1; r < ims[serie].Item2; r++)
+
+                    if (prs[serie].Item2 == 0)
+                    {
+                        prs[serie] = new Tuple<int, int>(prs[serie].Item1, rss.Count);
+                    }
+                    for (int r = prs[serie].Item1; r < prs[serie].Item2; r++)
                     {
                         b.Resolutions.Add(rss[r]);
                     }
@@ -6334,7 +6441,7 @@ namespace BioGTK
                 b.Resolutions.AddRange(rss);
             
             //If we have 2 resolutions that we're not added they are the label & macro resolutions so we add them to the image.
-            if(rss.Count - b.Resolutions.Count  == 2)
+            if(rss.Count - pyramidResolutions  == 2)
             {
                 b.Resolutions.Add(rss[rss.Count - 2]);
                 b.Resolutions.Add(rss[rss.Count - 1]);
@@ -7292,7 +7399,8 @@ namespace BioGTK
         {
             if(omes)
                 OpenOME(openfile,serie,tab,add,false,0,0,0,0);
-            OpenFile(openfile, serie, tab, add);
+            else
+                OpenFile(openfile, serie, tab, add);
         }
         static string savefile, saveid;
         static bool some;

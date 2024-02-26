@@ -3,8 +3,8 @@
     <TargetFramework>net6.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RuntimeIdentifiers>osx-x64;linux-x64;win-x64;win-arm64;linux-arm64;osx-arm64;</RuntimeIdentifiers>
-    <AssemblyVersion>4.7.0</AssemblyVersion>
-    <FileVersion>4.7.0</FileVersion>
+    <AssemblyVersion>4.7.1</AssemblyVersion>
+    <FileVersion>4.7.1</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>BioGTK</PackageId>
     <Title>BioGTK</Title>
@@ -17,11 +17,11 @@
     <PackageLicenseExpression> GPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Description>A .NET application &amp; library for editing &amp; annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters &amp; macro functions. Supports Windows, Linux and Mac.</Description>
-    <Version>4.7.0</Version>
+    <Version>4.7.1</Version>
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>Hardware accelerated graphics. Plugins now require Skia instead of GTK for rendering.</PackageReleaseNotes>
+    <PackageReleaseNotes>Multi-pyramid file opening &amp; viewing improvements.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
@@ -417,7 +417,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AForgeBio" Version="1.5.1" />
+    <PackageReference Include="AForgeBio" Version="1.5.2" />
     <PackageReference Include="BioFormats.NET6" Version="7.2.0" />
     <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
     <PackageReference Include="CS-Script" Version="4.8.14" />
