@@ -70,6 +70,11 @@ namespace BioGTK
                 sk.WidthRequest = im.Resolutions[0].SizeX;
                 sk.HeightRequest = im.Resolutions[0].SizeY;
             }
+            else
+            {
+                sk.WidthRequest = 600;
+                sk.HeightRequest = 400;
+            }
             if(im.isPyramidal)
             {
                 Initialize();
@@ -528,6 +533,8 @@ namespace BioGTK
                 UpdateGUI();
             }
             int bi = 0;
+            if (SelectedImage.isPyramidal && sk.AllocatedHeight <= 1 || sk.AllocatedWidth <= 1)
+                return;
             SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
             if (SelectedImage.isPyramidal)
                 SelectedImage.UpdateBuffersPyramidal();
@@ -585,7 +592,10 @@ namespace BioGTK
         public void InitPreview()
         {
             if (SelectedImage.Resolutions.Count == 1)
+            {
+                ShowOverview = false;
                 return;
+            }
             overview = new Rectangle(0, 0, 120, 120);
             if (MacroResolution.HasValue)
             {

@@ -6811,14 +6811,49 @@ namespace BioGTK
             int t = 0;
             pr.Status = "Reading Image Data";
             if (!tile)
-                for (int p = 0; p < pages; p++)
+            {
+                try
                 {
-                    Bitmap bf;
-                    pr.ProgressValue = (float)p / (float)pages;
-                    byte[] bytes = reader.openBytes(p);
-                    bf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(z, c, t), p, null, b.littleEndian, inter);
-                    b.Buffers.Add(bf);
+                    for (int p = 0; p < pages; p++)
+                    {
+                        Bitmap bf;
+                        pr.ProgressValue = (float)p / (float)pages;
+                        byte[] bytes = reader.openBytes(p);
+                        bf = new Bitmap(file, SizeX, SizeY, PixelFormat, bytes, new ZCT(z, c, t), p, null, b.littleEndian, inter);
+                        b.Buffers.Add(bf);
+                    }
                 }
+                catch (Exception)
+                {
+                    //If we failed to read an entire plane it is likely too large so we open as pyramidal.
+                    b.Type = ImageType.pyramidal;
+                    try
+                    {
+                        string st = OpenSlideImage.DetectVendor(file);
+                        if (st != null && !file.EndsWith("ome.tif") && useOpenSlide)
+                        {
+                            b.openSlideImage = OpenSlideImage.Open(file);
+                            b.openslideBase = (OpenSlideBase)OpenSlideGTK.SlideSourceBase.Create(file);
+                        }
+                        else
+                        {
+                            b.slideBase = new SlideBase(b, SlideImage.Open(b));
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.Message.ToString());
+                        b.slideBase = new SlideBase(b, SlideImage.Open(b));
+                    }
+                    b.imRead = reader;
+                    for (int p = 0; p < pages; p++)
+                    {
+                        b.Buffers.Add(GetTile(b, p, serie, tilex, tiley, tileSizeX, tileSizeY));
+                        Statistics.CalcStatistics(b.Buffers.Last());
+                    }
+                }
+                
+            }
             else
             {
                 b.imRead = reader;
