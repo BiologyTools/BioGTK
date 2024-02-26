@@ -28,7 +28,6 @@ using System.Threading.Tasks;
 using static BioGTK.ImageView;
 using OpenSlideGTK;
 using Bio;
-using SkiaSharp;
 
 namespace BioGTK
 {
@@ -6047,6 +6046,7 @@ namespace BioGTK
         /// The function "OpenOME" opens a bioimage file, with options to specify the series, whether to
         public static BioImage OpenOME(string file, int serie, bool tab, bool addToImages, bool tile, int tilex, int tiley, int tileSizeX, int tileSizeY, bool useOpenSlide = true)
         {
+            reader = new ImageReader();
             if (file == null || file == "")
                 throw new InvalidDataException("File is empty or null");
             //We wait incase OME has not initialized.
@@ -6324,11 +6324,6 @@ namespace BioGTK
                     {
                         b.Resolutions.Add(rss[r]);
                     }
-                    if (b.Resolutions.Last().PixelFormat == b.Resolutions.First().PixelFormat && rss.Last().PixelFormat != b.Resolutions.Last().PixelFormat)
-                    {
-                        b.Resolutions.Add(rss.Last());
-                        b.Resolutions.Add(rss[rss.Count - 2]);
-                    }
                 }
                 else
                 {
@@ -6338,7 +6333,12 @@ namespace BioGTK
             else
                 b.Resolutions.AddRange(rss);
             
-            
+            //If we have 2 resolutions that we're not added they are the label & macro resolutions so we add them to the image.
+            if(rss.Count - b.Resolutions.Count  == 2)
+            {
+                b.Resolutions.Add(rss[rss.Count - 2]);
+                b.Resolutions.Add(rss[rss.Count - 1]);
+            }
 
             b.Volume = new VolumeD(new Point3D(b.StageSizeX, b.StageSizeY, b.StageSizeZ), new Point3D(b.PhysicalSizeX * SizeX, b.PhysicalSizeY * SizeY, b.PhysicalSizeZ * SizeZ));
             pr.Status = "Reading ROIs";
@@ -6714,6 +6714,7 @@ namespace BioGTK
                 }
             else
             {
+                b.imRead = reader;
                 for (int p = 0; p < pages; p++)
                 {
                     b.Buffers.Add(GetTile(b, p, serie, tilex, tiley, tileSizeX, tileSizeY));
@@ -6764,30 +6765,33 @@ namespace BioGTK
             {
                 Thread.Sleep(50);
             } while (b.Buffers[b.Buffers.Count - 1].Stats == null);
+            b.SetLabelMacroResolutions();
             Statistics.ClearCalcBuffer();
             AutoThreshold(b, true);
             if (b.bitsPerPixel > 8)
                 b.StackThreshold(true);
             else
                 b.StackThreshold(false);
+            if (!tile)
+            {
+                //We use a try block to close the reader as sometimes this will cause an error.
+                bool stop = false;
+                do
+                {
+                    try
+                    {
+                        reader.close();
+                        stop = true;
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.Message);
+                    }
+                } while (!stop);
+            }
             if (addToImages)
                 Images.AddImage(b, tab);
-            //We use a try block to close the reader as sometimes this will cause an error.
-            bool stop = false;
-            do
-            {
-                try
-                {
-                    reader.close();
-                    stop = true;
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                }
-            } while (!stop);
             b.Loading = false;
-            b.SetLabelMacroResolutions();
             // update ui on main UI thread
             Application.Invoke(delegate
             {
@@ -6825,14 +6829,14 @@ namespace BioGTK
                 return new Bitmap(tileSizeX, tileSizeY, AForge.PixelFormat.Format32bppArgb, b.openSlideImage.ReadRegion(serie, tilex, tiley, tileSizeX, tileSizeY), new ZCT(), "");
             }
 
-            string curfile = reader.getCurrentFile();
+            string curfile = b.imRead.getCurrentFile();
             if (curfile == null)
             {
                 b.meta = (IMetadata)((OMEXMLService)factory.getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
-                reader.close();
-                reader.setMetadataStore(b.meta);
+                b.imRead.close();
+                b.imRead.setMetadataStore(b.meta);
                 Console.WriteLine(b.file);
-                reader.setId(b.file);
+                b.imRead.setId(b.file);
             }
             else
             {
@@ -6840,21 +6844,21 @@ namespace BioGTK
                 string cf = curfile.Replace("\\", "/");
                 if (cf != fi)
                 {
-                    reader.close();
+                    b.imRead.close();
                     b.meta = (IMetadata)((OMEXMLService)factory.getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
-                    reader.setMetadataStore(b.meta);
-                    reader.setId(b.file);
+                    b.imRead.setMetadataStore(b.meta);
+                    b.imRead.setId(b.file);
                 }
             }
-            if (reader.getSeries() != serie)
-                reader.setSeries(serie);
-            int SizeX = reader.getSizeX();
-            int SizeY = reader.getSizeY();
-            bool flat = reader.hasFlattenedResolutions();
+            if (b.imRead.getSeries() != serie)
+                b.imRead.setSeries(serie);
+            int SizeX = b.imRead.getSizeX();
+            int SizeY = b.imRead.getSizeY();
+            bool flat = b.imRead.hasFlattenedResolutions();
             int p = b.Coords[coord.Z, coord.C, coord.T];
-            bool littleEndian = reader.isLittleEndian();
+            bool littleEndian = b.imRead.isLittleEndian();
             PixelFormat PixelFormat = b.Resolutions[serie].PixelFormat;
-            bool interleaved = reader.isInterleaved();
+            bool interleaved = b.imRead.isInterleaved();
             if (tilex < 0)
                 tilex = 0;
             if (tiley < 0)
@@ -6876,7 +6880,7 @@ namespace BioGTK
                 return null;
             try
             {
-                byte[] bytesr = reader.openBytes(b.Coords[coord.Z, coord.C, coord.T], tilex, tiley, sx, sy);
+                byte[] bytesr = b.imRead.openBytes(b.Coords[coord.Z, coord.C, coord.T], tilex, tiley, sx, sy);
                 return new Bitmap(b.file, sx, sy, PixelFormat, bytesr, coord, p, null, littleEndian, interleaved);
             }
             catch (Exception e)
@@ -6898,14 +6902,14 @@ namespace BioGTK
                 return new Bitmap(tileSizeX, tileSizeY, AForge.PixelFormat.Format32bppArgb, b.openSlideImage.ReadRegion(serie, tilex, tiley, tileSizeX, tileSizeY), new ZCT(), "");
             }
 
-            string curfile = reader.getCurrentFile();
+            string curfile = b.imRead.getCurrentFile();
             if (curfile == null)
             {
                 b.meta = (IMetadata)((OMEXMLService)factory.getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
-                reader.close();
-                reader.setMetadataStore(b.meta);
+                b.imRead.close();
+                b.imRead.setMetadataStore(b.meta);
                 Console.WriteLine(b.file);
-                reader.setId(b.file);
+                b.imRead.setId(b.file);
             }
             else
             {
@@ -6913,19 +6917,19 @@ namespace BioGTK
                 string cf = curfile.Replace("\\", "/");
                 if (cf != fi)
                 {
-                    reader.close();
+                    b.imRead.close();
                     b.meta = (IMetadata)((OMEXMLService)factory.getInstance(typeof(OMEXMLService))).createOMEXMLMetadata();
-                    reader.setMetadataStore(b.meta);
-                    reader.setId(b.file);
+                    b.imRead.setMetadataStore(b.meta);
+                    b.imRead.setId(b.file);
                 }
             }
-            if (reader.getSeries() != serie)
-                reader.setSeries(serie);
-            int SizeX = reader.getSizeX();
-            int SizeY = reader.getSizeY();
-            bool flat = reader.hasFlattenedResolutions();
-            bool littleEndian = reader.isLittleEndian();
-            bool interleaved = reader.isInterleaved();
+            if (b.imRead.getSeries() != serie)
+                b.imRead.setSeries(serie);
+            int SizeX = b.imRead.getSizeX();
+            int SizeY = b.imRead.getSizeY();
+            bool flat = b.imRead.hasFlattenedResolutions();
+            bool littleEndian = b.imRead.isLittleEndian();
+            bool interleaved = b.imRead.isInterleaved();
             PixelFormat PixelFormat = b.Resolutions[serie].PixelFormat;
             if (tilex < 0)
                 tilex = 0;
@@ -6948,7 +6952,7 @@ namespace BioGTK
                 return null;
             try
             {
-                byte[] bytesr = reader.openBytes(index, tilex, tiley, sx, sy);
+                byte[] bytesr = b.imRead.openBytes(index, tilex, tiley, sx, sy);
                 return new Bitmap(b.file, sx, sy, PixelFormat, bytesr, new ZCT(), index, null, littleEndian, interleaved);
             }
             catch (Exception e)

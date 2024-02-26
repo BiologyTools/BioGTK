@@ -426,7 +426,7 @@
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="IKVM" Version="8.7.5" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.17.0" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.17.1" />
     <PackageReference Include="NetVips" Version="2.4.0" />
     <PackageReference Include="NetVips.Native" Version="8.15.1" />
     <PackageReference Include="NetVips.Native.linux-arm64" Version="8.15.1" />
@@ -456,5 +456,19 @@
       <PackagePath>\</PackagePath>
     </None>
   </ItemGroup>
-  
+  <PropertyGroup>
+    <CFBundleName>BioGTK</CFBundleName>
+    <!-- Also defines .app file name -->
+    <CFBundleDisplayName>BioGTK</CFBundleDisplayName>
+    <CFBundleIdentifier>com.BioGTK</CFBundleIdentifier>
+    <CFBundleVersion>4.7.0</CFBundleVersion>
+    <CFBundlePackageType>APPL</CFBundlePackageType>
+    <CFBundleSignature>????</CFBundleSignature>
+    <CFBundleExecutable>BioGTKApp</CFBundleExecutable>
+    <CFBundleIconFile>bio.icns</CFBundleIconFile>
+    <CFBundleShortVersionString>4.7.0</CFBundleShortVersionString>
+    <!-- Will be copied from output directory -->
+    <NSPrincipalClass>NSApplication</NSPrincipalClass>
+    <NSHighResolutionCapable>true</NSHighResolutionCapable>
+  </PropertyGroup>
 </Project>

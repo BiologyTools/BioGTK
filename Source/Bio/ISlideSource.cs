@@ -143,8 +143,8 @@ namespace Bio
         public static Extent sourceExtent;
         public static double curUnitsPerPixel = 1;
         public static bool UseVips = true;
-        public static TileCache cache = null;
-        public async virtual Task<byte[]> GetSlice(SliceInfo sliceInfo)
+        public TileCache cache = null;
+        public async Task<byte[]> GetSlice(SliceInfo sliceInfo)
         {
             if (cache == null)
                 cache = new TileCache(this);
