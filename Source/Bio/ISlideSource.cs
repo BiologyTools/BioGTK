@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using BioGTK;
+using AForge;
 namespace Bio
 {
     public class LruCache<TKey, TValue>
@@ -57,31 +58,31 @@ namespace Bio
     }
     public class TileCache
     {
-        private LruCache<TileIndex, byte[]> cache;
+        private LruCache<TileInfo, byte[]> cache;
         private int capacity;
-        ISlideSource source = null;
-        public TileCache(ISlideSource source, int capacity = 10000)
+        SlideSourceBase source = null;
+        public TileCache(SlideSourceBase source, int capacity = 10000)
         {
             this.source = source;
             this.capacity = capacity;
-            this.cache = new LruCache<TileIndex, byte[]>(capacity);
+            this.cache = new LruCache<TileInfo, byte[]>(capacity);
         }
 
         public async Task<byte[]> GetTile(TileInfo info)
         {
-            byte[] data = cache.Get(info.Index);
+            byte[] data = cache.Get(info);
             if (data != null)
             {
                 return data;
             }
             byte[] tile = await LoadTile(info);
-            AddTile(info.Index, tile);
+            AddTile(info, tile);
             return tile;
         }
 
-        private void AddTile(TileIndex tileId, byte[] tile)
+        private void AddTile(TileInfo tileId, byte[] tile)
         {
-            cache.Add(tileId, tile);    
+            cache.Add(tileId, tile);
         }
 
         private async Task<byte[]> LoadTile(TileInfo tileId)
@@ -93,8 +94,15 @@ namespace Bio
             catch (Exception e)
             {
                 return null;
-            }          
+            }
         }
+    }
+
+    public class TileInfo
+    {
+        public TileIndex Index { get; set; }
+        public Extent Extent { get; set; }
+        public ZCT Coordinate { get; set; }
     }
 
     public abstract class SlideSourceBase : ISlideSource, IDisposable
@@ -152,9 +160,13 @@ namespace Bio
             var curUnitsPerPixel = Schema.Resolutions[curLevel].UnitsPerPixel;
             var tileInfos = Schema.GetTileInfos(sliceInfo.Extent, curLevel);
             List<Tuple<Extent, byte[]>> tiles = new List<Tuple<Extent, byte[]>>();
-            foreach (TileInfo t in tileInfos)
+            foreach (BruTile.TileInfo t in tileInfos)
             {
-                byte[] c = await cache.GetTile(t);
+                TileInfo tf = new TileInfo();
+                tf.Extent = t.Extent;
+                tf.Coordinate = App.viewer.GetCoordinate();
+                tf.Index = t.Index;
+                byte[] c = await cache.GetTile(tf);
                 if(c!=null)
                 tiles.Add(Tuple.Create(t.Extent.WorldToPixelInvertedY(curUnitsPerPixel), c));
             }
@@ -264,7 +276,25 @@ namespace Bio
             var curLevelOffsetYPixel = -tileInfo.Extent.MaxY / Schema.Resolutions[tileInfo.Index.Level].UnitsPerPixel;
             var curTileWidth = (int)(tileInfo.Extent.MaxX > Schema.Extent.Width ? tileWidth - (tileInfo.Extent.MaxX - Schema.Extent.Width) / r : tileWidth);
             var curTileHeight = (int)(-tileInfo.Extent.MinY > Schema.Extent.Height ? tileHeight - (-tileInfo.Extent.MinY - Schema.Extent.Height) / r : tileHeight);
-            var bgraData = await Image.ReadRegionAsync(tileInfo.Index.Level, (long)curLevelOffsetXPixel, (long)curLevelOffsetYPixel, curTileWidth, curTileHeight);
+            var bgraData = await Image.ReadRegionAsync(tileInfo.Index.Level, (long)curLevelOffsetXPixel, (long)curLevelOffsetYPixel, curTileWidth, curTileHeight,tileInfo.Coordinate);
+            //We check to see if the data is valid.
+            if (bgraData.Length != curTileWidth * curTileHeight * 4)
+                return null;
+            byte[] bm = ConvertRgbaToRgb(bgraData);
+            return bm;
+        }
+        public async Task<byte[]> GetTileAsync(BruTile.TileInfo tileInfo)
+        {
+            if (tileInfo == null)
+                return null;
+            var r = Schema.Resolutions[tileInfo.Index.Level].UnitsPerPixel;
+            var tileWidth = Schema.Resolutions[tileInfo.Index.Level].TileWidth;
+            var tileHeight = Schema.Resolutions[tileInfo.Index.Level].TileHeight;
+            var curLevelOffsetXPixel = tileInfo.Extent.MinX / Schema.Resolutions[tileInfo.Index.Level].UnitsPerPixel;
+            var curLevelOffsetYPixel = -tileInfo.Extent.MaxY / Schema.Resolutions[tileInfo.Index.Level].UnitsPerPixel;
+            var curTileWidth = (int)(tileInfo.Extent.MaxX > Schema.Extent.Width ? tileWidth - (tileInfo.Extent.MaxX - Schema.Extent.Width) / r : tileWidth);
+            var curTileHeight = (int)(-tileInfo.Extent.MinY > Schema.Extent.Height ? tileHeight - (-tileInfo.Extent.MinY - Schema.Extent.Height) / r : tileHeight);
+            var bgraData = await Image.ReadRegionAsync(tileInfo.Index.Level, (long)curLevelOffsetXPixel, (long)curLevelOffsetYPixel, curTileWidth, curTileHeight, new ZCT());
             //We check to see if the data is valid.
             if (bgraData.Length != curTileWidth * curTileHeight * 4)
                 return null;
@@ -350,7 +380,7 @@ namespace Bio
         /// <param name="widthPixel">pixel width</param>
         /// <param name="heightPixel">pixel height</param>
         /// <param name="unitsPerPixel">um/pixel</param>
-        public SliceInfo(double xPixel, double yPixel, double widthPixel, double heightPixel, double unitsPerPixel)
+        public SliceInfo(double xPixel, double yPixel, double widthPixel, double heightPixel, double unitsPerPixel, ZCT coord)
         {
             Extent = new Extent(xPixel, yPixel, xPixel + widthPixel,yPixel + heightPixel).PixelToWorldInvertedY(unitsPerPixel);
             Resolution = unitsPerPixel;
@@ -364,6 +394,10 @@ namespace Bio
             get;
             set;
         } = 1;
+        /// <summary>
+        /// ZCT Coordinate
+        /// </summary>
+        public ZCT Coordinate { get; set; }
 
         /// <summary>
         /// World extent.
@@ -415,9 +449,9 @@ namespace Bio
         /// </summary>
         NearestUp,
         /// <summary>
-        /// Nearest dwon.
+        /// Nearest down.
         /// </summary>
-        NearestDwon,
+        NearestDown,
         /// <summary>
         /// Top.
         /// </summary>

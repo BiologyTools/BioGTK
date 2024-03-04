@@ -70,7 +70,7 @@ namespace BioGTK
             }
         }
         /// <summary>
-        /// 创建网格
+        /// Create grid
         /// </summary>
         /// <param name="n_per_side"></param>
         /// <param name="n_layers"></param>

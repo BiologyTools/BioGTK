@@ -5297,7 +5297,7 @@ namespace BioGTK
                 b.StackThreshold(true);
             else
                 b.StackThreshold(false);
-            Recorder.AddLine("BioGTK.BioImage.Open(" + '"' + file + '"' + ");");
+            Recorder.AddLine("BioGTK.BioImage.OpenFile(" + '"' + file + '"' + ");");
             if (addToImages)
                 Images.AddImage(b, tab);
             //pr.Close();
@@ -7402,7 +7402,7 @@ namespace BioGTK
                 else
                 {
                     start:
-                    byte[] bts = await slideBase.GetSlice(new Bio.SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, PyramidalSize.Width, PyramidalSize.Height, resolution));
+                    byte[] bts = await slideBase.GetSlice(new Bio.SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, PyramidalSize.Width, PyramidalSize.Height, resolution,App.viewer.GetCoordinate()));
                     if(bts == null)
                     {
                         if(PyramidalOrigin.X == 0 && PyramidalOrigin.Y == 0)
