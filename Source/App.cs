@@ -190,6 +190,56 @@ namespace BioGTK
             Menu = false;
         }
 
+        /// The function `GetMainMenuItem` takes a path and returns the corresponding `Widget` and a
+        /// boolean indicating whether it is a menu or not.
+        /// 
+        /// @param path The path is a string that represents the location of a main menu item in a menu
+        /// bar. It is formatted as a series of menu item labels separated by forward slashes ("/"). For
+        /// example, "File/Open/Recent" represents the "Recent" menu item under the "Open" menu item
+        /// under the
+        /// @param Widget The `Widget` parameter `wid` is an output parameter that will store the found
+        /// `MenuItem` or `Menu` widget based on the given `path`.
+        /// @param Menu The "Menu" parameter is a boolean variable that indicates whether the main menu
+        /// item is a menu or a menu item. If it is true, it means the main menu item is a menu, and if
+        /// it is false, it means the main menu item is a menu item.
+        /// 
+        /// @return The method is returning the main menu item specified by the given path. The main
+        /// menu item can be either a MenuItem or a Menu.
+        private static void GetMainImageJMenuItem(string path, out Widget wid, out bool Menu)
+        {
+            string[] s = path.Split('/');
+            MenuBar w = tabsView.ImageJMenu;
+            for (int i = 0; i < s.Length; i++)
+            {
+                foreach (Widget item in w.Children)
+                {
+                    //We use a try block incase this widget is a MenuItem instead of Menu.
+                    try
+                    {
+                        MenuItem m = FindItem((Menu)item, s[i]);
+                        if (m != null && i == s.Length - 1)
+                        {
+                            wid = m;
+                            Menu = true;
+                            return;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        MenuItem mi = (MenuItem)item;
+                        if (mi.Label == s[i] && i == s.Length - 1)
+                        {
+                            wid = mi;
+                            Menu = false;
+                            return;
+                        }
+                    }
+                }
+            }
+            wid = null;
+            Menu = false;
+        }
+
         /// The function `GetContextMenuItem` takes a path and returns the corresponding widget and a
         /// boolean indicating if it is a menu or not.
         /// 
@@ -285,6 +335,38 @@ namespace BioGTK
                 mi.ButtonPressEvent += ItemClicked;
                 m.Append(mi);
             }
+
+            GetMainImageJMenuItem(System.IO.Path.GetDirectoryName(path), out w, out menu);
+            if (!menu && w != null)
+            {
+                MenuItem m = (MenuItem)w;
+                if (m.Submenu != null)
+                {
+                    Menu me = (Menu)m.Submenu;
+                    MenuItem mi = new MenuItem(System.IO.Path.GetFileName(path));
+                    mi.ButtonPressEvent += ItemClicked;
+                    me.Append(mi);
+                    me.ShowAll();
+                }
+                else
+                {
+                    //If the item we need to add a child item to, is not already a Menu we need to make it a menu
+                    Menu me = new Menu();
+                    MenuItem mi = new MenuItem(System.IO.Path.GetFileName(path));
+                    mi.ButtonPressEvent += ItemClicked;
+                    me.Append(mi);
+                    m.Submenu = me;
+                    me.ShowAll();
+                }
+            }
+            else if (menu && w != null)
+            {
+                //Since this is already a Menu we can just append the item to it.
+                Menu m = (Menu)w;
+                MenuItem mi = new MenuItem(System.IO.Path.GetFileName(path));
+                mi.ButtonPressEvent += ItemClicked;
+                m.Append(mi);
+            }
         }
         /// The function `AddContextMenu` adds a context menu item to a specified path in a C#
         /// application.
@@ -359,7 +441,18 @@ namespace BioGTK
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine(e.ToString());
+                        Console.WriteLine(e.Message.ToString());
+                    }
+                }
+                else if(ts.Label.EndsWith(".onnx"))
+                {
+                    try
+                    {
+                        ML.ML.Run(ts.Label, ImageView.SelectedImage);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.Message.ToString());
                     }
                 }
             }

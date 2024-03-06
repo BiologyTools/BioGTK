@@ -230,6 +230,7 @@ namespace BioGTK
             runMenu.Submenu = rm;
             runMenu.ShowAll();
             Plugins.Initialize();
+            ML.ML.Initialize();
         }
 
         private void Mi_ButtonPressEvent(object o, ButtonPressEventArgs args)

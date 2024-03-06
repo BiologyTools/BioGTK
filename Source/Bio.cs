@@ -2895,6 +2895,7 @@ namespace BioGTK
                     }
                     Channels[c].BitsPerPixel = 16;
                 }
+                bitsPerPixel = 16;
             }
             else if (Buffers[0].PixelFormat == PixelFormat.Format24bppRgb)
             {

@@ -57,6 +57,7 @@ namespace BioGTK
             System.IO.Directory.CreateDirectory(st + "/Functions");
             System.IO.Directory.CreateDirectory(st + "/Tools");
             System.IO.Directory.CreateDirectory(st + "/Plugins");
+            System.IO.Directory.CreateDirectory(st + "/Models");
             App.nodeView = this;
             App.Initialize(true);
             SetupHandlers();

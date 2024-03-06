@@ -2235,7 +2235,7 @@ namespace BioGTK
             PointD orig = new PointD(torig.X - SelectedImage.Volume.Location.X, torig.Y - SelectedImage.Volume.Location.Y);
             PointD diff = new PointD(ToViewW(orig.X), ToViewH(orig.Y));
             PointD f = new PointD((((x + diff.X)/ dx) * SelectedImage.Volume.Width),(((y + diff.Y) / dy) * SelectedImage.Volume.Height));
-            PointD ff = new PointD(SelectedImage.Volume.Location.X + f.X, SelectedImage.Volume.Location.Y + f.Y);
+            PointD ff = new PointD(((SelectedImage.Volume.Location.X + SelectedImage.Volume.Width) + f.X), ((SelectedImage.Volume.Location.Y + SelectedImage.Volume.Height) + f.Y));
             return ff;
         }
         /// The function converts a rectangle from world space to view space.
