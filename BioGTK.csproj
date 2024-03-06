@@ -3,25 +3,25 @@
     <TargetFramework>net6.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RuntimeIdentifiers>osx-x64;linux-x64;win-x64;win-arm64;linux-arm64;osx-arm64;</RuntimeIdentifiers>
-    <AssemblyVersion>4.8.0</AssemblyVersion>
-    <FileVersion>4.8.0</FileVersion>
+    <AssemblyVersion>4.8.1</AssemblyVersion>
+    <FileVersion>4.8.1</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>BioGTK</PackageId>
     <Title>BioGTK</Title>
     <PackageProjectUrl>https://github.com/BiologyTools/BioGTK</PackageProjectUrl>
     <PackageIcon>banner.jpg</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageVersion>4.8.0</PackageVersion>
+    <PackageVersion>4.8.1</PackageVersion>
     <RepositoryUrl>https://github.com/BiologyTools/BioGTK</RepositoryUrl>
     <PackageTags>Biology; GTK; ImageJ; Bio-Formats; Image-Stacks; Microscopy; Whole-Slide-Image; Segment-Anything; SAM; QuPath;</PackageTags>
     <PackageLicenseExpression> GPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Description>A .NET application &amp; library for editing &amp; annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters &amp; macro functions. Supports Windows, Linux and Mac.</Description>
-    <Version>4.8.0</Version>
+    <Version>4.8.1</Version>
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>Pyramidal files with ZCT depth support. Run ONNX type Models on images.</PackageReleaseNotes>
+    <PackageReleaseNotes>Nuget Package Fix. Graphics Dependency Update SkiaSharp &amp; GTKSharp.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
@@ -424,6 +424,7 @@
     <PackageReference Include="Dotnet.Bundle" Version="0.9.13" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
+    <PackageReference Include="GtkSharp" Version="3.24.24.95" />
     <PackageReference Include="IKVM" Version="8.7.5" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.17.1" />
@@ -443,11 +444,11 @@
     <PackageReference Include="OpenSlideGTK" Version="1.5.0" />
     <PackageReference Include="ScottPlot" Version="5.0.21" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.3" />
-    <PackageReference Include="SkiaSharp" Version="2.88.7" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.7" />
-    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="2.88.7" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="2.88.7" />
-    <PackageReference Include="SkiaSharp.Views.Gtk3" Version="2.88.7" />
+    <PackageReference Include="SkiaSharp" Version="3.0.0-preview.2.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.0.0-preview.2.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.0.0-preview.2.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.0.0-preview.2.1" />
+    <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.0.0-preview.2.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -461,12 +462,12 @@
     <!-- Also defines .app file name -->
     <CFBundleDisplayName>BioGTK</CFBundleDisplayName>
     <CFBundleIdentifier>com.BioGTK</CFBundleIdentifier>
-    <CFBundleVersion>4.8.0</CFBundleVersion>
+    <CFBundleVersion>4.8.1</CFBundleVersion>
     <CFBundlePackageType>APPL</CFBundlePackageType>
     <CFBundleSignature>????</CFBundleSignature>
     <CFBundleExecutable>BioGTKApp</CFBundleExecutable>
     <CFBundleIconFile>bio.icns</CFBundleIconFile>
-    <CFBundleShortVersionString>4.8.0</CFBundleShortVersionString>
+    <CFBundleShortVersionString>4.8.1</CFBundleShortVersionString>
     <!-- Will be copied from output directory -->
     <NSPrincipalClass>NSApplication</NSPrincipalClass>
     <NSHighResolutionCapable>true</NSHighResolutionCapable>
