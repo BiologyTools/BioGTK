@@ -310,7 +310,7 @@ namespace BioGTK.ML
                                 }
                             }
                             bb.Buffers.Add(ResizeBilinear(bmp, b.SizeX, b.SizeY));
-                            //bb.Buffers[bb.Buffers.Count - 1].RotateFlip(RotateFlipType.Rotate90FlipX);
+                            bb.Buffers[bb.Buffers.Count - 1].RotateFlip(RotateFlipType.Rotate90FlipX);
                         }
                         r++;
                         
