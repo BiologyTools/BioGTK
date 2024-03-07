@@ -444,7 +444,7 @@ namespace BioGTK
                         Console.WriteLine(e.Message.ToString());
                     }
                 }
-                else if(ts.Label.EndsWith(".onnx"))
+                else if(ts.Label.EndsWith(".onnx") || ts.Label.EndsWith(".pt"))
                 {
                     try
                     {

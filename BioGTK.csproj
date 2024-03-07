@@ -417,17 +417,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AForgeBio" Version="1.5.2" />
+    <PackageReference Include="AForgeBio" Version="1.5.3" />
     <PackageReference Include="BioFormats.NET6" Version="7.2.0" />
     <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
     <PackageReference Include="CS-Script" Version="4.8.14" />
-    <PackageReference Include="Dotnet.Bundle" Version="0.9.13" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="GtkSharp" Version="3.24.24.95" />
     <PackageReference Include="IKVM" Version="8.7.5" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.17.1" />
+    <PackageReference Include="Microsoft.ML.TorchSharp" Version="0.21.1" />
     <PackageReference Include="NetVips" Version="2.4.0" />
     <PackageReference Include="NetVips.Native" Version="8.15.1" />
     <PackageReference Include="NetVips.Native.linux-arm64" Version="8.15.1" />
@@ -449,6 +449,7 @@
     <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.0.0-preview.2.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.0.0-preview.2.1" />
     <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.0.0-preview.2.1" />
+    <PackageReference Include="TorchSharp-cpu" Version="0.102.2" />
   </ItemGroup>
 
   <ItemGroup>
