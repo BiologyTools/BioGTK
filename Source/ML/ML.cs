@@ -2,20 +2,17 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using AForge;
-using Gtk;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
-using static TorchSharp.torch.nn;
-using static TorchSharp.torch.nn.functional;
-using static TorchSharp.TensorExtensionMethods;
-using TorchSharp.Modules;
 using TorchSharp;
 using MathNet.Numerics.Statistics;
-using static TorchSharp.torch;
-using Tensor = TorchSharp.torch.Tensor;
+using YamlDotNet;
+using YamlDotNet.Serialization.NamingConventions;
+using YamlDotNet.Serialization;
+using System.Collections;
+using javax.net.ssl;
+using Gtk;
 namespace BioGTK.ML
 {
     public static class ML
@@ -53,14 +50,49 @@ namespace BioGTK.ML
                         InputModule = input.module;
                         var output = chs.Last();
                         OutputModule = output.module;
+
+                        
                     }
                     catch (Exception e)
                     {
                         Console.WriteLine(e.Message.ToString());
                     }
-                    
+                    string f = Path.GetFileNameWithoutExtension(file) + ".yaml";
+                    if(!System.IO.File.Exists(f))
+                    {
+                        MessageDialog msgBox = new MessageDialog(
+                            App.viewer,
+                            DialogFlags.Modal,
+                            MessageType.Info,
+                            ButtonsType.Ok,
+                            "No corresponding model Yaml file for:" + Name
+                        );
+                        msgBox.Run();
+                        msgBox.Destroy();
+                        return;
+                    }
+                    using (var reader = new StreamReader(f))
+                    {
+                        var dynamicDeserializer = new DeserializerBuilder().Build();
+                        Metadata = dynamicDeserializer.Deserialize<Dictionary<string, object>>(reader);
+                        IDictionary conf = (IDictionary)Metadata["config"];
+                        Object inpp = Metadata["inputs"];
+                        List<Object> inpps = (List<Object>)inpp;
+                        IDictionary inpinfo = (IDictionary)inpps[0];
+                        IDictionary imagej = (IDictionary)conf["deepimagej"];
+                        IDictionary test = (IDictionary)imagej["test_information"];
+                        Object inputs = test["inputs"];
+                        List<Object> inps = (List<Object>)inputs;
+                        IDictionary info = (IDictionary)inps[0];
+                        string size = (string)info["size"];
+                        string[] sts = size.Split("x");
+                        shape = new long[] { int.Parse(sts[3]), int.Parse(sts[2]), int.Parse(sts[1]), int.Parse(sts[0]) };
+                        List<Object> val = (List<Object>)inpinfo["data_range"];
+                        MaxValue = int.Parse(val[1].ToString());
+                    }
                 }
             }
+            public Dictionary<string, object> Metadata { get; set; } = null;
             public InferenceSession InferenceSession { get; set; }
             public torch.jit.ScriptModule Module { get; set; }
             public torch.nn.Module InputModule { get; set; }
@@ -147,13 +179,20 @@ namespace BioGTK.ML
                     return (int)Shape[1];
                 }
             }
+            long[] shape;
             public long[] Shape
             {
                 get
                 {
+                    if(Metadata==null)
                     return new long[] { 1, 3, 256, 256 };
+                    else
+                    {
+                        return shape;
+                    }
                 }
             }
+            public int MaxValue { get; set; }
             public ModelOutputType ModelType { get;set; }
             public enum ModelOutputType
             {
@@ -262,8 +301,8 @@ namespace BioGTK.ML
                         Bitmap bm = ResizeBilinear(b.Buffers[i], Width, Height);
                         int w = Width;
                         int h = Height;
-                        int d = 1;
-                        float[,,,] img = new float[1, 1, Width, Height];
+                        int d = Depth;
+                        float[,,,] img = new float[1,Depth, Width, Height];
                         for (int y = 0; y < h; y++)
                         {
                             for (int x = 0; x < w; x++)
@@ -273,14 +312,14 @@ namespace BioGTK.ML
                                     int index = (y * w * c) + x;
                                     if (c >= bm.RGBChannelsCount)
                                     {
-                                        img[0,c,x,y] = bm.GetValueRGB(x, y, 0);
+                                        img[0, c, x, y] = 0;
                                     }
                                     else
                                     {
                                         if (bm.BitsPerPixel > 8)
-                                            img[0, c, x, y] = bm.GetValueRGB(x, y, c);
+                                            img[0, c, x, y] = ((float)bm.GetValueRGB(x, y, c) / (float)ushort.MaxValue) * MaxValue;
                                         else
-                                            img[0, c, x, y] = bm.GetValueRGB(x, y, c);
+                                            img[0, c, x, y] = ((float)bm.GetValueRGB(x, y, c) / (float)byte.MaxValue) * MaxValue;
                                     }
                                 }
                             }
@@ -408,9 +447,12 @@ namespace BioGTK.ML
             string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath);
             foreach(string f in Directory.GetFiles(st + "/Models"))
             {
-                Load(f);
-                string path = "Run/" + Path.GetFileName(f);
-                App.AddMenu(path);
+                if (f.EndsWith(".onnx") || f.EndsWith(".pt"))
+                {
+                    Load(f);
+                    string path = "Run/" + Path.GetFileName(f);
+                    App.AddMenu(path);
+                }
             }
         }
     }

@@ -450,6 +450,7 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.0.0-preview.2.1" />
     <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.0.0-preview.2.1" />
     <PackageReference Include="TorchSharp-cpu" Version="0.102.2" />
+    <PackageReference Include="YamlDotNet" Version="15.1.2" />
   </ItemGroup>
 
   <ItemGroup>
