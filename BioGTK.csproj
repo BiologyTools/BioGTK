@@ -417,7 +417,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AForgeBio" Version="1.5.3" />
+    <PackageReference Include="AForgeBio" Version="1.6.0" />
     <PackageReference Include="BioFormats.NET8" Version="7.2.0.1" />
     <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
     <PackageReference Include="CS-Script" Version="4.8.14" />
@@ -441,7 +441,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="OpenSlideGTK" Version="1.5.0" />
+    <PackageReference Include="OpenSlideGTK" Version="1.6.0" />
     <PackageReference Include="ScottPlot" Version="5.0.26" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.4" />
     <PackageReference Include="SkiaSharp" Version="3.0.0-preview.2.1" />
