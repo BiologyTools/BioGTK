@@ -32,7 +32,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - Easy segmentation with Segment Anything (SAM). Required model files downloadable from [Releases.](https://github.com/BiologyTools/BioGTK/releases/tag/SAM-Models)
 
 ## Dependencies
-- [BioFormats.NET6](https://github.com/BiologyTools/BioFormatsNET6) [GPL3](https://www.gnu.org/licenses/gpl-3.0.en.html)
+- [BioFormats.NET8](https://github.com/BiologyTools/BioFormatsNET8) [GPL3](https://www.gnu.org/licenses/gpl-3.0.en.html)
 - [IKVM](http://www.ikvm.net/) [License](https://github.com/gluck/ikvm/blob/master/LICENSE)
 - [AForge](http://www.aforgenet.com/) [LGPL](http://www.aforgenet.com/framework/license.html)
 - [LibTiff.Net](https://bitmiracle.com/libtiff/) [BSD](https://bitmiracle.com/libtiff/)
@@ -80,7 +80,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - Optionally install [OpenSlide](http://openslide.org/) for better navigation of whole-slide-images.
 
 ## Examples
-First you need to setup your project as a GTK project with .NET 6.0 as the target. 
+First you need to setup your project as a GTK project with .NET 8.0 as the target. 
 Then in between Gtk.Application.Init() and Gtk.Application.Run() use the library as you please.
 Here is an example for opening a new NodeView from BioGTKApp program.cs.
 ```
