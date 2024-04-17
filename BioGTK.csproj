@@ -1,23 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RuntimeIdentifiers>osx-x64;linux-x64;win-x64;win-arm64;linux-arm64;osx-arm64;</RuntimeIdentifiers>
-    <AssemblyVersion>4.9.0</AssemblyVersion>
-    <FileVersion>4.9.0</FileVersion>
+    <AssemblyVersion>5.0.0</AssemblyVersion>
+    <FileVersion>5.0.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>BioGTK</PackageId>
     <Title>BioGTK</Title>
     <PackageProjectUrl>https://github.com/BiologyTools/BioGTK</PackageProjectUrl>
     <PackageIcon>banner.jpg</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageVersion>4.9.0</PackageVersion>
+    <PackageVersion>5.0.0</PackageVersion>
     <RepositoryUrl>https://github.com/BiologyTools/BioGTK</RepositoryUrl>
     <PackageTags>Biology; GTK; ImageJ; Bio-Formats; Image-Stacks; Microscopy; Whole-Slide-Image; Segment-Anything; SAM; QuPath;</PackageTags>
     <PackageLicenseExpression> GPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Description>A .NET application &amp; library for editing &amp; annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters &amp; macro functions. Supports Windows, Linux and Mac.</Description>
-    <Version>4.9.0</Version>
+    <Version>5.0.0</Version>
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -418,38 +418,38 @@
 
   <ItemGroup>
     <PackageReference Include="AForgeBio" Version="1.5.3" />
-    <PackageReference Include="BioFormats.NET6" Version="7.2.0" />
+    <PackageReference Include="BioFormats.NET8" Version="7.2.0.1" />
     <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
     <PackageReference Include="CS-Script" Version="4.8.14" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="GtkSharp" Version="3.24.24.95" />
-    <PackageReference Include="IKVM" Version="8.7.5" />
+    <PackageReference Include="IKVM" Version="8.8.0" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.17.1" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.17.3" />
     <PackageReference Include="Microsoft.ML.TorchSharp" Version="0.21.1" />
-    <PackageReference Include="NetVips" Version="2.4.0" />
-    <PackageReference Include="NetVips.Native" Version="8.15.1" />
-    <PackageReference Include="NetVips.Native.linux-arm64" Version="8.15.1" />
-    <PackageReference Include="NetVips.Native.linux-x64" Version="8.15.1" />
-    <PackageReference Include="NetVips.Native.osx-arm64" Version="8.15.1" />
-    <PackageReference Include="NetVips.Native.osx-x64" Version="8.15.1" />
-    <PackageReference Include="NetVips.Native.win-arm64" Version="8.15.1" />
-    <PackageReference Include="NetVips.Native.win-x64" Version="8.15.1" />
+    <PackageReference Include="NetVips" Version="2.4.1" />
+    <PackageReference Include="NetVips.Native" Version="8.15.2" />
+    <PackageReference Include="NetVips.Native.linux-arm64" Version="8.15.2" />
+    <PackageReference Include="NetVips.Native.linux-x64" Version="8.15.2" />
+    <PackageReference Include="NetVips.Native.osx-arm64" Version="8.15.2" />
+    <PackageReference Include="NetVips.Native.osx-x64" Version="8.15.2" />
+    <PackageReference Include="NetVips.Native.win-arm64" Version="8.15.2" />
+    <PackageReference Include="NetVips.Native.win-x64" Version="8.15.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="NuGet.Build.Tasks.Pack" Version="6.9.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="OpenSlideGTK" Version="1.5.0" />
-    <PackageReference Include="ScottPlot" Version="5.0.21" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.3" />
+    <PackageReference Include="ScottPlot" Version="5.0.26" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.4" />
     <PackageReference Include="SkiaSharp" Version="3.0.0-preview.2.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.0.0-preview.2.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.0.0-preview.2.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.0.0-preview.2.1" />
     <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.0.0-preview.2.1" />
-    <PackageReference Include="TorchSharp-cpu" Version="0.102.2" />
+    <PackageReference Include="TorchSharp-cpu" Version="0.102.4" />
     <PackageReference Include="YamlDotNet" Version="15.1.2" />
   </ItemGroup>
 
@@ -464,12 +464,12 @@
     <!-- Also defines .app file name -->
     <CFBundleDisplayName>BioGTK</CFBundleDisplayName>
     <CFBundleIdentifier>com.BioGTK</CFBundleIdentifier>
-    <CFBundleVersion>4.8.1</CFBundleVersion>
+    <CFBundleVersion>5.0.0</CFBundleVersion>
     <CFBundlePackageType>APPL</CFBundlePackageType>
     <CFBundleSignature>????</CFBundleSignature>
     <CFBundleExecutable>BioGTKApp</CFBundleExecutable>
     <CFBundleIconFile>bio.icns</CFBundleIconFile>
-    <CFBundleShortVersionString>4.8.1</CFBundleShortVersionString>
+    <CFBundleShortVersionString>5.0.0</CFBundleShortVersionString>
     <!-- Will be copied from output directory -->
     <NSPrincipalClass>NSApplication</NSPrincipalClass>
     <NSHighResolutionCapable>true</NSHighResolutionCapable>
