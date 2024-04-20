@@ -29,11 +29,15 @@ namespace Bio
 
         public TValue Get(Info key)
         {
-            if (cacheMap.TryGetValue(key, out var node))
+            foreach (LinkedListNode<(Info key, TValue value)> item in cacheMap.Values)
             {
-                lruList.Remove(node);
-                lruList.AddLast(node);
-                Info tf = (Info)node.Value.key;
+                Info k = item.Value.key;
+                if(k.Coordinate == key.Coordinate && k.Index == key.Index)
+                {
+                    lruList.Remove(item);
+                    lruList.AddLast(item);
+                    return item.Value.value;
+                }
             }
             return default(TValue);
         }
@@ -74,20 +78,26 @@ namespace Bio
 
         public async Task<byte[]> GetTile(TileInformation info)
         {
-            
-            byte[] data = cache.Get(info);
+            LruCache<TileInformation, byte[]>.Info inf = new LruCache<TileInformation, byte[]>.Info();
+            inf.Coordinate = info.Coordinate;
+            inf.Index = info.Index;
+            byte[] data = cache.Get(inf);
             if (data != null)
             {
                 return data;
             }
             byte[] tile = await LoadTile(info);
+            if(tile!=null)
             AddTile(info, tile);
             return tile;
         }
 
         private void AddTile(TileInformation tileId, byte[] tile)
         {
-            cache.Add(tileId, tile);
+            LruCache<TileInformation, byte[]>.Info inf = new LruCache<TileInformation, byte[]>.Info();
+            inf.Coordinate = tileId.Coordinate;
+            inf.Index = tileId.Index;
+            cache.Add(inf, tile);
         }
 
         private async Task<byte[]> LoadTile(TileInformation tileId)
