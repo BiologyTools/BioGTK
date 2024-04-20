@@ -11,30 +11,34 @@ using BioGTK;
 using AForge;
 namespace Bio
 {
-    public class LruCache<TKey, TValue>
+    public class LruCache<TileInformation, TValue>
     {
+        public class Info
+        {
+            public ZCT Coordinate { get; set; }
+            public TileIndex Index { get; set; }
+        }
         private readonly int capacity;
-        private Dictionary<TKey, LinkedListNode<(TKey key, TValue value)>> cacheMap = new Dictionary<TKey, LinkedListNode<(TKey key, TValue value)>>();
-        private LinkedList<(TKey key, TValue value)> lruList = new LinkedList<(TKey key, TValue value)>();
+        private Dictionary<Info, LinkedListNode<(Info key, TValue value)>> cacheMap = new Dictionary<Info, LinkedListNode<(Info key, TValue value)>>();
+        private LinkedList<(Info key, TValue value)> lruList = new LinkedList<(Info key, TValue value)>();
 
         public LruCache(int capacity)
         {
             this.capacity = capacity;
         }
 
-        public TValue Get(TKey key)
+        public TValue Get(Info key)
         {
             if (cacheMap.TryGetValue(key, out var node))
             {
                 lruList.Remove(node);
                 lruList.AddLast(node);
-                return node.Value.value;
+                Info tf = (Info)node.Value.key;
             }
-
             return default(TValue);
         }
 
-        public void Add(TKey key, TValue value)
+        public void Add(Info key, TValue value)
         {
             if (cacheMap.Count >= capacity)
             {
@@ -51,25 +55,26 @@ namespace Bio
                 lruList.Remove(cacheMap[key]);
             }
 
-            var newNode = new LinkedListNode<(TKey key, TValue value)>((key, value));
+            var newNode = new LinkedListNode<(Info key, TValue value)>((key, value));
             lruList.AddLast(newNode);
             cacheMap[key] = newNode;
         }
     }
     public class TileCache
     {
-        private LruCache<TileInfo, byte[]> cache;
+        private LruCache<TileInformation, byte[]> cache;
         private int capacity;
         SlideSourceBase source = null;
-        public TileCache(SlideSourceBase source, int capacity = 10000)
+        public TileCache(SlideSourceBase source, int capacity = 500)
         {
             this.source = source;
             this.capacity = capacity;
-            this.cache = new LruCache<TileInfo, byte[]>(capacity);
+            this.cache = new LruCache<TileInformation, byte[]>(capacity);
         }
 
-        public async Task<byte[]> GetTile(TileInfo info)
+        public async Task<byte[]> GetTile(TileInformation info)
         {
+            
             byte[] data = cache.Get(info);
             if (data != null)
             {
@@ -80,12 +85,12 @@ namespace Bio
             return tile;
         }
 
-        private void AddTile(TileInfo tileId, byte[] tile)
+        private void AddTile(TileInformation tileId, byte[] tile)
         {
             cache.Add(tileId, tile);
         }
 
-        private async Task<byte[]> LoadTile(TileInfo tileId)
+        private async Task<byte[]> LoadTile(TileInformation tileId)
         {
             try
             {
@@ -98,7 +103,7 @@ namespace Bio
         }
     }
 
-    public class TileInfo
+    public class TileInformation
     {
         public TileIndex Index { get; set; }
         public Extent Extent { get; set; }
@@ -162,7 +167,7 @@ namespace Bio
             List<Tuple<Extent, byte[]>> tiles = new List<Tuple<Extent, byte[]>>();
             foreach (BruTile.TileInfo t in tileInfos)
             {
-                TileInfo tf = new TileInfo();
+                TileInformation tf = new TileInformation();
                 tf.Extent = t.Extent;
                 tf.Coordinate = App.viewer.GetCoordinate();
                 tf.Index = t.Index;
@@ -265,7 +270,7 @@ namespace Bio
             GC.SuppressFinalize(this);
         }
 
-        public async Task<byte[]> GetTileAsync(TileInfo tileInfo)
+        public async Task<byte[]> GetTileAsync(TileInformation tileInfo)
         {
             if (tileInfo == null)
                 return null;
