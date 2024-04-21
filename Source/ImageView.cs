@@ -1265,7 +1265,7 @@ namespace BioGTK
             keyDown = e.Event.Key;
             double moveAmount = 5 * Scale.Width;
             double zoom = Level;
-            double movepyr = 50 * Level;
+            double movepyr = 50 * (Level+1);
             if (e.Event.Key == Gdk.Key.c && e.Event.State == ModifierType.ControlMask)
             {
                 CopySelection();

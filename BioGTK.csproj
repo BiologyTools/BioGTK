@@ -3,8 +3,8 @@
     <TargetFramework>net8.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RuntimeIdentifiers>osx-x64;linux-x64;win-x64;win-arm64;linux-arm64;osx-arm64;</RuntimeIdentifiers>
-    <AssemblyVersion>5.0.0</AssemblyVersion>
-    <FileVersion>5.0.0</FileVersion>
+    <AssemblyVersion>5.0.1</AssemblyVersion>
+    <FileVersion>5.0.1</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>BioGTK</PackageId>
     <Title>BioGTK</Title>
@@ -17,11 +17,11 @@
     <PackageLicenseExpression> GPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Description>A .NET application &amp; library for editing &amp; annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters &amp; macro functions. Supports Windows, Linux and Mac.</Description>
-    <Version>5.0.0</Version>
+    <Version>5.0.1</Version>
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>BioImage.IO models support both ONNX &amp; PyTorch models.</PackageReleaseNotes>
+    <PackageReleaseNotes>Tile Cache Fix.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
@@ -464,12 +464,12 @@
     <!-- Also defines .app file name -->
     <CFBundleDisplayName>BioGTK</CFBundleDisplayName>
     <CFBundleIdentifier>com.BioGTK</CFBundleIdentifier>
-    <CFBundleVersion>5.0.0</CFBundleVersion>
+    <CFBundleVersion>5.0.1</CFBundleVersion>
     <CFBundlePackageType>APPL</CFBundlePackageType>
     <CFBundleSignature>????</CFBundleSignature>
     <CFBundleExecutable>BioGTKApp</CFBundleExecutable>
     <CFBundleIconFile>bio.icns</CFBundleIconFile>
-    <CFBundleShortVersionString>5.0.0</CFBundleShortVersionString>
+    <CFBundleShortVersionString>5.0.1</CFBundleShortVersionString>
     <!-- Will be copied from output directory -->
     <NSPrincipalClass>NSApplication</NSPrincipalClass>
     <NSHighResolutionCapable>true</NSHighResolutionCapable>

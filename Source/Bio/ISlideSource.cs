@@ -69,7 +69,7 @@ namespace Bio
         private LruCache<TileInformation, byte[]> cache;
         private int capacity;
         SlideSourceBase source = null;
-        public TileCache(SlideSourceBase source, int capacity = 500)
+        public TileCache(SlideSourceBase source, int capacity = 1000)
         {
             this.source = source;
             this.capacity = capacity;
