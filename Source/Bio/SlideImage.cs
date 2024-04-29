@@ -2,7 +2,6 @@
 using BioGTK;
 using OpenSlideGTK;
 using OpenSlideGTK.Interop;
-using org.checkerframework.common.returnsreceiver.qual;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -225,7 +224,7 @@ namespace Bio
         /// <exception cref="OpenSlideException"/>
         public unsafe byte[] ReadRegion(int level, long x, long y, long width, long height)
         {
-            return BioImage.GetTile(BioImage, App.viewer.GetCoordinate(), level, (int)x, (int)y, (int)width, (int)height).RGBBytes;
+            return BioImage.GetTile(BioImage, App.viewer.GetCoordinate(), level, (int)x, (int)y, (int)width, (int)height).Bytes;
         }
 
         /// <summary>
@@ -240,7 +239,7 @@ namespace Bio
         /// <returns></returns>
         public unsafe bool TryReadRegion(int level, long x, long y, long width, long height, out byte[] data, ZCT zct)
         {
-            data = BioImage.GetTile(BioImage, zct, level, (int)x, (int)y, (int)width, (int)height).RGBBytes;
+            data = BioImage.GetTile(BioImage, zct, level, (int)x, (int)y, (int)width, (int)height).Bytes;
             if (data == null)
                 return false;
             else

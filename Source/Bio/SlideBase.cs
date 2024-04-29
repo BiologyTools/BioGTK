@@ -14,7 +14,7 @@ namespace Bio
     public class SlideBase : SlideSourceBase
     {
         public readonly SlideImage SlideImage;
-        public SlideBase(BioGTK.BioImage source, SlideImage im, bool enableCache = true)
+        public SlideBase(BioImage source, SlideImage im, bool enableCache = true)
         {
             Source = source.file;
             SlideImage = im;
