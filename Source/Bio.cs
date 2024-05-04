@@ -4981,6 +4981,12 @@ namespace BioGTK
                     res.PhysicalSizeZ = 2.54 / 96;
                 }
             }
+            if(res.PhysicalSizeX == 0 || res.PhysicalSizeY == 0)
+            {
+                res.PhysicalSizeX = 2.54 / 96;
+                res.PhysicalSizeY = 2.54 / 96;
+                res.PhysicalSizeZ = 2.54 / 96;
+            }
             res.SizeX = image.GetField(TiffTag.IMAGEWIDTH)[0].ToInt();
             res.SizeY = image.GetField(TiffTag.IMAGELENGTH)[0].ToInt();
             int bitsPerPixel = image.GetField(TiffTag.BITSPERSAMPLE)[0].ToInt();
@@ -5064,6 +5070,7 @@ namespace BioGTK
                 b.sizeC = 1;
                 b.sizeT = 1;
                 b.sizeZ = 1;
+                int pages = image.NumberOfDirectories() / b.seriesCount;
                 if (f != null && !tile)
                 {
                     imDesc = new ImageJDesc();
@@ -5078,7 +5085,7 @@ namespace BioGTK
                         if (imDesc.slices != 0)
                             b.sizeZ = imDesc.slices;
                         else
-                            b.sizeZ = 1;
+                            b.sizeZ = pages;
                         if (imDesc.frames != 0)
                             b.sizeT = imDesc.frames;
                         else
@@ -5092,9 +5099,16 @@ namespace BioGTK
                         else
                             b.imageInfo.PhysicalSizeZ = 1;
                     }
+                    else
+                    {
+                        b.sizeZ = pages; 
+                        b.sizeT = 1;
+                        b.sizeC = 1;
+                    }
                 }
                 int stride = 0;
                 PixelFormat PixelFormat;
+                
                 if (RGBChannelCount == 1)
                 {
                     if (b.bitsPerPixel > 8)
@@ -5210,7 +5224,7 @@ namespace BioGTK
                 }
 
                 b.Buffers = new List<Bitmap>();
-                int pages = image.NumberOfDirectories() / b.seriesCount;
+                
                 int str = image.ScanlineSize();
                 bool inter = true;
                 if (stride != str)

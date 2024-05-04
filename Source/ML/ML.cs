@@ -13,6 +13,7 @@ using YamlDotNet.Serialization;
 using System.Collections;
 using javax.net.ssl;
 using Gtk;
+using ucar.nc2;
 namespace BioGTK.ML
 {
     public static class ML
@@ -57,7 +58,7 @@ namespace BioGTK.ML
                     {
                         Console.WriteLine(e.Message.ToString());
                     }
-                    string f = Path.GetFileNameWithoutExtension(file) + ".yaml";
+                    string f = Path.GetDirectoryName(file) + "/" + Path.GetFileNameWithoutExtension(file) + ".yaml";
                     if(!System.IO.File.Exists(f))
                     {
                         MessageDialog msgBox = new MessageDialog(
@@ -84,9 +85,36 @@ namespace BioGTK.ML
                         Object inputs = test["inputs"];
                         List<Object> inps = (List<Object>)inputs;
                         IDictionary info = (IDictionary)inps[0];
+                        IDictionary inputinfo = (IDictionary)inpps[0];
+                        IDictionary shapeinfo = (IDictionary)inputinfo["shape"];
+                        List<Object> shapeinfomin = (List<Object>)shapeinfo["min"];
+                        int len = shapeinfomin.Count;
                         string size = (string)info["size"];
                         string[] sts = size.Split("x");
-                        shape = new long[] { int.Parse(sts[3]), int.Parse(sts[2]), int.Parse(sts[1]), int.Parse(sts[0]) };
+                        if (len != sts.Length)
+                        {
+                            shape = new long[len];
+                            for (int i = 0; i < len; i++)
+                            {
+                                if(len - i > sts.Length)
+                                {
+                                    shape[i] = 1;
+                                }
+                                else
+                                {
+                                    shape[i] = long.Parse(sts[sts.Length-i]);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            shape = new long[sts.Length];
+                            for (int i = 0; i < sts.Length; i++)
+                            {
+                                String s = sts[i];
+                                shape[i] = long.Parse(s);
+                            }
+                        }
                         List<Object> val = (List<Object>)inpinfo["data_range"];
                         MaxValue = int.Parse(val[1].ToString());
                     }
@@ -133,7 +161,10 @@ namespace BioGTK.ML
                     }
                     else
                     {
-                        return (int)Shape[3];
+                        if (shape.Length == 4)
+                            return (int)Shape[3];
+                        else
+                            return (int)Shape[4];
                     }
                 }
             }
@@ -168,7 +199,10 @@ namespace BioGTK.ML
                     }
                     else
                     {
-                        return (int)Shape[2];
+                        if(shape.Length == 4)
+                            return (int)Shape[2];
+                        else
+                            return (int)Shape[3];
                     }
                 }
             }
@@ -176,7 +210,7 @@ namespace BioGTK.ML
             {
                 get
                 {
-                    return (int)Shape[1];
+                    return (int)shape[1];
                 }
             }
             long[] shape;
@@ -296,63 +330,113 @@ namespace BioGTK.ML
                 {
                     int r = 0;
                     int resDepth = 1;
-                    for (int i = 0; i < b.Buffers.Count; i++)
+                    if (shape.Length == 4)
                     {
-                        Bitmap bm = ResizeBilinear(b.Buffers[i], Width, Height);
-                        int w = Width;
-                        int h = Height;
-                        int d = Depth;
-                        float[,,,] img = new float[1,Depth, Width, Height];
-                        for (int y = 0; y < h; y++)
+                        for (int i = 0; i < b.Buffers.Count; i++)
                         {
-                            for (int x = 0; x < w; x++)
-                            {
-                                for (int c = 0; c < d; c++)
-                                {
-                                    int index = (y * w * c) + x;
-                                    if (c >= bm.RGBChannelsCount)
-                                    {
-                                        img[0, c, x, y] = 0;
-                                    }
-                                    else
-                                    {
-                                        if (bm.BitsPerPixel > 8)
-                                            img[0, c, x, y] = ((float)bm.GetValueRGB(x, y, c) / (float)ushort.MaxValue) * MaxValue;
-                                        else
-                                            img[0, c, x, y] = ((float)bm.GetValueRGB(x, y, c) / (float)byte.MaxValue) * MaxValue;
-                                    }
-                                }
-                            }
-                        }
-                        var tensor = torch.tensor(img);
-                        object results = null;
-                        try
-                        {
-                            results = Module.forward(tensor);
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine(e.ToString());
-                        }
-                        TorchSharp.Utils.TensorAccessor<float> outputmask = ((torch.Tensor)results).data<float>();
-                        double mean = outputmask.Mean();
-                        resDepth = (int)((torch.Tensor)results).shape[1];
-                        for (int c = 0; c < resDepth; c++)
-                        {
-                            Bitmap bmp = new Bitmap(Width, Height, b.Buffers[0].PixelFormat);
+                            Bitmap bm = ResizeBilinear(b.Buffers[i], Width, Height);
+                            int w = Width;
+                            int h = Height;
+                            int d = Depth;
+                            float[,,,] img = new float[1, Depth, Width, Height];
                             for (int y = 0; y < h; y++)
                             {
                                 for (int x = 0; x < w; x++)
                                 {
-                                    int index = (y * w * c) + x;
-                                    bmp.SetPixel(x, y, new ColorS((ushort)(outputmask[index] / mean)));
+                                    for (int c = 0; c < d; c++)
+                                    {
+                                        int index = (y * w * c) + x;
+                                        if (c >= bm.RGBChannelsCount)
+                                        {
+                                            img[0, c, x, y] = 0;
+                                        }
+                                        else
+                                        {
+                                            if (bm.BitsPerPixel > 8)
+                                                img[0, c, x, y] = ((float)bm.GetValueRGB(x, y, c) / (float)ushort.MaxValue) * MaxValue;
+                                            else
+                                                img[0, c, x, y] = ((float)bm.GetValueRGB(x, y, c) / (float)byte.MaxValue) * MaxValue;
+                                        }
+                                    }
                                 }
                             }
-                            bb.Buffers.Add(ResizeBilinear(bmp, b.SizeX, b.SizeY));
-                            bb.Buffers[bb.Buffers.Count - 1].RotateFlip(RotateFlipType.Rotate90FlipX);
+                            var tensor = torch.tensor(img);
+                            object results = null;
+                            try
+                            {
+                                results = Module.forward(tensor);
+                            }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine(e.ToString());
+                            }
+                            TorchSharp.Utils.TensorAccessor<float> outputmask = ((torch.Tensor)results).data<float>();
+                            double mean = outputmask.Mean();
+                            resDepth = (int)((torch.Tensor)results).shape[1];
+                            for (int c = 0; c < resDepth; c++)
+                            {
+                                Bitmap bmp = new Bitmap(Width, Height, b.Buffers[0].PixelFormat);
+                                for (int y = 0; y < h; y++)
+                                {
+                                    for (int x = 0; x < w; x++)
+                                    {
+                                        int index = (y * w * c) + x;
+                                        bmp.SetPixel(x, y, new ColorS((ushort)(outputmask[index] / mean)));
+                                    }
+                                }
+                                bb.Buffers.Add(ResizeBilinear(bmp, b.SizeX, b.SizeY));
+                                bb.Buffers[bb.Buffers.Count - 1].RotateFlip(RotateFlipType.Rotate90FlipX);
+                            }
+                            r++;
+
                         }
-                        r++;
-                        
+                    }
+                    else if (shape.Length == 5)
+                    {
+                        torch.Tensor tensor = torch.empty(shape);
+                        for (int i = 0; i < b.Buffers.Count; i++)
+                        {
+                            Bitmap bm = ResizeBilinear(b.Buffers[i], Width, Height);
+                            for (int y = 0; y < Height; y++)
+                            {
+                                for (int x = 0; x < Width; x++)
+                                {
+                                    for (int c = 0; c < Depth; c++)
+                                    {
+                                        if (c >= bm.RGBChannelsCount)
+                                        {
+                                            tensor[0, c, i, x, y] = 0;
+                                        }
+                                        else
+                                        {
+                                            if (bm.BitsPerPixel > 8)
+                                                tensor[0, c, i, x, y] = ((float)bm.GetValueRGB(x, y, c) / (float)ushort.MaxValue) * MaxValue;
+                                            else
+                                                tensor[0, c, i, x, y] = ((float)bm.GetValueRGB(x, y, c) / (float)byte.MaxValue) * MaxValue;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        torch.Tensor outputmask = (torch.Tensor)Module.forward(tensor);
+                        resDepth = (int)(outputmask.shape[1]);
+                        for (int c = 0; c < resDepth; c++)
+                        {
+                            for (int buf = 0; buf < (int)outputmask.shape[2]; buf++)
+                            {
+                                Bitmap bmp = new Bitmap((int)outputmask.shape[3], (int)outputmask.shape[4], b.Buffers[0].PixelFormat);
+                                for (int y = 0; y < Height; y++)
+                                {
+                                    for (int x = 0; x < Width; x++)
+                                    {
+                                        float by = outputmask[0,c,buf,x,y].ToSingle();
+                                        bmp.SetPixel(x, y, new ColorS((ushort)(by * byte.MaxValue)));
+                                    }
+                                }
+                                bb.Buffers.Add(ResizeBilinear(bmp, b.SizeX, b.SizeY));
+                                bb.Buffers[bb.Buffers.Count - 1].RotateFlip(RotateFlipType.Rotate90FlipX);
+                            }
+                        }
                     }
                     bb.Channels.AddRange(b.Channels);
                     if (resDepth > 1)
