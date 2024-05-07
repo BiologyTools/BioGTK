@@ -465,12 +465,12 @@
     <!-- Also defines .app file name -->
     <CFBundleDisplayName>BioGTK</CFBundleDisplayName>
     <CFBundleIdentifier>com.BioGTK</CFBundleIdentifier>
-    <CFBundleVersion>5.1.0</CFBundleVersion>
+    <CFBundleVersion>5.1.1</CFBundleVersion>
     <CFBundlePackageType>APPL</CFBundlePackageType>
     <CFBundleSignature>????</CFBundleSignature>
     <CFBundleExecutable>BioGTKApp</CFBundleExecutable>
     <CFBundleIconFile>bio.icns</CFBundleIconFile>
-    <CFBundleShortVersionString>5.1.0</CFBundleShortVersionString>
+    <CFBundleShortVersionString>5.1.1</CFBundleShortVersionString>
     <!-- Will be copied from output directory -->
     <NSPrincipalClass>NSApplication</NSPrincipalClass>
     <NSHighResolutionCapable>true</NSHighResolutionCapable>
