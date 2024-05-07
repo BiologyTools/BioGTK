@@ -11,16 +11,14 @@ using YamlDotNet;
 using YamlDotNet.Serialization.NamingConventions;
 using YamlDotNet.Serialization;
 using System.Collections;
-using javax.net.ssl;
-using Gtk;
-using ucar.nc2;
+using Bitmap = AForge.Bitmap;
 namespace BioGTK.ML
 {
     public static class ML
     {
         public class Model
         {
-            public Model(string file) 
+            public Model(string file)
             {
                 File = file;
                 Name = Path.GetFileNameWithoutExtension(file);
@@ -40,7 +38,7 @@ namespace BioGTK.ML
                         OutputValueTypes.Add(m.Value);
                     }
                 }
-                else if(file.EndsWith(".pt"))
+                else if (file.EndsWith(".pt"))
                 {
                     try
                     {
@@ -52,24 +50,18 @@ namespace BioGTK.ML
                         var output = chs.Last();
                         OutputModule = output.module;
 
-                        
+
                     }
                     catch (Exception e)
                     {
                         Console.WriteLine(e.Message.ToString());
                     }
                     string f = Path.GetDirectoryName(file) + "/" + Path.GetFileNameWithoutExtension(file) + ".yaml";
-                    if(!System.IO.File.Exists(f))
+                    if (!System.IO.File.Exists(f))
                     {
-                        MessageDialog msgBox = new MessageDialog(
-                            App.viewer,
-                            DialogFlags.Modal,
-                            MessageType.Info,
-                            ButtonsType.Ok,
-                            "No corresponding model Yaml file for:" + Name
-                        );
-                        msgBox.Run();
-                        msgBox.Destroy();
+                        Gtk.MessageDialog md = new Gtk.MessageDialog(App.tabsView, Gtk.DialogFlags.Modal, Gtk.MessageType.Error, Gtk.ButtonsType.Ok,"No corresponding model Yaml metadata file for:" + Name);
+                        md.Show();
+                        md.Run();
                         return;
                     }
                     using (var reader = new StreamReader(f))
@@ -96,13 +88,13 @@ namespace BioGTK.ML
                             shape = new long[len];
                             for (int i = 0; i < len; i++)
                             {
-                                if(len - i > sts.Length)
+                                if (len - i > sts.Length)
                                 {
                                     shape[i] = 1;
                                 }
                                 else
                                 {
-                                    shape[i] = long.Parse(sts[sts.Length-i]);
+                                    shape[i] = long.Parse(sts[sts.Length - i]);
                                 }
                             }
                         }
@@ -162,7 +154,7 @@ namespace BioGTK.ML
                     else
                     {
                         if (shape.Length == 4)
-                            return (int)Shape[3];
+                            return (int)Shape[0];
                         else
                             return (int)Shape[4];
                     }
@@ -199,8 +191,8 @@ namespace BioGTK.ML
                     }
                     else
                     {
-                        if(shape.Length == 4)
-                            return (int)Shape[2];
+                        if (shape.Length == 4)
+                            return (int)Shape[1];
                         else
                             return (int)Shape[3];
                     }
@@ -210,7 +202,10 @@ namespace BioGTK.ML
             {
                 get
                 {
-                    return (int)shape[1];
+                    if (shape.Length == 4)
+                        return (int)Shape[2];
+                    else
+                        return (int)shape[1];
                 }
             }
             long[] shape;
@@ -218,8 +213,8 @@ namespace BioGTK.ML
             {
                 get
                 {
-                    if(Metadata==null)
-                    return new long[] { 1, 3, 256, 256 };
+                    if (Metadata == null)
+                        return new long[] { 1, 3, 256, 256 };
                     else
                     {
                         return shape;
@@ -227,7 +222,7 @@ namespace BioGTK.ML
                 }
             }
             public int MaxValue { get; set; }
-            public ModelOutputType ModelType { get;set; }
+            public ModelOutputType ModelType { get; set; }
             public enum ModelOutputType
             {
                 classification,
@@ -235,9 +230,9 @@ namespace BioGTK.ML
             }
             public void Run(BioImage b)
             {
-                if(File.EndsWith(".onnx"))
+                if (File.EndsWith(".onnx"))
                     RunONNX(b);
-                else if(File.EndsWith(".pt"))
+                else if (File.EndsWith(".pt"))
                     RunTorch(b);
             }
             public void RunONNX(BioImage b)
@@ -247,7 +242,7 @@ namespace BioGTK.ML
                 {
                     for (int i = 0; i < b.Buffers.Count; i++)
                     {
-                        Bitmap bm = ResizeBilinear(b.Buffers[i],Width,Height);
+                        Bitmap bm = ResizeBilinear(b.Buffers[i], Width, Height);
                         int w = Width;
                         int h = Height;
                         int d = InputValueTypes[0].Dimensions[1];
@@ -294,7 +289,7 @@ namespace BioGTK.ML
                                         for (int x = 0; x < w; x++)
                                         {
                                             int index = (y * w * d) + x;
-                                            bmp.SetPixel(x, y, new ColorS((ushort)(outputmask[index]/mean)));
+                                            bmp.SetPixel(x, y, new ColorS((ushort)(outputmask[index] / mean)));
                                         }
                                     }
                                     bb.Buffers.Add(ResizeBilinear(bmp, b.SizeX, b.SizeY));
@@ -304,7 +299,7 @@ namespace BioGTK.ML
                         }
                     }
                     bb.Channels.AddRange(b.Channels);
-                    if(OutputValueTypes[0].Dimensions[1] > 1)
+                    if (OutputValueTypes[0].Dimensions[1] > 1)
                     {
                         bb.Channels.AddRange(b.Channels);
                         for (int i = 0; i < bb.Channels.Count; i++)
@@ -313,10 +308,10 @@ namespace BioGTK.ML
                         }
                     }
                     bb.UpdateCoords(b.SizeZ, b.SizeC * OutputValueTypes[0].Dimensions[1], b.SizeT);
-                    bb.Resolutions.Add(new Resolution(bb.SizeX, bb.SizeY, bb.Buffers[0].PixelFormat,b.PhysicalSizeX,b.PhysicalSizeY,b.PhysicalSizeZ,b.StageSizeX,b.StageSizeY,b.StageSizeZ));
+                    bb.Resolutions.Add(new Resolution(bb.SizeX, bb.SizeY, bb.Buffers[0].PixelFormat, b.PhysicalSizeX, b.PhysicalSizeY, b.PhysicalSizeZ, b.StageSizeX, b.StageSizeY, b.StageSizeZ));
                     bb.Volume = b.Volume;
                     bb.bitsPerPixel = bb.Buffers[0].BitsPerPixel;
-                    
+
                     BioImage.AutoThreshold(bb, true);
                     Images.AddImage(bb, true);
                 }
@@ -385,7 +380,7 @@ namespace BioGTK.ML
                                     }
                                 }
                                 bb.Buffers.Add(ResizeBilinear(bmp, b.SizeX, b.SizeY));
-                                bb.Buffers[bb.Buffers.Count - 1].RotateFlip(RotateFlipType.Rotate90FlipX);
+                                bb.Buffers[bb.Buffers.Count - 1].RotateFlip(AForge.RotateFlipType.Rotate90FlipX);
                             }
                             r++;
 
@@ -429,12 +424,12 @@ namespace BioGTK.ML
                                 {
                                     for (int x = 0; x < Width; x++)
                                     {
-                                        float by = outputmask[0,c,buf,x,y].ToSingle();
+                                        float by = outputmask[0, c, buf, x, y].ToSingle();
                                         bmp.SetPixel(x, y, new ColorS((ushort)(by * byte.MaxValue)));
                                     }
                                 }
                                 bb.Buffers.Add(ResizeBilinear(bmp, b.SizeX, b.SizeY));
-                                bb.Buffers[bb.Buffers.Count - 1].RotateFlip(RotateFlipType.Rotate90FlipX);
+                                bb.Buffers[bb.Buffers.Count - 1].RotateFlip(AForge.RotateFlipType.Rotate90FlipX);
                             }
                         }
                     }
@@ -463,12 +458,26 @@ namespace BioGTK.ML
         {
             Models.Add(new Model(mod));
         }
-        
+
         public static void Run(string modelsName, BioImage image)
         {
+            string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/Models/" + modelsName;
+            bool loaded = false;
             foreach (var m in Models)
             {
-                if(m.Name == Path.GetFileNameWithoutExtension(modelsName))
+                if (m.Name == Path.GetFileNameWithoutExtension(modelsName))
+                {
+                    loaded = true;
+                    break;
+                }
+            }
+            if(!loaded)
+            {
+                Models.Add(new Model(st));
+            }
+            foreach (var m in Models)
+            {
+                if (m.Name == Path.GetFileNameWithoutExtension(modelsName))
                 {
                     m.Run(image);
                 }
@@ -477,7 +486,7 @@ namespace BioGTK.ML
         public static Bitmap ResizeBilinear(Bitmap original, int targetWidth, int targetHeight)
         {
             // Create a new Pixbuf with target dimensions
-            Bitmap resized = new Bitmap(targetWidth,targetHeight,original.PixelFormat);
+            Bitmap resized = new Bitmap(targetWidth, targetHeight, original.PixelFormat);
 
             int originalWidth = original.Width;
             int originalHeight = original.Height;
@@ -529,11 +538,10 @@ namespace BioGTK.ML
         public static void Initialize()
         {
             string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath);
-            foreach(string f in Directory.GetFiles(st + "/Models"))
+            foreach (string f in Directory.GetFiles(st + "/Models"))
             {
                 if (f.EndsWith(".onnx") || f.EndsWith(".pt"))
                 {
-                    Load(f);
                     string path = "Run/" + Path.GetFileName(f);
                     App.AddMenu(path);
                 }
