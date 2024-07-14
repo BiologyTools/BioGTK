@@ -721,7 +721,11 @@ namespace BioGTK
                 PointD d = new PointD(e.X - ImageView.mouseDown.X, e.Y - ImageView.mouseDown.Y);
                 Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(ImageView.mouseDown.X, ImageView.mouseDown.Y,Math.Abs(d.X),Math.Abs(d.Y));
                 RectangleD r = Tools.GetTool(Tools.Tool.Type.select).Rectangle;
-                foreach (ROI an in ImageView.SelectedImage.AnnotationsRGB)
+                List<ROI> rois = new List<ROI>();
+                rois.AddRange(ImageView.SelectedImage.AnnotationsR);
+                rois.AddRange(ImageView.SelectedImage.AnnotationsG);
+                rois.AddRange(ImageView.SelectedImage.AnnotationsB);
+                foreach (ROI an in rois)
                 {
                     if (an.GetSelectBound(ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeX, ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeY).IntersectsWith(r))
                     {

@@ -436,19 +436,19 @@ namespace BioGTK
                 this.size = bytes.Length;
             }
 
-            /** Opens the BioGTK.ROI at the specified path. Returns null if there is an error. */
-            public static BioGTK.ROI open(string path)
+            /** Opens the ROI at the specified path. Returns null if there is an error. */
+            public static ROI open(string path)
             {
-                BioGTK.ROI roi = null;
+                ROI roi = null;
                 RoiDecoder rd = new RoiDecoder(path);
                 roi = rd.getRoi();
                 return roi;
             }
 
             /** Returns the ROI. */
-            public BioGTK.ROI getRoi()
+            public ROI getRoi()
             {
-                BioGTK.ROI roi = new BioGTK.ROI();
+                ROI roi = new ROI();
                 data = File.ReadAllBytes(path);
                 size = data.Length;
                 if (getByte(0) != 73 || getByte(1) != 111)  //"Iout"
@@ -534,18 +534,18 @@ namespace BioGTK
                 {
                     case 1: //Rect
                         if (subPixelRect)
-                            roi = BioGTK.ROI.CreateRectangle(new AForge.ZCT(slice-1, channel - 1, frame - 1), xd, yd, widthd, heightd);
+                            roi = ROI.CreateRectangle(new AForge.ZCT(slice-1, channel - 1, frame - 1), xd, yd, widthd, heightd);
                         else
-                            roi = BioGTK.ROI.CreateRectangle(new AForge.ZCT(slice - 1, channel - 1, frame - 1), left, top, width, height);
+                            roi = ROI.CreateRectangle(new AForge.ZCT(slice - 1, channel - 1, frame - 1), left, top, width, height);
                         int arcSize = getShort(ROUNDED_RECT_ARC_SIZE);
                         if (arcSize > 0)
                             throw new NotSupportedException("Type rounded rectangle not supported.");
                         break;
                     case 2: //Ellipse
                         if (subPixelRect)
-                            roi = BioGTK.ROI.CreateEllipse(new AForge.ZCT(slice - 1, channel - 1, frame - 1), xd, yd, widthd, heightd);
+                            roi = ROI.CreateEllipse(new AForge.ZCT(slice - 1, channel - 1, frame - 1), xd, yd, widthd, heightd);
                         else
-                            roi = BioGTK.ROI.CreateEllipse(new AForge.ZCT(slice - 1, channel - 1, frame - 1), left, top, width, height);
+                            roi = ROI.CreateEllipse(new AForge.ZCT(slice - 1, channel - 1, frame - 1), left, top, width, height);
                         break;
                     case 3: //Line
                         float x1 = getFloat(X1);
@@ -743,7 +743,7 @@ namespace BioGTK
                 return roi;
             }
             /*
-            void decodeOverlayOptions(BioGTK.ROI roi, int version, int options, int color, int fontSize)
+            void decodeOverlayOptions(ROI roi, int version, int options, int color, int fontSize)
             {
                 
                 Overlay proto = new Overlay();
@@ -762,7 +762,7 @@ namespace BioGTK
                 
             }
             */
-            void getStrokeWidthAndColor(BioGTK.ROI roi, int hdr2Offset, bool scaleStrokeWidth)
+            void getStrokeWidthAndColor(ROI roi, int hdr2Offset, bool scaleStrokeWidth)
             {
                 double strokeWidth = getShort(STROKE_WIDTH);
                 if (hdr2Offset > 0)
@@ -791,7 +791,7 @@ namespace BioGTK
                 }
             }
             /*
-            public BioGTK.ROI getShapeRoi()
+            public ROI getShapeRoi()
             {
 		        int type = getByte(TYPE);
 		        if (type!=rect)
@@ -804,7 +804,7 @@ namespace BioGTK
                 int height = bottom - top;
                 int n = getInt(SHAPE_ROI_SIZE);
 
-                BioGTK.ROI roi = new ROI();
+                ROI roi = new ROI();
                 float[] shapeArray = new float[n];
                 int bas = COORDINATES;
                 for (int i = 0; i < n; i++)
@@ -817,7 +817,7 @@ namespace BioGTK
                 return roi;
             }
 	        */
-            void getTextRoi(BioGTK.ROI roi, int version)
+            void getTextRoi(ROI roi, int version)
             {
                 AForge.Rectangle r = roi.BoundingBox.ToRectangleInt();
                 int hdrSize = 64;
@@ -949,9 +949,9 @@ namespace BioGTK
             }
 
             /** Opens an ROI from a byte array. */
-            public static BioGTK.ROI openFromByteArray(byte[] bytes)
+            public static ROI openFromByteArray(byte[] bytes)
             {
-                BioGTK.ROI roi = null;
+                ROI roi = null;
                 if (bytes == null || bytes.Length == 0)
                     return roi;
                 try
@@ -1259,6 +1259,7 @@ namespace BioGTK
                 putShort(RoiDecoder.LEFT, (int)px);
                 putShort(RoiDecoder.BOTTOM, (int)(py + ph));
                 putShort(RoiDecoder.RIGHT, (int)(px + pw));
+                var PointsImage = ImageView.SelectedImage.ToImageSpace(roi.PointsD);
                 if (subres && (type == rect || type == oval))
                 {
                     //FloatPolygon p = null;
@@ -1280,12 +1281,12 @@ namespace BioGTK
                         */
                     if (roi.PointsD.Count == 4)
                     {
-                        putFloat(RoiDecoder.XD, (float)roi.PointsImage[0].X);
-                        putFloat(RoiDecoder.YD, (float)roi.PointsImage[0].Y);
+                        putFloat(RoiDecoder.XD, (float)PointsImage[0].X);
+                        putFloat(RoiDecoder.YD, (float)PointsImage[0].Y);
                         //putFloat(RoiDecoder.WIDTHD, p.xpoints[1] - roi.PointsD[0]);
                         //putFloat(RoiDecoder.HEIGHTD, p.ypoints[2] - p.ypoints[1]);
-                        putFloat(RoiDecoder.WIDTHD, (float)roi.PointsImage[1].X - (float)roi.PointsImage[0].X);
-                        putFloat(RoiDecoder.HEIGHTD, (float)roi.PointsImage[2].Y - (float)roi.PointsImage[1].Y);
+                        putFloat(RoiDecoder.WIDTHD, (float)PointsImage[1].X - (float)PointsImage[0].X);
+                        putFloat(RoiDecoder.HEIGHTD, (float)PointsImage[2].Y - (float)PointsImage[1].Y);
                         options |= RoiDecoder.SUB_PIXEL_RESOLUTION;
                         putShort(RoiDecoder.OPTIONS, options);
                     }
@@ -1322,10 +1323,10 @@ namespace BioGTK
                 if(type == line) //(roi instanceof Line) 
                 {
                     //Line line = (Line)roi;
-                    putFloat(RoiDecoder.X1, (float)roi.PointsImage[0].X);
-                    putFloat(RoiDecoder.Y1, (float)roi.PointsImage[0].Y);
-                    putFloat(RoiDecoder.X2, (float)roi.PointsImage[1].X);
-                    putFloat(RoiDecoder.Y2, (float)roi.PointsImage[1].Y);
+                    putFloat(RoiDecoder.X1, (float)PointsImage[0].X);
+                    putFloat(RoiDecoder.Y1, (float)PointsImage[0].Y);
+                    putFloat(RoiDecoder.X2, (float)PointsImage[1].X);
+                    putFloat(RoiDecoder.Y2, (float)PointsImage[1].Y);
                     /*
                     if (roi instanceof Arrow) {
                         putShort(RoiDecoder.SUBTYPE, RoiDecoder.ARROW);

@@ -207,7 +207,11 @@ namespace BioGTK
         private void ToROIMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             List<ROI> rois = new List<ROI>();
-            foreach (ROI r in ImageView.SelectedImage.AnnotationsRGB)
+            List<ROI> roiss = new List<ROI>();
+            rois.AddRange(ImageView.SelectedImage.AnnotationsR);
+            rois.AddRange(ImageView.SelectedImage.AnnotationsG);
+            rois.AddRange(ImageView.SelectedImage.AnnotationsB);
+            foreach (ROI r in roiss)
             {
                 if (r.roiMask == null)
                     continue;
@@ -346,12 +350,17 @@ namespace BioGTK
                 return;
             if (SelectedROI == null)
                 return;
-            if (Tools.currentTool.type == Tools.Tool.Type.point && ImageView.SelectedImage.AnnotationsRGB.Count > 0 && e.Event.State.HasFlag(ModifierType.Button1Mask))
+            List<ROI> rois = new List<ROI>();
+            rois.AddRange(ImageView.SelectedImage.AnnotationsR);
+            rois.AddRange(ImageView.SelectedImage.AnnotationsG);
+            rois.AddRange(ImageView.SelectedImage.AnnotationsB);
+            PointD[] pls = SelectedROI.ImagePoints(ImageView.SelectedImage.Resolutions[ImageView.SelectedImage.series]);
+            if (Tools.currentTool.type == Tools.Tool.Type.point && rois.Count > 0 && e.Event.State.HasFlag(ModifierType.Button1Mask))
             {
                 OpType type = this.addMaskMenu.Active == true ? OpType.ADD : OpType.REMOVE;
                 Promotion promtt = new PointPromotion(type);
-                (promtt as PointPromotion).X = (int)SelectedROI.PointsImage[0].X;
-                (promtt as PointPromotion).Y = (int)SelectedROI.PointsImage[0].Y;
+                (promtt as PointPromotion).X = (int)pls[0].X;
+                (promtt as PointPromotion).Y = (int)pls[0].Y;
                 Transforms trs = new Transforms(1024);
                 PointPromotion ptn = trs.ApplyCoords((promtt as PointPromotion), ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 this.mPromotionList.Add(ptn);
@@ -363,19 +372,19 @@ namespace BioGTK
             if (Tools.currentTool.type == Tools.Tool.Type.rect && e.Event.State.HasFlag(ModifierType.Button1Mask))
             {
                 BoxPromotion promt = new BoxPromotion();
-                if (SelectedROI.PointsImage[0].X < (int)SelectedROI.PointsImage[3].X || SelectedROI.PointsImage[0].Y < (int)SelectedROI.PointsImage[3].Y)
+                if (pls[0].X < (int)pls[3].X || pls[0].Y < (int)pls[3].Y)
                 {
-                    (promt as BoxPromotion).mLeftUp.X = (int)SelectedROI.PointsImage[0].X;
-                    (promt as BoxPromotion).mLeftUp.Y = (int)SelectedROI.PointsImage[0].Y;
-                    (promt as BoxPromotion).mRightBottom.X = (int)SelectedROI.PointsImage[3].X;
-                    (promt as BoxPromotion).mRightBottom.Y = (int)SelectedROI.PointsImage[3].Y;
+                    (promt as BoxPromotion).mLeftUp.X = (int)pls[0].X;
+                    (promt as BoxPromotion).mLeftUp.Y = (int)pls[0].Y;
+                    (promt as BoxPromotion).mRightBottom.X = (int)pls[3].X;
+                    (promt as BoxPromotion).mRightBottom.Y = (int)pls[3].Y;
                 }
                 else
                 {
-                    (promt as BoxPromotion).mLeftUp.X = (int)SelectedROI.PointsImage[3].X;
-                    (promt as BoxPromotion).mLeftUp.Y = (int)SelectedROI.PointsImage[3].Y;
-                    (promt as BoxPromotion).mRightBottom.X = (int)SelectedROI.PointsImage[0].X;
-                    (promt as BoxPromotion).mRightBottom.Y = (int)SelectedROI.PointsImage[0].Y;
+                    (promt as BoxPromotion).mLeftUp.X = (int)pls[3].X;
+                    (promt as BoxPromotion).mLeftUp.Y = (int)pls[3].Y;
+                    (promt as BoxPromotion).mRightBottom.X = (int)pls[0].X;
+                    (promt as BoxPromotion).mRightBottom.Y = (int)pls[0].Y;
                 }
                 Transforms ts = new Transforms(1024);
                 var pb = ts.ApplyBox(promt, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);

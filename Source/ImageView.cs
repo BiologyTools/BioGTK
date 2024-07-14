@@ -346,7 +346,11 @@ namespace BioGTK
                     canvas.DrawImage(SkImages[i],r,paint);
                 }
                 paint.Style = SKPaintStyle.Stroke;
-                foreach (ROI an in im.AnnotationsRGB)
+                List<ROI> rois = new List<ROI>();
+                rois.AddRange(im.AnnotationsR);
+                rois.AddRange(im.AnnotationsG);
+                rois.AddRange(im.AnnotationsB);
+                foreach (ROI an in rois)
                 {
                     if (Mode == ViewMode.RGBImage)
                     {
@@ -624,7 +628,7 @@ namespace BioGTK
                 }
                 else
                 {
-                    bts = _slideBase.GetSlice(new Bio.SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, SelectedImage.PyramidalSize.Width, SelectedImage.PyramidalSize.Height, SelectedImage.GetUnitPerPixel(Level), GetCoordinate())).Result;
+                    bts = _slideBase.GetSlice(new BioLib.SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, SelectedImage.PyramidalSize.Width, SelectedImage.PyramidalSize.Height, SelectedImage.GetUnitPerPixel(Level), GetCoordinate())).Result;
                     bf = new Bitmap((int)Math.Round(SlideBase.destExtent.Width), (int)Math.Round(SlideBase.destExtent.Height), PixelFormat.Format24bppRgb, bts, new ZCT(), "");
                 }
                 bm = re.Apply((Bitmap)bf.ImageRGB);
@@ -940,7 +944,11 @@ namespace BioGTK
         private void Fill_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(SelectedBuffer);
-            foreach (ROI item in SelectedImage.AnnotationsRGB)
+            List<ROI> rois = new List<ROI>();
+            rois.AddRange(SelectedImage.AnnotationsR);
+            rois.AddRange(SelectedImage.AnnotationsG);
+            rois.AddRange(SelectedImage.AnnotationsB);
+            foreach (ROI item in rois)
             {
                 Bio.Graphics.Pen p = new Bio.Graphics.Pen(Tools.DrawColor, (int)Tools.StrokeWidth, SelectedBuffer.BitsPerPixel);
                 if (item.Selected)
@@ -979,7 +987,11 @@ namespace BioGTK
         private void Draw_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(SelectedBuffer);
-            foreach (ROI item in SelectedImage.AnnotationsRGB)
+            List<ROI> rois = new List<ROI>();
+            rois.AddRange(SelectedImage.AnnotationsR);
+            rois.AddRange(SelectedImage.AnnotationsG);
+            rois.AddRange(SelectedImage.AnnotationsB);
+            foreach (ROI item in rois)
             {
                 Bio.Graphics.Pen p = new Bio.Graphics.Pen(Tools.DrawColor, (int)Tools.StrokeWidth, SelectedBuffer.BitsPerPixel);
                 g.pen = p;
@@ -1510,7 +1522,11 @@ namespace BioGTK
         {
             copys.Clear();
             string s = "";
-            foreach (ROI item in SelectedImage.AnnotationsRGB)
+            List<ROI> rois = new List<ROI>();
+            rois.AddRange(SelectedImage.AnnotationsR);
+            rois.AddRange(SelectedImage.AnnotationsG);
+            rois.AddRange(SelectedImage.AnnotationsB);
+            foreach (ROI item in rois)
             {
                 if (item.Selected)
                 {
@@ -1821,7 +1837,11 @@ namespace BioGTK
         public List<ROI> GetSelectedROIs()
         {
             List<ROI> roi = new List<ROI>();
-            foreach (ROI r in SelectedImage.AnnotationsRGB)
+            List<ROI> rois = new List<ROI>();
+            rois.AddRange(SelectedImage.AnnotationsR);
+            rois.AddRange(SelectedImage.AnnotationsG);
+            rois.AddRange(SelectedImage.AnnotationsB);
+            foreach (ROI r in rois)
             {
                 if(r.Selected)
                 {
@@ -1851,7 +1871,11 @@ namespace BioGTK
             //If point selection tool is clicked we  
             if (Tools.currentTool.type == Tools.Tool.Type.pointSel && e.Event.State.HasFlag(ModifierType.Button1Mask))
             {
-                foreach (ROI an in SelectedImage.AnnotationsRGB)
+                List<ROI> rois = new List<ROI>();
+                rois.AddRange(SelectedImage.AnnotationsR);
+                rois.AddRange(SelectedImage.AnnotationsG);
+                rois.AddRange(SelectedImage.AnnotationsB);
+                foreach (ROI an in rois)
                 {
                     if(an.Selected)
                     if (an.selectedPoints.Count > 0 && an.selectedPoints.Count < an.GetPointCount())
@@ -2096,7 +2120,11 @@ namespace BioGTK
                 float width = (float)ToScreenScaleW(ROI.selectBoxSize);
                 foreach (BioImage bi in Images)
                 {
-                    foreach (ROI an in bi.AnnotationsRGB)
+                    List<ROI> rois = new List<ROI>();
+                    rois.AddRange(SelectedImage.AnnotationsR);
+                    rois.AddRange(SelectedImage.AnnotationsG);
+                    rois.AddRange(SelectedImage.AnnotationsB);
+                    foreach (ROI an in rois)
                     {
                         if (!Modifiers.HasFlag(ModifierType.ControlMask))
                             an.Selected = false;
@@ -2636,8 +2664,8 @@ namespace BioGTK
         #region OpenSlide
         private OpenSlideBase _openSlideBase;
         private OpenSlideGTK.ISlideSource _openSlideSource;
-        private Bio.ISlideSource _slideSource;
-        private Bio.SlideBase _slideBase;
+        private BioLib.ISlideSource _slideSource;
+        private SlideBase _slideBase;
         /// <summary>
         /// Open slide file
         /// </summary>
