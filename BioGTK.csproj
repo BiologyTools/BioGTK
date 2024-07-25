@@ -3,25 +3,25 @@
     <TargetFramework>net8.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RuntimeIdentifiers>osx-x64;linux-x64;win-x64;win-arm64;linux-arm64;osx-arm64;</RuntimeIdentifiers>
-    <AssemblyVersion>5.1.1</AssemblyVersion>
-    <FileVersion>5.1.1</FileVersion>
+    <AssemblyVersion>5.2.0</AssemblyVersion>
+    <FileVersion>5.2.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>BioGTK</PackageId>
     <Title>BioGTK</Title>
     <PackageProjectUrl>https://github.com/BiologyTools/BioGTK</PackageProjectUrl>
     <PackageIcon>banner.jpg</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageVersion>5.1.1</PackageVersion>
+    <PackageVersion>5.2.0</PackageVersion>
     <RepositoryUrl>https://github.com/BiologyTools/BioGTK</RepositoryUrl>
     <PackageTags>Biology; GTK; ImageJ; Bio-Formats; Image-Stacks; Microscopy; Whole-Slide-Image; Segment-Anything; SAM; QuPath;</PackageTags>
     <PackageLicenseExpression> GPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Description>A .NET application &amp; library for editing &amp; annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters &amp; macro functions. Supports Windows, Linux and Mac.</Description>
-    <Version>5.1.1</Version>
+    <Version>5.2.0</Version>
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>Multi page tiff bug fix. As well as better Bioimage.IO model support.</PackageReleaseNotes>
+    <PackageReleaseNotes>ImageJ.NET implementation as well as support for more pixelformats.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
@@ -418,11 +418,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AForgeBio" Version="1.6.0" />
-    <PackageReference Include="BioLib" Version="2.4.1" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="GtkSharp" Version="3.24.24.95" />
+    <PackageReference Include="ImageJ.NET" Version="154.0.0.2" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.18.1" />
     <PackageReference Include="Microsoft.ML.TorchSharp" Version="0.21.1" />
@@ -444,6 +443,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BioLib\BioLib.csproj" />
+    <ProjectReference Include="E:\repos\RepoErik\BioLib\BioLib\BioLib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="README.md">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
@@ -458,12 +462,12 @@
     <!-- Also defines .app file name -->
     <CFBundleDisplayName>BioGTK</CFBundleDisplayName>
     <CFBundleIdentifier>com.BioGTK</CFBundleIdentifier>
-    <CFBundleVersion>5.1.1</CFBundleVersion>
+    <CFBundleVersion>5.2.0</CFBundleVersion>
     <CFBundlePackageType>APPL</CFBundlePackageType>
     <CFBundleSignature>????</CFBundleSignature>
     <CFBundleExecutable>BioGTKApp</CFBundleExecutable>
     <CFBundleIconFile>bio.icns</CFBundleIconFile>
-    <CFBundleShortVersionString>5.1.1</CFBundleShortVersionString>
+    <CFBundleShortVersionString>5.2.0</CFBundleShortVersionString>
     <!-- Will be copied from output directory -->
     <NSPrincipalClass>NSApplication</NSPrincipalClass>
     <NSHighResolutionCapable>true</NSHighResolutionCapable>

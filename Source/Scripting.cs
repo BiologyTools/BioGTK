@@ -179,7 +179,7 @@ namespace BioGTK
         public static string log;
         public static string output;
         public static string error;
-        public static string ImageJPath = ImageJ.ImageJPath;
+        public static string ImageJPath = Fiji.ImageJPath;
         public static Dictionary<string,Script> scripts = new Dictionary<string,Script>();
         public static void LogLine(string s)
         {
@@ -240,7 +240,7 @@ namespace BioGTK
                     try
                     {
                         rn.done = false;
-                        ImageJ.RunString(rn.scriptString,"", false);
+                        Fiji.RunString(rn.scriptString,"", false);
                         rn.done = true;
                     }
                     catch (Exception e)
@@ -678,7 +678,7 @@ namespace BioGTK
         {
             if (scriptLabel.Text.EndsWith(".ijm"))
             {
-                ImageJ.RunString(view.Buffer.Text, ImageView.SelectedImage.ID, headlessBox.Active);
+                Fiji.RunString(view.Buffer.Text, ImageView.SelectedImage.ID, headlessBox.Active);
             }
             else
                 Run();

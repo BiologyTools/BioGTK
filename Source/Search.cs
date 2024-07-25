@@ -48,7 +48,7 @@ namespace BioGTK
             coordCol.AddAttribute(coordCell, "text", 0);
 
             Gtk.TreeStore store = new Gtk.TreeStore(typeof(string));
-            foreach (ImageJ.Macro.Command s in ImageJ.Macro.Commands.Values)
+            foreach (Fiji.Macro.Command s in Fiji.Macro.Commands.Values)
             {
                 Gtk.TreeIter iter = store.AppendValues(s.Name);
             }
@@ -69,7 +69,7 @@ namespace BioGTK
                 string itemName = (string)treeView.Model.GetValue(iter, 0);
                 if(!itemName.EndsWith(".txt") || !itemName.EndsWith(".ijm") && !itemName.EndsWith(".cs"))
                 {
-                    ImageJ.RunOnImage("run(\"" + itemName + "\")",BioConsole.headless,BioConsole.onTab,BioConsole.useBioformats,BioConsole.resultInNewTab);
+                    Fiji.RunOnImage("run(\"" + itemName + "\")",BioConsole.headless,BioConsole.onTab,BioConsole.useBioformats,BioConsole.resultInNewTab);
                 }
                 else
                     Scripting.RunByName(itemName);

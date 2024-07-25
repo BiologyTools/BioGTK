@@ -110,6 +110,20 @@ namespace Bio.Graphics
                     bitmapBits[idx] = byteFillColor[0];
                 }
                 else
+                if (pixelFormat == PixelFormat.Short)
+                {
+                    bitmapBits[idx] = byteFillColor[0];
+                    bitmapBits[idx + 1] = byteFillColor[1];
+                }
+                else
+                if (pixelFormat == PixelFormat.Float)
+                {
+                    bitmapBits[idx] = byteFillColor[3];
+                    bitmapBits[idx + 1] = byteFillColor[2];
+                    bitmapBits[idx + 2] = byteFillColor[1];
+                    bitmapBits[idx + 3] = byteFillColor[0];
+                }
+                else
                 if (pixelFormat == PixelFormat.Format24bppRgb)
                 {
                     bitmapBits[idx] = byteFillColor[0];

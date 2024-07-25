@@ -30,6 +30,7 @@ namespace BioGTK
         public static Recorder recorder;
         public static SAMTool samTool;
         public static Updater updater;
+        public static bool UseFiji = false;
         /// Initialize() is a function that initializes the BioImage Suite Web
         public static void Initialize(bool requireImageJ = false)
         {
@@ -37,7 +38,7 @@ namespace BioGTK
             BioImage.Initialize();
             Console.WriteLine("Loading settings.");
             Settings.Load();
-            ImageJ.Initialize(requireImageJ);
+            Fiji.Initialize(requireImageJ);
             updater = Updater.Create();
             tools = Tools.Create();
             filters = FiltersView.Create();

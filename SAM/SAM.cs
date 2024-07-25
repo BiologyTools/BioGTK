@@ -130,7 +130,7 @@ namespace BioGTK
         {
             ZCT c = App.viewer.GetCoordinate();
             List<float[]> lts = (List<float[]>)b.Tag;
-            var embedding_tensor = new DenseTensor<float>(lts[b.Coords[c.Z,c.C,c.T]], new[] { 1, 256, 64, 64 });
+            var embedding_tensor = new DenseTensor<float>(lts[b.GetFrameIndex(c.Z,c.C,c.T)], new[] { 1, 256, 64, 64 });
             var bpmos = promotions.FindAll(e => e.mType == PromotionType.Box);
             var pproms = promotions.FindAll(e => e.mType == PromotionType.Point);
             int boxCount = promotions.FindAll(e => e.mType == PromotionType.Box).Count();

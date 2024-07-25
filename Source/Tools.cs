@@ -535,7 +535,7 @@ namespace BioGTK
                 Rectangle r = new Rectangle((int)ImageView.mouseDown.X, (int)ImageView.mouseDown.Y, (int)(ImageView.mouseUp.X - ImageView.mouseDown.X), (int)(ImageView.mouseUp.Y - ImageView.mouseDown.Y));
                 if (r.Width <= 2 || r.Height <= 2)
                     return;
-                AForge.Bitmap bf = ImageView.SelectedImage.Buffers[ImageView.SelectedImage.Coords[coord.Z, coord.C, coord.T]].GetCropBuffer(r);
+                AForge.Bitmap bf = ImageView.SelectedImage.Buffers[ImageView.SelectedImage.GetFrameIndex(coord.Z, coord.C, coord.T)].GetCropBuffer(r);
                 Statistics[] sts = Statistics.FromBytes(bf);
                 Statistics st = sts[0];
                 AForge.Bitmap crop = bf;
@@ -551,7 +551,7 @@ namespace BioGTK
                 if (magicSel.Index == 1)
                     th = new Threshold((int)st.Median);
                 else
-                    th = new Threshold(st.Min);
+                    th = new Threshold((int)st.Min);
                 th.ApplyInPlace(crop);
                 Invert inv = new Invert();
                 AForge.Bitmap det;

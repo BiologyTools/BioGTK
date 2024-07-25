@@ -114,7 +114,8 @@ namespace BioGTK
         private MenuItem stackToolMenu;
         [Builder.Object]
         private MenuItem focusMenu;
-
+        [Builder.Object]
+        private MenuItem extractRegionMenu;
 
         [Builder.Object]
         private MenuItem to8BitMenu;
@@ -126,6 +127,10 @@ namespace BioGTK
         private MenuItem to32BitMenu;
         [Builder.Object]
         private MenuItem to48BitMenu;
+        [Builder.Object]
+        private MenuItem toFloatMenu;
+        [Builder.Object]
+        private MenuItem toShortMenu;
 
         [Builder.Object]
         private MenuItem filtersMenu;
@@ -198,7 +203,7 @@ namespace BioGTK
             {
                 MenuItem mi = new MenuItem(c.ToString());
                 Menu men = new Menu();
-                foreach (ImageJ.Macro.Command command in ImageJ.Macro.Commands.Values)
+                foreach (Fiji.Macro.Command command in Fiji.Macro.Commands.Values)
                 {
                     if (command.Name.StartsWith(c))
                     {
@@ -221,7 +226,7 @@ namespace BioGTK
                 mi.ButtonPressEvent += Mi_ButtonPressEvent;
                 rm.Append(mi);
             }
-            foreach (ImageJ.Macro.Command c in ImageJ.Macros)
+            foreach (Fiji.Macro.Command c in Fiji.Macros)
             {
                 MenuItem mi = new MenuItem(c.Name);
                 mi.ButtonPressEvent += Mi_ButtonPressEvent;
@@ -238,9 +243,9 @@ namespace BioGTK
             MenuItem m = (MenuItem)o;
             if (m.Label.EndsWith(".ijm") || m.Label.EndsWith(".txt") && !m.Label.EndsWith(".cs"))
             {
-                string file = ImageJ.ImageJMacroPath + m.Label;
+                string file = Fiji.ImageJMacroPath + m.Label;
                 string ma = File.ReadAllText(file);
-                ImageJ.RunOnImage(ma, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
+                Fiji.RunOnImage(ma, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
             }
             else
                 Scripting.RunByName(m.Label);
@@ -259,7 +264,7 @@ namespace BioGTK
         {
             if (ImageView.SelectedImage == null) return;
             MenuItem m = (MenuItem)o;
-            ImageJ.RunOnImage("run(\"" + m.Label + "\");", BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
+            Fiji.RunOnImage("run(\"" + m.Label + "\");", BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
             MenuItem mi = new MenuItem(m.Label);
             mi.ButtonPressEvent += CommandMenuItem_ButtonPressEvent;
             bool con = false;
@@ -320,6 +325,7 @@ namespace BioGTK
             setToolMenu.ButtonPressEvent += setToolMenuClick;
             runSAMMenu.ButtonPressEvent += RunSAMMenu_ButtonPressEvent;
             plateToolMenu.ButtonPressEvent += PlateToolMenu_ButtonPressEvent;
+            extractRegionMenu.ButtonPressEvent += ExtractRegionMenu_ButtonPressEvent;
 
             roiManagerMenu.ButtonPressEvent += roiManagerMenuClick;
             exportROIsToCSVMenu.ButtonPressEvent += exportROIsToCSVMenuClick;
@@ -342,6 +348,8 @@ namespace BioGTK
             to24BitMenu.ButtonPressEvent += to24BitMenuClick;
             to32BitMenu.ButtonPressEvent += to32BitMenuClick;
             to48BitMenu.ButtonPressEvent += to48BitMenuClick;
+            toFloatMenu.ButtonPressEvent += ToFloatMenu_ButtonPressEvent;
+            toShortMenu.ButtonPressEvent += ToShortMenu_ButtonPressEvent;
 
             filtersMenu.ButtonPressEvent += filtersMenuClick;
             functionsToolMenu.ButtonPressEvent += functionsToolMenuClick;
@@ -364,6 +372,32 @@ namespace BioGTK
             
             searchMenu.ButtonPressEvent += SearchMenu_ButtonPressEvent;
             updateMenu.ButtonPressEvent += UpdateMenu_ButtonPressEvent;
+        }
+
+        private void ExtractRegionMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            BioImage b = ImageView.SelectedImage;
+            string id = System.IO.Path.GetFileNameWithoutExtension(ImageView.SelectedImage.Filename);
+            id.Replace(".ome", "");
+            BioImage bm = b.Copy();
+            bm.ID = id + ".ome.tif";
+            bm.Filename = id + ".ome.tif";
+            bm.Volume = new VolumeD(new Point3D(b.StageSizeX + (b.PhysicalSizeX * b.PyramidalOrigin.X), b.StageSizeY + (b.PhysicalSizeY * b.PyramidalOrigin.Y), b.StageSizeZ),
+                new Point3D(b.PyramidalSize.Width * b.PhysicalSizeX, b.PyramidalSize.Height * b.PhysicalSizeY,b.SizeZ * b.PhysicalSizeZ));
+            bm.Resolutions.Add(new Resolution(b.PyramidalSize.Width, b.PyramidalSize.Height, bm.Buffers[0].PixelFormat, b.PhysicalSizeX, b.PhysicalSizeY, b.PhysicalSizeZ, b.StageSizeX, b.StageSizeY, b.StageSizeZ));
+            bm.Resolutions.RemoveAt(0);
+            Images.AddImage(bm,true);
+            AddTab(bm);
+        }
+
+        private void ToShortMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            ImageView.SelectedImage.ToShort();
+        }
+
+        private void ToFloatMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            ImageView.SelectedImage.ToFloat();
         }
 
         private void UpdateMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -524,7 +558,7 @@ namespace BioGTK
                 {
                     f = f.Replace(".roi","") + i + ".roi";
                 }
-                ImageJ.RoiEncoder.save(item, f);
+                Fiji.RoiEncoder.save(item, f);
                 i++;
             }
             filechooser.Hide();
@@ -550,7 +584,7 @@ namespace BioGTK
                 return;
             foreach (string item in filechooser.Filenames)
             {
-                ROI roi = ImageJ.RoiDecoder.open(item);
+                ROI roi = Fiji.RoiDecoder.open(item);
                 ImageView.SelectedImage.Annotations.Add(roi);
             }
             filechooser.Hide();
@@ -701,6 +735,8 @@ namespace BioGTK
             foreach (string item in sts)
             {
                 await BioImage.OpenAsync(item,false,true,true,0);
+                BioImage im = Images.GetImage(item);
+                AddTab(im);
             }
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file and adds
@@ -720,6 +756,8 @@ namespace BioGTK
             foreach (string item in filechooser.Filenames)
             {
                 await BioImage.OpenAsync(item, true, true, true,0);
+                BioImage im = Images.GetImage(item);
+                AddTab(im);
             }
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file as a
@@ -742,6 +780,8 @@ namespace BioGTK
                 for (int i = 0; i < s; i++)
                 {
                     await BioImage.OpenAsync(item, true, true, true, i);
+                    BioImage im = Images.GetImage(item);
+                    AddTab(im);
                 }
             }
             tabsView.ShowAll();
@@ -764,6 +804,8 @@ namespace BioGTK
             foreach (string item in filechooser.Filenames)
             {
                 await BioImage.OpenAsync(item, false, true, true, 0);
+                BioImage im = Images.GetImage(item);
+                AddTab(im);
             }
             tabsView.Show();
         }
@@ -785,6 +827,8 @@ namespace BioGTK
             foreach (string item in filechooser.Filenames)
             {
                 await BioImage.OpenAsync(item, false, false, true, 0);
+                BioImage im = Images.GetImage(item);
+                AddTab(im);
             }
             this.ShowAll();
         }
@@ -805,6 +849,8 @@ namespace BioGTK
             foreach (string item in filechooser.Filenames)
             {
                 await BioImage.OpenAsync(item, true, false, true, 0);
+                BioImage im = Images.GetImage(item);
+                AddTab(im);
             }
             this.Show();
         }

@@ -261,9 +261,9 @@ namespace BioGTK.ML
                                     else
                                     {
                                         if (bm.BitsPerPixel > 8)
-                                            img[index] = bm.GetValueRGB(x, y, c);
+                                            img[index] = bm.GetValue(x, y, c);
                                         else
-                                            img[index] = bm.GetValueRGB(x, y, c);
+                                            img[index] = bm.GetValue(x, y, c);
                                     }
                                 }
                             }
@@ -348,9 +348,9 @@ namespace BioGTK.ML
                                         else
                                         {
                                             if (bm.BitsPerPixel > 8)
-                                                img[0, c, x, y] = ((float)bm.GetValueRGB(x, y, c) / (float)ushort.MaxValue) * MaxValue;
+                                                img[0, c, x, y] = ((float)bm.GetValue(x, y, c) / (float)ushort.MaxValue) * MaxValue;
                                             else
-                                                img[0, c, x, y] = ((float)bm.GetValueRGB(x, y, c) / (float)byte.MaxValue) * MaxValue;
+                                                img[0, c, x, y] = ((float)bm.GetValue(x, y, c) / (float)byte.MaxValue) * MaxValue;
                                         }
                                     }
                                 }
@@ -405,9 +405,9 @@ namespace BioGTK.ML
                                         else
                                         {
                                             if (bm.BitsPerPixel > 8)
-                                                tensor[0, c, i, x, y] = ((float)bm.GetValueRGB(x, y, c) / (float)ushort.MaxValue) * MaxValue;
+                                                tensor[0, c, i, x, y] = ((float)bm.GetValue(x, y, c) / (float)ushort.MaxValue) * MaxValue;
                                             else
-                                                tensor[0, c, i, x, y] = ((float)bm.GetValueRGB(x, y, c) / (float)byte.MaxValue) * MaxValue;
+                                                tensor[0, c, i, x, y] = ((float)bm.GetValue(x, y, c) / (float)byte.MaxValue) * MaxValue;
                                         }
                                     }
                                 }

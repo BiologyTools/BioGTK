@@ -139,12 +139,12 @@ namespace BioGTK
             preds.Clear();
             i = 0;
             ind = -1;
-            foreach(var cs in ImageJ.Macro.Commands)
+            foreach(var cs in Fiji.Macro.Commands)
             {
                 if (cs.Value.Name.StartsWith(pred))
                     preds.Add(cs.Value.Name);
             }
-            foreach (var cs in ImageJ.Macro.Functions)
+            foreach (var cs in Fiji.Macro.Functions)
             {
                 if (cs.Value[0].Name.StartsWith(pred))
                     preds.Add(cs.Value[0].Name);
@@ -234,7 +234,7 @@ namespace BioGTK
         {
             if (ImageView.SelectedImage == null)
                 return;
-            ImageJ.RunOnImage(textBox.Buffer.Text, headless, onTab, useBioformats, resultsBox.Active);
+            Fiji.RunOnImage(textBox.Buffer.Text, headless, onTab, useBioformats, resultsBox.Active);
             consoleBox.Buffer.Text += textBox.Buffer.Text + Environment.NewLine;
             textBox.Buffer.Text = "";
         }

@@ -376,6 +376,13 @@
                         <property name="label" translatable="yes">Find Focus</property>
                       </object>
                     </child>
+                    <child>
+                      <object class="GtkMenuItem" id="extractRegionMenu">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Extract Region Pyramidal</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>
@@ -422,6 +429,27 @@
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="label" translatable="yes">To 48 Bit</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkMenuItem" id="toFloatMenu">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">To Float</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkMenuItem" id="toShortMenu">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">To Short</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkMenuItem" id="toFloatMen">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">To Float</property>
                       </object>
                     </child>
                   </object>
@@ -524,6 +552,13 @@
                 <property name="can-focus">False</property>
                 <property name="label" translatable="yes">Search</property>
                 <property name="use-underline">True</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkMenuItem" id="updateMenu">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">Update</property>
               </object>
             </child>
           </object>

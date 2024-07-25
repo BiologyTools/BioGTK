@@ -144,7 +144,7 @@ namespace BioGTK
         {
             get
             {
-                int ind = SelectedImage.Coords[SelectedImage.Coordinate.Z, SelectedImage.Coordinate.C, SelectedImage.Coordinate.T];
+                int ind = SelectedImage.GetFrameIndex(SelectedImage.Coordinate.Z, SelectedImage.Coordinate.C, SelectedImage.Coordinate.T);
                 return SelectedImage.Buffers[ind];
             }
         }
@@ -347,9 +347,12 @@ namespace BioGTK
                 }
                 paint.Style = SKPaintStyle.Stroke;
                 List<ROI> rois = new List<ROI>();
-                rois.AddRange(im.AnnotationsR);
-                rois.AddRange(im.AnnotationsG);
-                rois.AddRange(im.AnnotationsB);
+                if (im.Annotations.Count > 0)
+                {
+                    rois.AddRange(im.AnnotationsR);
+                    rois.AddRange(im.AnnotationsG);
+                    rois.AddRange(im.AnnotationsB);
+                }
                 foreach (ROI an in rois)
                 {
                     if (Mode == ViewMode.RGBImage)
@@ -547,7 +550,7 @@ namespace BioGTK
             {
                 ZCT c = GetCoordinate();
                 AForge.Bitmap bitmap = null;
-                int index = b.Coords[c.Z, c.C, c.T];
+                int index = b.GetFrameIndex(c.Z, c.C, c.T);
                 if (Mode == ViewMode.Filtered)
                 {
                     bitmap = b.GetFiltered(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
@@ -567,8 +570,6 @@ namespace BioGTK
                 if (bitmap == null)
                     return;
                 SkImages.Add(BitmapToSKImage(bitmap.ImageRGB));
-                bitmap.Dispose();
-                bitmap = null;
                 bi++;
             }
         }
@@ -660,6 +661,7 @@ namespace BioGTK
             | EventMask.KeyPressMask
             | EventMask.PointerMotionMask | EventMask.ScrollMask));
             this.KeyPressEvent += ImageView_KeyPressEvent;
+            this.DestroyEvent += ImageView_DestroyEvent;
             this.DeleteEvent += ImageView_DeleteEvent;
             rBox.Changed += RBox_Changed;
             gBox.Changed += GBox_Changed;
@@ -686,6 +688,15 @@ namespace BioGTK
             cBar.ButtonPressEvent += CBar_ButtonPressEvent;
 
         }
+
+        private void ImageView_DestroyEvent(object o, DestroyEventArgs args)
+        {
+            foreach (var item in this.Images)
+            {
+                BioLib.Images.RemoveImage(item);
+            }
+        }
+
         int bar = 0;
         System.Threading.Thread threadZ = null;
         System.Threading.Thread threadC = null;
@@ -1071,7 +1082,11 @@ namespace BioGTK
         /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-events-delete.html.en
         private void ImageView_DeleteEvent(object o, DeleteEventArgs args)
         {
-            App.tabsView.RemoveTab(SelectedImage.Filename);
+            foreach (var item in this.Images)
+            {
+                App.tabsView.RemoveTab(item.Filename);
+                BioLib.Images.RemoveImage(item);
+            }
         }
 
         /// When the user clicks on the "ID" button, a text input dialog is created and displayed. If
@@ -2177,14 +2192,14 @@ namespace BioGTK
                     {
                         if (SelectedImage.isRGB)
                         {
-                            int r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc, (int)s.X, (int)s.Y, 0);
-                            int g = SelectedImage.GetValueRGB(zc, GChannel.Index, tc, (int)s.X, (int)s.Y, 1);
-                            int b = SelectedImage.GetValueRGB(zc, BChannel.Index, tc, (int)s.X, (int)s.Y, 2);
+                            float r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc, (int)s.X, (int)s.Y, 0);
+                            float g = SelectedImage.GetValueRGB(zc, GChannel.Index, tc, (int)s.X, (int)s.Y, 1);
+                            float b = SelectedImage.GetValueRGB(zc, BChannel.Index, tc, (int)s.X, (int)s.Y, 2);
                             mouseColor = ", " + r + "," + g + "," + b;
                         }
                         else
                         {
-                            int r = SelectedImage.GetValueRGB(zc, (int)cBar.Value, tc, (int)mouseD.X, (int)mouseD.Y, 0);
+                            float r = SelectedImage.GetValueRGB(zc, (int)cBar.Value, tc, (int)mouseD.X, (int)mouseD.Y, 0);
                             mouseColor = ", " + r;
                         }
                     }
@@ -2193,14 +2208,14 @@ namespace BioGTK
                         s = mouseD;
                         if (SelectedImage.isRGB)
                         {
-                            int r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc, (int)s.X, (int)s.Y, 0);
-                            int g = SelectedImage.GetValueRGB(zc, GChannel.Index, tc, (int)s.X, (int)s.Y, 1);
-                            int b = SelectedImage.GetValueRGB(zc, BChannel.Index, tc, (int)s.X, (int)s.Y, 2);
+                            float r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc, (int)s.X, (int)s.Y, 0);
+                            float g = SelectedImage.GetValueRGB(zc, GChannel.Index, tc, (int)s.X, (int)s.Y, 1);
+                            float b = SelectedImage.GetValueRGB(zc, BChannel.Index, tc, (int)s.X, (int)s.Y, 2);
                             mouseColor = ", " + r + "," + g + "," + b;
                         }
                         else
                         {
-                            int r = SelectedImage.GetValueRGB(zc, (int)cBar.Value, tc, (int)s.X, (int)s.Y, 0);
+                            float r = SelectedImage.GetValueRGB(zc, (int)cBar.Value, tc, (int)s.X, (int)s.Y, 0);
                             mouseColor = ", " + r;
                         }
                     }
