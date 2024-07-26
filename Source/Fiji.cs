@@ -127,9 +127,9 @@ namespace BioGTK
         /// @param param The parameter to pass to the macro.
         /// 
         /// @return The macro is being returned.
-        public static void RunMacro(string file, string param)
+        public static void RunMacro(string file, string param, bool useFiji = false)
         {
-            if (App.UseFiji)
+            if (App.UseFiji || useFiji)
             {
                 if (!Initialized)
                 {
@@ -142,7 +142,6 @@ namespace BioGTK
                 pr.StartInfo.Arguments = "-macro " + file + " " + param;
                 pr.Start();
                 processes.Add(pr);
-                Recorder.AddLine("ImageJ.RunMacro(" + file + "," + '"' + param + '"' + ");");
             }
             else
             {
@@ -151,6 +150,7 @@ namespace BioGTK
                 IJ.runMacroFile(file,param);
                 ImageView.SelectedImage = ImageJ.GetBioImage(ip, ImageView.SelectedImage.Volume, ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY, ImageView.SelectedImage.PhysicalSizeZ);
             }
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), file, param);
         }
         /// It runs a macro in ImageJ
         /// 
@@ -301,7 +301,7 @@ namespace BioGTK
                         App.viewer.UpdateView();
                     });
                 }
-                Recorder.AddLine("ImageJ.RunOnImage(\"" + con + "\"," + index + "," + headless + "," + onTab + "," + bioformats + "," + resultInNewTab + ");");
+                BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), con, index, headless, onTab, bioformats, resultInNewTab);
             }
             else
             {

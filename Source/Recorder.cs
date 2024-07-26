@@ -15,11 +15,12 @@ namespace BioGTK
     {
         #region Properties
         private Builder _builder;
-        public static string log = "";
 #pragma warning disable 649
 
         [Builder.Object]
         private Gtk.Button clearBut;
+        [Builder.Object]
+        private Gtk.Button copyBut;
         [Builder.Object]
         private Gtk.TextView textBox;
 
@@ -38,13 +39,6 @@ namespace BioGTK
             return new Recorder(builder, builder.GetObject("recorderWindow").Handle);
         }
 
-       /// It adds a line to the log
-       /// 
-       /// @param s The string to add to the log.
-        public static void AddLine(string s)
-        {
-            log += s + Environment.NewLine;
-        }
         /* The constructor for the class. */
         protected Recorder(Builder builder, IntPtr handle) : base(handle)
         {
@@ -63,7 +57,20 @@ namespace BioGTK
         protected void SetupHandlers()
         {
             clearBut.Clicked += ClearBut_Clicked;
+            copyBut.Clicked += CopyBut_Clicked;
             this.FocusInEvent += Recorder_FocusActivated;
+        }
+
+        private void CopyBut_Clicked(object sender, EventArgs e)
+        {
+            // Get the default clipboard
+            Clipboard clipboard = Clipboard.Get(Gdk.Selection.Clipboard);
+            string s = "";
+            for (int i = 0; i < BioLib.Recorder.Lines.Length; i++)
+            {
+                s += BioLib.Recorder.Lines[i] + Environment.NewLine;
+            }
+            clipboard.Text = s;
         }
 
         /// The function is called when the user clicks the close button on the recorder window. It
@@ -83,7 +90,11 @@ namespace BioGTK
        /// @param EventArgs The event arguments.
         private void Recorder_FocusActivated(object sender, EventArgs e)
         {
-            textBox.Buffer.Text = log;
+            textBox.Buffer.Text = "";
+            for (int i = 0; i < BioLib.Recorder.Lines.Length; i++)
+            {
+                textBox.Buffer.Text += BioLib.Recorder.Lines[i] + Environment.NewLine;
+            }
         }
 
         /// This function clears the textbox when the clear button is clicked
@@ -93,9 +104,8 @@ namespace BioGTK
         private void ClearBut_Clicked(object? sender, EventArgs e)
         {
             textBox.Buffer.Text = "";
-            log = "";
+            BioLib.Recorder.Clear();
         }
-
         #endregion
 
     }

@@ -2205,7 +2205,7 @@ namespace BioGTK
                     }
                     else
                     {
-                        s = mouseD;
+                        //s = mouseD;
                         if (SelectedImage.isRGB)
                         {
                             float r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc, (int)s.X, (int)s.Y, 0);

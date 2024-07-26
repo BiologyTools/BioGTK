@@ -377,15 +377,7 @@ namespace BioGTK
         private void ExtractRegionMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             BioImage b = ImageView.SelectedImage;
-            string id = System.IO.Path.GetFileNameWithoutExtension(ImageView.SelectedImage.Filename);
-            id.Replace(".ome", "");
-            BioImage bm = b.Copy();
-            bm.ID = id + ".ome.tif";
-            bm.Filename = id + ".ome.tif";
-            bm.Volume = new VolumeD(new Point3D(b.StageSizeX + (b.PhysicalSizeX * b.PyramidalOrigin.X), b.StageSizeY + (b.PhysicalSizeY * b.PyramidalOrigin.Y), b.StageSizeZ),
-                new Point3D(b.PyramidalSize.Width * b.PhysicalSizeX, b.PyramidalSize.Height * b.PhysicalSizeY,b.SizeZ * b.PhysicalSizeZ));
-            bm.Resolutions.Add(new Resolution(b.PyramidalSize.Width, b.PyramidalSize.Height, bm.Buffers[0].PixelFormat, b.PhysicalSizeX, b.PhysicalSizeY, b.PhysicalSizeZ, b.StageSizeX, b.StageSizeY, b.StageSizeZ));
-            bm.Resolutions.RemoveAt(0);
+            BioImage bm = b.GetRegion((int)b.PyramidalOrigin.X, (int)b.PyramidalOrigin.Y, b.PyramidalSize.Width, b.PyramidalSize.Height);
             Images.AddImage(bm,true);
             AddTab(bm);
         }

@@ -279,7 +279,7 @@ namespace BioGTK
         private void Image_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             selected = this;
-            Recorder.AddLine("Plot.SelectedPlot = Plot.Plots[" + name + "];");
+            BioLib.Recorder.AddLine("Plot.SelectedPlot = Plot.Plots[" + name + "];");
         }
 
         System.Threading.Thread th;
