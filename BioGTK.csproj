@@ -21,7 +21,7 @@
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>ImageJ.NET implementation as well as support for more pixelformats.</PackageReleaseNotes>
+    <PackageReleaseNotes>New ImageJ.NET (ij154) integration, support for more pixel formats, and improved script recording.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
@@ -418,6 +418,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="BioLib" Version="2.5.0" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="GtkSharp" Version="3.24.24.95" />
@@ -436,13 +437,8 @@
     <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.0.0-preview.2.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.0.0-preview.2.1" />
     <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.0.0-preview.2.1" />
-    <PackageReference Include="TorchSharp-cpu" Version="0.102.6" />
-    <PackageReference Include="YamlDotNet" Version="15.3.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\BioLib\BioLib.csproj" />
-    <ProjectReference Include="E:\repos\RepoErik\BioLib\BioLib\BioLib.csproj" />
+    <PackageReference Include="TorchSharp-cpu" Version="0.102.7" />
+    <PackageReference Include="YamlDotNet" Version="16.0.0" />
   </ItemGroup>
 
   <ItemGroup>
