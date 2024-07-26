@@ -149,8 +149,10 @@ namespace BioGTK
                 WindowManager.setTempCurrentImage(ip);
                 IJ.runMacroFile(file,param);
                 ImageView.SelectedImage = ImageJ.GetBioImage(ip, ImageView.SelectedImage.Volume, ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY, ImageView.SelectedImage.PhysicalSizeZ);
+                App.viewer.UpdateImages();
+                App.viewer.UpdateView();
             }
-            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), file, param);
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(),false, file, param);
         }
         /// It runs a macro in ImageJ
         /// 
@@ -301,7 +303,7 @@ namespace BioGTK
                         App.viewer.UpdateView();
                     });
                 }
-                BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), con, index, headless, onTab, bioformats, resultInNewTab);
+                BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false,con, index, headless, onTab, bioformats, resultInNewTab);
             }
             else
             {

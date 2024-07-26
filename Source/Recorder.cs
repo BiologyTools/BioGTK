@@ -22,8 +22,16 @@ namespace BioGTK
         [Builder.Object]
         private Gtk.Button copyBut;
         [Builder.Object]
+        private Gtk.CheckButton internalBox;
+        [Builder.Object]
         private Gtk.TextView textBox;
-
+        public bool Internal
+        {
+            get
+            {
+                return internalBox.Active;
+            }
+        }
 #pragma warning restore 649
 
         #endregion
@@ -58,7 +66,16 @@ namespace BioGTK
         {
             clearBut.Clicked += ClearBut_Clicked;
             copyBut.Clicked += CopyBut_Clicked;
+            internalBox.Activated += InternalBox_Activated;
             this.FocusInEvent += Recorder_FocusActivated;
+        }
+
+        private void InternalBox_Activated(object sender, EventArgs e)
+        {
+            if (internalBox.Active)
+                BioLib.Recorder.Internal = true;
+            else
+                BioLib.Recorder.Internal = false;
         }
 
         private void CopyBut_Clicked(object sender, EventArgs e)

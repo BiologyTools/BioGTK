@@ -457,10 +457,10 @@ namespace BioGTK
             {
                 bm.Add(item.Copy());
             }
-            Images.AddImage(bm[0],true);
             for (int i = 1; i < bm.Count; i++)
             {
                 Images.AddImage(bm[i],false);
+                AddTab(bm[i]);
             }
         }
 
@@ -469,6 +469,7 @@ namespace BioGTK
             foreach (BioImage item in App.viewer.Images)
             {
                 Images.RemoveImage(item);
+                RemoveTab(item.Filename);
             }
         }
 
