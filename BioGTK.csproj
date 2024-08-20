@@ -418,11 +418,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="BioLib" Version="2.5.0" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="GtkSharp" Version="3.24.24.95" />
     <PackageReference Include="ImageJ.NET" Version="154.0.0.2" />
+    <PackageReference Include="ManagedCuda" Version="10.0.0" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.18.1" />
     <PackageReference Include="Microsoft.ML.TorchSharp" Version="0.21.1" />
@@ -431,14 +431,18 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="ScottPlot" Version="5.0.36" />
-    <PackageReference Include="SkiaSharp" Version="3.0.0-preview.2.1" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.0.0-preview.2.1" />
-    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.0.0-preview.2.1" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.0.0-preview.2.1" />
-    <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.0.0-preview.2.1" />
+    <PackageReference Include="ScottPlot" Version="5.0.37" />
+    <PackageReference Include="SkiaSharp" Version="3.0.0-preview.4.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.0.0-preview.4.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.0.0-preview.4.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.0.0-preview.4.1" />
+    <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.0.0-preview.4.1" />
     <PackageReference Include="TorchSharp-cpu" Version="0.102.7" />
     <PackageReference Include="YamlDotNet" Version="16.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BioLib\BioLib.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -13,6 +13,7 @@ using System.Runtime.InteropServices;
 using BioLib;
 using ij;
 using RectangleD = AForge.RectangleD;
+using org.checkerframework.common.returnsreceiver.qual;
 namespace BioGTK
 {
     public static class Fiji
@@ -121,6 +122,17 @@ namespace BioGTK
         public static List<Process> processes = new List<Process>();
         public static List<Macro.Command> Macros = new List<Macro.Command>();
         private static Random rng = new Random();
+        public static void RunImageJ(string file, string param)
+        {
+            Console.WriteLine("RunImageJ(" + file + "," + param);
+            ImagePlus ip = ImageJ.GetImagePlus(ImageView.SelectedImage);
+            Console.WriteLine("ImageJ.GetImagePlus(" + ImageView.SelectedImage.ToString() + ")");
+            WindowManager.setTempCurrentImage(ip);
+            Console.WriteLine("WindowManager.setTempCurrentImage(" +ip.ToString() + ")");
+            IJ.runMacroFile(file, param);
+            ImageView.SelectedImage = ImageJ.GetBioImage(ip, ImageView.SelectedImage.Volume, ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY, ImageView.SelectedImage.PhysicalSizeZ);
+
+        }
         /// It runs a macro in ImageJ
         /// 
         /// @param file the path to the macro file
@@ -145,12 +157,7 @@ namespace BioGTK
             }
             else
             {
-                ImagePlus ip = ImageJ.GetImagePlus(ImageView.SelectedImage);
-                WindowManager.setTempCurrentImage(ip);
-                IJ.runMacroFile(file,param);
-                ImageView.SelectedImage = ImageJ.GetBioImage(ip, ImageView.SelectedImage.Volume, ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY, ImageView.SelectedImage.PhysicalSizeZ);
-                App.viewer.UpdateImages();
-                App.viewer.UpdateView();
+                RunImageJ(file, param);
             }
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(),false, file, param);
         }
@@ -307,10 +314,35 @@ namespace BioGTK
             }
             else
             {
-                ImagePlus ip = ImageJ.GetImagePlus(ImageView.SelectedImage);
-                WindowManager.setTempCurrentImage(ip);
-                IJ.runMacro(con);
+                cons = con;
+                indexs = index;
+                headlesss = headless;
+                onTabs = onTab;
+                bioformatss =  bioformats;
+                resultInNewTabs = resultInNewTab;
+                Thread th = new Thread(RunImageJ);
+                th.Start();
+            }
+        }
+
+        static string cons;
+        static int indexs;
+        static bool headlesss;
+        static bool onTabs;
+        static bool bioformatss;
+        static bool resultInNewTabs;
+        private static void RunImageJ()
+        {
+            ImagePlus ip = ImageJ.GetImagePlus(ImageView.SelectedImage);
+            WindowManager.setTempCurrentImage(ip);
+            try
+            {
+                IJ.runMacro(cons);
                 ImageView.SelectedImage = ImageJ.GetBioImage(ip, ImageView.SelectedImage.Volume, ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY, ImageView.SelectedImage.PhysicalSizeZ);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message.ToString());
             }
         }
         public static void RunOnImage(string s)

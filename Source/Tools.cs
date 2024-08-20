@@ -12,6 +12,7 @@ using Gdk;
 using Color = AForge.Color;
 using Rectangle = AForge.Rectangle;
 using System.IO;
+using ScottPlot.Interactivity.UserActions;
 
 namespace BioGTK
 {
