@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -179,6 +180,11 @@ namespace BioGTK
             App.tabsView = this;
             builder.Autoconnect(this);
             filteredMenu.Active = true;
+            //If the platform is MacOS we need to use Fiji/ImageJ without using IKVM.
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                App.UseFiji = true;
+            }
             SetupHandlers();
             Function.InitializeMainMenu();
             filechooser =
