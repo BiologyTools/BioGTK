@@ -319,7 +319,6 @@ namespace BioGTK
                     try
                     {
                         canvas.DrawImage(BitmapToSKImage(SelectedImage.Buffers[0]), 0, 0, paint);
-
                         if (ShowOverview)
                         {
                             // Draw the overview image at the top-left corner
@@ -567,7 +566,7 @@ namespace BioGTK
             if (SelectedImage.isPyramidal && sk.AllocatedHeight <= 1 || sk.AllocatedWidth <= 1)
                 return;
             SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
-            if (updatePyramidal)
+            if (updatePyramidal || SelectedImage.Buffers.Count == 0)
                 SelectedImage.UpdateBuffersPyramidal();
             SkImages.Clear();
             foreach (BioImage b in Images)
@@ -1789,30 +1788,33 @@ namespace BioGTK
 
                 // Calculate the scaling factor based on the new and current resolution
                 double scalingFactor = value / SelectedImage.Resolution;
-
-                // Get the center of the viewport in screen coordinates
-                PointD viewportCenter = new PointD(
-                    viewStack.AllocatedWidth / 2.0,
-                    viewStack.AllocatedHeight / 2.0
+                // Convert the screen coordinates of the mouse position to image coordinates
+                PointD imageMousePosition = new PointD(
+                    (PyramidalOrigin.X / scalingFactor),
+                    (PyramidalOrigin.Y / scalingFactor)
                 );
-
-                // Convert the center of the viewport to image coordinates based on the current resolution
-                PointD centerPositionInImage = new PointD(
-                    PyramidalOrigin.X + (viewportCenter.X / value),
-                    PyramidalOrigin.Y + (viewportCenter.Y / value)
-                );
-
-                // Calculate the new top-left corner of the image (PyramidalOrigin) after zooming
-                PyramidalOrigin = new PointD(
-                    centerPositionInImage.X - ((viewportCenter.X / value) / 2),
-                    centerPositionInImage.Y - ((viewportCenter.Y / value) / 2)
-                );
-
-                // Update the selected image's resolution
                 SelectedImage.Resolution = value;
-
-                // Update the images to reflect the new resolution and origin
-                UpdateImages(true);
+                if(value > SelectedImage.Resolution)
+                {
+                    //Zoom out
+                    scalingFactor = SelectedImage.Resolution / value;
+                    //We calculate the window middle in viewport space.
+                    PointD mouse = new PointD((MouseMove.X / value), (MouseMove.Y / value));
+                    // Calculate the new PyramidalOrigin so that the image stays centered on the middle
+                    PyramidalOrigin = new PointD(
+                    imageMousePosition.X + (mouse.X / scalingFactor),
+                    imageMousePosition.Y + (mouse.Y / scalingFactor));
+                }
+                else
+                {
+                    //Zoom in
+                    //We calculate the mouse position in viewport space.
+                    PointD mouse = new PointD((MouseMove.X / value), (MouseMove.Y / value));
+                    // Calculate the new PyramidalOrigin so that the image stays centered on the middle
+                    PyramidalOrigin = new PointD(
+                    imageMousePosition.X + (mouse.X / scalingFactor),
+                    imageMousePosition.Y + (mouse.Y) / scalingFactor);
+                }
             }
         }
 
