@@ -72,12 +72,14 @@ A .NET application & library for editing & annotating various microscopy image f
 - Install package manager [MSYS2.](https://github.com/GtkSharp/GtkSharp/wiki/Installing-Gtk-on-Windows) to install package GTK3. (Required for GTK Apps.)
 - Download the BioGTK Windows installer from releases.
 - Optionally install [OpenSlide](https://openslide.org/docs/windows/) for better navigation of whole-slide-images. Be sure to set the PATH variable correctly.
+- Optionally install [CUDA](https://developer.nvidia.com/cuda-downloads) for hardware accelerated stitching as well as tile cache in graphics card memory instead of RAM. 
 
 ## Linux Installation
 - Download the latest tarball(tar.gz) from Releases as linux already includes GTK3 package.
 - Extract the tarball and go to the "Glade" folder and select all the glade files and change permissions to read-write.
 - Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance and functions with whole-slide-images.
 - Optionally install [OpenSlide](http://openslide.org/) for better navigation of whole-slide-images.
+- Optionally install [CUDA](https://developer.nvidia.com/cuda-downloads) for hardware accelerated stitching as well as tile cache in graphics card memory instead of RAM. 
 
 ## Examples
 First you need to setup your project as a GTK project with .NET 8.0 as the target. 
