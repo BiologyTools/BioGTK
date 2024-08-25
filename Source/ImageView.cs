@@ -330,7 +330,28 @@ namespace BioGTK
                             // Draw the gray rectangle representing the overview's entire visible region
                             paint.Color = SKColors.Gray;
                             canvas.DrawRect(overview.X, overview.Y, overview.Width, overview.Height, paint);
-                            
+                            paint.Color = SKColors.Red;
+                            if (!openSlide)
+                            {
+                                double dsx = _slideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
+                                Resolution rs = SelectedImage.Resolutions[Level];
+                                double dx = ((double)PyramidalOrigin.X / (rs.SizeX * dsx)) * overview.Width;
+                                double dy = ((double)PyramidalOrigin.Y / (rs.SizeY * dsx)) * overview.Height;
+                                double dw = ((double)viewStack.AllocatedWidth / (rs.SizeX * dsx)) * overview.Width;  
+                                double dh = ((double)viewStack.AllocatedHeight / (rs.SizeY * dsx)) * overview.Height;
+                                canvas.DrawRect((int)dx, (int)dy, (int)dw, (int)dh,paint);
+                            }
+                            else
+                            {
+                                double dsx = _openSlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
+                                var rs = _openSlideBase.Schema.Resolutions.Last();
+                                Resolution rss = SelectedImage.Resolutions[Level];
+                                double dx = ((double)PyramidalOrigin.X / (rss.SizeX * dsx)) * overview.Width;
+                                double dy = ((double)PyramidalOrigin.Y / (rss.SizeY * dsx)) * overview.Height;
+                                double dw = ((double)viewStack.AllocatedWidth / (rss.SizeX * dsx)) * overview.Width;
+                                double dh = ((double)viewStack.AllocatedHeight / (rss.SizeY * dsx)) * overview.Height;
+                                canvas.DrawRect((int)dx, (int)dy, (int)dw, (int)dh,paint);
+                            }
                         }
                     }
                     catch (Exception ex)
@@ -507,7 +528,7 @@ namespace BioGTK
         }
 
         #endregion
-        public static SKImage BitmapToSKImage(Bitmap bitm)
+        public static SKImage BitmapToSKImage(AForge.Bitmap bitm)
         {
             Bitmap bitmap = bitm.ImageRGB;
             // Determine the SKColorType
@@ -631,6 +652,11 @@ namespace BioGTK
                 double aspx = (double)SelectedImage.Resolutions[MacroResolution.Value - 1].SizeX / (double)SelectedImage.Resolutions[MacroResolution.Value - 1].SizeY;
                 double aspy = (double)SelectedImage.Resolutions[MacroResolution.Value - 1].SizeY / (double)SelectedImage.Resolutions[MacroResolution.Value - 1].SizeX;
                 overview = new Rectangle(0, 0, (int)(aspx * 120), (int)(aspy * 120));
+                if (SelectedImage.Resolutions[MacroResolution.Value - 1].SizeX > 8000 || SelectedImage.Resolutions[MacroResolution.Value - 1].SizeY > 8000)
+                {
+                    ShowOverview = false;
+                    return;
+                }
                 Bitmap bm = BioImage.GetTile(SelectedImage, GetCoordinate(), MacroResolution.Value - 1, 0, 0, SelectedImage.Resolutions[MacroResolution.Value - 1].SizeX, SelectedImage.Resolutions[MacroResolution.Value - 1].SizeY);
                 ResizeNearestNeighbor re = new ResizeNearestNeighbor(overview.Width, overview.Height);
                 Bitmap bmp = re.Apply((Bitmap)bm.ImageRGB);
@@ -646,6 +672,11 @@ namespace BioGTK
                 ResizeNearestNeighbor re = new ResizeNearestNeighbor(overview.Width, overview.Height);
                 byte[] bts;
                 Bitmap bf;
+                if (res.SizeX > 8000 || res.SizeY > 8000)
+                {
+                    ShowOverview = false;
+                    return;
+                }
                 if (_openSlideBase != null)
                 {
                     bts = _openSlideBase.GetSlice(new OpenSlideGTK.SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, SelectedImage.PyramidalSize.Width, SelectedImage.PyramidalSize.Height, SelectedImage.GetUnitPerPixel(Level)));
@@ -2263,14 +2294,24 @@ namespace BioGTK
 
                 if(SelectedImage.isPyramidal && overview.IntersectsWith(e.Event.X,e.Event.Y))
                 {
-                    Resolution rs = SelectedImage.Resolutions[Level];
-                    double d = SelectedImage.GetLevelDownsample(Level);
-                    double dd = d / Resolution;
-                    double ddx = e.Event.X / overview.Width;
-                    double ddy = e.Event.Y / overview.Height;
-                    double dx = ddx * rs.SizeX;
-                    double dy = ddy * rs.SizeY;
-                    PyramidalOrigin = new PointD(dx, dy);
+                    if (!OpenSlide)
+                    {
+                        double dsx = _slideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
+                        Resolution rs = SelectedImage.Resolutions[(int)Level];
+                        double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX * dsx);
+                        double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY * dsx);
+                        double w = (double)viewStack.AllocatedWidth / 2;
+                        double h = (double)viewStack.AllocatedHeight / 2;
+                        PyramidalOrigin = new PointD(dx - w, dy - h);
+                    }
+                    else
+                    {
+                        double dsx = _openSlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
+                        Resolution rs = SelectedImage.Resolutions[(int)Level];
+                        double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX * dsx);
+                        double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY * dsx);
+                        PyramidalOrigin = new PointD(dx, dy);
+                    }
                 }
             }
             UpdateStatus();
