@@ -575,7 +575,7 @@ namespace BioGTK
         }
      
         /// It updates the images.
-        public void UpdateImages(bool updatePyramidal = false)
+        public async void UpdateImages(bool updatePyramidal = false)
         {
             if (SelectedImage == null)
                 return;
@@ -588,10 +588,12 @@ namespace BioGTK
                 return;
             SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
             if (updatePyramidal || SelectedImage.Buffers.Count == 0)
-                SelectedImage.UpdateBuffersPyramidal();
+                await SelectedImage.UpdateBuffersPyramidal();
             SkImages.Clear();
             foreach (BioImage b in Images)
             {
+                if(b.Buffers.Count == 0)
+                    return;
                 ZCT c = GetCoordinate();
                 AForge.Bitmap bitmap = null;
                 int index = b.GetFrameIndex(c.Z, c.C, c.T);
@@ -642,7 +644,7 @@ namespace BioGTK
         /// <summary>
         /// It takes a large image, resizes it to a small image, and then displays it.
         /// </summary>
-        private void InitPreview()
+        private async void InitPreview()
         {
             if (!SelectedImage.isPyramidal)
                 return;

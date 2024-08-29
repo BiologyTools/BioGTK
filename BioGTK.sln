@@ -7,8 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BioGTK", "BioGTK.csproj", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BioGTKApp", "..\BioGTKApp\BioGTKApp\BioGTKApp\BioGTKApp.csproj", "{801F7535-D991-4B84-A897-9C21FE1BC53A}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BioLib", "..\BioLib\BioLib.csproj", "{E8A776CD-1B98-4B6D-9E60-71B11D3FD7EC}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,18 +41,6 @@ Global
 		{801F7535-D991-4B84-A897-9C21FE1BC53A}.Release|ARM64.Build.0 = Release|ARM64
 		{801F7535-D991-4B84-A897-9C21FE1BC53A}.Release|x64.ActiveCfg = Release|x64
 		{801F7535-D991-4B84-A897-9C21FE1BC53A}.Release|x64.Build.0 = Release|x64
-		{E8A776CD-1B98-4B6D-9E60-71B11D3FD7EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E8A776CD-1B98-4B6D-9E60-71B11D3FD7EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E8A776CD-1B98-4B6D-9E60-71B11D3FD7EC}.Debug|ARM64.ActiveCfg = Debug|Any CPU
-		{E8A776CD-1B98-4B6D-9E60-71B11D3FD7EC}.Debug|ARM64.Build.0 = Debug|Any CPU
-		{E8A776CD-1B98-4B6D-9E60-71B11D3FD7EC}.Debug|x64.ActiveCfg = Debug|x64
-		{E8A776CD-1B98-4B6D-9E60-71B11D3FD7EC}.Debug|x64.Build.0 = Debug|x64
-		{E8A776CD-1B98-4B6D-9E60-71B11D3FD7EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E8A776CD-1B98-4B6D-9E60-71B11D3FD7EC}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E8A776CD-1B98-4B6D-9E60-71B11D3FD7EC}.Release|ARM64.ActiveCfg = Release|Any CPU
-		{E8A776CD-1B98-4B6D-9E60-71B11D3FD7EC}.Release|ARM64.Build.0 = Release|Any CPU
-		{E8A776CD-1B98-4B6D-9E60-71B11D3FD7EC}.Release|x64.ActiveCfg = Release|x64
-		{E8A776CD-1B98-4B6D-9E60-71B11D3FD7EC}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

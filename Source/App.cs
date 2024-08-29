@@ -90,8 +90,6 @@ namespace BioGTK
         private static void Window_DeleteEvent(object o, DeleteEventArgs args)
         {
             Window w = (Window)o;
-            w.Hide();
-            w.Close();
             w.Destroy();
         }
 
