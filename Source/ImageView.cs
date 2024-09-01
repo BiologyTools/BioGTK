@@ -298,12 +298,17 @@ namespace BioGTK
             paint.Style = SKPaintStyle.Fill;
             if ((SkImages.Count == 0 || SkImages.Count != SkImages.Count))
                 UpdateImages();
+            
             if (!SelectedImage.isPyramidal)
             {
-                canvas.Scale(Scale.Width, Scale.Height);
+                //canvas.Scale(Scale.Width, Scale.Height);
                 canvas.Translate(sk.AllocatedWidth / 2, sk.AllocatedHeight / 2);
             }
-            SKRect rr = ToScreenSpaceSK(PointD.MinX, PointD.MinY, PointD.MaxX - PointD.MinX, PointD.MaxY - PointD.MinY);
+            
+            RectangleD rd = ToScreenRect(PointD.MinX, PointD.MinY, PointD.MaxX - PointD.MinX, PointD.MaxY - PointD.MinY);
+            SKRect rr = new SKRect();
+            rr.Location = new SKPoint((float)rd.X, (float)rd.Y);
+            rr.Size = new SKSize((float)rd.W, (float)rd.H);
             canvas.DrawRect(rr, paint);
             int i = 0;
             if (SelectedImage.isPyramidal)
@@ -312,7 +317,10 @@ namespace BioGTK
             }
             foreach (BioImage im in Images)
             {
-                SKRect r = ToScreenSpaceSK(im.Volume.Location.X, im.Volume.Location.Y, im.Volume.Width, im.Volume.Height);
+                RectangleD rec = ToScreenRect(im.Volume.Location.X, im.Volume.Location.Y, im.Volume.Width, im.Volume.Height);
+                SKRect r = new SKRect();
+                r.Location = new SKPoint((float)rec.X, (float)rec.Y);
+                r.Size = new SKSize((float)Math.Abs(rec.W), (float)Math.Abs(rec.H));
                 paint.StrokeWidth = 1;
                 if (SelectedImage.isPyramidal)
                 {
@@ -371,6 +379,11 @@ namespace BioGTK
                     rois.AddRange(im.AnnotationsG);
                     rois.AddRange(im.AnnotationsB);
                 }
+                if (Tools.currentTool.type == Tools.Tool.Type.select && Modifiers == ModifierType.Button1Mask)
+                {
+                    var recd = ToScreenRect(Tools.currentTool.Rectangle.X, Tools.currentTool.Rectangle.Y, Tools.currentTool.Rectangle.W,Tools.currentTool.Rectangle.H);
+                    canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
+                }
                 foreach (ROI an in rois)
                 {
                     if (Mode == ViewMode.RGBImage)
@@ -391,9 +404,8 @@ namespace BioGTK
                     else
                         paint.Color = new SKColor(an.strokeColor.R, an.strokeColor.G, an.strokeColor.B);
                     paint.StrokeWidth = (float)an.strokeWidth;
-                    
                     PointF pc = new PointF((float)(an.BoundingBox.X + (an.BoundingBox.W / 2)), (float)(an.BoundingBox.Y + (an.BoundingBox.H / 2)));
-                    float width = (float)ToScreenScaleW(ROI.selectBoxSize);
+                    float width = ROI.selectBoxSize;
                     if (an.type == ROI.Type.Mask || an.roiMask != null)
                     {
                         SKImage sim = an.roiMask.GetColored(an.fillColor).ToSKImage();
@@ -402,30 +414,29 @@ namespace BioGTK
                     }
                     if (an.type == ROI.Type.Point)
                     {
-                        RectangleD p1 = ToViewSpace(an.Point.X, an.Point.Y, 1, 1);
-                        RectangleD p2 = ToViewSpace(an.Point.X + 1, an.Point.Y + 1, 1, 1);
-                        canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y),paint);
+                        RectangleD r1 = ToScreenRect(an.Point.X, an.Point.Y, ToViewW(3), ToViewH(3));
+                        canvas.DrawCircle((float)r1.X, (float)r1.Y, 3,paint);
                     }
                     else
                     if (an.type == ROI.Type.Line)
                     {
                         for (int p = 0; p < an.PointsD.Count - 1; p++)
                         {
-                            RectangleD p1 = ToViewSpace(an.PointsD[p].X, an.PointsD[p].Y, 1, 1);
-                            RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
+                            PointD p1 = ToScreenSpace(an.PointsD[p].X, an.PointsD[p].Y);
+                            PointD p2 = ToScreenSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y);
                             canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
                         }
                     }
                     else
                     if (an.type == ROI.Type.Rectangle)
                     {
-                        RectangleD rec = ToViewSpace(an.PointsD[0].X, an.PointsD[0].Y, an.W, an.H);
-                        canvas.DrawRect((float)rec.X, (float)rec.Y, (float)rec.W, (float)rec.H,paint);
+                        RectangleD rect = ToScreenRect(an.PointsD[0].X, an.PointsD[0].Y, Math.Abs(an.PointsD[0].X - an.PointsD[1].X), Math.Abs(an.PointsD[0].Y - an.PointsD[2].Y));
+                        canvas.DrawRect((float)rect.X, (float)rect.Y, (float)rect.W, (float)rect.H,paint);
                     }
                     else
                     if (an.type == ROI.Type.Ellipse)
                     {
-                        RectangleD rect = ToViewSpace(an.X + (an.W / 2), an.Y + (an.H / 2), an.W, an.H);
+                        RectangleD rect = ToScreenRect(an.X + (an.W / 2), an.Y + (an.H / 2), an.W, an.H);
                         canvas.DrawOval((float)rect.X, (float)rect.Y, (float)rect.W / 2, (float)rect.H / 2, paint);
                     }
                     else
@@ -433,12 +444,12 @@ namespace BioGTK
                     {
                         for (int p = 0; p < an.PointsD.Count - 1; p++)
                         {
-                            RectangleD p1 = ToViewSpace(an.PointsD[p].X, an.PointsD[p].Y, 1, 1);
-                            RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
+                            RectangleD p1 = ToScreenRect(an.PointsD[p].X, an.PointsD[p].Y, 1, 1);
+                            RectangleD p2 = ToScreenRect(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
                             canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
                         }
-                        RectangleD pp1 = ToViewSpace(an.PointsD[0].X, an.PointsD[0].Y, 1, 1);
-                        RectangleD pp2 = ToViewSpace(an.PointsD[an.PointsD.Count - 1].X, an.PointsD[an.PointsD.Count - 1].Y, 1, 1);
+                        RectangleD pp1 = ToScreenRect(an.PointsD[0].X, an.PointsD[0].Y, 1, 1);
+                        RectangleD pp2 = ToScreenRect(an.PointsD[an.PointsD.Count - 1].X, an.PointsD[an.PointsD.Count - 1].Y, 1, 1);
                         canvas.DrawLine(new SKPoint((float)pp1.X, (float)pp1.Y), new SKPoint((float)pp2.X, (float)pp2.Y), paint);
                     }
                     else
@@ -446,8 +457,8 @@ namespace BioGTK
                     {
                         for (int p = 0; p < an.PointsD.Count - 1; p++)
                         {
-                            RectangleD p1 = ToViewSpace(an.PointsD[p].X, an.PointsD[p].Y, 1, 1);
-                            RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
+                            RectangleD p1 = ToScreenRect(an.PointsD[p].X, an.PointsD[p].Y, 1, 1);
+                            RectangleD p2 = ToScreenRect(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
                             canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
                         }
                     }
@@ -456,39 +467,38 @@ namespace BioGTK
                     {
                         for (int p = 0; p < an.PointsD.Count - 1; p++)
                         {
-                            RectangleD p1 = ToViewSpace(an.PointsD[p].X, an.PointsD[p].Y, 1, 1);
-                            RectangleD p2 = ToViewSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
+                            RectangleD p1 = ToScreenRect(an.PointsD[p].X, an.PointsD[p].Y, 1, 1);
+                            RectangleD p2 = ToScreenRect(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
                             canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
                         }
-                        RectangleD pp1 = ToViewSpace(an.PointsD[0].X, an.PointsD[0].Y, 1, 1);
-                        RectangleD pp2 = ToViewSpace(an.PointsD[an.PointsD.Count - 1].X, an.PointsD[an.PointsD.Count - 1].Y, 1, 1);
+                        RectangleD pp1 = ToScreenRect(an.PointsD[0].X, an.PointsD[0].Y, 1, 1);
+                        RectangleD pp2 = ToScreenRect(an.PointsD[an.PointsD.Count - 1].X, an.PointsD[an.PointsD.Count - 1].Y, 1, 1);
                         canvas.DrawLine(new SKPoint((float)pp1.X, (float)pp1.Y), new SKPoint((float)pp2.X, (float)pp2.Y), paint);
                     }
                     else
                     if (an.type == ROI.Type.Label)
                     {
-                        RectangleD p = ToViewSpace(an.Point.X, an.Point.Y, 1, 1);
+                        RectangleD p = ToScreenRect(an.Point.X, an.Point.Y, 1, 1);
                         canvas.DrawText(an.Text, (float)p.X, (float)p.Y, new SKFont(SKTypeface.Default,an.fontSize,1,0), paint);
                     }
 
                     if (ROIManager.showText)
                     {
-                        RectangleD p = ToViewSpace(an.Point.X, an.Point.Y, 1, 1);
+                        RectangleD p = ToScreenRect(an.Point.X, an.Point.Y, 1, 1);
                         canvas.DrawText(an.Text, (float)p.X, (float)p.Y, new SKFont(SKTypeface.Default, an.fontSize, 1, 0), paint);
                     }
                     if (ROIManager.showBounds && an.type != ROI.Type.Rectangle && an.type != ROI.Type.Label)
                     {
-                        RectangleD rrf = ToViewSpace(an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
+                        RectangleD rrf = ToScreenRect(an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
                         canvas.DrawRect((float)rrf.X, (float)rrf.Y, (float)rrf.W, (float)rrf.H, paint);
                     }
                     paint.Color = SKColors.Red;
                     if (!(an.type == ROI.Type.Freeform && !an.Selected) && an.type != ROI.Type.Mask)
-                        foreach (RectangleD re in an.GetSelectBoxes(width))
-                        {
-                            RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
-                            canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
-                        }
-
+                    foreach (RectangleD re in an.GetSelectBoxes(1))
+                    {
+                        RectangleD recd = ToScreenRect(re.X, re.Y, re.W, re.H);
+                        canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
+                    }
                     //Lets draw the selection Boxes.
                     List<RectangleD> rects = new List<RectangleD>();
                     RectangleD[] sels = an.GetSelectBoxes(width);
@@ -504,9 +514,9 @@ namespace BioGTK
                     if (rects.Count > 0)
                     {
                         int ind = 0;
-                        foreach (RectangleD re in an.GetSelectBoxes(width))
+                        foreach (RectangleD re in an.GetSelectBoxes(1))
                         {
-                            RectangleD recd = ToViewSpace(re.X, re.Y, re.W, re.H);
+                            RectangleD recd = ToScreenRect(re.X, re.Y, re.W, re.H);
                             if (an.selectedPoints.Contains(ind))
                             {
                                 canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
@@ -516,11 +526,7 @@ namespace BioGTK
                     }
                     rects.Clear();
                 }
-                if (Tools.currentTool.type == Tools.Tool.Type.select && Modifiers == ModifierType.Button1Mask)
-                {
-                    RectangleD recd = ToViewSpace(Tools.currentTool.Rectangle.X, Tools.currentTool.Rectangle.Y, Tools.currentTool.Rectangle.W,Tools.currentTool.Rectangle.H);
-                    canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
-                }
+                
             }
             Plugins.Render(sender, e);
             paint.Dispose();
@@ -2058,7 +2064,6 @@ namespace BioGTK
             }
             UpdateStatus();
             pd = p;
-            UpdateView();
         }
         
         /// The function is called when the mouse button is released. It checks if the mouse button is
@@ -2205,7 +2210,7 @@ namespace BioGTK
             if (Tools.currentTool.type == Tools.Tool.Type.pointSel || Tools.currentTool.type == Tools.Tool.Type.move && e.Event.Button == 1)
             {
                 bool clearSel = true;
-                float width = (float)ToScreenScaleW(ROI.selectBoxSize);
+                float width = ROI.selectBoxSize;
                 foreach (BioImage bi in Images)
                 {
                     List<ROI> rois = new List<ROI>();
@@ -2229,7 +2234,8 @@ namespace BioGTK
                             if(an.type != ROI.Type.Mask)
                             for (int i = 0; i < sels.Length; i++)
                             {
-                                if (sels[i].ToRectangleF().IntersectsWith(new AForge.RectangleF((float)r.X, (float)r.Y, (float)r.W, (float)r.H)))
+                                RectangleF rd = new RectangleF((float)pointer.X, (float)pointer.Y, (float)ToViewSizeW(1), (float)ToViewSizeH(1));
+                                if (sels[i].ToRectangleF().IntersectsWith(rd))
                                 {
                                     an.selectedPoints.Add(i);
                                 }
@@ -2317,7 +2323,7 @@ namespace BioGTK
                 }
             }
             UpdateStatus();
-            App.tools.ToolDown(mouseDown, e);
+            App.tools.ToolDown(pointer, e);
         }
         List<ROI> copys = new List<ROI>();
 
@@ -2336,215 +2342,148 @@ namespace BioGTK
                 return sk.AllocatedHeight;
             }
         }
-        
+
         /// It takes a point in the image space and returns the point in the view space
         /// 
         /// @param x the x coordinate of the point in the image
         /// @param y the y coordinate of the point in the image
         /// 
         /// @return The point in the image space that corresponds to the point in the view space.
-        public PointD ImageToViewSpace(double x,double y)
+        public PointD ImageToViewSpace(double x, double y)
         {
-            if(SelectedImage.isPyramidal)
+            if (SelectedImage == null)
+                return ToViewSpace(x, y);
+            if (SelectedImage.isPyramidal)
             {
                 return new PointD((PyramidalOrigin.X + x) * Resolution, (PyramidalOrigin.Y + y) * Resolution);
             }
-            double dx = ToViewW(SelectedImage.Volume.Width);
-            double dy = ToViewH(SelectedImage.Volume.Height);
-            //The origin is the middle of the screen we want the top left corner
-            PointD torig = new PointD((Origin.X - ((Width / 2) * pxWmicron)), (Origin.Y - ((Height / 2) * pxHmicron)));
-            PointD orig = new PointD(torig.X - SelectedImage.Volume.Location.X, torig.Y - SelectedImage.Volume.Location.Y);
-            PointD diff = new PointD(ToViewW(orig.X), ToViewH(orig.Y));
-            PointD f = new PointD((((x + diff.X)/ dx) * SelectedImage.Volume.Width),(((y + diff.Y) / dy) * SelectedImage.Volume.Height));
-            PointD ff = new PointD(((SelectedImage.Volume.Location.X + SelectedImage.Volume.Width) + f.X), ((SelectedImage.Volume.Location.Y + SelectedImage.Volume.Height) + f.Y));
-            return ff;
+            else
+                return ToViewSpace(x, y);
         }
-        /// The function converts a rectangle from world space to view space.
+        /// Convert a point from world space to view space
         /// 
-        /// @param RectangleD The RectangleD is a custom data type that represents a rectangle in 2D
-        /// space. It has four properties: X (the x-coordinate of the top-left corner), Y (the
-        /// y-coordinate of the top-left corner), W (the width of the rectangle), and H (the height of
-        /// the
+        /// @param PointF The point to convert
         /// 
-        /// @return The method is returning a RectangleD object.
-        public RectangleD ToViewSpace(RectangleD p)
-        {
-            PointD d = ToViewSpace(p.X, p.Y);
-            double dx = ToScreenScaleW(p.W);
-            double dy = ToScreenScaleH(p.H);
-            return new RectangleD((float)d.X, (float)d.Y, (float)dx, (float)dy);
-        }
-        /// The function converts a Point object to PointF object in view space.
-        /// 
-        /// @param Point The Point class represents an ordered pair of integer x and y coordinates that
-        /// define a point in a two-dimensional plane.
-        /// 
-        /// @return The method is returning a PointF object, which represents a point in 2D space with
-        /// floating-point coordinates.
-        public PointF ToViewSpace(Point p)
-        {
-            PointD d = ToViewSpace(p.X, p.Y);
-            return new PointF((float)d.X, (float)d.Y);
-        }
-        /// The function converts a PointF object from world space to view space.
-        /// 
-        /// @param PointF PointF is a structure in C# that represents a point in a two-dimensional
-        /// space. It consists of two float values, X and Y, which represent the coordinates of the
-        /// point.
-        /// 
-        /// @return The method is returning a PointF object.
+        /// @return A PointD object.
         public PointF ToViewSpace(PointF p)
         {
             PointD d = ToViewSpace(p.X, p.Y);
             return new PointF((float)d.X, (float)d.Y);
         }
-        /// The function converts a point from a coordinate system to view space.
+        /// > Converts a point from world space to view space
         /// 
-        /// @param PointD The PointD class represents a point in a two-dimensional space. It typically
-        /// has two properties: X and Y, which represent the coordinates of the point.
+        /// @param PointD A class that contains an X and Y value.
         /// 
-        /// @return The method is returning a PointD object.
+        /// @return A PointD object.
         public PointD ToViewSpace(PointD p)
         {
             return ToViewSpace(p.X, p.Y); ;
         }
-        /// The function converts coordinates from a given space to view space.
+        /// > ToViewSpace(x, y) = (ToViewSizeW(x - (ViewWidth / 2)) / Scale.Width) - Origin.X;
         /// 
-        /// @param x The x-coordinate in the original coordinate system.
-        /// @param y The parameter "y" represents the y-coordinate in the original coordinate system.
+        /// @param x The x coordinate of the point to convert
+        /// @param y The y coordinate of the point to convert.
         /// 
-        /// @return The method is returning a PointD object.
+        /// @return A PointD object.
         public PointD ToViewSpace(double x, double y)
         {
-            if (SelectedImage.isPyramidal)
-            {
-                double ddx = x / Resolution;
-                double ddy = y / Resolution;
-                return new PointD(ddx, ddy);
-            }
-            double dx = (ToViewSizeW(Origin.X - x)) * Scale.Width;
-            double dy = (ToViewSizeH(Origin.Y - y)) * Scale.Height;
+            if (SelectedImage != null)
+                if (SelectedImage.isPyramidal)
+                {
+                    double ddx = x / Resolution;
+                    double ddy = y / Resolution;
+                    return new PointD(ddx, ddy);
+                }
+            double dx, dy;
+            dx = (ToViewSizeW(x - (viewStack.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
+            dy = (ToViewSizeH(y - (viewStack.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
             return new PointD(dx, dy);
         }
-        /// The function converts coordinates and sizes from a given space to a view space.
+        /// Convert a value in microns to a value in pixels
         /// 
-        /// @param x The x-coordinate of the rectangle's top-left corner in world space.
-        /// @param y The parameter "y" represents the y-coordinate of the rectangle in the original
-        /// coordinate space.
-        /// @param w The width of the rectangle in world space.
-        /// @param h The parameter "h" represents the height of the rectangle in the original coordinate
-        /// space.
+        /// @param d the size in microns
         /// 
-        /// @return The method is returning a RectangleD object.
-        public RectangleD ToViewSpace(double x, double y, double w, double h)
-        {
-            PointD d = ToViewSpace(x, y);
-            double dw = ToViewSizeW(w);
-            double dh = ToViewSizeH(h);
-            if (SelectedImage.isPyramidal)
-            {
-                return new RectangleD(d.X - PyramidalOrigin.X, d.Y - PyramidalOrigin.Y, dw, dh);
-            }
-            return new RectangleD(-d.X, -d.Y, dw, dh);
-        }
-        /// The function converts a given value to a view size width based on certain conditions.
-        /// 
-        /// @param d The parameter "d" represents a size value that needs to be converted to a view
-        /// size.
-        /// 
-        /// @return The method is returning a double value.
+        /// @return The return value is the size of the object in pixels.
         private double ToViewSizeW(double d)
         {
-            if (SelectedImage.isPyramidal)
-            {
-                return d / Resolution;
-            }
-            double x = (double)(d / PxWmicron) * Scale.Width;
+            if (SelectedImage != null)
+                if (SelectedImage.isPyramidal)
+                {
+                    return d / Resolution;
+                }
+            double x = (double)(d / PxWmicron);
             return x;
         }
-        /// The function converts a given value to a view size in the horizontal direction.
+        /// > Convert a value in microns to a value in pixels
         /// 
-        /// @param d The parameter "d" represents a value that needs to be converted to a view size.
+        /// @param d the size in microns
         /// 
-        /// @return The method is returning a double value.
+        /// @return The return value is the size of the object in pixels.
         public double ToViewSizeH(double d)
         {
-            if (SelectedImage.isPyramidal)
-            {
-                return d / Resolution;
-            }
-            double y = (double)(d / PxHmicron) * Scale.Height;
+            if (SelectedImage != null)
+                if (SelectedImage.isPyramidal)
+                {
+                    return d / Resolution;
+                }
+            double y = (double)(d / PxHmicron);
             return y;
         }
-        /// The function converts a given value from microns to view width units, taking into account the
-       /// scale and whether the image is pyramidal.
-       /// 
-       /// @param d The parameter "d" represents a value that needs to be converted to a view width.
-       /// 
-       /// @return The method is returning a double value.
+        /// Convert a distance in microns to a distance in pixels on the screen
+        /// 
+        /// @param d the distance in microns
+        /// 
+        /// @return The width of the image in pixels.
         public double ToViewW(double d)
         {
-            if (SelectedImage.isPyramidal)
-            {
-                return d / Resolution;
-            }
-            double x = (double)(d / PxWmicron) * Scale.Width;
+            double x = (double)(d / PxWmicron) / scale.Width;
             return x;
         }
-        /// The function converts a given value from a specific unit to a view height value.
+        /// > Convert a distance in microns to a distance in pixels
         /// 
-        /// @param d The parameter "d" represents a value that needs to be converted to a different unit
-        /// of measurement.
+        /// @param d the distance in microns
         /// 
-        /// @return The method is returning a double value.
+        /// @return The return value is the y-coordinate of the point in the view.
         public double ToViewH(double d)
         {
-            if (SelectedImage.isPyramidal)
-            {
-                return d / Resolution;
-            }
-            double y = (double)(d / PxHmicron) * Scale.Height;
+            double y = (double)(d / PxHmicron) / scale.Height;
             return y;
         }
-        /// The function converts coordinates from a Cartesian plane to screen space.
+        /// > It converts a point in world space to a point in screen space
         /// 
-        /// @param x The x-coordinate of the point in the coordinate system.
-        /// @param y The parameter "y" represents the y-coordinate of a point in a coordinate system.
+        /// @param x The x coordinate of the point to convert.
+        /// @param y The y coordinate of the point to transform.
         /// 
-        /// @return The method is returning a PointD object.
+        /// @return A PointD object.
         public PointD ToScreenSpace(double x, double y)
         {
-            double fx = ToScreenScaleW(Origin.X - x);
-            double fy = ToScreenScaleH(Origin.Y - y);
-            return new PointD(fx, fy);
+            RectangleD f = ToScreenRect(x, y, 1, 1);
+            return new PointD(f.X, f.Y);
         }
-        /// The function converts a point from a coordinate system to screen space.
+        /// > Converts a point from world space to screen space
         /// 
-        /// @param PointD The PointD class represents a point in a two-dimensional space. It typically
-        /// has two properties, X and Y, which represent the coordinates of the point.
+        /// @param PointD A class that contains an X and Y value.
         /// 
-        /// @return The method is returning a PointD object.
+        /// @return A PointD object.
         public PointD ToScreenSpace(PointD p)
         {
             return ToScreenSpace(p.X, p.Y);
         }
-        /// The function converts a PointF object from world space to screen space.
+        /// Convert a point in the world coordinate system to the screen coordinate system
         /// 
-        /// @param PointF PointF is a structure in C# that represents a point in a two-dimensional
-        /// space. It consists of two float values, X and Y, which represent the coordinates of the
-        /// point.
+        /// @param PointF The point you want to convert to screen space.
         /// 
-        /// @return The method is returning a PointF object.
+        /// @return A PointD object.
         public PointF ToScreenSpace(PointF p)
         {
             PointD pd = ToScreenSpace(p.X, p.Y);
             return new PointF((float)pd.X, (float)pd.Y);
         }
-        /// The function takes an array of PointF objects and converts them to screen space coordinates.
+        /// > It takes an array of points and returns an array of points
         /// 
-        /// @param p An array of PointF objects representing points in some coordinate system.
+        /// @param p The point to convert
         /// 
-        /// @return The method is returning an array of PointF objects in screen space.
+        /// @return A PointF array.
         public PointF[] ToScreenSpace(PointF[] p)
         {
             PointF[] pf = new PointF[p.Length];
@@ -2554,114 +2493,101 @@ namespace BioGTK
             }
             return pf;
         }
-        /// The function converts a 3D point to screen space and returns it as a PointF object.
+        /// > It converts a 3D point to a 2D point
         /// 
-        /// @param Point3D The Point3D parameter represents a point in a three-dimensional space. It
-        /// typically consists of three coordinates: X, Y, and Z.
+        /// @param Point3D 
         /// 
-        /// @return The method is returning a PointF object.
+        /// @return A PointF object.
         public PointF ToScreenSpace(Point3D p)
         {
             PointD pd = ToScreenSpace(p.X, p.Y);
             return new PointF((float)pd.X, (float)pd.Y);
         }
-        /// The function converts a given value to screen scale width based on the selected image's
-        /// properties.
+        /// ToScreenScaleW() returns the number of pixels that correspond to the given number of microns
         /// 
-        /// @param x The parameter "x" represents a value that needs to be converted to screen scale
-        /// width.
+        /// @param x the x coordinate of the point to be converted
         /// 
-        /// @return The method is returning a double value.
-        public double ToScreenScaleW(double x)
+        /// @return The return value is a float.
+        public float ToScreenScaleW(double x)
         {
-            if (SelectedImage.isPyramidal)
-            {
-                return x * Resolution;
-            }
-            return (x * PxWmicron) * Scale.Width;
+            return (float)(-x * PxWmicron * Scale.Width);
         }
-        /// The function converts a given value to screen scale height based on the selected image's
-        /// properties.
+        /// > Convert a value in microns to a value in pixels
         /// 
-        /// @param y The parameter "y" represents the vertical coordinate value that needs to be
-        /// converted to screen scale.
+        /// @param y the y coordinate of the point to be converted
         /// 
-        /// @return The method is returning a double value.
-        public double ToScreenScaleH(double y)
+        /// @return The return value is a float.
+        public float ToScreenScaleH(double y)
         {
-            if (SelectedImage.isPyramidal)
-            {
-                return y * Resolution;
-            }
-            return (y * PxHmicron) * Scale.Height;
+           return (float)(-y * PxHmicron * Scale.Height);
         }
-        /// The function takes a PointD object and returns a PointF object with the coordinates scaled
-        /// to the screen.
+        /// > Convert a point in the world coordinate system to a point in the screen coordinate system
         /// 
-        /// @param PointD PointD is a custom data type that represents a point in a two-dimensional
-        /// space. It consists of two double values, X and Y, which represent the coordinates of the
-        /// point.
+        /// @param PointD 
         /// 
-        /// @return The method is returning a PointF object, which represents a point in a
-        /// two-dimensional plane with floating-point coordinates.
+        /// @return A PointF object.
         public PointF ToScreenScale(PointD p)
         {
-            double x = ToScreenScaleW((float)p.X);
-            double y = ToScreenScaleH((float)p.Y);
-            return new PointF((float)x, (float)y);
+            float x = ToScreenScaleW((float)p.X);
+            float y = ToScreenScaleH((float)p.Y);
+            return new PointF(x, y);
         }
-        /// The function converts a set of coordinates and dimensions from a mathematical coordinate
-        /// system to a screen coordinate system and returns a rectangle with the converted values.
+        /// It converts a rectangle in microns to a rectangle in pixels
         /// 
-        /// @param x The x-coordinate of the rectangle's top-left corner in world space.
-        /// @param y The parameter "y" represents the y-coordinate of the top-left corner of the
-        /// rectangle in the coordinate system of the screen.
-        /// @param w The width of the rectangle in world space.
-        /// @param h The parameter "h" represents the height of the rectangle.
+        /// @param x The x coordinate of the rectangle
+        /// @param y -0.0015
+        /// @param w width of the image in microns
+        /// @param h height of the rectangle
         /// 
-        /// @return The method is returning a RectangleD object.
-        public RectangleD ToScreenRectF(double x, double y, double w, double h)
+        /// @return A RectangleF object.
+        public RectangleD ToScreenRect(double x, double y, double w, double h)
         {
-            PointD pf = ToScreenSpace(x, y);
-            RectangleD rf = new RectangleD((float)pf.X, (float)pf.Y, (float)ToViewW(w), (float)ToViewH(h));
-            return rf;
-        }
-        /// The function converts a set of coordinates and dimensions from a mathematical coordinate
-        /// system to a screen coordinate system and returns a rectangle with the converted values.
-        /// 
-        /// @param x The x-coordinate of the rectangle's top-left corner in world space.
-        /// @param y The parameter "y" represents the y-coordinate of the top-left corner of the
-        /// rectangle in the coordinate system of the screen.
-        /// @param w The width of the rectangle in world space.
-        /// @param h The parameter "h" represents the height of the rectangle.
-        /// 
-        /// @return The method is returning a RectangleD object.
-        public SKRect ToScreenSpaceSK(double x, double y, double w, double h)
-        {
-            PointD pf = ToViewSpace(x, y);
-            SKRect rf = new SKRect
+            if (SelectedImage == null)
             {
-                Location = new SKPoint((float)pf.X, (float)pf.Y),
-                Size = new SKSize((float)ToViewSizeW(w), (float)ToViewSizeH(h)),
-            };
-            return rf;
+                double dx = (pxWmicron * (-Origin.X)) * Scale.Width;
+                double dy = (pxHmicron * (-Origin.Y)) * Scale.Height;
+                RectangleD rf = new RectangleD((PxWmicron * x * Scale.Width + dx), (PxHmicron * y * Scale.Height + dy), (PxWmicron * w * Scale.Width), (PxHmicron * h * Scale.Height));
+                return rf;
+            }
+            if (SelectedImage.isPyramidal)
+            {
+                PointD d = ToViewSpace(x, y);
+                double dw = ToViewSizeW(w);
+                double dh = ToViewSizeH(h);
+                return new RectangleD((d.X - PyramidalOrigin.X), (d.Y - PyramidalOrigin.Y), dw, dh);
+            }
+            else
+            {
+                double dx = (pxWmicron * (Origin.X)) * Scale.Width;
+                double dy = (pxHmicron * (Origin.Y)) * Scale.Height;
+                RectangleD rf = new RectangleD((PxWmicron * x * Scale.Width + dx), (PxHmicron * y * Scale.Height + dy), (PxWmicron * w * Scale.Width), (PxHmicron * h * Scale.Height));
+                return rf;              
+            }
         }
-        /// The function converts a RectangleD object to screen space.
+       
+        /// > It converts a rectangle from world space to screen space
         /// 
-        /// @param RectangleD The RectangleD is a custom data type that represents a rectangle in 2D
-        /// space. It typically has four properties: X (the x-coordinate of the top-left corner), Y (the
-        /// y-coordinate of the top-left corner), W (the width of the rectangle), and H (the height of
+        /// @param RectangleD The rectangle to convert.
         /// 
-        /// @return The method is returning a RectangleD object.
+        /// @return A RectangleF object.
         public RectangleD ToScreenSpace(RectangleD p)
         {
-            return ToScreenRectF(p.X, p.Y, p.W, p.H);
+            return ToScreenRect(p.X, p.Y, p.W, p.H);
         }
-        /// The function takes an array of RectangleD objects and converts them to screen space.
+        /// > It converts a rectangle from world space to screen space
         /// 
-        /// @param p An array of RectangleD objects representing rectangles in some coordinate space.
+        /// @param RectangleF The rectangle to convert.
         /// 
-        /// @return The method is returning an array of RectangleD objects.
+        /// @return A RectangleF object.
+        public RectangleD ToScreenSpace(RectangleF p)
+        {
+            return ToScreenRect(p.X, p.Y, p.Width, p.Height);
+        }
+        /// It takes an array of RectangleD objects and returns an array of RectangleF objects
+        /// 
+        /// @param p The rectangle to convert
+        /// 
+        /// @return A RectangleF[]
         public RectangleD[] ToScreenSpace(RectangleD[] p)
         {
             RectangleD[] rs = new RectangleD[p.Length];
@@ -2671,51 +2597,67 @@ namespace BioGTK
             }
             return rs;
         }
-        /// The function takes an array of PointD objects and converts them to an array of PointF
-        /// objects in screen space.
+
+        /// > Convert a list of points from world space to screen space
         /// 
-        /// @param p An array of PointD objects representing points in some coordinate system.
+        /// @param p The point to convert
         /// 
-        /// @return The method is returning an array of PointF objects.
-        public PointF[] ToScreenSpace(PointD[] p)
+        /// @return A PointF[] array of points.
+        public PointD[] ToScreenSpace(PointD[] p)
         {
-            PointF[] rs = new PointF[p.Length];
+            PointD[] rs = new PointD[p.Length];
             for (int i = 0; i < p.Length; i++)
             {
                 PointD pd = ToScreenSpace(p[i]);
-                rs[i] = new PointF((float)pd.X, (float)pd.Y);
+                rs[i] = new PointD((float)pd.X, (float)pd.Y);
             }
             return rs;
+        }
+        /// ToScreenW(x) = x * PxWmicron
+        /// 
+        /// @param x the x coordinate of the point to be converted
+        /// 
+        /// @return The return value is a float.
+        public double ToScreenW(double x)
+        {
+            return (float)(x * PxWmicron);
+        }
+        /// > Convert a value in microns to a value in pixels
+        /// 
+        /// @param y the y coordinate of the point to be converted
+        /// 
+        /// @return The return value is a float.
+        public float ToScreenH(double y)
+        {
+            return (float)(y * PxHmicron);
         }
         /// This function is used to go to the image at the specified index
         public void GoToImage()
         {
             GoToImage(0);
         }
-        /// It takes an image index and sets the origin and physical size of the image to the values of
-        /// the image at that index
+        /// It takes an image index and centers the image in the viewport
         /// 
-        /// @param i the index of the image in the list
+        /// @param i the index of the image to go to
         /// 
         /// @return The method is returning the value of the variable "i"
         public void GoToImage(int i)
         {
-            if (Width <= 1 || Height <= 1)
-                return;
             if (Images.Count <= i)
                 return;
-            if(SelectedImage.Type == BioImage.ImageType.pyramidal)
+            if (SelectedImage.Type == BioImage.ImageType.pyramidal)
             {
                 if (SelectedImage.OpenSlideBase != null)
                 {
                     if (MacroResolution.HasValue)
                     {
                         int lev = MacroResolution.Value - 2;
-                        Resolution = _openSlideBase.Schema.Resolutions[lev].UnitsPerPixel;
+                        Resolution = _openSlideBase.Schema.Resolutions[lev].UnitsPerPixel * 0.98;
                     }
                     else
                     {
-                        Resolution = _openSlideBase.Schema.Resolutions.Last().Value.UnitsPerPixel;
+                        int lev = 0;
+                        Resolution = _openSlideBase.Schema.Resolutions[lev].UnitsPerPixel * 0.98;
                     }
                 }
                 else
@@ -2723,36 +2665,25 @@ namespace BioGTK
                     if (MacroResolution.HasValue)
                     {
                         int lev = MacroResolution.Value - 1;
-                        Resolution = SelectedImage.GetLevelDownsamples()[lev];
+                        Resolution = SelectedImage.SlideBase.Schema.Resolutions[lev].UnitsPerPixel * 0.98;
+                        PyramidalOrigin = new PointD(0, 0);
                     }
                     else
                     {
-                        Resolution = SelectedImage.GetLevelDownsamples()[SelectedImage.Resolutions.Count - 1];
+                        Resolution = SelectedImage.GetUnitPerPixel(SelectedImage.Resolutions.Count - 1) * 0.98;
                     }
                 }
-                double dx = SelectedImage.Resolutions[Level].SizeX / (double)this.Width;
-                double dy = SelectedImage.Resolutions[Level].SizeY / (double)this.Height;
-                //Resolution *= dx;
             }
-            
-            if (SelectedImage.Type == BioImage.ImageType.stack)
-            {
-                double dx = Images[i].Volume.Width / 2;
-                double dy = Images[i].Volume.Height / 2;
-                Origin = new PointD((Images[i].Volume.Location.X) - dx, (Images[i].Volume.Location.Y) - dy);
-                PxWmicron = Images[i].PhysicalSizeX;
-                PxHmicron = Images[i].PhysicalSizeY;
-                if (Images[i].SizeX > 1080)
-                {
-                    double w = (double)SelectedImage.SizeX / (double)Width;
-                    double h = (double)SelectedImage.SizeY / (double)Height;
-                    PxWmicron *= h;
-                    PxHmicron *= h;
-                }
-            }
+            double dx = Images[i].Volume.Width / 2;
+            double dy = Images[i].Volume.Height / 2;
+            Origin = new PointD(-(Images[i].Volume.Location.X + dx), -(Images[i].Volume.Location.Y + dy));
+            double wx, wy;
+            wx = viewStack.AllocatedWidth / ToScreenW(SelectedImage.Volume.Width);
+            wy = viewStack.AllocatedHeight / ToScreenH(SelectedImage.Volume.Height);
+            Scale = new SizeF((float)wy, (float)wy);
             UpdateView();
         }
-
+        
         #endregion
 
         #region OpenSlide

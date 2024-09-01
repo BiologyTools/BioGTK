@@ -349,7 +349,7 @@ namespace BioGTK
                 {
                     //If we click on a point 1 we close this polygon
                     float width = (float)App.viewer.ToScreenScaleW(ROI.selectBoxSize);
-                    RectangleD[] rds = selectedROI.GetSelectBoxes(width);
+                    RectangleD[] rds = selectedROI.GetSelectBoxes();
                     if (rds[0].IntersectsWith(e.X,e.Y))
                     {
                         selectedROI.closed = true;
@@ -659,7 +659,8 @@ namespace BioGTK
                 }
                 else
                 {
-                    App.viewer.Origin = new PointD(App.viewer.Origin.X + (ImageView.mouseDown.X - e.X), App.viewer.Origin.Y + (ImageView.mouseDown.Y - e.Y));
+                    PointD pf = new PointD(e.X - ImageView.mouseDown.X, e.Y - ImageView.mouseDown.Y);
+                    App.viewer.Origin = new PointD(App.viewer.Origin.X + pf.X, App.viewer.Origin.Y + pf.Y);
                 }
                 UpdateView();
             }
@@ -733,7 +734,7 @@ namespace BioGTK
                         an.selectedPoints.Clear();
                         ImageView.selectedAnnotations.Add(an);
                         an.Selected = true;
-                        RectangleD[] sels = an.GetSelectBoxes(App.viewer.Scale.Width);
+                        RectangleD[] sels = an.GetSelectBoxes();
                         for (int i = 0; i < sels.Length; i++)
                         {
                             if (sels[i].IntersectsWith(r))
