@@ -297,7 +297,7 @@ namespace BioGTK
             paint.IsAntialias = true;
             paint.Style = SKPaintStyle.Fill;
             if ((SkImages.Count == 0 || SkImages.Count != SkImages.Count))
-                UpdateImages();
+                UpdateImages(false);
             
             if (!SelectedImage.isPyramidal)
             {
@@ -311,10 +311,6 @@ namespace BioGTK
             rr.Size = new SKSize((float)rd.W, (float)rd.H);
             canvas.DrawRect(rr, paint);
             int i = 0;
-            if (SelectedImage.isPyramidal)
-            {
-                UpdateImages(false);
-            }
             foreach (BioImage im in Images)
             {
                 RectangleD rec = ToScreenRect(im.Volume.Location.X, im.Volume.Location.Y, im.Volume.Width, im.Volume.Height);
@@ -326,39 +322,42 @@ namespace BioGTK
                 {
                     try
                     {
-                        canvas.DrawImage(BitmapToSKImage(SelectedImage.Buffers[0]), 0, 0, paint);
-                        if (ShowOverview)
+                        if (SelectedImage.Buffers.Count > 0)
                         {
-                            // Draw the overview image at the top-left corner
-                            canvas.DrawImage(BitmapToSKImage(overviewImage), 0, 0, paint);
-
-                            // Set the paint style to stroke for drawing rectangles
-                            paint.Style = SKPaintStyle.Stroke;
-
-                            // Draw the gray rectangle representing the overview's entire visible region
-                            paint.Color = SKColors.Gray;
-                            canvas.DrawRect(overview.X, overview.Y, overview.Width, overview.Height, paint);
-                            paint.Color = SKColors.Red;
-                            if (!openSlide)
+                            canvas.DrawImage(BitmapToSKImage(SelectedBuffer), 0, 0, paint);
+                            if (ShowOverview)
                             {
-                                double dsx = _slideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
-                                Resolution rs = SelectedImage.Resolutions[Level];
-                                double dx = ((double)PyramidalOrigin.X / (rs.SizeX * dsx)) * overview.Width;
-                                double dy = ((double)PyramidalOrigin.Y / (rs.SizeY * dsx)) * overview.Height;
-                                double dw = ((double)viewStack.AllocatedWidth / (rs.SizeX * dsx)) * overview.Width;  
-                                double dh = ((double)viewStack.AllocatedHeight / (rs.SizeY * dsx)) * overview.Height;
-                                canvas.DrawRect((int)dx, (int)dy, (int)dw, (int)dh,paint);
-                            }
-                            else
-                            {
-                                double dsx = _openSlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
-                                var rs = _openSlideBase.Schema.Resolutions.Last();
-                                Resolution rss = SelectedImage.Resolutions[Level];
-                                double dx = ((double)PyramidalOrigin.X / (rss.SizeX * dsx)) * overview.Width;
-                                double dy = ((double)PyramidalOrigin.Y / (rss.SizeY * dsx)) * overview.Height;
-                                double dw = ((double)viewStack.AllocatedWidth / (rss.SizeX * dsx)) * overview.Width;
-                                double dh = ((double)viewStack.AllocatedHeight / (rss.SizeY * dsx)) * overview.Height;
-                                canvas.DrawRect((int)dx, (int)dy, (int)dw, (int)dh,paint);
+                                // Draw the overview image at the top-left corner
+                                canvas.DrawImage(BitmapToSKImage(overviewImage), 0, 0, paint);
+
+                                // Set the paint style to stroke for drawing rectangles
+                                paint.Style = SKPaintStyle.Stroke;
+
+                                // Draw the gray rectangle representing the overview's entire visible region
+                                paint.Color = SKColors.Gray;
+                                canvas.DrawRect(overview.X, overview.Y, overview.Width, overview.Height, paint);
+                                paint.Color = SKColors.Red;
+                                if (!openSlide)
+                                {
+                                    double dsx = _slideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
+                                    Resolution rs = SelectedImage.Resolutions[Level];
+                                    double dx = ((double)PyramidalOrigin.X / (rs.SizeX * dsx)) * overview.Width;
+                                    double dy = ((double)PyramidalOrigin.Y / (rs.SizeY * dsx)) * overview.Height;
+                                    double dw = ((double)viewStack.AllocatedWidth / (rs.SizeX * dsx)) * overview.Width;
+                                    double dh = ((double)viewStack.AllocatedHeight / (rs.SizeY * dsx)) * overview.Height;
+                                    canvas.DrawRect((int)dx, (int)dy, (int)dw, (int)dh, paint);
+                                }
+                                else
+                                {
+                                    double dsx = _openSlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
+                                    var rs = _openSlideBase.Schema.Resolutions.Last();
+                                    Resolution rss = SelectedImage.Resolutions[Level];
+                                    double dx = ((double)PyramidalOrigin.X / (rss.SizeX * dsx)) * overview.Width;
+                                    double dy = ((double)PyramidalOrigin.Y / (rss.SizeY * dsx)) * overview.Height;
+                                    double dw = ((double)viewStack.AllocatedWidth / (rss.SizeX * dsx)) * overview.Width;
+                                    double dh = ((double)viewStack.AllocatedHeight / (rss.SizeY * dsx)) * overview.Height;
+                                    canvas.DrawRect((int)dx, (int)dy, (int)dw, (int)dh, paint);
+                                }
                             }
                         }
                     }
@@ -593,8 +592,7 @@ namespace BioGTK
             if (SelectedImage.isPyramidal && sk.AllocatedHeight <= 1 || sk.AllocatedWidth <= 1)
                 return;
             SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
-            if (updatePyramidal || SelectedImage.Buffers.Count == 0)
-                await SelectedImage.UpdateBuffersPyramidal();
+            await SelectedImage.UpdateBuffersPyramidal();
             SkImages.Clear();
             foreach (BioImage b in Images)
             {
@@ -1821,6 +1819,8 @@ namespace BioGTK
             }
             set
             {
+                if (value > SelectedImage.SlideBase.Schema.Resolutions.Last().Value.UnitsPerPixel || value < SelectedImage.SlideBase.Schema.Resolutions.First().Value.UnitsPerPixel)
+                    return;
                 // Ensure the new resolution is valid for the selected image type
                 if (SelectedImage.Type == BioImage.ImageType.well && value > SelectedImage.Resolutions.Count - 1)
                     return;
@@ -1848,11 +1848,12 @@ namespace BioGTK
                 {
                     //Zoom in
                     //We calculate the mouse position in viewport space.
+                    scalingFactor = SelectedImage.Resolution / value;
                     PointD mouse = new PointD((MouseMove.X / value), (MouseMove.Y / value));
                     // Calculate the new PyramidalOrigin so that the image stays centered on the middle
                     PyramidalOrigin = new PointD(
                     imageMousePosition.X + (mouse.X / scalingFactor),
-                    imageMousePosition.Y + (mouse.Y) / scalingFactor);
+                    imageMousePosition.Y + (mouse.Y / scalingFactor));
                 }
             }
         }
@@ -1894,6 +1895,8 @@ namespace BioGTK
         /// It updates the status of the user.
         public void UpdateStatus()
         {
+            if (SelectedImage.Buffers.Count == 0)
+                return;
             if(SelectedImage.Type == BioImage.ImageType.well)
             {
                 statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
@@ -2059,7 +2062,7 @@ namespace BioGTK
                     Bio.Graphics.Pen pen = new Bio.Graphics.Pen(Tools.EraseColor, (int)Tools.StrokeWidth, ImageView.SelectedBuffer.BitsPerPixel);
                     g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)Tools.StrokeWidth, (int)Tools.StrokeWidth), pen.color);
                     //pen.Dispose();
-                    App.viewer.UpdateImages();
+                    App.viewer.UpdateImages(false);
                 }
             }
             UpdateStatus();
@@ -2234,7 +2237,7 @@ namespace BioGTK
                             if(an.type != ROI.Type.Mask)
                             for (int i = 0; i < sels.Length; i++)
                             {
-                                RectangleF rd = new RectangleF((float)pointer.X, (float)pointer.Y, (float)ToViewSizeW(1), (float)ToViewSizeH(1));
+                                RectangleF rd = new RectangleF((float)pointer.X, (float)pointer.Y, (float)ToViewW(1), (float)ToViewH(1));
                                 if (sels[i].ToRectangleF().IntersectsWith(rd))
                                 {
                                     an.selectedPoints.Add(i);
