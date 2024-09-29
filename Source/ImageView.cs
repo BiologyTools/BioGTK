@@ -15,6 +15,7 @@ using Rectangle = AForge.Rectangle;
 using System.IO;
 using SkiaSharp;
 using SkiaSharp.Views.Gtk;
+using org.libjpegturbo.turbojpeg;
 namespace BioGTK
 {
     public class ImageView : Gtk.Window
@@ -592,6 +593,7 @@ namespace BioGTK
             if (SelectedImage.isPyramidal && sk.AllocatedHeight <= 1 || sk.AllocatedWidth <= 1)
                 return;
             SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
+            if(updatePyramidal)
             await SelectedImage.UpdateBuffersPyramidal();
             SkImages.Clear();
             foreach (BioImage b in Images)
@@ -1824,28 +1826,15 @@ namespace BioGTK
                 // Ensure the new resolution is valid for the selected image type
                 if (SelectedImage.Type == BioImage.ImageType.well && value > SelectedImage.Resolutions.Count - 1)
                     return;
-
-                // Calculate the scaling factor based on the new and current resolution
-                double scalingFactor = value / SelectedImage.Resolution;
-                // Convert the screen coordinates of the mouse position to image coordinates
-                PointD imageMousePosition = new PointD(
-                    (PyramidalOrigin.X / scalingFactor),
-                    (PyramidalOrigin.Y / scalingFactor)
-                );
-                SelectedImage.Resolution = value;
-                if(value > SelectedImage.Resolution)
+                if (value < SelectedImage.Resolution)
                 {
-                    //Zoom out
-                    scalingFactor = SelectedImage.Resolution / value;
-                    //We calculate the window middle in viewport space.
-                    PointD mouse = new PointD((MouseMove.X / value), (MouseMove.Y / value));
-                    // Calculate the new PyramidalOrigin so that the image stays centered on the middle
-                    PyramidalOrigin = new PointD(
-                    imageMousePosition.X + (mouse.X / scalingFactor),
-                    imageMousePosition.Y + (mouse.Y / scalingFactor));
-                }
-                else
-                {
+                    // Calculate the scaling factor based on the new and current resolution
+                    double scalingFactor = value / SelectedImage.Resolution;
+                    // Convert the screen coordinates of the mouse position to image coordinates
+                    PointD imageMousePosition = new PointD(
+                        (PyramidalOrigin.X / scalingFactor),
+                        (PyramidalOrigin.Y / scalingFactor)
+                    );
                     //Zoom in
                     //We calculate the mouse position in viewport space.
                     scalingFactor = SelectedImage.Resolution / value;
@@ -1854,11 +1843,29 @@ namespace BioGTK
                     PyramidalOrigin = new PointD(
                     imageMousePosition.X + (mouse.X / scalingFactor),
                     imageMousePosition.Y + (mouse.Y / scalingFactor));
+                    SelectedImage.Resolution = value;
+                }
+                else
+                {
+                    // Calculate the scaling factor based on the new and current resolution
+                    double scalingFactor = value / SelectedImage.Resolution;
+                    // Convert the screen coordinates of the mouse position to image coordinates
+                    PointD imageMousePosition = new PointD(
+                        (PyramidalOrigin.X / scalingFactor),
+                        (PyramidalOrigin.Y / scalingFactor)
+                    );
+                    //Zoom in
+                    //We calculate the mouse position in viewport space.
+                    scalingFactor = SelectedImage.Resolution / value;
+                    PointD mouse = new PointD((MouseMove.X / value), (MouseMove.Y / value));
+                    // Calculate the new PyramidalOrigin so that the image stays centered on the middle
+                    PyramidalOrigin = new PointD(
+                    imageMousePosition.X - (mouse.X / scalingFactor),
+                    imageMousePosition.Y - (mouse.Y / scalingFactor));
+                    SelectedImage.Resolution = value;
                 }
             }
         }
-
-
 
         public int Level
         {
