@@ -3,25 +3,25 @@
     <TargetFramework>net8.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RuntimeIdentifiers>osx-x64;linux-x64;win-x64;win-arm64;linux-arm64;osx-arm64;</RuntimeIdentifiers>
-    <AssemblyVersion>5.4.0</AssemblyVersion>
-    <FileVersion>5.4.0</FileVersion>
+    <AssemblyVersion>5.4.1</AssemblyVersion>
+    <FileVersion>5.4.1</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>BioGTK</PackageId>
     <Title>BioGTK</Title>
     <PackageProjectUrl>https://github.com/BiologyTools/BioGTK</PackageProjectUrl>
     <PackageIcon>banner.jpg</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageVersion>5.4.0</PackageVersion>
+    <PackageVersion>5.4.1</PackageVersion>
     <RepositoryUrl>https://github.com/BiologyTools/BioGTK</RepositoryUrl>
     <PackageTags>Biology; GTK; ImageJ; Bio-Formats; Image-Stacks; Microscopy; Whole-Slide-Image; Segment-Anything; SAM; QuPath;</PackageTags>
     <PackageLicenseExpression> GPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Description>A .NET application &amp; library for editing &amp; annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters &amp; macro functions. Supports Windows, Linux and Mac.</Description>
-    <Version>5.4.0</Version>
+    <Version>5.4.1</Version>
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>Slide navigation improvement and performance improvements.</PackageReleaseNotes>
+    <PackageReleaseNotes>16 &amp; 48 bit slides support for CUDA stitching.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
@@ -428,6 +428,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="BioLib" Version="2.7.2.1" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="ImageJ.NET" Version="154.0.0.2" />
@@ -448,10 +449,6 @@
     <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.0.0-preview.4.1" />
     <PackageReference Include="TorchSharp-cpu" Version="0.103.0" />
     <PackageReference Include="YamlDotNet" Version="16.1.3" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\BioLib\BioLib.csproj" />
   </ItemGroup>
 
   <ItemGroup>

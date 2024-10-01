@@ -15,7 +15,6 @@ using Rectangle = AForge.Rectangle;
 using System.IO;
 using SkiaSharp;
 using SkiaSharp.Views.Gtk;
-using org.libjpegturbo.turbojpeg;
 namespace BioGTK
 {
     public class ImageView : Gtk.Window
@@ -655,48 +654,31 @@ namespace BioGTK
             if (!SelectedImage.isPyramidal)
                 return;
             overview = new Rectangle(0, 0, 120, 120);
+            if (SelectedImage.Resolutions.Count == 1)
+            {
+                ShowOverview = false;
+                return;
+            }
             if (MacroResolution.HasValue)
             {
-                double aspx = (double)SelectedImage.Resolutions[MacroResolution.Value - 1].SizeX / (double)SelectedImage.Resolutions[MacroResolution.Value - 1].SizeY;
-                double aspy = (double)SelectedImage.Resolutions[MacroResolution.Value - 1].SizeY / (double)SelectedImage.Resolutions[MacroResolution.Value - 1].SizeX;
+                double aspx = (double)SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX / (double)SelectedImage.Resolutions[MacroResolution.Value - 2].SizeY;
+                double aspy = (double)SelectedImage.Resolutions[MacroResolution.Value - 2].SizeY / (double)SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX;
                 overview = new Rectangle(0, 0, (int)(aspx * 120), (int)(aspy * 120));
-                if (SelectedImage.Resolutions[MacroResolution.Value - 1].SizeX > 8000 || SelectedImage.Resolutions[MacroResolution.Value - 1].SizeY > 8000)
-                {
-                    ShowOverview = false;
-                    return;
-                }
-                Bitmap bm = BioImage.GetTile(SelectedImage, GetCoordinate(), MacroResolution.Value - 1, 0, 0, SelectedImage.Resolutions[MacroResolution.Value - 1].SizeX, SelectedImage.Resolutions[MacroResolution.Value - 1].SizeY);
+                Bitmap bm = BioImage.GetTile(SelectedImage, GetCoordinate(), MacroResolution.Value - 2, 0, 0, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeY);
                 ResizeNearestNeighbor re = new ResizeNearestNeighbor(overview.Width, overview.Height);
-                Bitmap bmp = re.Apply((Bitmap)bm.ImageRGB);
+                Bitmap bmp = re.Apply(bm);
                 overviewImage = bmp;
             }
             else
             {
-                Resolution res = SelectedImage.Resolutions.Last();
-                double aspx = (double)res.SizeX / (double)res.SizeY;
-                double aspy = (double)res.SizeY / (double)res.SizeX;
+                int lev = SelectedImage.Resolutions.Count - 1;
+                double aspx = (double)SelectedImage.Resolutions[lev].SizeX / (double)SelectedImage.Resolutions[lev].SizeY;
+                double aspy = (double)SelectedImage.Resolutions[lev].SizeY / (double)SelectedImage.Resolutions[lev].SizeX;
                 overview = new Rectangle(0, 0, (int)(aspx * 120), (int)(aspy * 120));
-                Bitmap bm;
+                Bitmap bm = BioImage.GetTile(SelectedImage, GetCoordinate(), lev, 0, 0, SelectedImage.Resolutions[lev].SizeX, SelectedImage.Resolutions[lev].SizeY);
                 ResizeNearestNeighbor re = new ResizeNearestNeighbor(overview.Width, overview.Height);
-                byte[] bts;
-                Bitmap bf;
-                if (res.SizeX > 8000 || res.SizeY > 8000)
-                {
-                    ShowOverview = false;
-                    return;
-                }
-                if (_openSlideBase != null)
-                {
-                    bts = _openSlideBase.GetSlice(new OpenSlideGTK.SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, SelectedImage.PyramidalSize.Width, SelectedImage.PyramidalSize.Height, SelectedImage.GetUnitPerPixel(Level)));
-                    bf = new Bitmap((int)Math.Round(OpenSlideBase.destExtent.Width), (int)Math.Round(OpenSlideBase.destExtent.Height), PixelFormat.Format24bppRgb, bts, new ZCT(), "");
-                }
-                else
-                {
-                    bts = _slideBase.GetSlice(new BioLib.SliceInfo(PyramidalOrigin.X, PyramidalOrigin.Y, SelectedImage.PyramidalSize.Width, SelectedImage.PyramidalSize.Height, SelectedImage.GetUnitPerPixel(Level), GetCoordinate())).Result;
-                    bf = new Bitmap((int)Math.Round(SlideBase.destExtent.Width), (int)Math.Round(SlideBase.destExtent.Height), PixelFormat.Format24bppRgb, bts, new ZCT(), "");
-                }
-                bm = re.Apply((Bitmap)bf.ImageRGB);
-                overviewImage = bm;
+                Bitmap bmp = re.Apply(bm);
+                overviewImage = bmp;
             }
             ShowOverview = true;
             Console.WriteLine("Preview Initialized.");
