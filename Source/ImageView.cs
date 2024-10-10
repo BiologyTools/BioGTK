@@ -343,8 +343,8 @@ namespace BioGTK
                                     Resolution rs = SelectedImage.Resolutions[Level];
                                     double dx = ((double)PyramidalOrigin.X / (rs.SizeX * dsx)) * overview.Width;
                                     double dy = ((double)PyramidalOrigin.Y / (rs.SizeY * dsx)) * overview.Height;
-                                    double dw = ((double)viewStack.AllocatedWidth / (rs.SizeX * dsx)) * overview.Width;
-                                    double dh = ((double)viewStack.AllocatedHeight / (rs.SizeY * dsx)) * overview.Height;
+                                    double dw = ((double)viewStack.AllocatedWidth / (rs.SizeX)) * overview.Width * dsx;
+                                    double dh = ((double)viewStack.AllocatedHeight / (rs.SizeY)) * overview.Height * dsx;
                                     canvas.DrawRect((int)dx, (int)dy, (int)dw, (int)dh, paint);
                                 }
                                 else
@@ -358,6 +358,7 @@ namespace BioGTK
                                     double dh = ((double)viewStack.AllocatedHeight / (rss.SizeY * dsx)) * overview.Height;
                                     canvas.DrawRect((int)dx, (int)dy, (int)dw, (int)dh, paint);
                                 }
+
                             }
                         }
                     }
@@ -1803,8 +1804,6 @@ namespace BioGTK
             }
             set
             {
-                if (value > SelectedImage.SlideBase.Schema.Resolutions.Last().Value.UnitsPerPixel || value < SelectedImage.SlideBase.Schema.Resolutions.First().Value.UnitsPerPixel)
-                    return;
                 // Ensure the new resolution is valid for the selected image type
                 if (SelectedImage.Type == BioImage.ImageType.well && value > SelectedImage.Resolutions.Count - 1)
                     return;
