@@ -1952,7 +1952,28 @@ namespace BioGTK
             App.tools.ToolMove(p, e);
             Tools.currentTool.Rectangle = new RectangleD(mouseDown.X, mouseDown.Y, p.X - mouseDown.X, p.Y - mouseDown.Y);
             mousePoint = "(" + (p.X.ToString("F")) + ", " + (p.Y.ToString("F")) + ")";
-            
+            //Check 
+            if (SelectedImage.isPyramidal && overview.IntersectsWith(e.Event.X, e.Event.Y)  && e.Event.State.HasFlag(ModifierType.Button1Mask))
+            {
+                if (!OpenSlide)
+                {
+                    double dsx = _slideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
+                    Resolution rs = SelectedImage.Resolutions[(int)Level];
+                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX * dsx);
+                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY * dsx);
+                    double w = (double)viewStack.AllocatedWidth / 2;
+                    double h = (double)viewStack.AllocatedHeight / 2;
+                    PyramidalOrigin = new PointD(dx - w, dy - h);
+                }
+                else
+                {
+                    double dsx = _openSlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
+                    Resolution rs = SelectedImage.Resolutions[(int)Level];
+                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX * dsx);
+                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY * dsx);
+                    PyramidalOrigin = new PointD(dx, dy);
+                }
+            }
             //If point selection tool is clicked we  
             if (Tools.currentTool.type == Tools.Tool.Type.pointSel && e.Event.State.HasFlag(ModifierType.Button1Mask))
             {
