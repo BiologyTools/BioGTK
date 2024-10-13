@@ -447,7 +447,7 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.0.0-preview.4.1" />
     <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.0.0-preview.4.1" />
     <PackageReference Include="TorchSharp-cpu" Version="0.103.0" />
-    <PackageReference Include="YamlDotNet" Version="16.1.3" />
+    <PackageReference Include="YamlDotNet" Version="16.1.3" />  
   </ItemGroup>
 
   <ItemGroup>
@@ -468,12 +468,12 @@
     <CFBundleName>BioGTK</CFBundleName>
     <CFBundleDisplayName>BioGTK</CFBundleDisplayName>
     <CFBundleIdentifier>com.BioGTK</CFBundleIdentifier>
-    <CFBundleVersion>5.4.1</CFBundleVersion>
+    <CFBundleVersion>5.4.2</CFBundleVersion>
     <CFBundlePackageType>APPL</CFBundlePackageType>
     <CFBundleSignature>????</CFBundleSignature>
     <CFBundleExecutable>BioGTKApp</CFBundleExecutable>
     <CFBundleIconFile>bio.icns</CFBundleIconFile>
-    <CFBundleShortVersionString>5.4.1</CFBundleShortVersionString>
+    <CFBundleShortVersionString>5.4.2</CFBundleShortVersionString>
     <NSPrincipalClass>NSApplication</NSPrincipalClass>
     <NSHighResolutionCapable>true</NSHighResolutionCapable>
     <ImplicitUsings>enable</ImplicitUsings>
