@@ -15,6 +15,8 @@ using Rectangle = AForge.Rectangle;
 using System.IO;
 using SkiaSharp;
 using SkiaSharp.Views.Gtk;
+using ch.qos.logback.classic.joran;
+
 namespace BioGTK
 {
     public class ImageView : Gtk.Window
@@ -384,6 +386,7 @@ namespace BioGTK
                     var recd = ToScreenRect(Tools.currentTool.Rectangle.X, Tools.currentTool.Rectangle.Y, Tools.currentTool.Rectangle.W,Tools.currentTool.Rectangle.H);
                     canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
                 }
+
                 foreach (ROI an in rois)
                 {
                     if (Mode == ViewMode.RGBImage)
@@ -406,6 +409,7 @@ namespace BioGTK
                     paint.StrokeWidth = (float)an.strokeWidth;
                     PointF pc = new PointF((float)(an.BoundingBox.X + (an.BoundingBox.W / 2)), (float)(an.BoundingBox.Y + (an.BoundingBox.H / 2)));
                     float width = ROI.selectBoxSize;
+                    
                     if (an.type == ROI.Type.Mask || an.roiMask != null)
                     {
                         SKImage sim = an.roiMask.GetColored(an.fillColor).ToSKImage();
@@ -430,8 +434,8 @@ namespace BioGTK
                     else
                     if (an.type == ROI.Type.Rectangle)
                     {
-                        RectangleD rect = ToScreenRect(an.PointsD[0].X, an.PointsD[0].Y, Math.Abs(an.PointsD[0].X - an.PointsD[1].X), Math.Abs(an.PointsD[0].Y - an.PointsD[2].Y));
-                        canvas.DrawRect((float)rect.X, (float)rect.Y, (float)rect.W, (float)rect.H,paint);
+                        RectangleD rectt = ToScreenRect(an.PointsD[0].X, an.PointsD[0].Y, Math.Abs(an.PointsD[0].X - an.PointsD[1].X), Math.Abs(an.PointsD[0].Y - an.PointsD[2].Y));
+                        canvas.DrawRect((float)rectt.X, (float)rectt.Y, (float)rectt.W, (float)rectt.H,paint);
                     }
                     else
                     if (an.type == ROI.Type.Ellipse)
@@ -1745,56 +1749,6 @@ namespace BioGTK
             }
         }
         /* Setting the Level of the image. */
-        public int LevelFromResolution(double Resolution)
-        {
-            int lev;
-            if (MacroResolution.HasValue)
-            {
-                if (Resolution >= MacroResolution.Value)
-                {
-                    int r = 0;
-                    for (int i = 0; i < SelectedImage.Resolutions.Count; i++)
-                    {
-                        if (i <= Resolution - 1)
-                            r = i;
-                    }
-                    if (r - 1 <= MacroResolution.Value)
-                        lev = MacroResolution.Value - 1;
-                    else
-                        lev = r - 1;
-                }
-                else
-                    return (int)Resolution;
-            }
-            else
-            {
-                int r = 0;
-                for (int i = 0; i < SelectedImage.Resolutions.Count; i++)
-                {
-                    if (i <= Resolution - 1)
-                        r = i;
-                }
-                lev = r;
-            }
-            if (!OpenSlide)
-            {
-                return lev;
-            }
-            else
-            {
-                if (MacroResolution.HasValue)
-                {
-                    if (lev >= MacroResolution.Value - 1)
-                        return lev - 1;
-                    else
-                        return lev;
-                }
-                else
-                {
-                    return lev - 1;
-                }
-            }
-        }
         private double zoomFactor = 1.0;
         public double Resolution
         {
@@ -2400,12 +2354,12 @@ namespace BioGTK
         public PointD ToViewSpace(double x, double y)
         {
             if (SelectedImage != null)
-                if (SelectedImage.isPyramidal)
-                {
-                    double ddx = x / Resolution;
-                    double ddy = y / Resolution;
-                    return new PointD(ddx, ddy);
-                }
+            if (SelectedImage.isPyramidal)
+            {
+                double px = Resolution / SelectedImage.OpenSlideBase.Schema.Resolutions[Level].UnitsPerPixel;
+                PointD p = new PointD((float)((x * px) - PyramidalOriginTransformed.X * px), (float)((y * px) - PyramidalOriginTransformed.Y * px));
+                    return p;
+            }
             double dx, dy;
             dx = (ToViewSizeW(x - (viewStack.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
             dy = (ToViewSizeH(y - (viewStack.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
@@ -2448,6 +2402,11 @@ namespace BioGTK
         /// @return The width of the image in pixels.
         public double ToViewW(double d)
         {
+            if (SelectedImage != null)
+                if (SelectedImage.isPyramidal)
+                {
+                    return d / Resolution;
+                }
             double x = (double)(d / PxWmicron) / scale.Width;
             return x;
         }
@@ -2458,6 +2417,11 @@ namespace BioGTK
         /// @return The return value is the y-coordinate of the point in the view.
         public double ToViewH(double d)
         {
+            if (SelectedImage != null)
+                if (SelectedImage.isPyramidal)
+                {
+                    return d / Resolution;
+                }
             double y = (double)(d / PxHmicron) / scale.Height;
             return y;
         }
@@ -2566,7 +2530,7 @@ namespace BioGTK
                 PointD d = ToViewSpace(x, y);
                 double dw = ToViewSizeW(w);
                 double dh = ToViewSizeH(h);
-                return new RectangleD((d.X - PyramidalOrigin.X), (d.Y - PyramidalOrigin.Y), dw, dh);
+                return new RectangleD(d.X, d.Y, dw, dh);
             }
             else
             {
