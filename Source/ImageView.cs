@@ -313,8 +313,9 @@ namespace BioGTK
             rr.Size = new SKSize((float)rd.W, (float)rd.H);
             canvas.DrawRect(rr, paint);
             int i = 0;
-            foreach (BioImage im in Images)
+            foreach (SKImage sk in SkImages)
             {
+                BioImage im = SelectedImage;
                 RectangleD rec = ToScreenRect(im.Volume.Location.X, im.Volume.Location.Y, im.Volume.Width, im.Volume.Height);
                 SKRect r = new SKRect();
                 r.Location = new SKPoint((float)rec.X, (float)rec.Y);
@@ -329,9 +330,11 @@ namespace BioGTK
                             canvas.DrawImage(BitmapToSKImage(SelectedBuffer), 0, 0, paint);
                             if (ShowOverview)
                             {
-                                // Draw the overview image at the top-left corner
-                                canvas.DrawImage(BitmapToSKImage(overviewImage), 0, 0, paint);
-
+                                if (overviewImage != null)
+                                {
+                                    // Draw the overview image at the top-left corner
+                                    canvas.DrawImage(BitmapToSKImage(overviewImage), 0, 0, paint);
+                                }
                                 // Set the paint style to stroke for drawing rectangles
                                 paint.Style = SKPaintStyle.Stroke;
 
@@ -669,6 +672,10 @@ namespace BioGTK
                 double aspx = (double)SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX / (double)SelectedImage.Resolutions[MacroResolution.Value - 2].SizeY;
                 double aspy = (double)SelectedImage.Resolutions[MacroResolution.Value - 2].SizeY / (double)SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX;
                 overview = new Rectangle(0, 0, (int)(aspx * 120), (int)(aspy * 120));
+                if(SelectedImage.Resolutions[MacroResolution.Value - 2].SizeInBytes > 1000000000)
+                {
+                    return;
+                }
                 Bitmap bm = BioImage.GetTile(SelectedImage, GetCoordinate(), MacroResolution.Value - 2, 0, 0, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeY);
                 ResizeNearestNeighbor re = new ResizeNearestNeighbor(overview.Width, overview.Height);
                 Bitmap bmp = re.Apply(bm);
@@ -2353,18 +2360,27 @@ namespace BioGTK
         /// @return A PointD object.
         public PointD ToViewSpace(double x, double y)
         {
-            if (SelectedImage != null)
+            if (SelectedImage == null)
+            {
+                double dx = (ToViewSizeW(x - (viewStack.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
+                double dy = (ToViewSizeH(y - (viewStack.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
+                return new PointD(dx, dy);
+            }
+
             if (SelectedImage.isPyramidal)
             {
-                double px = Resolution / SelectedImage.OpenSlideBase.Schema.Resolutions[Level].UnitsPerPixel;
-                PointD p = new PointD((float)((x * px) - PyramidalOriginTransformed.X * px), (float)((y * px) - PyramidalOriginTransformed.Y * px));
-                    return p;
+                PointD p = new PointD(x / Resolution, y / Resolution);
+                return new PointD(p.X - PyramidalOrigin.X, p.Y - PyramidalOrigin.Y);
             }
-            double dx, dy;
-            dx = (ToViewSizeW(x - (viewStack.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
-            dy = (ToViewSizeH(y - (viewStack.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
-            return new PointD(dx, dy);
+            else
+            {
+                // Handle non-pyramidal case
+                double dx = (ToViewSizeW(x - (viewStack.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
+                double dy = (ToViewSizeH(y - (viewStack.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
+                return new PointD(dx, dy);
+            }
         }
+
         /// Convert a value in microns to a value in pixels
         /// 
         /// @param d the size in microns
