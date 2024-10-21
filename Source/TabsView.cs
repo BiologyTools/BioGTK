@@ -5,6 +5,7 @@ using ikvm.runtime;
 using loci.formats.gui;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -380,12 +381,19 @@ namespace BioGTK
             updateMenu.ButtonPressEvent += UpdateMenu_ButtonPressEvent;
         }
 
-        private void ExtractRegionMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        private async void ExtractRegionMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            BioImage b = ImageView.SelectedImage;
-            BioImage bm = b.GetRegion((int)b.PyramidalOrigin.X, (int)b.PyramidalOrigin.Y, b.PyramidalSize.Width, b.PyramidalSize.Height);
-            Images.AddImage(bm,true);
-            AddTab(bm);
+            BioImage b = ImageView.SelectedImage.Copy();
+            String name = System.IO.Path.GetFileNameWithoutExtension(ImageView.SelectedImage.Filename).Replace(".ome","");
+            int c = Images.GetImageCountByName(b.Filename);
+            b.ID = name + "-" + c + ".ome.tif";
+            //b.Type = BioImage.ImageType.stack;
+            var bms = await b.GetSlice((int)b.PyramidalOrigin.X, (int)b.PyramidalOrigin.Y, b.PyramidalSize.Width, b.PyramidalSize.Height, b.Resolution);
+            b.Type = BioImage.ImageType.stack;
+            b.Buffers.Clear();
+            b.Buffers.AddRange(bms.ToArray());
+            Images.AddImage(b,true);
+            AddTab(b);
         }
 
         private void ToShortMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
