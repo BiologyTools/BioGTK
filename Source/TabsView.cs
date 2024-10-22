@@ -385,9 +385,8 @@ namespace BioGTK
         {
             BioImage b = ImageView.SelectedImage.Copy();
             String name = System.IO.Path.GetFileNameWithoutExtension(ImageView.SelectedImage.Filename).Replace(".ome","");
-            int c = Images.GetImageCountByName(b.Filename);
+            int c = Images.GetImageCountByName(name);
             b.ID = name + "-" + c + ".ome.tif";
-            //b.Type = BioImage.ImageType.stack;
             var bms = await b.GetSlice((int)b.PyramidalOrigin.X, (int)b.PyramidalOrigin.Y, b.PyramidalSize.Width, b.PyramidalSize.Height, b.Resolution);
             b.Type = BioImage.ImageType.stack;
             b.Buffers.Clear();
