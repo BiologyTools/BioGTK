@@ -313,7 +313,7 @@ namespace BioGTK.ML
                     bb.bitsPerPixel = bb.Buffers[0].BitsPerPixel;
 
                     BioImage.AutoThreshold(bb, true);
-                    Images.AddImage(bb, true);
+                    Images.AddImage(bb);
                 }
                 else
                     throw new NotImplementedException();
@@ -447,7 +447,7 @@ namespace BioGTK.ML
                     bb.Volume = b.Volume;
                     bb.bitsPerPixel = bb.Buffers[0].BitsPerPixel;
                     BioImage.AutoThreshold(bb, true);
-                    Images.AddImage(bb, true);
+                    Images.AddImage(bb);
                 }
                 else
                     throw new NotImplementedException();

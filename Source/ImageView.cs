@@ -27,7 +27,6 @@ namespace BioGTK
         public List<BioImage> Images = new List<BioImage>();
         //public List<SKImage> Bitmaps = new List<SKImage>();
         public List<Bitmap> Bitmaps = new List<Bitmap>();
-        public List<SKImage> SkImages = new List<SKImage>();
         public void SetCoordinate(int z, int c, int t)
         {
             if (SelectedImage == null)
@@ -48,7 +47,7 @@ namespace BioGTK
                 SelectedImage.Coordinate = new ZCT(0, (int)cBar.Value, (int)tBar.Value);
             else
                 SelectedImage.Coordinate = new ZCT((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
-            UpdateImage();
+            UpdateImage(true);
             UpdateView();
         }
         /// It returns the coordinate of the selected image
@@ -282,8 +281,8 @@ namespace BioGTK
         {
             return new SkiaSharp.SKRect()
             {
-                Location = new SKPoint(Math.Min(x1, x2), Math.Min(y1, y2)),
-                Size = new SKSize(Math.Abs(x2 - x1), Math.Abs(y2 - y1))
+                Location = new SKPoint(x1, y1),
+                Size = new SKSize(x2, y2)
             };
         }
         private bool refresh = false;
@@ -299,7 +298,7 @@ namespace BioGTK
                 paint.Color = SKColors.Gray;
                 paint.IsAntialias = true;
                 paint.Style = SKPaintStyle.Fill;
-                if ((SkImages.Count == 0 || SkImages.Count != SkImages.Count))
+                if ((Bitmaps.Count == 0 || Bitmaps.Count != Images.Count))
                     UpdateImages(false);
 
                 if (!SelectedImage.isPyramidal)
@@ -314,9 +313,8 @@ namespace BioGTK
                 rr.Size = new SKSize((float)rd.W, (float)rd.H);
                 canvas.DrawRect(rr, paint);
                 int i = 0;
-                foreach (SKImage sk in SkImages)
+                foreach (BioImage im in Images)
                 {
-                    BioImage im = SelectedImage;
                     RectangleD rec = ToScreenRect(im.Volume.Location.X, im.Volume.Location.Y, im.Volume.Width, im.Volume.Height);
                     SKRect r = new SKRect();
                     r.Location = new SKPoint((float)rec.X, (float)rec.Y);
@@ -375,7 +373,7 @@ namespace BioGTK
                     }
                     else
                     {
-                        canvas.DrawImage(SkImages[i], r, paint);
+                        canvas.DrawImage(BitmapToSKImage(Bitmaps[i].ImageRGB), r, paint);
                     }
                     paint.Style = SKPaintStyle.Stroke;
                     List<ROI> rois = new List<ROI>();
@@ -417,7 +415,8 @@ namespace BioGTK
                         if (an.type == ROI.Type.Mask || an.roiMask != null)
                         {
                             SKImage sim = an.roiMask.GetColored(an.fillColor).ToSKImage();
-                            canvas.DrawImage(sim, new SKPoint(pc.X, pc.Y), paint);
+                            RectangleD p = ToScreenRect(an.X, an.Y, an.W,an.H);
+                            canvas.DrawImage(sim, ToRectangle((float)p.X, (float)p.Y, (float)p.W, (float)p.H), paint);
                             sim.Dispose();
                         }
                         if (an.type == ROI.Type.Point)
@@ -608,7 +607,7 @@ namespace BioGTK
             SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
             if(updatePyramidal || SelectedImage.Buffers.Count == 0)
             await SelectedImage.UpdateBuffersPyramidal();
-            SkImages.Clear();
+            Bitmaps.Clear();
             foreach (BioImage b in Images)
             {
                 ZCT c = GetCoordinate();
@@ -624,7 +623,6 @@ namespace BioGTK
                 }
                 else if (Mode == ViewMode.Raw)
                 {
-                    await SelectedImage.UpdateBuffersPyramidal();
                     bitmap = b.Buffers[index];
                 }
                 else
@@ -634,7 +632,7 @@ namespace BioGTK
                 if (bitmap == null)
                     return;
                 
-                SkImages.Add(BitmapToSKImage(bitmap.ImageRGB));
+                Bitmaps.Add(bitmap);
                 bi++;
             }
         }

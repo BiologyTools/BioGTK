@@ -117,6 +117,17 @@ namespace BioGTK
                 messageDialog.Destroy();
                 stackBBox.Active = -1;
             }
+            zEndBox.Adjustment.Upper = ImageB.SizeZ;
+            cEndBox.Adjustment.Upper = ImageB.SizeC;
+            tEndBox.Adjustment.Upper = ImageB.SizeT;
+
+            zStartBox.Adjustment.Upper = ImageB.SizeZ-1;
+            cStartBox.Adjustment.Upper = ImageB.SizeC-1;
+            tStartBox.Adjustment.Upper = ImageB.SizeT-1;
+
+            zEndBox.Value = ImageB.SizeZ;
+            cEndBox.Value = ImageB.SizeC;
+            tEndBox.Value = ImageB.SizeT;
         }
 
        /// If the user selects the same image for both A and B, then the program will display a message
@@ -146,6 +157,11 @@ namespace BioGTK
             zEndBox.Adjustment.Upper = ImageA.SizeZ;
             cEndBox.Adjustment.Upper = ImageA.SizeC;
             tEndBox.Adjustment.Upper = ImageA.SizeT;
+
+            zStartBox.Adjustment.Upper = ImageA.SizeZ-1;
+            cStartBox.Adjustment.Upper = ImageA.SizeC-1;
+            tStartBox.Adjustment.Upper = ImageA.SizeT-1;
+
             zEndBox.Value = ImageA.SizeZ;
             cEndBox.Value = ImageA.SizeC;
             tEndBox.Value = ImageA.SizeT;
@@ -176,7 +192,7 @@ namespace BioGTK
         private void MergeTBut_Clicked(object sender, EventArgs e)
         {
             if (ImageA != null)
-                BioImage.MergeT(ImageA);
+                App.tabsView.AddTab(BioImage.MergeT(ImageA));
         }
 
         /// MergeZBut_Clicked() is a function that is called when the MergeZBut button is clicked
@@ -186,8 +202,7 @@ namespace BioGTK
         private void MergeZBut_Clicked(object sender, EventArgs e)
         {
             if (ImageA != null)
-               BioImage.MergeZ(ImageA);
-            
+                App.tabsView.AddTab(BioImage.MergeZ(ImageA));
         }
 
         /// This function takes the image in the active tab, and creates a new image from a subset of
@@ -201,8 +216,9 @@ namespace BioGTK
         {
              if (stackABox.Active == -1)
                 return;
-            BioImage.Substack(ImageA, ImageA.series, (int)zStartBox.Value, (int)zEndBox.Value, (int)cStartBox.Value, (int)cEndBox.Value, (int)tStartBox.Value, (int)tEndBox.Value);
+            BioImage b = BioImage.Substack(ImageA, ImageA.series, (int)zStartBox.Value, (int)zEndBox.Value, (int)cStartBox.Value, (int)cEndBox.Value, (int)tStartBox.Value, (int)tEndBox.Value);
             UpdateStacks();
+            App.tabsView.AddTab(b);
         }
 
         /// It takes the image in the active tab, splits it into its component channels, and creates a
@@ -216,7 +232,11 @@ namespace BioGTK
         {
             if (stackABox.Active == -1)
                 return;
-            ImageA.SplitChannels();
+            BioImage[] bms = ImageA.SplitChannels();
+            for (int i = 0; i < bms.Length; i++)
+            {
+                App.tabsView.AddTab(bms[i]);
+            }
             UpdateStacks();
         }
 
@@ -232,15 +252,29 @@ namespace BioGTK
             // Set the model for the ComboBox
             stackABox.Model = imgs;
             stackBBox.Model = imgs;
-
+            zEndBox.Adjustment.Upper = ImageA.SizeZ;
+            cEndBox.Adjustment.Upper = ImageA.SizeC;
+            tEndBox.Adjustment.Upper = ImageA.SizeT;
         }
         public BioImage ImageA
         {
-            get { return Images.images[stackABox.Active]; }
+            get 
+            {
+                if (stackABox.Active != -1)
+                    return Images.images[stackABox.Active];
+                else
+                    return Images.images[0];
+            }
         }
         public BioImage ImageB
         {
-            get { return Images.images[stackBBox.Active]; }
+            get 
+            {
+                if (stackBBox.Active != -1)
+                    return Images.images[stackBBox.Active];
+                else
+                    return Images.images[0];
+            }
         }
 
         private void StackTools_Activated(object sender, EventArgs e)

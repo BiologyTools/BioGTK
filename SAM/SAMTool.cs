@@ -30,6 +30,8 @@ namespace BioGTK
                 List<ROI> roi = view.GetSelectedROIs();
                 if (roi.Count > 0)
                     return roi.Last();
+                else
+                    return view.Images[0].Annotations[0];
                 return null;
             }
             set
@@ -349,7 +351,7 @@ namespace BioGTK
             if (view.Images[0].Annotations.Count == 0)
                 return;
             if (SelectedROI == null)
-                return;
+                SelectedROI = view.Images[0].Annotations[0];
             List<ROI> rois = new List<ROI>();
             rois.AddRange(ImageView.SelectedImage.AnnotationsR);
             rois.AddRange(ImageView.SelectedImage.AnnotationsG);

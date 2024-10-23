@@ -391,7 +391,7 @@ namespace BioGTK
             b.Type = BioImage.ImageType.stack;
             b.Buffers.Clear();
             b.Buffers.AddRange(bms.ToArray());
-            Images.AddImage(b,true);
+            Images.AddImage(b);
             AddTab(b);
         }
 
@@ -472,7 +472,7 @@ namespace BioGTK
             }
             for (int i = 1; i < bm.Count; i++)
             {
-                Images.AddImage(bm[i],false);
+                Images.AddImage(bm[i]);
                 AddTab(bm[i]);
             }
         }
@@ -706,6 +706,7 @@ namespace BioGTK
         {
             ImageView v = ImageView.Create(im);
             viewers.Add(v);
+            Images.AddImage(im);
             v.Show();
             Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file) + "/" + im.Filename);
             dummy.Visible = false;
