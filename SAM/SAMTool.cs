@@ -353,10 +353,8 @@ namespace BioGTK
             if (SelectedROI == null)
                 SelectedROI = view.Images[0].Annotations[0];
             List<ROI> rois = new List<ROI>();
-            rois.AddRange(ImageView.SelectedImage.AnnotationsR);
-            rois.AddRange(ImageView.SelectedImage.AnnotationsG);
-            rois.AddRange(ImageView.SelectedImage.AnnotationsB);
-            PointD[] pls = SelectedROI.ImagePoints(ImageView.SelectedImage.Resolutions[ImageView.SelectedImage.series]);
+            rois.AddRange(ImageView.SelectedImage.Annotations);
+            PointD[] pls = SelectedROI.ImagePoints(ImageView.SelectedImage.Resolutions[0]);
             if (Tools.currentTool.type == Tools.Tool.Type.point && rois.Count > 0 && e.Event.State.HasFlag(ModifierType.Button1Mask))
             {
                 OpType type = this.addMaskMenu.Active == true ? OpType.ADD : OpType.REMOVE;
@@ -373,6 +371,7 @@ namespace BioGTK
 
             if (Tools.currentTool.type == Tools.Tool.Type.rect && e.Event.State.HasFlag(ModifierType.Button1Mask))
             {
+                SelectedROI.Selected = true;
                 BoxPromotion promt = new BoxPromotion();
                 if (pls[0].X < (int)pls[3].X || pls[0].Y < (int)pls[3].Y)
                 {
@@ -391,7 +390,7 @@ namespace BioGTK
                 Transforms ts = new Transforms(1024);
                 var pb = ts.ApplyBox(promt, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 this.mPromotionList.Add(pb);
-                float[] mask = mSam.Decode(ImageView.SelectedImage, this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
+                float[] mask = mSam.Decode(ImageView.SelectedImage,this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 ShowMask(mask, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 this.mPromotionList.Clear();
             }

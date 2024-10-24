@@ -415,7 +415,7 @@ namespace BioGTK
                         if (an.type == ROI.Type.Mask || an.roiMask != null)
                         {
                             SKImage sim = an.roiMask.GetColored(an.fillColor).ToSKImage();
-                            RectangleD p = ToScreenRect(an.X, an.Y, an.W,an.H);
+                            RectangleD p = ToScreenRect(an.X, an.Y, sim.Width * im.PhysicalSizeX, sim.Height * im.PhysicalSizeY);
                             canvas.DrawImage(sim, ToRectangle((float)p.X, (float)p.Y, (float)p.W, (float)p.H), paint);
                             sim.Dispose();
                         }

@@ -13,7 +13,7 @@ using System.Runtime.InteropServices;
 using BioLib;
 using ij;
 using RectangleD = AForge.RectangleD;
-using org.checkerframework.common.returnsreceiver.qual;
+
 namespace BioGTK
 {
     public static class Fiji

@@ -957,6 +957,7 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         protected void toolsMenuClick(object sender, EventArgs a)
         {
+            if(App.tools == null)
             App.tools = Tools.Create();
             App.tools.Show();
             App.tools.Present();
