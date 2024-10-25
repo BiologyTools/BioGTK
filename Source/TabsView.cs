@@ -3,7 +3,6 @@ using Bio;
 using Gtk;
 using ikvm.runtime;
 using loci.formats.gui;
-using org.checkerframework.common.returnsreceiver.qual;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
