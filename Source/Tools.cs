@@ -497,6 +497,25 @@ namespace BioGTK
                 //ImageView.SelectedImage.Annotations.Add(an);
                 AddROI(an);
             }
+            else
+            if (Tools.currentTool.type == Tools.Tool.Type.bucket && buts.Event.Button == 1)
+            {
+                if (mouseU.X >= ImageView.SelectedImage.SizeX && mouseU.Y >= ImageView.SelectedImage.SizeY)
+                    return;
+                floodFiller.FillColor = DrawColor;
+                floodFiller.Tolerance = new ColorS(0, 0, 0);
+                floodFiller.Bitmap = ImageView.SelectedBuffer;
+                floodFiller.FloodFill(new AForge.Point((int)mouseU.X, (int)mouseU.Y));
+                App.viewer.UpdateImages();
+            }
+            else
+            if (Tools.currentTool.type == Tools.Tool.Type.dropper && buts.Event.Button == 1)
+            {
+                if (mouseU.X < ImageView.SelectedImage.SizeX && mouseU.Y < ImageView.SelectedImage.SizeY)
+                {
+                    DrawColor = ImageView.SelectedBuffer.GetPixel((int)mouseU.X, (int)mouseU.Y);
+                }
+            }
             if (selectedROI == null)
                 return;
             if (currentTool.type == Tool.Type.line && selectedROI.type == ROI.Type.Line && buts.Event.Button == 1)
@@ -592,25 +611,7 @@ namespace BioGTK
                     ImageView.SelectedImage.Annotations.Add(an);
                 }
             }
-            else
-            if (Tools.currentTool.type == Tools.Tool.Type.bucket && buts.Event.Button == 1)
-            {
-                if (mouseU.X >= ImageView.SelectedImage.SizeX && mouseU.Y >= ImageView.SelectedImage.SizeY)
-                    return;
-                floodFiller.FillColor = DrawColor;
-                floodFiller.Tolerance = new ColorS(0, 0, 0);
-                floodFiller.Bitmap = ImageView.SelectedBuffer;
-                floodFiller.FloodFill(new AForge.Point((int)mouseU.X, (int)mouseU.Y));
-                App.viewer.UpdateImages();
-            }
-            else
-            if (Tools.currentTool.type == Tools.Tool.Type.dropper && buts.Event.Button == 1)
-            {
-                if (mouseU.X < ImageView.SelectedImage.SizeX && mouseU.Y < ImageView.SelectedImage.SizeY)
-                {
-                    DrawColor = ImageView.SelectedBuffer.GetPixel((int)mouseU.X, (int)mouseU.Y);
-                }
-            }
+            
             UpdateView();
         }
         
