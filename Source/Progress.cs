@@ -29,8 +29,10 @@ namespace BioGTK
                 // update progress bar on main UI thread
                 Application.Invoke(delegate
                 {
-                    progressBar.Fraction = value;
-                    statusLabel.Text = BioImage.status;
+                    if(value <= 1)
+                        progressBar.Fraction = value;
+                    else
+                        progressBar.Fraction = value / 100;
                 });
             }
         }

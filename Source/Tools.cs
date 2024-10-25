@@ -497,7 +497,8 @@ namespace BioGTK
                 //ImageView.SelectedImage.Annotations.Add(an);
                 AddROI(an);
             }
-            else
+            if (selectedROI == null)
+                return;
             if (currentTool.type == Tool.Type.line && selectedROI.type == ROI.Type.Line && buts.Event.Button == 1)
             {
                 if (selectedROI.GetPointCount() > 0)

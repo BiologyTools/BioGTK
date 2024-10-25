@@ -187,6 +187,7 @@ namespace BioGTK
                 App.UseFiji = true;
             }
             SetupHandlers();
+            progress = Progress.Create(title, "", "");
             Function.InitializeMainMenu();
             filechooser =
         new Gtk.FileChooserDialog("Choose file to open",
@@ -388,6 +389,11 @@ namespace BioGTK
             int c = Images.GetImageCountByName(name);
             b.ID = name + "-" + c + ".ome.tif";
             var bms = await b.GetSlice((int)b.PyramidalOrigin.X, (int)b.PyramidalOrigin.Y, b.PyramidalSize.Width, b.PyramidalSize.Height, b.Resolution);
+            Point3D loc = b.Volume.Location;
+            Point3D p = new Point3D(b.StageSizeX + b.PyramidalOrigin.X, b.StageSizeY + b.PyramidalOrigin.Y, b.StageSizeZ + b.SizeZ);
+            Resolution res = new Resolution(b.PyramidalSize.Width, b.PyramidalSize.Height, b.Buffers[0].PixelFormat,b.PhysicalSizeX,b.PhysicalSizeY,b.PhysicalSizeZ,p.X,p.Y,p.Z);
+            b.Resolutions.Clear();
+            b.Resolutions.Add(res);
             b.Type = BioImage.ImageType.stack;
             b.Buffers.Clear();
             b.Buffers.AddRange(bms.ToArray());
@@ -741,9 +747,11 @@ namespace BioGTK
             filechooser.Hide();
             foreach (string item in sts)
             {
+                StartProgress("Open File", "Opening");
                 await BioImage.OpenAsync(item,false,true,true,0);
                 BioImage im = Images.GetImage(item);
                 AddTab(im);
+                StopProgress();
             }
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file and adds
@@ -762,9 +770,11 @@ namespace BioGTK
             filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
+                StartProgress("Open OME", "Opening");
                 await BioImage.OpenAsync(item, true, true, true,0);
                 BioImage im = Images.GetImage(item);
                 AddTab(im);
+                StopProgress();
             }
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file as a
@@ -783,6 +793,7 @@ namespace BioGTK
             filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
+                StartProgress("Open OME", "Opening");
                 int s = BioImage.GetSeriesCount(item);
                 for (int i = 0; i < s; i++)
                 {
@@ -810,9 +821,11 @@ namespace BioGTK
             filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
+                StartProgress("Open OME Series", "Opening");
                 await BioImage.OpenAsync(item, false, true, true, 0);
                 BioImage im = Images.GetImage(item);
                 AddTab(im);
+                StopProgress();
             }
             tabsView.Show();
         }
@@ -833,9 +846,11 @@ namespace BioGTK
             filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
+                StartProgress("Add Image to Tab", "Opening");
                 await BioImage.OpenAsync(item, false, false, true, 0);
                 BioImage im = Images.GetImage(item);
                 AddTab(im);
+                StopProgress();
             }
             this.ShowAll();
         }
@@ -855,13 +870,45 @@ namespace BioGTK
             filechooser.Hide();
             foreach (string item in filechooser.Filenames)
             {
+                StartProgress("Add Image to Tab", "Opening");
                 await BioImage.OpenAsync(item, true, false, true, 0);
                 BioImage im = Images.GetImage(item);
                 AddTab(im);
+                StopProgress();
             }
             this.Show();
         }
-
+        static bool done = false;
+        static Progress progress;
+        static string title;
+        private static void ProgressUpdate()
+        {
+            do
+            {
+                progress.Status = System.IO.Path.GetFileName(BioImage.progFile);
+                progress.Title = title;
+                progress.ProgressValue = BioImage.Progress;
+                Thread.Sleep(500);
+            } while (!done);
+        }
+        private static void StartProgress(string title, string status)
+        {
+            BioImage.Progress = 0;
+            progress.Title= title;
+            if (BioImage.status == "" || BioImage.status == null)
+                progress.Status = status;
+            else
+                progress.Status = BioImage.status;
+            progress.ProgressValue = BioImage.Progress;
+            progress.Show();
+            Thread th = new Thread(ProgressUpdate);
+            th.Start();
+        }
+        private static void StopProgress()
+        {
+            done = true;
+            progress.Hide();
+        }
         /// It creates a file chooser dialog, and if the user selects a file, it saves the selected
         /// image to that file
         /// 
@@ -875,7 +922,9 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
+            StartProgress("Save Selected Tiff","Saving");
             await BioImage.SaveAsync(filechooser.Filename,ImageView.SelectedImage.ID, 0, false);
+            StopProgress();
         }
         /// This function saves the selected image in the OME-TIFF format
         /// 
@@ -889,7 +938,9 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
+            StartProgress("Save Selected Tiff", "Saving");
             await BioImage.SaveAsync(filechooser.Filename, ImageView.SelectedImage.ID, 0, true);
+            StopProgress();
         }
         /// This function saves the current series of images to an OME-TIFF file
         /// 
@@ -903,7 +954,9 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
+            StartProgress("Save Selected Tiff", "Saving");
             await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, true);
+            StopProgress();
         }
         /// It saves the current tab as a tiff file
         /// 
@@ -917,7 +970,9 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
-            await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, false);           
+            StartProgress("Save Selected Tiff", "Saving");
+            await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, false);     
+            StopProgress();
         }
         /// This function is called when the user clicks the "Save Series" menu item
         /// 
@@ -929,7 +984,9 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
+            StartProgress("Save Selected Tiff", "Saving");
             await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, true);
+            StopProgress();
         }
         /// This function is called when the user clicks the "Images to Stack" button
         /// 
