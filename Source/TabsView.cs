@@ -3,6 +3,7 @@ using Bio;
 using Gtk;
 using ikvm.runtime;
 using loci.formats.gui;
+using org.checkerframework.common.returnsreceiver.qual;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -878,23 +879,25 @@ namespace BioGTK
             }
             this.Show();
         }
-        static bool done = false;
-        static Progress progress;
-        static string title;
+        private static bool done = false;
+        private static Progress progress;
+        private static string title;
         private static void ProgressUpdate()
         {
             do
             {
-                progress.Status = System.IO.Path.GetFileName(BioImage.progFile);
                 progress.Title = title;
+                progress.Status = BioImage.status;
                 progress.ProgressValue = BioImage.Progress;
-                Thread.Sleep(500);
+                Thread.Sleep(250);
             } while (!done);
         }
-        private static void StartProgress(string title, string status)
+        private static void StartProgress(string titl, string status)
         {
+            title = titl;
             BioImage.Progress = 0;
-            progress.Title= title;
+            progress.Status = status;
+            progress.Title = title;
             if (BioImage.status == "" || BioImage.status == null)
                 progress.Status = status;
             else
@@ -938,7 +941,7 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
-            StartProgress("Save Selected Tiff", "Saving");
+            StartProgress("Save Selected OME", "Saving");
             await BioImage.SaveAsync(filechooser.Filename, ImageView.SelectedImage.ID, 0, true);
             StopProgress();
         }
@@ -954,7 +957,7 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
-            StartProgress("Save Selected Tiff", "Saving");
+            StartProgress("Save Selected OME", "Saving");
             await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, true);
             StopProgress();
         }
