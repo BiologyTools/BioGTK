@@ -21,7 +21,7 @@
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>Bioformats 8.0.0 update &amp; bug fixes.</PackageReleaseNotes>
+    <PackageReleaseNotes>Bioformats 8.0.0 update. Fixed multiple tools.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
