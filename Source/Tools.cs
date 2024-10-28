@@ -13,6 +13,9 @@ using Color = AForge.Color;
 using Rectangle = AForge.Rectangle;
 using System.IO;
 using ScottPlot.Interactivity.UserActions;
+using ij.plugin;
+using static sun.awt.image.PixelConverter;
+using CSScripting;
 
 namespace BioGTK
 {
@@ -59,7 +62,7 @@ namespace BioGTK
             //We initialize the tools
             currentTool = GetTool(Tool.Type.move);
             floodFiller = new QueueLinearFloodFiller(floodFiller);
-            magicSel = MagicSelect.Create(0);
+            magicSelect = MagicSelect.Create(0);
             App.ApplyStyles(this);
         }
 
@@ -73,7 +76,7 @@ namespace BioGTK
         public static ColorS drawColor = new ColorS(ushort.MaxValue, ushort.MaxValue, ushort.MaxValue);
         public static ColorS eraseColor = new ColorS(0, 0, 0);
         public static ColorS tolerance = new ColorS(0, 0, 0);
-        private static MagicSelect magicSel;
+        private static MagicSelect magicSelect;
         private static int width = 5;
 
         public static Rectangle selectionRectangle;
@@ -350,7 +353,7 @@ namespace BioGTK
                     //If we click on a point 1 we close this polygon
                     float width = (float)App.viewer.ToScreenScaleW(ROI.selectBoxSize);
                     RectangleD[] rds = selectedROI.GetSelectBoxes();
-                    if (rds[0].IntersectsWith(e.X,e.Y))
+                    if (rds[0].IntersectsWith(new RectangleD(e.X,e.Y, 1,1)))
                     {
                         selectedROI.closed = true;
                         selectedROI.Selected = false;
@@ -416,7 +419,7 @@ namespace BioGTK
                 for (int i = 0; i < ImageView.SelectedImage.Annotations.Count; i++)
                 {
                     ROI an = ImageView.SelectedImage.Annotations[i];
-                    if (an.BoundingBox.IntersectsWith(e.X, e.Y))
+                    if (an.BoundingBox.IntersectsWith(new RectangleD(e.X, e.Y, 1,1)))
                     {
                         if (an.selectedPoints.Count == 0)
                         {
@@ -480,7 +483,8 @@ namespace BioGTK
         {
             Plugins.MouseUp(ImageView.SelectedImage, e, buts);
             PointD p = new PointD((float)e.X, (float)e.Y);
-            PointD mouseU = ImageView.SelectedImage.ToImageSpace(p);
+            PointD MouseU = ImageView.SelectedImage.ToImageSpace(p);
+            PointD MouseD = ImageView.SelectedImage.ToImageSpace(new PointD(App.viewer.MouseDown.X,App.viewer.MouseDown.Y));
             if (App.viewer == null || currentTool == null || ImageView.SelectedImage == null)
                 return;
             Scripting.UpdateState(Scripting.State.GetUp(e, buts.Event.Button));
@@ -500,22 +504,97 @@ namespace BioGTK
             else
             if (Tools.currentTool.type == Tools.Tool.Type.bucket && buts.Event.Button == 1)
             {
-                if (mouseU.X >= ImageView.SelectedImage.SizeX && mouseU.Y >= ImageView.SelectedImage.SizeY)
+                if (MouseU.X >= ImageView.SelectedImage.SizeX && MouseU.Y >= ImageView.SelectedImage.SizeY)
                     return;
                 floodFiller.FillColor = DrawColor;
                 floodFiller.Tolerance = new ColorS(0, 0, 0);
                 floodFiller.Bitmap = ImageView.SelectedBuffer;
-                floodFiller.FloodFill(new AForge.Point((int)mouseU.X, (int)mouseU.Y));
+                floodFiller.FloodFill(new AForge.Point((int)MouseU.X, (int)MouseU.Y));
                 App.viewer.UpdateImages();
+                App.viewer.UpdateView();
             }
             else
             if (Tools.currentTool.type == Tools.Tool.Type.dropper && buts.Event.Button == 1)
             {
-                if (mouseU.X < ImageView.SelectedImage.SizeX && mouseU.Y < ImageView.SelectedImage.SizeY)
+                if (MouseU.X < ImageView.SelectedImage.SizeX && MouseU.Y < ImageView.SelectedImage.SizeY)
                 {
-                    DrawColor = ImageView.SelectedBuffer.GetPixel((int)mouseU.X, (int)mouseU.Y);
+                    DrawColor = ImageView.SelectedBuffer.GetPixel((int)MouseU.X, (int)MouseU.Y);
                 }
             }
+            else
+            if (Tools.currentTool.type == Tools.Tool.Type.magic && buts.Event.Button == 1)
+            {
+                // Define the rectangle from mouse coordinates
+                RectangleD rectangle = new RectangleD(
+                    App.viewer.MouseDown.X,
+                    App.viewer.MouseDown.Y,
+                    Math.Abs(App.viewer.MouseUp.X - App.viewer.MouseDown.X),
+                    Math.Abs(App.viewer.MouseUp.Y - App.viewer.MouseDown.Y)
+                );
+
+                // Convert to image space coordinates
+                AForge.RectangleF rectInImageSpace = ImageView.SelectedImage.ToImageSpace(rectangle);
+                ZCT coord = App.viewer.GetCoordinate();
+                Bitmap bitmap;
+
+                // Check the number of RGB channels to choose filtering method
+                if (ImageView.SelectedImage.Buffers[0].RGBChannelsCount > 1)
+                {
+                    bitmap = ImageView.SelectedImage.GetFiltered(
+                        coord,
+                        ImageView.SelectedBuffer.Stats[0].Range,
+                        ImageView.SelectedBuffer.Stats[1].Range,
+                        ImageView.SelectedBuffer.Stats[2].Range
+                    );
+                }
+                else
+                {
+                    bitmap = ImageView.SelectedImage.GetFiltered(
+                        coord,
+                        ImageView.SelectedBuffer.Stats[0].Range,
+                        ImageView.SelectedBuffer.Stats[0].Range,
+                        ImageView.SelectedBuffer.Stats[0].Range
+                    );
+                }
+
+                // Crop the image to the selected rectangle
+                bitmap.Crop(rectInImageSpace.ToRectangleInt());
+                // Determine the threshold based on magicSelect settings
+                Statistics[] st = Statistics.FromBytes(bitmap.Bytes, bitmap.SizeX, bitmap.Height, bitmap.RGBChannelsCount, bitmap.BitsPerPixel, bitmap.Stride, bitmap.PixelFormat);
+                int threshold = magicSelect.Numeric ? magicSelect.Threshold : CalculateThreshold(magicSelect.Index, st[0]);
+                BlobCounter blobCounter = new BlobCounter();
+                bitmap.BinarizeOtsu();
+                blobCounter.FilterBlobs = true;
+                blobCounter.MinWidth = 2;
+                blobCounter.MaxHeight = 2;
+                blobCounter.MaxWidth = bitmap.Width;
+                blobCounter.MinHeight = bitmap.Height;
+                blobCounter.ProcessImage(bitmap);
+                // Retrieve detected blobs
+                Blob[] blobs = blobCounter.GetObjectsInformation();
+                double pixelSizeX = ImageView.SelectedImage.PhysicalSizeX;
+                double pixelSizeY = ImageView.SelectedImage.PhysicalSizeY;
+                // Annotate detected blobs in the original image
+                foreach (Blob blob in blobs)
+                {
+                    AForge.RectangleD blobRectangle = new AForge.RectangleD(
+                        blob.Rectangle.X * pixelSizeX,
+                        blob.Rectangle.Y * pixelSizeY,
+                        blob.Rectangle.Width * pixelSizeX,
+                        blob.Rectangle.Height * pixelSizeY
+                    );
+
+                    // Calculate the location of the detected blob
+                    PointD location = new PointD(rectangle.X + blobRectangle.X, rectangle.Y + blobRectangle.Y);
+
+                    // Create and add ROI annotation
+                    ROI annotation = ROI.CreateRectangle(coord, location.X, location.Y, blobRectangle.W, blobRectangle.H);
+                    ImageView.SelectedImage.Annotations.Add(annotation);
+                    UpdateView();
+                }
+
+            }
+
             if (selectedROI == null)
                 return;
             if (currentTool.type == Tool.Type.line && selectedROI.type == ROI.Type.Line && buts.Event.Button == 1)
@@ -547,74 +626,19 @@ namespace BioGTK
             {
                 selectedROI = null;
             }
-            else
-            if (Tools.currentTool.type == Tools.Tool.Type.magic && buts.Event.Button == 1)
-            {
-                PointD pf = new PointD(ImageView.mouseUp.X - ImageView.mouseDown.X, ImageView.mouseUp.Y - ImageView.mouseDown.Y);
-                ZCT coord = App.viewer.GetCoordinate();
-
-                Rectangle r = new Rectangle((int)ImageView.mouseDown.X, (int)ImageView.mouseDown.Y, (int)(ImageView.mouseUp.X - ImageView.mouseDown.X), (int)(ImageView.mouseUp.Y - ImageView.mouseDown.Y));
-                if (r.Width <= 2 || r.Height <= 2)
-                    return;
-                AForge.Bitmap bf = ImageView.SelectedImage.Buffers[ImageView.SelectedImage.GetFrameIndex(coord.Z, coord.C, coord.T)].GetCropBuffer(r);
-                Statistics[] sts = Statistics.FromBytes(bf);
-                Statistics st = sts[0];
-                AForge.Bitmap crop = bf;
-                Threshold th;
-                if (magicSel.Numeric)
-                {
-                    th = new Threshold((int)magicSel.Threshold);
-                }
-                else
-                if (magicSel.Index == 2)
-                    th = new Threshold((int)(st.Min + st.Mean));
-                else
-                if (magicSel.Index == 1)
-                    th = new Threshold((int)st.Median);
-                else
-                    th = new Threshold((int)st.Min);
-                th.ApplyInPlace(crop);
-                Invert inv = new Invert();
-                AForge.Bitmap det;
-                if (bf.BitsPerPixel > 8)
-                    det = AForge.Imaging.Image.Convert16bppTo8bpp((crop));
-                else
-                    det = crop;
-                BlobCounter blobCounter = new BlobCounter();
-                blobCounter.ProcessImage(det);
-                Blob[] blobs = blobCounter.GetObjectsInformation();
-                // create convex hull searching algorithm
-                GrahamConvexHull hullFinder = new GrahamConvexHull();
-                // lock image to draw on it
-                // process each blob
-                foreach (Blob blob in blobs)
-                {
-                    if (blob.Rectangle.Width < magicSel.Max && blob.Rectangle.Height < magicSel.Max)
-                        continue;
-                    List<IntPoint> leftPoints = new List<IntPoint>();
-                    List<IntPoint> rightPoints = new List<IntPoint>();
-                    List<IntPoint> edgePoints = new List<IntPoint>();
-                    List<IntPoint> hull = new List<IntPoint>();
-                    // get blob's edge points
-                    blobCounter.GetBlobsLeftAndRightEdges(blob,
-                        out leftPoints, out rightPoints);
-                    edgePoints.AddRange(leftPoints);
-                    edgePoints.AddRange(rightPoints);
-                    // blob's convex hull
-                    hull = hullFinder.FindHull(edgePoints);
-                    PointD[] pfs = new PointD[hull.Count];
-                    for (int i = 0; i < hull.Count; i++)
-                    {
-                        pfs[i] = new PointD(r.X + hull[i].X, r.Y + hull[i].Y);
-                    }
-                    ROI an = ROI.CreateFreeform(coord, pfs);
-                    ImageView.SelectedImage.Annotations.Add(an);
-                }
-            }
             
-            UpdateView();
         }
-        
+
+        // Helper method to calculate threshold
+        private static int CalculateThreshold(int index, Statistics stat)
+        {
+            return index switch
+            {
+                2 => (int)(stat.Min + stat.Mean),
+                1 => (int)stat.Median,
+                _ => (int)stat.Min
+            };
+        }
         /// This function is called when the mouse is moved. It is used to update the view when the user
         /// is panning, drawing a line, drawing a freeform, drawing a rectangle, drawing an ellipse,
         /// selecting a rectangle, deleting an annotation, drawing a magic wand selection, and erasing
@@ -646,23 +670,31 @@ namespace BioGTK
                 {
                     if (App.viewer.MouseMoveInt.X != 0 || App.viewer.MouseMoveInt.Y != 0)
                     {
-                        App.viewer.PyramidalOriginTransformed = new PointD(App.viewer.PyramidalOriginTransformed.X + (ImageView.mouseDown.X - e.X), App.viewer.PyramidalOriginTransformed.Y + (ImageView.mouseDown.Y - e.Y));
+                        App.viewer.PyramidalOriginTransformed = new PointD(App.viewer.PyramidalOriginTransformed.X + (App.viewer.MouseDown.X - e.X), App.viewer.PyramidalOriginTransformed.Y + (App.viewer.MouseDown.Y - e.Y));
                     }
                 }
                 else
                 {
-                    PointD pf = new PointD(e.X - ImageView.mouseDown.X, e.Y - ImageView.mouseDown.Y);
+                    PointD pf = new PointD(e.X - App.viewer.MouseDown.X, e.Y - App.viewer.MouseDown.Y);
                     App.viewer.Origin = new PointD(App.viewer.Origin.X + pf.X, App.viewer.Origin.Y + pf.Y);
                 }
                 UpdateView();
             }
-            if (ImageView.SelectedImage == null || selectedROI == null)
+            if (ImageView.SelectedImage == null)
                 return;
+            if (Tools.currentTool.type == Tools.Tool.Type.magic && !buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
+            {
+                //First we draw the selection rectangle
+                PointD d = new PointD(e.X - App.viewer.MouseDown.X, e.Y - App.viewer.MouseDown.Y);
+                Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(App.viewer.MouseDown.X, App.viewer.MouseDown.Y, d.X, d.Y);
+                UpdateView();
+            }
             if (currentTool.type == Tool.Type.move && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
             {
+                if(selectedROI!=null)
                 for (int i = 0; i < selectedROI.PointsD.Count; i++)
                 {
-                    PointD pd = new PointD(e.X - ImageView.mouseDown.X, e.Y - ImageView.mouseDown.Y);
+                    PointD pd = new PointD(e.X - App.viewer.MouseDown.X, e.Y - App.viewer.MouseDown.Y);
                     selectedROI.UpdatePoint(new PointD(selectedROI.PointsD[i].X + pd.X, selectedROI.PointsD[i].Y + pd.Y), i);
                 }
                 UpdateView();
@@ -691,13 +723,12 @@ namespace BioGTK
                 UpdateView();
             }
             else
-            if (currentTool.type == Tool.Type.rect && selectedROI.type == ROI.Type.Rectangle)
+            if (currentTool.type == Tool.Type.rect)
             {
+                if (selectedROI != null)
                 if (selectedROI.GetPointCount() == 4)
                 {
                     selectedROI.Rect = new RectangleD(selectedROI.X, selectedROI.Y, e.X - selectedROI.X, e.Y - selectedROI.Y);
-                    UpdateView();
-                    return;
                 }
             }
             else
@@ -712,19 +743,15 @@ namespace BioGTK
             else
             if (currentTool.type == Tool.Type.select && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
             {
-                PointD d = new PointD(e.X - ImageView.mouseDown.X, e.Y - ImageView.mouseDown.Y);
-                Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(ImageView.mouseDown.X, ImageView.mouseDown.Y,Math.Abs(d.X),Math.Abs(d.Y));
+                PointD d = new PointD(e.X - App.viewer.MouseDown.X, e.Y - App.viewer.MouseDown.Y);
+                Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(App.viewer.MouseDown.X, App.viewer.MouseDown.Y,Math.Abs(d.X),Math.Abs(d.Y));
                 RectangleD r = Tools.GetTool(Tools.Tool.Type.select).Rectangle;
-                List<ROI> rois = new List<ROI>();
-                rois.AddRange(ImageView.SelectedImage.AnnotationsR);
-                rois.AddRange(ImageView.SelectedImage.AnnotationsG);
-                rois.AddRange(ImageView.SelectedImage.AnnotationsB);
+                List<ROI> rois = ImageView.SelectedImage.Annotations;
                 foreach (ROI an in rois)
                 {
                     if (an.GetSelectBound(ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeX, ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeY).IntersectsWith(r))
                     {
                         an.selectedPoints.Clear();
-                        ImageView.selectedAnnotations.Add(an);
                         an.Selected = true;
                         RectangleD[] sels = an.GetSelectBoxes();
                         for (int i = 0; i < sels.Length; i++)
@@ -735,19 +762,15 @@ namespace BioGTK
                             }
                         }
                     }
-                    else
-                    {
-                        an.Selected = false;
-                        an.selectedPoints.Clear();
-                    }
                 }
+                App.viewer.UpdateImages();
+                App.viewer.UpdateView();
             }
-            /*else
-            if (currentTool.type == Tool.Type.select && buts.Event.State != Gdk.ModifierType.Button1Mask)
+            else if(currentTool.type == Tool.Type.brush)
             {
-                Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(0, 0, 0, 0);
+                App.viewer.UpdateImages();
+                App.viewer.UpdateView();
             }
-            */
             else
             if (ImageView.keyDown == Gdk.Key.Delete)
             {
@@ -773,12 +796,11 @@ namespace BioGTK
                 }
                 UpdateView();
             }
-
-            if (Tools.currentTool.type == Tools.Tool.Type.magic && !buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
+            if (Tools.currentTool.type == Tools.Tool.Type.magic && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
             {
                 //First we draw the selection rectangle
-                PointD d = new PointD(e.X - ImageView.mouseDown.X, e.Y - ImageView.mouseDown.Y);
-                Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(ImageView.mouseDown.X, ImageView.mouseDown.Y, d.X, d.Y);
+                PointD d = new PointD(e.X - App.viewer.MouseDown.X, e.Y - App.viewer.MouseDown.Y);
+                Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(App.viewer.MouseDown.X, App.viewer.MouseDown.Y, d.X, d.Y);
                 UpdateView();
             }
         }

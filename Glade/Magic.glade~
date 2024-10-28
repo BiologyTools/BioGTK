@@ -5,6 +5,7 @@
   <object class="GtkWindow" id="magicSelect">
     <property name="can-focus">False</property>
     <property name="title" translatable="yes">Magic Select Threshold</property>
+    <property name="resizable">False</property>
     <child>
       <object class="GtkFixed">
         <property name="visible">True</property>
@@ -49,7 +50,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton" id="numericBox">
+          <object class="GtkCheckButton" id="Numeric">
             <property name="label" translatable="yes">Numeric</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>

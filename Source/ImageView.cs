@@ -15,6 +15,7 @@ using Rectangle = AForge.Rectangle;
 using System.IO;
 using SkiaSharp;
 using SkiaSharp.Views.Gtk;
+using org.checkerframework.common.returnsreceiver.qual;
 
 namespace BioGTK
 {
@@ -377,12 +378,7 @@ namespace BioGTK
                     }
                     paint.Style = SKPaintStyle.Stroke;
                     List<ROI> rois = new List<ROI>();
-                    if (im.Annotations.Count > 0)
-                    {
-                        rois.AddRange(im.AnnotationsR);
-                        rois.AddRange(im.AnnotationsG);
-                        rois.AddRange(im.AnnotationsB);
-                    }
+                    rois.AddRange(im.Annotations);
                     if (Tools.currentTool.type == Tools.Tool.Type.select && Modifiers == ModifierType.Button1Mask)
                     {
                         var recd = ToScreenRect(Tools.currentTool.Rectangle.X, Tools.currentTool.Rectangle.Y, Tools.currentTool.Rectangle.W, Tools.currentTool.Rectangle.H);
@@ -1942,9 +1938,7 @@ namespace BioGTK
             if (Tools.currentTool.type == Tools.Tool.Type.pointSel && e.Event.State.HasFlag(ModifierType.Button1Mask))
             {
                 List<ROI> rois = new List<ROI>();
-                rois.AddRange(SelectedImage.AnnotationsR);
-                rois.AddRange(SelectedImage.AnnotationsG);
-                rois.AddRange(SelectedImage.AnnotationsB);
+                rois.AddRange(SelectedImage.Annotations);
                 foreach (ROI an in rois)
                 {
                     if(an.Selected)
@@ -2012,6 +2006,7 @@ namespace BioGTK
                         }
                     }
                 }
+                UpdateView();
             }
 
             if (Tools.currentTool != null)
@@ -2059,6 +2054,7 @@ namespace BioGTK
         private void ImageView_ButtonReleaseEvent(object o, ButtonReleaseEventArgs e)
         {
             Modifiers = e.Event.State;
+            MouseUpInt = new PointD((int)e.Event.X, (int)e.Event.Y);
             if (e.Event.Button == 1)
                 mouseLeftState = false;
             App.viewer = this;
@@ -2081,9 +2077,10 @@ namespace BioGTK
         PointD pd;
         PointD mouseDownInt = new PointD(0, 0);
         PointD mouseMoveInt = new PointD(0, 0);
+        PointD mouseUpInt = new PointD(0, 0);
+        PointD mouseUp = new PointD(0, 0);
+        PointD mouseDown = new PointD(0, 0);
         PointD mouseMove = new PointD(0, 0);
-        public static PointD mouseDown;
-        public static PointD mouseUp;
         /* A property that returns the value of the mouseDownInt variable. */
         public PointD MouseDownInt
         {
@@ -2095,10 +2092,20 @@ namespace BioGTK
             get { return mouseMoveInt; }
             set { mouseMoveInt = value; }
         }
+        public PointD MouseUpInt
+        {
+            get { return mouseUpInt; }
+            set { mouseUpInt = value; }
+        }
         public PointD MouseDown
         {
             get { return mouseDown; }
             set { mouseDown = value; }
+        }
+        public PointD MouseUp
+        {
+            get { return mouseUp; }
+            set { mouseUp = value; }
         }
         public PointD MouseMove
         {
@@ -2130,7 +2137,7 @@ namespace BioGTK
             if (SelectedImage == null)
                 return;
             PointD ip = pointer; // SelectedImage.ToImageSpace(pointer);
-            int ind = 0;
+            
             if (e.Event.Button == 3)
                 contextMenu.Popup();
             if (e.Event.Button == 4 && Mode != ViewMode.RGBImage)
@@ -2168,7 +2175,7 @@ namespace BioGTK
             }
             if (e.Event.State != ModifierType.Button5Mask)
                 x2State = false;
-
+            int ind = 0;
             //We select the image that has been clicked
             foreach (BioImage b in Images)
             {
@@ -2179,20 +2186,26 @@ namespace BioGTK
                     UpdateGUI();
                     break;
                 }
+                else
+                {
+                    foreach (var item in b.Annotations)
+                    {
+                        if (!item.BoundingBox.IntersectsWith(pointer))
+                            item.Selected = false;
+                    }
+                }
                 ind++;
             }
 
             //Lets handle point selection & move tool clicks.
-            if (Tools.currentTool.type == Tools.Tool.Type.pointSel || Tools.currentTool.type == Tools.Tool.Type.move && e.Event.Button == 1)
+            if (Tools.currentTool.type == Tools.Tool.Type.pointSel || Tools.currentTool.type == Tools.Tool.Type.move  && e.Event.Button == 1 )
             {
                 bool clearSel = true;
                 float width = ROI.selectBoxSize;
                 foreach (BioImage bi in Images)
                 {
                     List<ROI> rois = new List<ROI>();
-                    rois.AddRange(SelectedImage.AnnotationsR);
-                    rois.AddRange(SelectedImage.AnnotationsG);
-                    rois.AddRange(SelectedImage.AnnotationsB);
+                    rois.AddRange(SelectedImage.Annotations);
                     foreach (ROI an in rois)
                     {
                         if (!Modifiers.HasFlag(ModifierType.ControlMask))
@@ -2217,20 +2230,6 @@ namespace BioGTK
                                 }
                             }
                         }  
-                    }
-                }
-                //Clear selection if clicked outside all ROI's.
-                if (clearSel)
-                {
-                    selectedAnnotations.Clear();
-                    Tools.selectedROI = null;
-                    foreach (BioImage bi in Images)
-                    {
-                        foreach (ROI an in bi.Annotations)
-                        {
-                            an.Selected = false;
-                            an.selectedPoints.Clear();
-                        }
                     }
                 }
                 UpdateView();
