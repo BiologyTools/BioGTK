@@ -8,31 +8,29 @@ __global__ void copyTileToCanvas(
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    // Check if the thread is within the bounds of the tile and canvas
+    // Ensure this thread only processes pixels within the bounds of the tile and canvas section
     if (x < canvasTileWidth && y < canvasTileHeight) {
         int canvasX = x + offsetX;
         int canvasY = y + offsetY;
 
-        // Ensure the canvas indices are within bounds
+        // Ensure canvas indices are within bounds of the canvas extent
         if (canvasX < canvasWidth && canvasY < canvasHeight) {
-            // Calculate corresponding tile indices, scaling tile pixels to canvas size
-            float scaleX = (float)tileWidth / canvasTileWidth;
-            float scaleY = (float)tileHeight / canvasTileHeight;
+            // Calculate scaling factors to map canvasTileWidth and canvasTileHeight to tile dimensions
+            float scaleX = static_cast<float>(tileWidth) / static_cast<float>(canvasTileWidth);
+            float scaleY = static_cast<float>(tileHeight) / static_cast<float>(canvasTileHeight);
 
-            // Calculate tile indices by scaling the x, y coordinates
-            int tileX = (int)(x * scaleX);
-            int tileY = (int)(y * scaleY);
+            // Compute the corresponding tile indices
+            int tileX = min(static_cast<int>(x * scaleX), tileWidth - 1);
+            int tileY = min(static_cast<int>(y * scaleY), tileHeight - 1);
 
-            // Ensure tile indices are within the tile bounds
-            if (tileX < tileWidth && tileY < tileHeight) {
-                int tileIdx = (tileY * tileWidth + tileX) * 3;   // Each pixel has 3 components (RGB)
-                int canvasIdx = (canvasY * canvasWidth + canvasX) * 3;
+            // Calculate the indices for both canvas and tile in the 1D arrays
+            int tileIdx = (tileY * tileWidth + tileX) * 3;   // Each pixel has 3 components (RGB)
+            int canvasIdx = (canvasY * canvasWidth + canvasX) * 3;
 
-                // Copy the pixel (RGB components)
-                canvas[canvasIdx] = tile[tileIdx];
-                canvas[canvasIdx + 1] = tile[tileIdx + 1];
-                canvas[canvasIdx + 2] = tile[tileIdx + 2];
-            }
+            // Copy the pixel (RGB components) from the tile to the canvas
+            canvas[canvasIdx] = tile[tileIdx + 2];        // Blue component
+            canvas[canvasIdx + 1] = tile[tileIdx + 1];    // Green component
+            canvas[canvasIdx + 2] = tile[tileIdx];        // Red component
         }
     }
 }

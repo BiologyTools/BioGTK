@@ -566,9 +566,7 @@ namespace BioGTK
                 bitmap.BinarizeOtsu();
                 blobCounter.FilterBlobs = true;
                 blobCounter.MinWidth = 2;
-                blobCounter.MaxHeight = 2;
-                blobCounter.MaxWidth = bitmap.Width;
-                blobCounter.MinHeight = bitmap.Height;
+                blobCounter.MinHeight = 2;
                 blobCounter.ProcessImage(bitmap);
                 // Retrieve detected blobs
                 Blob[] blobs = blobCounter.GetObjectsInformation();
@@ -583,16 +581,13 @@ namespace BioGTK
                         blob.Rectangle.Width * pixelSizeX,
                         blob.Rectangle.Height * pixelSizeY
                     );
-
                     // Calculate the location of the detected blob
                     PointD location = new PointD(rectangle.X + blobRectangle.X, rectangle.Y + blobRectangle.Y);
-
                     // Create and add ROI annotation
                     ROI annotation = ROI.CreateRectangle(coord, location.X, location.Y, blobRectangle.W, blobRectangle.H);
                     ImageView.SelectedImage.Annotations.Add(annotation);
-                    UpdateView();
                 }
-
+                App.viewer.UpdateView(true);
             }
 
             if (selectedROI == null)

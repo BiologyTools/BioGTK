@@ -49,8 +49,7 @@ namespace BioGTK
                 SelectedImage.Coordinate = new ZCT(0, (int)cBar.Value, (int)tBar.Value);
             else
                 SelectedImage.Coordinate = new ZCT((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
-            UpdateImage(true);
-            UpdateView();
+            UpdateView(true, true);
         }
         /// It returns the coordinate of the selected image
         /// 
@@ -109,6 +108,7 @@ namespace BioGTK
             set
             {
                 pxWmicron = value;
+                UpdateView(true,false);
             }
         }
         public double PxHmicron
@@ -131,6 +131,7 @@ namespace BioGTK
             set
             {
                 pxHmicron = value;
+                UpdateView(true, false);
             }
         }
         bool allowNavigation = true;
@@ -375,7 +376,7 @@ namespace BioGTK
                     }
                     else
                     {
-                        canvas.DrawImage(BitmapToSKImage(Bitmaps[i]), r, paint);
+                        canvas.DrawImage(SKImages[i], r, paint);
                     }
                     paint.Style = SKPaintStyle.Stroke;
                     List<ROI> rois = new List<ROI>();
@@ -550,7 +551,7 @@ namespace BioGTK
             int width = sourceBitmap.Width;
             int height = sourceBitmap.Height;
 
-            SKBitmap skBitmap = new SKBitmap(width, height, SKColorType.Bgra8888, SKAlphaType.Premul);
+            SKBitmap skBitmap = new SKBitmap(width, height, SKColorType.Bgra8888, SKAlphaType.Opaque);
 
             BitmapData bitmapData = sourceBitmap.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
 
@@ -582,28 +583,14 @@ namespace BioGTK
         {
             if(bitm.PixelFormat == PixelFormat.Format24bppRgb)
                 return Convert24bppBitmapToSKImage(bitm);
-            Bitmap bitmap = bitm.ImageRGB;
+            Bitmap bitmap;
+            if (bitm.PixelFormat == PixelFormat.Format32bppArgb)
+                bitmap = bitm;
+            else
+                bitmap = bitm.ImageRGB;
             // Determine the SKColorType
-            SKColorType colorType = SKColorType.Unknown;
-            SKAlphaType alphaType = SKAlphaType.Premul;
-
-            switch (bitmap.PixelFormat)
-            {
-                case PixelFormat.Format24bppRgb:
-                    colorType = SKColorType.Rgb888x;
-                    alphaType = SKAlphaType.Opaque;
-                    break;
-                case PixelFormat.Format32bppArgb:
-                    colorType = SKColorType.Bgra8888;
-                    break;
-                case PixelFormat.Format32bppRgb:
-                    colorType = SKColorType.Rgb888x;
-                    alphaType = SKAlphaType.Opaque;
-                    break;
-                default:
-                    throw new NotSupportedException("Unsupported PixelFormat: " + bitmap.PixelFormat);
-            }
-
+            SKColorType colorType = SKColorType.Bgra8888;
+            SKAlphaType alphaType = SKAlphaType.Opaque;
             // Create SKImageInfo
             SKImageInfo info = new SKImageInfo(bitmap.Width, bitmap.Height, colorType, alphaType);
 
@@ -638,9 +625,11 @@ namespace BioGTK
             int bi = 0;
             if (SelectedImage.isPyramidal && sk.AllocatedHeight <= 1 || sk.AllocatedWidth <= 1)
                 return;
-            SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
-            if(updatePyramidal)
-            await SelectedImage.UpdateBuffersPyramidal();
+            if (SelectedImage.isPyramidal && updatePyramidal)
+            {
+                SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
+                await SelectedImage.UpdateBuffersPyramidal();
+            }
             SKImages.Clear();
             Bitmaps.Clear();
             foreach (BioImage b in Images)
@@ -719,7 +708,7 @@ namespace BioGTK
                 Bitmap bm = BioImage.GetTile(SelectedImage, SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T), MacroResolution.Value - 2, 0, 0, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeY);
                 ResizeNearestNeighbor re = new ResizeNearestNeighbor(overview.Width, overview.Height);
                 Bitmap bmp = re.Apply(bm);
-                overviewImage = bmp;
+                overviewImage = bmp.ImageRGB;
             }
             else
             {
@@ -735,7 +724,7 @@ namespace BioGTK
                 Bitmap bm = BioImage.GetTile(SelectedImage, SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T), lev, 0, 0, SelectedImage.Resolutions[lev].SizeX, SelectedImage.Resolutions[lev].SizeY);
                 ResizeNearestNeighbor re = new ResizeNearestNeighbor(overview.Width, overview.Height);
                 Bitmap bmp = re.Apply(bm);
-                overviewImage = bmp;
+                overviewImage = bmp.ImageRGB;
             }
             ShowOverview = true;
             Console.WriteLine("Preview Initialized.");
@@ -1405,12 +1394,10 @@ namespace BioGTK
             if (e.Event.Key == Gdk.Key.c && e.Event.State == ModifierType.ControlMask)
             {
                 CopySelection();
-                return;
             }
             if (e.Event.Key == Gdk.Key.v && e.Event.State == ModifierType.ControlMask)
             {
                 PasteSelection();
-                return;
             }
             if (e.Event.Key == Gdk.Key.e)
             {
@@ -1435,7 +1422,6 @@ namespace BioGTK
                 if (SelectedImage.isPyramidal)
                 {
                     PyramidalOrigin = new PointD(PyramidalOrigin.X, PyramidalOrigin.Y + movepyr);
-                    UpdateImages(true);
                 }
                 else
                     Origin = new PointD(Origin.X, Origin.Y + moveAmount);
@@ -1445,7 +1431,6 @@ namespace BioGTK
                 if (SelectedImage.isPyramidal)
                 {
                     PyramidalOrigin = new PointD(PyramidalOrigin.X, PyramidalOrigin.Y - movepyr);
-                    UpdateImages(true);
                 }
                 else
                     Origin = new PointD(Origin.X, Origin.Y - moveAmount);
@@ -1455,7 +1440,6 @@ namespace BioGTK
                 if (SelectedImage.isPyramidal)
                 {
                     PyramidalOrigin = new PointD(PyramidalOrigin.X - movepyr, PyramidalOrigin.Y);
-                    UpdateImages(true);
                 }
                 else
                     Origin = new PointD(Origin.X + moveAmount, Origin.Y);
@@ -1465,7 +1449,6 @@ namespace BioGTK
                 if (SelectedImage.isPyramidal)
                 {
                     PyramidalOrigin = new PointD(PyramidalOrigin.X + movepyr, PyramidalOrigin.Y);
-                    UpdateImages(true);
                 }
                 else
                     Origin = new PointD(Origin.X - moveAmount, Origin.Y);
@@ -1493,7 +1476,10 @@ namespace BioGTK
             st.p = mouseDown;
             st.type = Scripting.Event.Down;
             Scripting.UpdateState(st);
-            UpdateView();
+            if(SelectedImage.isPyramidal)
+                UpdateView(true,true);
+            else
+                UpdateView(true,false);
         }
         /// The function is called when the user presses a key on the keyboard
         /// 
@@ -1535,7 +1521,6 @@ namespace BioGTK
                         pxWmicron += 0.01f;
                         pxHmicron += 0.01f;
                     }
-                    UpdateView();
                 }
                 else
                 if (args.Event.Direction == ScrollDirection.Up)
@@ -1557,6 +1542,7 @@ namespace BioGTK
                 {
                     Resolution *= 1.20;
                 }
+                UpdateView(true, false);
         }
 
         /// The function ValueChanged is called when the value of the trackbar is changed.
@@ -1773,6 +1759,7 @@ namespace BioGTK
             {
                 if(AllowNavigation)
                 origin = value;
+                UpdateView(true, false);
             }
         }
         /* Origin of the viewer in microns */
@@ -1799,8 +1786,13 @@ namespace BioGTK
             {
                 if (!AllowNavigation)
                     return;
-                SelectedImage.PyramidalOrigin = value;
-                UpdateView(true);
+                PointD p = new PointD();
+                if (value.X > 0)
+                    p.X = value.X;
+                if (value.Y > 0)
+                    p.Y = value.Y;
+                SelectedImage.PyramidalOrigin = p;
+                UpdateView(true, true);
             }
         }
         /* Setting the Level of the image. */
@@ -1870,7 +1862,7 @@ namespace BioGTK
                 // update ui on main UI thread
                 Application.Invoke(delegate
                 {
-                    UpdateView();
+                    UpdateView(true,false);
                 });
             }
         }
@@ -1891,13 +1883,12 @@ namespace BioGTK
                 + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2") + ", Res:" + Resolution;
         }
         /// It updates the view.
-        public void UpdateView(bool updatePyr = false)
+        public void UpdateView(bool update = false, bool updateImages = false)
         {
-            if (updatePyr)
-            {
-                UpdateImages(true);
-                refresh = true;
-            }
+            if(updateImages)
+            UpdateImages(true);
+            refresh = true;
+            if(update)
             sk.QueueDraw();
         }
         private string mousePoint = "";
