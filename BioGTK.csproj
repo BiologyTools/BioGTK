@@ -21,7 +21,7 @@
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>Bioformats 8.0.0 update. Fixed multiple tools.</PackageReleaseNotes>
+    <PackageReleaseNotes>Bioformats 8.0.0 update. Fixed multiple tools, SAM, and selection tools.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
@@ -51,8 +51,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="tile_copy.cu" />
-    <None Remove="tile_copy.ptx" />
+    <Content Remove="C:\Users\Erikr\.nuget\packages\biolib\2.9.0\contentFiles\any\net8.0\tile_copy.cu" />
+    <Content Remove="C:\Users\Erikr\.nuget\packages\biolib\2.9.0\contentFiles\any\net8.0\tile_copy.ptx" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Glade\ComboPicker.glade">
@@ -419,15 +419,10 @@
       <Pack>True</Pack>
       <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
-    <Content Include="tile_copy.cu">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="tile_copy.ptx">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="BioLib" Version="2.9.0" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="ImageJ.NET" Version="154.0.0.2" />
@@ -440,18 +435,14 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="ScottPlot" Version="5.0.40" />
+    <PackageReference Include="ScottPlot" Version="5.0.41" />
     <PackageReference Include="SkiaSharp" Version="3.0.0-preview.4.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.0.0-preview.4.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.0.0-preview.4.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.0.0-preview.4.1" />
     <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.0.0-preview.4.1" />
-    <PackageReference Include="TorchSharp-cpu" Version="0.103.0" />
+    <PackageReference Include="TorchSharp-cpu" Version="0.103.1" />
     <PackageReference Include="YamlDotNet" Version="16.1.3" />  
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\BioLib\BioLib.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -459,8 +450,28 @@
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
+    <None Update="tile_copy.cu">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="tile_copy.ptx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
-
+	
+	<ItemGroup>
+		<Content Update="tile_copy.cu">
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+			<Pack>True</Pack>
+			<PackageCopyToOutput>true</PackageCopyToOutput>
+		</Content>
+	</ItemGroup>
+	<ItemGroup>
+		<Content Update="tile_copy.ptx">
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+			<Pack>True</Pack>
+			<PackageCopyToOutput>true</PackageCopyToOutput>
+		</Content>
+	</ItemGroup>
   <ItemGroup>
     <Using Include="BioLib" />
   </ItemGroup>
