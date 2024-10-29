@@ -450,28 +450,13 @@
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
-    <None Update="tile_copy.cu">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="tile_copy.ptx">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		<Pack>True</Pack>
+			<PackageCopyToOutput>true</PackageCopyToOutput>
     </None>
   </ItemGroup>
 	
-	<ItemGroup>
-		<Content Update="tile_copy.cu">
-			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-			<Pack>True</Pack>
-			<PackageCopyToOutput>true</PackageCopyToOutput>
-		</Content>
-	</ItemGroup>
-	<ItemGroup>
-		<Content Update="tile_copy.ptx">
-			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-			<Pack>True</Pack>
-			<PackageCopyToOutput>true</PackageCopyToOutput>
-		</Content>
-	</ItemGroup>
   <ItemGroup>
     <Using Include="BioLib" />
   </ItemGroup>
