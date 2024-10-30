@@ -706,9 +706,9 @@ namespace BioGTK
                     return;
                 }
                 Bitmap bm = BioImage.GetTile(SelectedImage, SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T), MacroResolution.Value - 2, 0, 0, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeY);
-                ResizeNearestNeighbor re = new ResizeNearestNeighbor(overview.Width, overview.Height);
+                ResizeBilinear re = new ResizeBilinear(overview.Width, overview.Height);
                 Bitmap bmp = re.Apply(bm);
-                overviewImage = bmp.ImageRGB;
+                overviewImage = bmp;
             }
             else
             {
@@ -722,7 +722,7 @@ namespace BioGTK
                 }
                 overview = new Rectangle(0, 0, (int)(aspx * 120), (int)(aspy * 120));
                 Bitmap bm = BioImage.GetTile(SelectedImage, SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T), lev, 0, 0, SelectedImage.Resolutions[lev].SizeX, SelectedImage.Resolutions[lev].SizeY);
-                ResizeNearestNeighbor re = new ResizeNearestNeighbor(overview.Width, overview.Height);
+                ResizeBilinear re = new ResizeBilinear(overview.Width, overview.Height);
                 Bitmap bmp = re.Apply(bm);
                 overviewImage = bmp.ImageRGB;
             }

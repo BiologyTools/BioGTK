@@ -51,6 +51,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Remove="C:\Users\Erikr\.nuget\packages\biolib\2.9.0.1\contentFiles\any\net8.0\tile_copy.cu" />
+    <Content Remove="C:\Users\Erikr\.nuget\packages\biolib\2.9.0.1\contentFiles\any\net8.0\tile_copy.ptx" />
     <Content Remove="C:\Users\Erikr\.nuget\packages\biolib\2.9.0\contentFiles\any\net8.0\tile_copy.cu" />
     <Content Remove="C:\Users\Erikr\.nuget\packages\biolib\2.9.0\contentFiles\any\net8.0\tile_copy.ptx" />
   </ItemGroup>
@@ -422,11 +424,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="BioLib" Version="2.9.0" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="ImageJ.NET" Version="154.0.0.2" />
-    <PackageReference Include="ManagedCuda" Version="10.0.0" />
+    <PackageReference Include="ManagedCuda.NETStandard" Version="9.1.300" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.19.2" />
     <PackageReference Include="Microsoft.ML.TorchSharp" Version="0.21.1" />
@@ -446,14 +447,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BioLib\BioLib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="README.md">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
-    </None>
-    <None Update="tile_copy.ptx">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		<Pack>True</Pack>
-			<PackageCopyToOutput>true</PackageCopyToOutput>
     </None>
   </ItemGroup>
 	
