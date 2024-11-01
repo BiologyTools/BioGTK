@@ -79,20 +79,20 @@
 	add.s32 	%r23, %r8, -1;
 	min.s32 	%r24, %r22, %r23;
 	mad.lo.s32 	%r25, %r24, %r7, %r21;
-	mad.lo.s32 	%r26, %r4, %r5, %r3;
-	mul.lo.s32 	%r27, %r26, 3;
-	mad.lo.s32 	%r28, %r25, 3, 2;
-	cvt.s64.s32 	%rd3, %r28;
+	mul.lo.s32 	%r26, %r25, 3;
+	mad.lo.s32 	%r27, %r4, %r5, %r3;
+	mul.lo.s32 	%r28, %r27, 3;
+	cvt.s64.s32 	%rd3, %r26;
 	cvta.to.global.u64 	%rd4, %rd2;
 	add.s64 	%rd5, %rd4, %rd3;
 	ld.global.u8 	%rs1, [%rd5];
-	cvt.s64.s32 	%rd6, %r27;
+	cvt.s64.s32 	%rd6, %r28;
 	cvta.to.global.u64 	%rd7, %rd1;
 	add.s64 	%rd8, %rd7, %rd6;
 	st.global.u8 	[%rd8], %rs1;
-	ld.global.u8 	%rs2, [%rd5+-1];
+	ld.global.u8 	%rs2, [%rd5+1];
 	st.global.u8 	[%rd8+1], %rs2;
-	ld.global.u8 	%rs3, [%rd5+-2];
+	ld.global.u8 	%rs3, [%rd5+2];
 	st.global.u8 	[%rd8+2], %rs3;
 
 $L__BB0_3:

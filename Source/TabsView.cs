@@ -886,7 +886,7 @@ namespace BioGTK
             do
             {
                 progress.Title = title;
-                progress.Status = BioImage.status;
+                progress.Status = BioImage.Status;
                 progress.ProgressValue = BioImage.Progress;
                 Thread.Sleep(250);
             } while (!done);
@@ -897,10 +897,10 @@ namespace BioGTK
             BioImage.Progress = 0;
             progress.Status = status;
             progress.Title = title;
-            if (BioImage.status == "" || BioImage.status == null)
+            if (BioImage.Status == "" || BioImage.Status == null)
                 progress.Status = status;
             else
-                progress.Status = BioImage.status;
+                progress.Status = BioImage.Status;
             progress.ProgressValue = BioImage.Progress;
             progress.Show();
             Thread th = new Thread(ProgressUpdate);

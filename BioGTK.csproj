@@ -3,25 +3,25 @@
     <TargetFramework>net8.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RuntimeIdentifiers>osx-x64;linux-x64;win-x64;win-arm64;linux-arm64;osx-arm64;</RuntimeIdentifiers>
-    <AssemblyVersion>5.6.0</AssemblyVersion>
-    <FileVersion>5.6.0</FileVersion>
+    <AssemblyVersion>5.6.1</AssemblyVersion>
+    <FileVersion>5.6.1</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>BioGTK</PackageId>
     <Title>BioGTK</Title>
     <PackageProjectUrl>https://github.com/BiologyTools/BioGTK</PackageProjectUrl>
     <PackageIcon>banner.jpg</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageVersion>5.6.0</PackageVersion>
+    <PackageVersion>5.6.1</PackageVersion>
     <RepositoryUrl>https://github.com/BiologyTools/BioGTK</RepositoryUrl>
     <PackageTags>Biology; GTK; ImageJ; Bio-Formats; Image-Stacks; Microscopy; Whole-Slide-Image; Segment-Anything; SAM; QuPath;</PackageTags>
     <PackageLicenseExpression> GPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Description>A .NET application &amp; library for editing &amp; annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters &amp; macro functions. Supports Windows, Linux and Mac.</Description>
-    <Version>5.6.0</Version>
+    <Version>5.6.1</Version>
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>Bioformats 8.0.0 update. Fixed multiple tools, SAM, and selection tools.</PackageReleaseNotes>
+    <PackageReleaseNotes>CUDA support for Linux as well as MacOS related bug fixes.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
@@ -55,6 +55,11 @@
     <Content Remove="C:\Users\Erikr\.nuget\packages\biolib\2.9.0.1\contentFiles\any\net8.0\tile_copy.ptx" />
     <Content Remove="C:\Users\Erikr\.nuget\packages\biolib\2.9.0\contentFiles\any\net8.0\tile_copy.cu" />
     <Content Remove="C:\Users\Erikr\.nuget\packages\biolib\2.9.0\contentFiles\any\net8.0\tile_copy.ptx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="tile_copy.cu" />
+    <None Remove="tile_copy.ptx" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Glade\ComboPicker.glade">
@@ -421,6 +426,14 @@
       <Pack>True</Pack>
       <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
+    <Content Include="tile_copy.cu">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="tile_copy.ptx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
+      <Pack>True</Pack>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
@@ -464,12 +477,12 @@
     <CFBundleName>BioGTK</CFBundleName>
     <CFBundleDisplayName>BioGTK</CFBundleDisplayName>
     <CFBundleIdentifier>com.BioGTK</CFBundleIdentifier>
-    <CFBundleVersion>5.6.0</CFBundleVersion>
+    <CFBundleVersion>5.6.1</CFBundleVersion>
     <CFBundlePackageType>APPL</CFBundlePackageType>
     <CFBundleSignature>????</CFBundleSignature>
     <CFBundleExecutable>BioGTKApp</CFBundleExecutable>
     <CFBundleIconFile>bio.icns</CFBundleIconFile>
-    <CFBundleShortVersionString>5.6.0</CFBundleShortVersionString>
+    <CFBundleShortVersionString>5.6.1</CFBundleShortVersionString>
     <NSPrincipalClass>NSApplication</NSPrincipalClass>
     <NSHighResolutionCapable>true</NSHighResolutionCapable>
     <ImplicitUsings>enable</ImplicitUsings>

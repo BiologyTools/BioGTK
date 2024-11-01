@@ -28,9 +28,9 @@ __global__ void copyTileToCanvas(
             int canvasIdx = (canvasY * canvasWidth + canvasX) * 3;
 
             // Copy the pixel (RGB components) from the tile to the canvas
-            canvas[canvasIdx] = tile[tileIdx + 2];        // Blue component
+            canvas[canvasIdx] = tile[tileIdx];        // Blue component
             canvas[canvasIdx + 1] = tile[tileIdx + 1];    // Green component
-            canvas[canvasIdx + 2] = tile[tileIdx];        // Red component
+            canvas[canvasIdx + 2] = tile[tileIdx + 2];        // Red component
         }
     }
 }
