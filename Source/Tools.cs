@@ -542,18 +542,18 @@ namespace BioGTK
                 {
                     bitmap = ImageView.SelectedImage.GetFiltered(
                         coord,
-                        ImageView.SelectedBuffer.Stats[0].Range,
-                        ImageView.SelectedBuffer.Stats[1].Range,
-                        ImageView.SelectedBuffer.Stats[2].Range
+                        new IntRange((int)ImageView.SelectedBuffer.Stats[0].Min, (int)ImageView.SelectedBuffer.Stats[0].Max),
+                        new IntRange((int)ImageView.SelectedBuffer.Stats[1].Min, (int)ImageView.SelectedBuffer.Stats[1].Max),
+                        new IntRange((int)ImageView.SelectedBuffer.Stats[2].Min, (int)ImageView.SelectedBuffer.Stats[2].Max)
                     );
                 }
                 else
                 {
                     bitmap = ImageView.SelectedImage.GetFiltered(
                         coord,
-                        ImageView.SelectedBuffer.Stats[0].Range,
-                        ImageView.SelectedBuffer.Stats[0].Range,
-                        ImageView.SelectedBuffer.Stats[0].Range
+                       new IntRange((int)ImageView.SelectedBuffer.Stats[0].Min, (int)ImageView.SelectedBuffer.Stats[0].Max),
+                        new IntRange((int)ImageView.SelectedBuffer.Stats[0].Min, (int)ImageView.SelectedBuffer.Stats[0].Max),
+                        new IntRange((int)ImageView.SelectedBuffer.Stats[0].Min, (int)ImageView.SelectedBuffer.Stats[0].Max)
                     );
                 }
 
@@ -563,7 +563,8 @@ namespace BioGTK
                 Statistics[] st = Statistics.FromBytes(bitmap.Bytes, bitmap.SizeX, bitmap.Height, bitmap.RGBChannelsCount, bitmap.BitsPerPixel, bitmap.Stride, bitmap.PixelFormat);
                 int threshold = magicSelect.Numeric ? magicSelect.Threshold : CalculateThreshold(magicSelect.Index, st[0]);
                 BlobCounter blobCounter = new BlobCounter();
-                bitmap.BinarizeOtsu();
+                OtsuThreshold th = new OtsuThreshold();
+                th.ApplyInPlace(bitmap);
                 blobCounter.FilterBlobs = true;
                 blobCounter.MinWidth = 2;
                 blobCounter.MinHeight = 2;

@@ -89,7 +89,7 @@ namespace BioGTK
         float[,,] Resize(Bitmap originalImage, int w,int h)
         {
             AForge.Imaging.Filters.ResizeBilinear res = new AForge.Imaging.Filters.ResizeBilinear(w, h);
-            Bitmap resizedImage = res.Apply(originalImage.ImageRGB);
+            Bitmap resizedImage = res.Apply(originalImage.GetImageRGBA());
             //resizedImage.Save("resized.jpg", System.Drawing.Imaging.ImageFormat.Jpeg);
             float[,,] newimg = new float[3, w, h];
             for (int i = 0; i < w; i++)

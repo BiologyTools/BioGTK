@@ -712,7 +712,6 @@ namespace BioGTK
         {
             ImageView v = ImageView.Create(im);
             viewers.Add(v);
-            Images.AddImage(im);
             v.Show();
             Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file) + "/" + im.Filename);
             dummy.Visible = false;

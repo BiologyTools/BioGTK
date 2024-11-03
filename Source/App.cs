@@ -1,8 +1,10 @@
 ﻿using Bio;
 using Gtk;
+using OpenSlideGTK;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -30,6 +32,61 @@ namespace BioGTK
         public static Recorder recorder;
         public static SAMTool samTool;
         public static Updater updater;
+        static bool useGPU = true, useVips = false, useImageSharp = false;
+        public static bool UseGPU
+        {
+            get
+            {
+                return useGPU;
+            }
+            set
+            {
+                useGPU = value;
+                useVips = !value;
+                useImageSharp = !value;
+                UpdateStitching();
+            }
+        }
+        public static bool UseVips
+        {
+            get
+            {
+                return useVips;
+            }
+            set
+            {
+                useVips = value;
+                useImageSharp = !value;
+                useGPU = !value;
+                UpdateStitching();
+            }
+        }
+        public static bool UseImageSharp
+        {
+            get
+            {
+                return useImageSharp;
+            }
+            set
+            {
+                useImageSharp = value;
+                useVips = !value;
+                useGPU = !value;
+                UpdateStitching();
+            }
+        }
+        private static void UpdateStitching()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                useGPU = false;
+            }
+            OpenSlideBase.useGPU = useGPU;
+            SlideBase.useGPU = useGPU;
+            OpenSlideBase.UseVips = useVips;
+            SlideBase.UseVips = useVips;
+ 
+        }
         public static bool UseFiji = false;
         /// Initialize() is a function that initializes the BioImage Suite Web
         public static void Initialize(bool requireImageJ = false)
@@ -53,6 +110,7 @@ namespace BioGTK
             setTool = SetTool.Create();
             recorder = Recorder.Create();
             //color = ColorTool.Create();
+            UpdateStitching();
         }
 
         public static void ApplyStyles(Widget widget)

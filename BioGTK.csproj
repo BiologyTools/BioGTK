@@ -56,12 +56,12 @@
     <Content Remove="C:\Users\Erikr\.nuget\packages\biolib\2.9.0\contentFiles\any\net8.0\tile_copy.cu" />
     <Content Remove="C:\Users\Erikr\.nuget\packages\biolib\2.9.0\contentFiles\any\net8.0\tile_copy.ptx" />
   </ItemGroup>
-
   <ItemGroup>
-    <None Remove="tile_copy.cu" />
-    <None Remove="tile_copy.ptx" />
-  </ItemGroup>
-  <ItemGroup>
+    <Content Include="bio.icns">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
+      <Pack>True</Pack>
+    </Content>
     <Content Include="Glade\ComboPicker.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Pack>True</Pack>
@@ -104,11 +104,6 @@
       <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
     <Content Include="Images\bio.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Pack>True</Pack>
-      <PackageCopyToOutput>true</PackageCopyToOutput>
-    </Content>
-    <Content Include="Images\bio.icns">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Pack>True</Pack>
       <PackageCopyToOutput>true</PackageCopyToOutput>
