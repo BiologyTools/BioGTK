@@ -69,7 +69,7 @@ namespace BioGTK
             builder.Autoconnect(this);
             this.DeleteEvent += Updater_DeleteEvent;
             upBut.ButtonPressEvent += UpButton_ButtonPressEvent;
-            string st = Settings.GetSettings("UpdateSites");
+            string st = BioLib.Settings.GetSettings("UpdateSites");
             if(st!="")
             {
                 string[] ups = st.Split(',');
@@ -122,8 +122,8 @@ namespace BioGTK
                 else
                     ups += sts[i];
             }
-            Settings.AddSettings("UpdateSites", ups);
-            Settings.Save();
+            BioLib.Settings.AddSettings("UpdateSites", ups);
+            BioLib.Settings.Save();
         }
         public static async Task DownloadFileAsync(string fileUrl, string savePath)
         {

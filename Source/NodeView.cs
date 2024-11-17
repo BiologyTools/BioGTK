@@ -47,7 +47,6 @@ namespace BioGTK
         /* The code you provided is the constructor for the `NodeView` class. */
         protected NodeView(Builder builder, IntPtr handle, string[] args) : base(handle)
         {
-            Console.WriteLine("Creating Nodeview.");
             _builder = builder;
             builder.Autoconnect(this);
             string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath);
@@ -59,7 +58,7 @@ namespace BioGTK
             System.IO.Directory.CreateDirectory(st + "/Plugins");
             System.IO.Directory.CreateDirectory(st + "/Models");
             App.nodeView = this;
-            App.Initialize(true);
+            App.Initialize();
             SetupHandlers();
             Console.WriteLine("Parsing arguments.");
             if (args != null)
@@ -70,12 +69,15 @@ namespace BioGTK
                 }
                 foreach (string item in args)
                 {
-                    BioImage.OpenAsync(item, false, true, true, 0);
+                    BioImage.OpenAsync(item, false, true, true, 0).Wait();
+                    BioImage bm = Images.GetImage(item);
+                    App.tabsView.AddTab(bm);
                 }
             }
             Console.WriteLine("Initializing nodes.");    
             InitItems();
             App.ApplyStyles(this);
+            Console.WriteLine("NodeView initialized.");
         }
 
         /// It takes a list of images, and for each image, it takes a list of bitmaps, and for each

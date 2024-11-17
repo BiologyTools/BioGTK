@@ -231,7 +231,7 @@ namespace BioGTK
             private static string scriptName = "";
             private static string str = "";
             /// It runs a script in a separate thread
-            private static void RunScript()
+            private static async void RunScript()
             {
                 Script rn = scripts[scriptName];
                 rn.ex = null;
@@ -240,7 +240,10 @@ namespace BioGTK
                     try
                     {
                         rn.done = false;
-                        Fiji.RunString(rn.scriptString,"", false);
+                        if (App.UseFiji)
+                            await Fiji.RunStringFiji(ImageView.SelectedImage,rn.scriptString, "", false);
+                        else
+                            ImageJ.RunString(rn.scriptString, "", false);
                         rn.done = true;
                     }
                     catch (Exception e)
@@ -678,7 +681,10 @@ namespace BioGTK
         {
             if (scriptLabel.Text.EndsWith(".ijm"))
             {
-                Fiji.RunString(view.Buffer.Text, ImageView.SelectedImage.ID, headlessBox.Active);
+                if (App.UseFiji)
+                    Fiji.RunStringFiji(ImageView.SelectedImage,view.Buffer.Text, ImageView.SelectedImage.ID, headlessBox.Active);
+                else
+                    ImageJ.RunString(view.Buffer.Text, ImageView.SelectedImage.ID, headlessBox.Active);
             }
             else
                 Run();

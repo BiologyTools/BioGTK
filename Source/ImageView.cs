@@ -581,11 +581,45 @@ namespace BioGTK
 
             SKBitmap skBitmap = new SKBitmap(width, height, SKColorType.Bgra8888, SKAlphaType.Opaque);
 
-            BitmapData bitmapData = sourceBitmap.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+            BitmapData bitmapData = sourceBitmap.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, sourceBitmap.PixelFormat);
 
             unsafe
             {
                 byte* sourcePtr = (byte*)bitmapData.Scan0.ToPointer();
+                byte* destPtr = (byte*)skBitmap.GetPixels().ToPointer();
+
+                for (int y = 0; y < height; y++)
+                {
+                    for (int x = 0; x < width; x++)
+                    {
+                        destPtr[0] = sourcePtr[0]; // Blue
+                        destPtr[1] = sourcePtr[1]; // Green
+                        destPtr[2] = sourcePtr[2]; // Red
+                        destPtr[3] = 255;          // Alpha (fully opaque)
+
+                        sourcePtr += 4;
+                        destPtr += 4;
+                    }
+                }
+            }
+
+            sourceBitmap.UnlockBits(bitmapData);
+
+            return SKImage.FromBitmap(skBitmap);
+        }
+        public static SKImage Convert16bppBitmapToSKImage(Bitmap sourceBitmap)
+        {
+            Bitmap bm = sourceBitmap.GetImageRGB();
+            int width = bm.Width;
+            int height = bm.Height;
+
+            SKBitmap skBitmap = new SKBitmap(width, height, SKColorType.Bgra8888, SKAlphaType.Opaque);
+
+            BitmapData bitmapData = sourceBitmap.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, bm.PixelFormat);
+
+            unsafe
+            {
+                byte* sourcePtr = (byte*)bm.Data.ToPointer();
                 byte* destPtr = (byte*)skBitmap.GetPixels().ToPointer();
 
                 for (int y = 0; y < height; y++)
@@ -614,9 +648,9 @@ namespace BioGTK
             if (bitm.PixelFormat == PixelFormat.Format32bppArgb)
                 return Convert32bppBitmapToSKImage(bitm);
             if (bitm.PixelFormat == PixelFormat.Format16bppGrayScale)
-                return Convert32bppBitmapToSKImage(bitm.GetImageRGBA());
+                return Convert16bppBitmapToSKImage(bitm.GetImageRGB());
             if (bitm.PixelFormat == PixelFormat.Format48bppRgb)
-                return Convert32bppBitmapToSKImage(bitm.GetImageRGBA());
+                return Convert16bppBitmapToSKImage(bitm.GetImageRGB());
             else
                 throw new NotSupportedException("PixelFormat " + bitm.PixelFormat + " is not supported for SKImage.");
         }
@@ -1946,6 +1980,7 @@ namespace BioGTK
         /// @param MotionNotifyEventArgs 
         private void ImageView_MotionNotifyEvent(object o, MotionNotifyEventArgs e)
         {
+            UpdateView(true, false);
             App.viewer = this;
             Modifiers = e.Event.State;
             MouseMove = new PointD(e.Event.X,e.Event.Y);

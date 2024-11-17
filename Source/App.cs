@@ -1,5 +1,6 @@
 ﻿using Bio;
 using Gtk;
+using javax.swing.filechooser;
 using OpenSlideGTK;
 using System;
 using System.Collections.Generic;
@@ -87,15 +88,90 @@ namespace BioGTK
             SlideBase.UseVips = useVips;
  
         }
-        public static bool UseFiji = false;
+        public static bool ToConsole
+        {
+            get
+            {
+                return BioLib.Recorder.outputConsole;
+            }
+            set
+            {
+                BioLib.Recorder.outputConsole = value;
+            }
+        }
+        static bool useFiji = true;
+        public static bool UseFiji
+        {
+            get
+            {
+                if (OperatingSystem.IsMacOS())
+                {
+                    return true;
+                }
+                else
+                {
+                    if(Fiji.ImageJPath.Contains("Fiji"))
+                        return true;
+                    else
+                        return false;
+                }
+            }
+        }
+        /// This function creates a file chooser dialog that allows the user to select the location of
+        /// the ImageJ executable
+        /// 
+        /// @return A boolean value.
+        public static bool SetFijiOrImageJPath()
+        {
+            bool ifb;
+            string st = BioLib.Settings.GetSettings("ImageJPath");
+            if (st != "")
+            {
+                if (st.Contains("Fiji"))
+                {
+                    BioLib.Fiji.ImageJPath = st;
+                }
+                else
+                    BioLib.ImageJ.ImageJPath = st;
+                return true;
+            }
+            string title = "Select ImageJ Executable Location";
+            if (OperatingSystem.IsMacOS())
+                title = "Select ImageJ Executable Location (Fiji.app/Contents/MacOS/ImageJ-macosx)";
+            Gtk.FileChooserDialog filechooser =
+            new Gtk.FileChooserDialog(title, Scripting.window,
+            FileChooserAction.Open,
+            "Cancel", ResponseType.Cancel,
+            "Save", ResponseType.Accept);
+            filechooser.SetCurrentFolder(System.IO.Path.GetDirectoryName(Environment.ProcessPath));
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return false;
+            if(filechooser.Filename.Contains("Fiji"))
+                Fiji.ImageJPath = filechooser.Filename;
+            else
+                ImageJ.ImageJPath = filechooser.Filename;
+            BioLib.Settings.AddSettings("ImageJPath", filechooser.Filename);
+            filechooser.Destroy();
+            BioLib.Settings.Save();
+            return true;
+        }
         /// Initialize() is a function that initializes the BioImage Suite Web
-        public static void Initialize(bool requireImageJ = false)
+        public static void Initialize()
         {
             Console.WriteLine("Initializing components.");
-            BioImage.Initialize();
+            SetFijiOrImageJPath();
+            if (Fiji.ImageJPath == "")
+            {
+                ImageJ.Initialize(ImageJ.ImageJPath);
+                BioImage.Initialize(ImageJ.ImageJPath);
+            }
+            else
+            {
+                Fiji.Initialize(Fiji.ImageJPath);
+                BioImage.Initialize(Fiji.ImageJPath);
+            }
             Console.WriteLine("Loading settings.");
-            Settings.Load();
-            Fiji.Initialize(requireImageJ);
+            BioLib.Settings.Load();
             updater = Updater.Create();
             tools = Tools.Create();
             filters = FiltersView.Create();

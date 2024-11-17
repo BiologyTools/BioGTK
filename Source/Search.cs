@@ -69,7 +69,7 @@ namespace BioGTK
                 string itemName = (string)treeView.Model.GetValue(iter, 0);
                 if(!itemName.EndsWith(".txt") || !itemName.EndsWith(".ijm") && !itemName.EndsWith(".cs"))
                 {
-                    Fiji.RunOnImage("run(\"" + itemName + "\")",BioConsole.headless,BioConsole.onTab,BioConsole.useBioformats,BioConsole.resultInNewTab);
+                    Fiji.RunOnImage(ImageView.SelectedImage,"run(\"" + itemName + "\")",BioConsole.headless,BioConsole.onTab,BioConsole.useBioformats,BioConsole.resultInNewTab);
                 }
                 else
                     Scripting.RunByName(itemName);

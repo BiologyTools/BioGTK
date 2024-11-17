@@ -1,8 +1,9 @@
 ﻿using AForge;
 using Bio;
 using Gtk;
+using ij.plugin.filter;
 using ikvm.runtime;
-using loci.formats.gui;
+using org.checkerframework.checker.initialization.qual;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -181,11 +182,6 @@ namespace BioGTK
             App.tabsView = this;
             builder.Autoconnect(this);
             filteredMenu.Active = true;
-            //If the platform is MacOS we need to use Fiji/ImageJ without using IKVM.
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                App.UseFiji = true;
-            }
             SetupHandlers();
             progress = Progress.Create(title, "", "");
             Function.InitializeMainMenu();
@@ -234,7 +230,7 @@ namespace BioGTK
                 mi.ButtonPressEvent += Mi_ButtonPressEvent;
                 rm.Append(mi);
             }
-            foreach (Fiji.Macro.Command c in Fiji.Macros)
+            foreach (Fiji.Macro.Command c in BioLib.Fiji.Macro.Commands.Values)
             {
                 MenuItem mi = new MenuItem(c.Name);
                 mi.ButtonPressEvent += Mi_ButtonPressEvent;
@@ -245,15 +241,43 @@ namespace BioGTK
             Plugins.Initialize();
             ML.ML.Initialize();
         }
-
+        /// This function creates a file chooser dialog that allows the user to select the location of
+        /// the ImageJ executable
+        /// 
+        /// @return A boolean value.
+        public static bool SetImageJPath()
+        {
+            string st = BioLib.Settings.GetSettings("ImageJPath");
+            if (st != "")
+            {
+                Fiji.ImageJPath = BioLib.Settings.GetSettings("ImageJPath");
+                return true;
+            }
+            string title = "Select ImageJ Executable Location";
+            if (OperatingSystem.IsMacOS())
+                title = "Select ImageJ Executable Location (Fiji.app/Contents/MacOS/ImageJ-macosx)";
+            Gtk.FileChooserDialog filechooser =
+    new Gtk.FileChooserDialog(title, Scripting.window,
+        FileChooserAction.Open,
+        "Cancel", ResponseType.Cancel,
+        "Save", ResponseType.Accept);
+            filechooser.SetCurrentFolder(System.IO.Path.GetDirectoryName(Environment.ProcessPath));
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return false;
+            Fiji.ImageJPath = filechooser.Filename;
+            BioLib.Settings.AddSettings("ImageJPath", filechooser.Filename);
+            filechooser.Destroy();
+            BioLib.Settings.Save();
+            return true;
+        }
         private void Mi_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             MenuItem m = (MenuItem)o;
             if (m.Label.EndsWith(".ijm") || m.Label.EndsWith(".txt") && !m.Label.EndsWith(".cs"))
             {
-                string file = Fiji.ImageJMacroPath + m.Label;
+                string file = Fiji.ImageJPath + m.Label;
                 string ma = File.ReadAllText(file);
-                Fiji.RunOnImage(ma, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
+                Fiji.RunOnImage(ImageView.SelectedImage,ma, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
             }
             else
                 Scripting.RunByName(m.Label);
@@ -268,22 +292,26 @@ namespace BioGTK
             recentMenu.ShowAll();
         }
 
-        private void CommandMenuItem_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        private async void CommandMenuItem_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             if (ImageView.SelectedImage == null) return;
             MenuItem m = (MenuItem)o;
-            Fiji.RunOnImage("run(\"" + m.Label + "\");", BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
+            BioImage bm = await Fiji.RunOnImage(ImageView.SelectedImage, "run(\"" + m.Label + "\");", BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
             MenuItem mi = new MenuItem(m.Label);
             mi.ButtonPressEvent += CommandMenuItem_ButtonPressEvent;
             bool con = false;
             foreach (MenuItem item in recent.Children)
             {
                 if (item.Label == m.Label)
+                {
                     con = true;
+                    break;
+                }
             }
             if(!con)
             recent.Append(mi);
             recentMenu.ShowAll();
+            AddTab(bm);
         }
 
         /// When the user clicks on a menu item, the selected image is rotated or flipped according to
@@ -570,7 +598,7 @@ namespace BioGTK
                 {
                     f = f.Replace(".roi","") + i + ".roi";
                 }
-                Fiji.RoiEncoder.save(item, f);
+                Fiji.RoiEncoder.save(ImageView.SelectedImage, item, f);
                 i++;
             }
             filechooser.Hide();
@@ -596,7 +624,7 @@ namespace BioGTK
                 return;
             foreach (string item in filechooser.Filenames)
             {
-                ROI roi = Fiji.RoiDecoder.open(item);
+                ROI roi = Fiji.RoiDecoder.open(item, ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY, ImageView.SelectedImage.Volume.Location.X, ImageView.SelectedImage.Volume.Location.Y);
                 ImageView.SelectedImage.Annotations.Add(roi);
             }
             filechooser.Hide();
@@ -710,13 +738,24 @@ namespace BioGTK
         /// @param BioImage This is the image that you want to display.
         public void AddTab(BioImage im)
         {
-            ImageView v = ImageView.Create(im);
-            viewers.Add(v);
-            v.Show();
-            Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file) + "/" + im.Filename);
-            dummy.Visible = false;
-            tabsView.AppendPage(dummy, new Gtk.Label(im.Filename));
-            tabsView.ShowAll();
+            try
+            {
+                Application.Invoke(delegate
+                {
+                    ImageView v = ImageView.Create(im);
+                    viewers.Add(v);
+                    v.Show();
+                    Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file) + "/" + im.Filename);
+                    dummy.Visible = false;
+                    tabsView.AppendPage(dummy, new Gtk.Label(im.Filename));
+                    tabsView.ShowAll(); 
+                    Console.WriteLine("New tab added for " + im.Filename);
+                });
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
         }
 
         /// When the TabsView is focused, set the tabsView variable in the App class to the TabsView
@@ -892,6 +931,7 @@ namespace BioGTK
         }
         private static void StartProgress(string titl, string status)
         {
+            done = false;
             title = titl;
             BioImage.Progress = 0;
             progress.Status = status;
