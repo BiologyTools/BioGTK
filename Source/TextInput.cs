@@ -29,14 +29,16 @@ namespace BioGTK
         #endregion
 
         #region Constructors / Destructors
-        
+        private bool ROItype = true;
        /// It creates a new TextInput object, which is a Gtk.Window, and returns it
        /// 
        /// @return A new instance of the TextInput class.
-        public static TextInput Create()
+        public static TextInput Create(bool ROItype = true)
         {
             Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/TextInput.glade", FileMode.Open));
-            return new TextInput(builder, builder.GetObject("textInput").Handle);
+            var ti = new TextInput(builder, builder.GetObject("textInput").Handle);
+            ti.ROItype = ROItype;
+            return ti;
         }
 
         /* The constructor for the TextInput class. */
@@ -52,6 +54,7 @@ namespace BioGTK
 
         private void TextinputBox_Activated(object sender, EventArgs e)
         {
+            if(ROItype)
             SetText();
             Hide();
             Respond(ResponseType.Ok);
@@ -76,7 +79,8 @@ namespace BioGTK
         /// @param ButtonPressEventArgs 
         private void OkBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            SetText();
+            if (ROItype)
+                SetText();
             Hide();
             Respond(ResponseType.Ok);
         }

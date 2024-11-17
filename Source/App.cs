@@ -81,6 +81,11 @@ namespace BioGTK
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
                 useGPU = false;
+                OpenSlideBase.useGPU = false;
+                SlideBase.useGPU = false;
+                OpenSlideBase.UseVips = false;
+                SlideBase.UseVips = false;
+                return;
             }
             OpenSlideBase.useGPU = useGPU;
             SlideBase.useGPU = useGPU;
@@ -124,6 +129,7 @@ namespace BioGTK
         public static bool SetFijiOrImageJPath()
         {
             bool ifb;
+            BioLib.Settings.Load();
             string st = BioLib.Settings.GetSettings("ImageJPath");
             if (st != "")
             {
@@ -187,6 +193,7 @@ namespace BioGTK
             recorder = Recorder.Create();
             //color = ColorTool.Create();
             UpdateStitching();
+            BioLib.Settings.Load();
         }
 
         public static void ApplyStyles(Widget widget)

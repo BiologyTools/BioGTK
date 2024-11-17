@@ -142,10 +142,10 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkMenuItem">
+                      <object class="GtkMenuItem" id="renameMenu">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
-                        <property name="label" translatable="yes">Clear Recent</property>
+                        <property name="label" translatable="yes">Rename</property>
                         <property name="use-underline">True</property>
                       </object>
                     </child>

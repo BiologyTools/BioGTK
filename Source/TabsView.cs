@@ -3,7 +3,6 @@ using Bio;
 using Gtk;
 using ij.plugin.filter;
 using ikvm.runtime;
-using org.checkerframework.checker.initialization.qual;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -39,7 +38,8 @@ namespace BioGTK
         private MenuItem searchMenu;
         [Builder.Object]
         private MenuItem updateMenu;
-
+        [Builder.Object]
+        private MenuItem renameMenu;
         [Builder.Object]
         public MenuBar MainMenu;
         [Builder.Object]
@@ -237,7 +237,7 @@ namespace BioGTK
                 rm.Append(mi);
             }
             runMenu.Submenu = rm;
-            runMenu.ShowAll();
+            //runMenu.ShowAll();
             Plugins.Initialize();
             ML.ML.Initialize();
         }
@@ -405,9 +405,31 @@ namespace BioGTK
             tabsView.SwitchPage += TabsView_SwitchPage;
             tabsView.ButtonPressEvent += TabsView_ButtonPressEvent;
             this.WindowStateEvent += TabsView_WindowStateEvent;
-            
+            this.DeleteEvent += TabsView_DeleteEvent;
+
             searchMenu.ButtonPressEvent += SearchMenu_ButtonPressEvent;
             updateMenu.ButtonPressEvent += UpdateMenu_ButtonPressEvent;
+            renameMenu.ButtonPressEvent += RenameMenu_ButtonPressEvent;
+        }
+
+        private void RenameMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            TextInput ti = TextInput.Create();
+            ti.Show();
+            if ((int)ti.Run() == (int)ResponseType.Ok)
+                ImageView.SelectedImage.Rename(ti.Text);
+        }
+
+        private void TabsView_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            foreach (var v in viewers)
+            {
+                foreach (var b in v.Images) 
+                {
+                    Images.RemoveImage(b);
+                }
+                v.Close();
+            }
         }
 
         private async void ExtractRegionMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
