@@ -751,13 +751,14 @@ namespace BioGTK
                 else
                     showOverview = true;
                 Bitmap bm = BioImage.GetTile(SelectedImage, SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T), MacroResolution.Value - 2, 0, 0, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeY);
-                ResizeBicubic re = new ResizeBicubic(overview.Width, overview.Height);
+                ResizeBilinear re = new ResizeBilinear(overview.Width, overview.Height);
                 Bitmap bmp = re.Apply(bm.GetImageRGB());
+                bmp.SwitchRedBlue();
                 overviewImage = bmp;
             }
             else
             {
-                int lev = SelectedImage.Resolutions.Count - 1;
+                int lev = SelectedImage.Resolutions.Count-1;
                 double aspx = (double)SelectedImage.Resolutions[lev].SizeX / (double)SelectedImage.Resolutions[lev].SizeY;
                 double aspy = (double)SelectedImage.Resolutions[lev].SizeY / (double)SelectedImage.Resolutions[lev].SizeX;
                 if (SelectedImage.Resolutions[lev].SizeInBytes > 1500000000)
@@ -769,8 +770,9 @@ namespace BioGTK
                     showOverview = true;
                 overview = new Rectangle(0, 0, (int)(aspx * 120), (int)(aspy * 120));
                 Bitmap bm = BioImage.GetTile(SelectedImage, SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T), lev, 0, 0, SelectedImage.Resolutions[lev].SizeX, SelectedImage.Resolutions[lev].SizeY);
-                ResizeBicubic re = new ResizeBicubic(overview.Width, overview.Height);
+                ResizeBilinear re = new ResizeBilinear(overview.Width, overview.Height);
                 Bitmap bmp = re.Apply(bm.GetImageRGB());
+                bmp.SwitchRedBlue();
                 overviewImage = bmp;
             }
             ShowOverview = true;
