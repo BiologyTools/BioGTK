@@ -685,6 +685,7 @@ namespace BioGTK
                 Tools.GetTool(Tools.Tool.Type.select).Rectangle = new RectangleD(App.viewer.MouseDown.X, App.viewer.MouseDown.Y, d.X, d.Y);
                 UpdateView();
             }
+            
             if (currentTool.type == Tool.Type.move && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
             {
                 if(selectedROI!=null)
@@ -759,7 +760,6 @@ namespace BioGTK
                         }
                     }
                 }
-                App.viewer.UpdateImages();
                 App.viewer.UpdateView();
             }
             else if(currentTool.type == Tool.Type.brush)

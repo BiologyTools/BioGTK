@@ -60,6 +60,14 @@
                       </object>
                     </child>
                     <child>
+                      <object class="GtkMenuItem" id="openQuPathProject">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Open QuPath Project</property>
+                        <property name="use-underline">True</property>
+                      </object>
+                    </child>
+                    <child>
                       <object class="GtkSeparatorMenuItem">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
@@ -129,6 +137,13 @@
                       </object>
                     </child>
                     <child>
+                      <object class="GtkMenuItem" id="saveQuPathProject">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Save QuPath Project</property>
+                      </object>
+                    </child>
+                    <child>
                       <object class="GtkSeparatorMenuItem">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
@@ -146,14 +161,6 @@
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                         <property name="label" translatable="yes">Rename</property>
-                        <property name="use-underline">True</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkMenuItem">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="label" translatable="yes">Node View</property>
                         <property name="use-underline">True</property>
                       </object>
                     </child>

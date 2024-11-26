@@ -84,7 +84,7 @@ namespace BioGTK
             widthBar.Adjustment.Value = Tools.StrokeWidth;
             widthBox.Adjustment.Upper = 100;
             widthBox.Adjustment.Value = Tools.StrokeWidth;
-            if (!color1)
+            if (color1)
             {
                 rBar.Adjustment.Value = Tools.drawColor.R;
                 gBar.Adjustment.Value = Tools.drawColor.G;
@@ -163,9 +163,9 @@ namespace BioGTK
         private void Box_ChangeValue(object o, ChangeValueArgs args)
         {
             Gdk.RGBA col = new Gdk.RGBA();
-            col.Red = rBar.Value / ushort.MaxValue;
-            col.Green = gBar.Value / ushort.MaxValue;
-            col.Blue = bBar.Value / ushort.MaxValue;
+            col.Red = (float)rBar.Value / (float)ushort.MaxValue;
+            col.Green = (float)gBar.Value / (float)ushort.MaxValue;
+            col.Blue = (float)bBar.Value / (float)ushort.MaxValue;
             rBox.Value = rBar.Value;
             gBox.Value = gBar.Value;
             bBox.Value = bBar.Value;
@@ -206,9 +206,9 @@ namespace BioGTK
         {
             get {
                 RGBA rgb = new RGBA();
-                rgb.Red = rBox.Value / ushort.MaxValue;
-                rgb.Green = gBox.Value / ushort.MaxValue;
-                rgb.Blue = bBox.Value / ushort.MaxValue;
+                rgb.Red = (float)rBox.Value / (float)ushort.MaxValue;
+                rgb.Green = (float)gBox.Value / (float)ushort.MaxValue;
+                rgb.Blue = (float)bBox.Value / (float)ushort.MaxValue;
                 rgb.Alpha = 1.0;
                 return rgb; }
         }

@@ -3,6 +3,7 @@ using Bio;
 using Gtk;
 using ij.plugin.filter;
 using ikvm.runtime;
+using java.nio.file;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -51,6 +52,8 @@ namespace BioGTK
         [Builder.Object]
         private MenuItem openSeriesMenu;
         [Builder.Object]
+        private MenuItem openQuPathProject;
+        [Builder.Object]
         private MenuItem addImagesToTabMenu;
         [Builder.Object]
         private MenuItem addOMEImagesToTab;
@@ -66,6 +69,8 @@ namespace BioGTK
         private MenuItem saveSeriesMenu;
         [Builder.Object]
         private MenuItem savePyramidalMenu;
+        [Builder.Object]
+        private MenuItem saveQuPathProject;
         [Builder.Object]
         private MenuItem imagesToStack;
 
@@ -342,6 +347,7 @@ namespace BioGTK
             openOMEImagesMenu.ButtonPressEvent += openOMEImagesMenuClick;
             openOMESeriesMenu.ButtonPressEvent += openOMESeriesMenuClick;
             openSeriesMenu.ButtonPressEvent += openSeriesMenuClick;
+            openQuPathProject.ButtonPressEvent += openQuPathProjectMenuClick;
             addImagesToTabMenu.ButtonPressEvent += addImagesToTabMenuClick;
             addOMEImagesToTab.ButtonPressEvent += addOMEImagesToTabClick;
             saveSelectedTiff.ButtonPressEvent += saveSelectedTiffClick;
@@ -350,6 +356,7 @@ namespace BioGTK
             saveTabTiffMenu.ButtonPressEvent += saveTabTiffMenuClick;
             saveSeriesMenu.ButtonPressEvent += saveSeriesMenuClick;
             savePyramidalMenu.ButtonPressEvent += SavePyramidalMenu_ButtonPressEvent;
+            saveQuPathProject.ButtonPressEvent += saveQuPathProject_ButtonPressEvent;
             imagesToStack.ButtonPressEvent += imagesToStackClick;
 
             rgbMenu.ButtonPressEvent += RgbMenu_ButtonPressEvent;
@@ -482,7 +489,7 @@ namespace BioGTK
             filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            QuPath.Save(filechooser.Filename, ImageView.SelectedImage);
+            QuPath.SaveROI(filechooser.Filename, ImageView.SelectedImage);
             filechooser.Hide();
         }
 
@@ -889,7 +896,52 @@ namespace BioGTK
             }
             tabsView.Show();
         }
-
+        private void openQuPathProjectMenuClick(object sender, EventArgs a)
+        {
+            filechooser = new FileChooserDialog("Choose QuPath project file to open", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
+            filechooser.SelectMultiple = true;
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            filechooser.Hide();
+            QuPath.Project pr = QuPath.OpenProject(filechooser.Filename);
+            foreach (var item in pr.Images)
+            {
+                string file = item.ServerBuilder.Uri.Replace("file:/", "");
+                BioImage bm = BioImage.OpenFile(file);
+                AddTab(bm);
+                string[] rs = Directory.GetFiles(System.IO.Path.GetDirectoryName(file));
+                foreach (string s in rs)
+                {
+                    if (s.EndsWith(".geojson") && s.Contains(System.IO.Path.GetFileNameWithoutExtension(file)))
+                    {
+                        ROI[] rois = QuPath.ReadROI(s, bm);
+                        bm.Annotations.AddRange(rois);
+                    }
+                }
+            }
+        }
+        private void saveQuPathProject_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Gtk.FileChooserDialog filechooser =
+        new Gtk.FileChooserDialog("Set QuPath project file to save.",
+            this,
+            FileChooserAction.Save,
+            "Cancel", ResponseType.Cancel,
+            "Save", ResponseType.Accept);
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            List<BioImage[]> bms = new List<BioImage[]>();
+            foreach (var item in viewers)
+            {
+                List<BioImage> bs = new List<BioImage>();
+                foreach (var b in item.Images)
+                {
+                    bs.Add(b);
+                }
+                bms.Add(bs.ToArray());
+            }
+            QuPath.Project.SaveProject(filechooser.Filename, bms);
+        }
         /// It opens a file chooser dialog, and then adds the selected images to the currently selected
         /// viewer
         /// 
