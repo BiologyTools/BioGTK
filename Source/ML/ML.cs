@@ -12,6 +12,7 @@ using YamlDotNet.Serialization.NamingConventions;
 using YamlDotNet.Serialization;
 using System.Collections;
 using Bitmap = AForge.Bitmap;
+using jdk.nashorn.@internal.runtime.regexp.joni.constants;
 namespace BioGTK.ML
 {
     public static class ML
@@ -22,6 +23,8 @@ namespace BioGTK.ML
             {
                 File = file;
                 Name = Path.GetFileNameWithoutExtension(file);
+                string dir = System.IO.Path.GetDirectoryName(Environment.ProcessPath);
+                File = dir.Replace("\\","/") + "/Models/" + file;
                 if (file.EndsWith(".onnx"))
                 {
                     InferenceSession = new InferenceSession(file);
@@ -42,21 +45,21 @@ namespace BioGTK.ML
                 {
                     try
                     {
-                        Module = torch.jit.load(file);
+                        //torch.load(File);
+                        Module = torch.jit.load(File);
                         Module.eval();
                         var chs = Module.named_modules();
                         var input = chs.First();
                         InputModule = input.module;
                         var output = chs.Last();
                         OutputModule = output.module;
-
-
                     }
                     catch (Exception e)
                     {
+                        Console.WriteLine("Failed to run pytorch model. Ensure that PyTorch is properly installed.");
                         Console.WriteLine(e.Message.ToString());
                     }
-                    string f = Path.GetDirectoryName(file) + "/" + Path.GetFileNameWithoutExtension(file) + ".yaml";
+                    string f = System.IO.Path.GetDirectoryName(System.Environment.ProcessPath) + "/Models/" + Path.GetFileNameWithoutExtension(file) + ".yaml";
                     if (!System.IO.File.Exists(f))
                     {
                         Gtk.MessageDialog md = new Gtk.MessageDialog(App.tabsView, Gtk.DialogFlags.Modal, Gtk.MessageType.Error, Gtk.ButtonsType.Ok,"No corresponding model Yaml metadata file for:" + Name);
@@ -79,36 +82,74 @@ namespace BioGTK.ML
                         IDictionary info = (IDictionary)inps[0];
                         IDictionary inputinfo = (IDictionary)inpps[0];
                         IDictionary shapeinfo = (IDictionary)inputinfo["shape"];
-                        List<Object> shapeinfomin = (List<Object>)shapeinfo["min"];
-                        int len = shapeinfomin.Count;
-                        string size = (string)info["size"];
-                        string[] sts = size.Split("x");
-                        if (len != sts.Length)
+                        if (shapeinfo != null)
                         {
-                            shape = new long[len];
-                            for (int i = 0; i < len; i++)
+                            List<Object> shapeinfomin = (List<Object>)shapeinfo["min"];
+                            int len = shapeinfomin.Count;
+                            string size = (string)info["size"];
+                            string[] sts = size.Split("x");
+                            if (len != sts.Length)
                             {
-                                if (len - i > sts.Length)
+                                shape = new long[len];
+                                for (int i = 0; i < len; i++)
                                 {
-                                    shape[i] = 1;
-                                }
-                                else
-                                {
-                                    shape[i] = long.Parse(sts[sts.Length - i]);
+                                    if (len - i > sts.Length)
+                                    {
+                                        shape[i] = 1;
+                                    }
+                                    else
+                                    {
+                                        shape[i] = long.Parse(sts[sts.Length - i]);
+                                    }
                                 }
                             }
+                            else
+                            {
+                                shape = new long[sts.Length];
+                                for (int i = 0; i < sts.Length; i++)
+                                {
+                                    String s = sts[i];
+                                    shape[i] = long.Parse(s);
+                                }
+                            }
+                            List<Object> val = (List<Object>)inpinfo["data_range"];
+                            MaxValue = int.Parse(val[1].ToString());
                         }
                         else
                         {
-                            shape = new long[sts.Length];
-                            for (int i = 0; i < sts.Length; i++)
+                            string sh = (string)info["size"];
+                            string[] sts = (string[])sh.Split("x");
+                            IList inp = (IList)inputinfo["axes"];
+                            int co = inp.Count;
+                            shape = new long[co];
+                            for (int i = 0; i < co; i++)
                             {
-                                String s = sts[i];
-                                shape[i] = long.Parse(s);
+                                IDictionary dict = (IDictionary)inp[i];
+                                string type = (string)dict["type"];
+                                string id = (string)dict["id"];
+                                if (type == "batch")
+                                {
+                                    shape[co - 5] = 1;
+                                }
+                                if (type == "channel")
+                                {
+                                    shape[co - 4] = long.Parse(sts[3]);
+                                }
+                                if (id == "z")
+                                {
+                                    shape[co - 3] = long.Parse(sts[2]);
+                                }
+                                if (id == "y")
+                                {
+                                    shape[co - 2] = long.Parse(sts[1]);
+                                }
+                                if (id == "x")
+                                {
+                                    shape[co - 1] = long.Parse(sts[0]);
+                                }
                             }
+                            MaxValue = 256;
                         }
-                        List<Object> val = (List<Object>)inpinfo["data_range"];
-                        MaxValue = int.Parse(val[1].ToString());
                     }
                 }
             }
@@ -333,7 +374,15 @@ namespace BioGTK.ML
                             int w = Width;
                             int h = Height;
                             int d = Depth;
-                            float[,,,] img = new float[1, Depth, Width, Height];
+                            float[,,,] img;
+                            if (shape[0] > shape[3])
+                            {
+                                img = new float[1, Depth, Width, Height];
+                            }
+                            else
+                            {
+                                img = new float[Width, Height, Depth, 1];
+                            }
                             for (int y = 0; y < h; y++)
                             {
                                 for (int x = 0; x < w; x++)
@@ -389,7 +438,7 @@ namespace BioGTK.ML
                     else if (shape.Length == 5)
                     {
                         torch.Tensor tensor = torch.empty(shape);
-                        for (int i = 0; i < b.Buffers.Count; i++)
+                        for (int i = 0; i < shape[2]; i++)
                         {
                             Bitmap bm = ResizeBilinear(b.Buffers[i], Width, Height);
                             for (int y = 0; y < Height; y++)
@@ -447,7 +496,7 @@ namespace BioGTK.ML
                     bb.Volume = b.Volume;
                     bb.bitsPerPixel = bb.Buffers[0].BitsPerPixel;
                     BioImage.AutoThreshold(bb, true);
-                    Images.AddImage(bb);
+                    App.tabsView.AddTab(bb);
                 }
                 else
                     throw new NotImplementedException();
@@ -461,8 +510,15 @@ namespace BioGTK.ML
 
         public static void Run(string modelsName, BioImage image)
         {
-            string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/Models/" + modelsName;
             bool loaded = false;
+            foreach (var item in Models)
+            {
+                if (item.File.Contains(image.Filename))
+                    loaded = true;
+            }
+            if (!loaded)
+                Load(modelsName);
+            string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/Models/" + modelsName;
             foreach (var m in Models)
             {
                 if (m.Name == Path.GetFileNameWithoutExtension(modelsName))
@@ -485,56 +541,10 @@ namespace BioGTK.ML
         }
         public static Bitmap ResizeBilinear(Bitmap original, int targetWidth, int targetHeight)
         {
-            // Create a new Pixbuf with target dimensions
-            Bitmap resized = new Bitmap(targetWidth, targetHeight, original.PixelFormat);
-
-            int originalWidth = original.Width;
-            int originalHeight = original.Height;
-            float xRatio = originalWidth / (float)targetWidth;
-            float yRatio = originalHeight / (float)targetHeight;
-
-            // Lock the bits of the original and resized images (if necessary)
-
-            for (int y = 0; y < targetHeight; y++)
-            {
-                for (int x = 0; x < targetWidth; x++)
-                {
-                    float gx = ((float)x) * xRatio;
-                    float gy = ((float)y) * yRatio;
-                    int gxi = (int)gx;
-                    int gyi = (int)gy;
-
-                    ColorS topLeft = original.GetPixel(gxi, gyi);
-                    ColorS topRight = original.GetPixel(gxi + 1, gyi);
-                    ColorS bottomLeft = original.GetPixel(gxi, gyi + 1);
-                    ColorS bottomRight = original.GetPixel(gxi + 1, gyi + 1);
-
-                    ushort red = (ushort)BilinearInterpolate(gx - gxi, gy - gyi, topLeft.R, topRight.R, bottomLeft.R, bottomRight.R);
-                    ushort green = (ushort)BilinearInterpolate(gx - gxi, gy - gyi, topLeft.G, topRight.G, bottomLeft.G, bottomRight.G);
-                    ushort blue = (ushort)BilinearInterpolate(gx - gxi, gy - gyi, topLeft.B, topRight.B, bottomLeft.B, bottomRight.B);
-
-                    resized.SetPixel(x, y, new ColorS(red, green, blue));
-                }
-            }
-
-            // Unlock the bits (if necessary)
-
-            return resized;
+            AForge.Imaging.Filters.ResizeBilinear re = new AForge.Imaging.Filters.ResizeBilinear(targetWidth, targetHeight);
+            return re.Apply(original);
         }
-        private static float BilinearInterpolate(float x, float y, float topLeft, float topRight, float bottomLeft, float bottomRight)
-        {
-            float top = Interpolate(x, topLeft, topRight);
-            float bottom = Interpolate(x, bottomLeft, bottomRight);
-            return Interpolate(y, top, bottom);
-        }
-
-        private static float Interpolate(float t, float a, float b)
-        {
-            return a + (b - a) * t;
-        }
-
-        // Implement GetPixel and SetPixel methods based on how Gdk.Pixbuf manages pixel data
-
+       
         public static void Initialize()
         {
             string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath);

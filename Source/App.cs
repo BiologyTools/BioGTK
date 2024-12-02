@@ -297,6 +297,8 @@ namespace BioGTK
         /// menu item can be either a MenuItem or a Menu.
         private static void GetMainMenuItem(string path, out Widget wid, out bool Menu)
         {
+            wid = null;
+            Menu = false;
             string[] s = path.Split('/');
             MenuBar w = tabsView.MainMenu;
             for (int i = 0; i < s.Length; i++)
@@ -317,7 +319,7 @@ namespace BioGTK
                     catch (Exception)
                     {
                         MenuItem mi = (MenuItem)item;
-                        if (mi.Label == s[i] && i == s.Length - 1)
+                        if (mi.Label == s[i])
                         {
                             wid = mi;
                             Menu = false;
@@ -326,8 +328,8 @@ namespace BioGTK
                     }
                 }
             }
-            wid = null;
-            Menu = false;
+            if(wid == null)
+            GetMainImageJMenuItem(path, out wid, out Menu);
         }
 
         /// The function `GetMainMenuItem` takes a path and returns the corresponding `Widget` and a
@@ -455,6 +457,7 @@ namespace BioGTK
                     mi.ButtonPressEvent += ItemClicked;
                     me.Append(mi);
                     me.ShowAll();
+                    return;
                 }
                 else
                 {
@@ -465,6 +468,7 @@ namespace BioGTK
                     me.Append(mi);
                     m.Submenu = me;
                     me.ShowAll();
+                    return;
                 }
             }
             else if(menu && w!=null)

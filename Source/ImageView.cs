@@ -64,12 +64,7 @@ namespace BioGTK
         {
             Images.Add(im);
             selectedIndex = Images.Count - 1;
-            if(im.Resolutions[0].SizeX <= 1920 && im.Resolutions[0].SizeY <= 1080)
-            {
-                sk.WidthRequest = im.Resolutions[0].SizeX;
-                sk.HeightRequest = im.Resolutions[0].SizeY;
-            }
-            else
+            if(im.Resolutions[0].SizeX < 1920 && im.Resolutions[0].SizeY < 1080)
             {
                 sk.WidthRequest = 600;
                 sk.HeightRequest = 400;
@@ -288,7 +283,7 @@ namespace BioGTK
             };
         }
         private bool refresh = false;
-        private void Render(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e)
+        private async void Render(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e)
         {
             try
             {
@@ -607,6 +602,52 @@ namespace BioGTK
 
             return SKImage.FromBitmap(skBitmap);
         }
+        private static SKImage Convert8bppBitmapToSKImage(Bitmap sourceBitmap)
+        {
+            // Ensure the input bitmap is 8bpp indexed
+            if (sourceBitmap.PixelFormat != PixelFormat.Format8bppIndexed)
+                throw new ArgumentException("Bitmap must be 8bpp indexed.", nameof(sourceBitmap));
+
+            // Lock the bitmap for reading pixel data
+            BitmapData bitmapData = sourceBitmap.LockBits(
+                new Rectangle(0, 0, sourceBitmap.Width, sourceBitmap.Height),
+                ImageLockMode.ReadOnly,
+                sourceBitmap.PixelFormat);
+
+            try
+            {
+           
+                // Read the pixel data
+                int dataSize = bitmapData.Stride * bitmapData.Height;
+                byte[] pixelData = new byte[dataSize];
+                Marshal.Copy(bitmapData.Scan0, pixelData, 0, dataSize);
+
+                // Create an SKBitmap with the same dimensions as the input bitmap
+                using (var skBitmap = new SKBitmap(sourceBitmap.Width, sourceBitmap.Height, SKColorType.Gray8, SKAlphaType.Premul))
+                {
+                    // Copy the pixel data into the SKBitmap
+                    var skBitmapPixels = skBitmap.GetPixelSpan();
+                    for (int y = 0; y < skBitmap.Height; y++)
+                    {
+                        int srcOffset = y * bitmapData.Stride;
+                        int destOffset = y * skBitmap.Width;
+
+                        for (int x = 0; x < skBitmap.Width; x++)
+                        {
+                            skBitmapPixels[destOffset + x] = pixelData[srcOffset + x];
+                        }
+                    }
+
+                    // Create an SKImage from the SKBitmap
+                    return SKImage.FromBitmap(skBitmap);
+                }
+            }
+            finally
+            {
+                // Unlock the bitmap
+                sourceBitmap.UnlockBits(bitmapData);
+            }
+        }
         public static SKImage Convert16bppBitmapToSKImage(Bitmap sourceBitmap)
         {
             Bitmap bm = sourceBitmap.GetImageRGB();
@@ -647,16 +688,20 @@ namespace BioGTK
                 return Convert24bppBitmapToSKImage(bitm);
             if (bitm.PixelFormat == PixelFormat.Format32bppArgb)
                 return Convert32bppBitmapToSKImage(bitm);
+            if (bitm.PixelFormat == PixelFormat.Float)
+                return Convert32bppBitmapToSKImage(bitm.GetImageRGBA());
             if (bitm.PixelFormat == PixelFormat.Format16bppGrayScale)
                 return Convert16bppBitmapToSKImage(bitm.GetImageRGB());
             if (bitm.PixelFormat == PixelFormat.Format48bppRgb)
                 return Convert16bppBitmapToSKImage(bitm.GetImageRGB());
+            if (bitm.PixelFormat == PixelFormat.Format8bppIndexed)
+                return Convert8bppBitmapToSKImage(bitm);
             else
                 throw new NotSupportedException("PixelFormat " + bitm.PixelFormat + " is not supported for SKImage.");
         }
 
         /// It updates the images.
-        public async void UpdateImages(bool updatePyramidal = false)
+        public void UpdateImages(bool updatePyramidal = false)
         {
             if (SelectedImage == null)
                 return;
@@ -670,7 +715,7 @@ namespace BioGTK
             if (SelectedImage.isPyramidal && updatePyramidal)
             {
                 SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
-                await SelectedImage.UpdateBuffersPyramidal();
+                SelectedImage.UpdateBuffersPyramidal().Wait();
             }
             SKImages.Clear();
             Bitmaps.Clear();
@@ -706,7 +751,7 @@ namespace BioGTK
         /// It updates the image.
         public void UpdateImage(bool updatePyramidal = false)
         {
-            UpdateImages(updatePyramidal);
+           UpdateImages(updatePyramidal);
         }
         bool showOverview = false;
         Rectangle overview;
@@ -1559,7 +1604,7 @@ namespace BioGTK
             float dx = Scale.Width / 50;
             float dy = Scale.Height / 50;
             if (!SelectedImage.isPyramidal)
-                if (args.Event.State == ModifierType.ControlMask)
+                if (args.Event.State.HasFlag(ModifierType.ControlMask))
                 {
                     if (args.Event.Direction == ScrollDirection.Up)
                     {
@@ -1583,7 +1628,7 @@ namespace BioGTK
                     if (zBar.Value - 1 >= zBar.Adjustment.Lower)
                         zBar.Value -= 1;
                 }
-            if (args.Event.State.HasFlag(ModifierType.ControlMask) && SelectedImage.isPyramidal)
+                if (args.Event.State.HasFlag(ModifierType.ControlMask) && SelectedImage.isPyramidal)
                 if (args.Event.Direction == ScrollDirection.Up)
                 {
                     Resolution *= 0.80;
@@ -1882,8 +1927,6 @@ namespace BioGTK
                 );
             }
         }
-
-
         public int Level
         {
             get
@@ -2338,7 +2381,6 @@ namespace BioGTK
                     }
                     else
                     {
-                        //s = mouseD;
                         if (SelectedImage.isRGB)
                         {
                             float r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc, (int)s.X, (int)s.Y, 0);

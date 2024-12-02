@@ -3,25 +3,25 @@
     <TargetFramework>net8.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RuntimeIdentifiers>osx-x64;linux-x64;win-x64;win-arm64;linux-arm64;osx-arm64;</RuntimeIdentifiers>
-    <AssemblyVersion>5.8.0</AssemblyVersion>
-    <FileVersion>5.8.0</FileVersion>
+    <AssemblyVersion>5.8.1</AssemblyVersion>
+    <FileVersion>5.8.1</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>BioGTK</PackageId>
     <Title>BioGTK</Title>
     <PackageProjectUrl>https://github.com/BiologyTools/BioGTK</PackageProjectUrl>
     <PackageIcon>banner.jpg</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageVersion>5.8.0</PackageVersion>
+    <PackageVersion>5.8.1</PackageVersion>
     <RepositoryUrl>https://github.com/BiologyTools/BioGTK</RepositoryUrl>
     <PackageTags>Biology; GTK; ImageJ; Bio-Formats; Image-Stacks; Microscopy; Whole-Slide-Image; Segment-Anything; SAM; QuPath;</PackageTags>
     <PackageLicenseExpression> GPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Description>A .NET application &amp; library for editing &amp; annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters &amp; macro functions. Supports Windows, Linux and Mac.</Description>
-    <Version>5.8.0</Version>
+    <Version>5.8.1</Version>
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>Added support for QuPath project files.</PackageReleaseNotes>
+    <PackageReleaseNotes>NumPy files support.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
@@ -415,7 +415,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="BioLib" Version="3.0.0" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="ImageJ.NET" Version="154.0.0.2" />
@@ -439,6 +438,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BioLib\BioLib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="macro-commands.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -458,12 +461,12 @@
     <CFBundleName>BioGTK</CFBundleName>
     <CFBundleDisplayName>BioGTK</CFBundleDisplayName>
     <CFBundleIdentifier>com.BioGTK</CFBundleIdentifier>
-    <CFBundleVersion>5.8.0</CFBundleVersion>
+    <CFBundleVersion>5.8.1</CFBundleVersion>
     <CFBundlePackageType>APPL</CFBundlePackageType>
     <CFBundleSignature>????</CFBundleSignature>
     <CFBundleExecutable>BioGTKApp</CFBundleExecutable>
     <CFBundleIconFile>bio.icns</CFBundleIconFile>
-    <CFBundleShortVersionString>5.8.0</CFBundleShortVersionString>
+    <CFBundleShortVersionString>5.8.1</CFBundleShortVersionString>
     <NSPrincipalClass>NSApplication</NSPrincipalClass>
     <NSHighResolutionCapable>true</NSHighResolutionCapable>
     <ImplicitUsings>enable</ImplicitUsings>

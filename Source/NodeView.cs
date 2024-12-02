@@ -121,6 +121,7 @@ namespace BioGTK
             tree.Model = store;
             
         }
+
         /// It takes a list of images, and for each image, it takes a list of bitmaps, and for each
         /// bitmap, it adds a row to the treeview
         public void UpdateItems()

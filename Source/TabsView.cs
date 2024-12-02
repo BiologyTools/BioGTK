@@ -235,13 +235,6 @@ namespace BioGTK
                 mi.ButtonPressEvent += Mi_ButtonPressEvent;
                 rm.Append(mi);
             }
-            foreach (Fiji.Macro.Command c in BioLib.Fiji.Macro.Commands.Values)
-            {
-                MenuItem mi = new MenuItem(c.Name);
-                mi.ButtonPressEvent += Mi_ButtonPressEvent;
-                rm.Append(mi);
-            }
-            runMenu.Submenu = rm;
             //runMenu.ShowAll();
             Plugins.Initialize();
             ML.ML.Initialize();
@@ -779,6 +772,7 @@ namespace BioGTK
                     tabsView.AppendPage(dummy, new Gtk.Label(im.Filename));
                     tabsView.ShowAll(); 
                     Console.WriteLine("New tab added for " + im.Filename);
+                    App.nodeView.UpdateItems();
                 });
             }
             catch (Exception e)
