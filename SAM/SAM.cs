@@ -291,19 +291,41 @@ namespace BioGTK
 
             float[] hasMaskValues = new float[1] { 0 };
             var hasMaskValues_tensor = new DenseTensor<float>(hasMaskValues, new[] { 1 });
-
-            float[] orig_im_size_values = { (float)orgHei, (float)orgWid };
-            var orig_im_size_values_tensor = new DenseTensor<float>(orig_im_size_values, new[] { 2 });
-
-            var decode_inputs = new List<NamedOnnxValue>
+            List<NamedOnnxValue> decode_inputs;
+            if(SAM.SAM2)
             {
-                NamedOnnxValue.CreateFromTensor("image_embeddings", embedding_tensor),
+                int[] orig_im_size_values = { (int)orgHei, (int)orgWid };
+                var orig_im_size_values_tensor = new DenseTensor<int>(orig_im_size_values, new[] { 2 });
+                var fs = new float[32 * 256 * 256];
+                var feats = new DenseTensor<float>(fs, new[] { 1, 32, 256, 256 });
+                var fs2 = new float[64 * 128 * 128];
+                var feats2 = new DenseTensor<float>(fs2, new[] { 1, 64, 128, 128 });
+                decode_inputs = new List<NamedOnnxValue>
+                {
+                NamedOnnxValue.CreateFromTensor("image_embed", embedding_tensor),
+                NamedOnnxValue.CreateFromTensor("high_res_feats_0", feats),
+                NamedOnnxValue.CreateFromTensor("high_res_feats_1", feats2),
                 NamedOnnxValue.CreateFromTensor("point_coords", point_coords_tensor),
                 NamedOnnxValue.CreateFromTensor("point_labels", point_label_tensor),
                 NamedOnnxValue.CreateFromTensor("mask_input", mask_tensor),
                 NamedOnnxValue.CreateFromTensor("has_mask_input", hasMaskValues_tensor),
                 NamedOnnxValue.CreateFromTensor("orig_im_size", orig_im_size_values_tensor)
-            };
+                };
+            }
+            else
+            {
+                float[] orig_im_size_values = { (float)orgHei, (float)orgWid };
+                var orig_im_size_values_tensor = new DenseTensor<float>(orig_im_size_values, new[] { 2 });
+                decode_inputs = new List<NamedOnnxValue>
+                {
+                    NamedOnnxValue.CreateFromTensor("image_embeddings", embedding_tensor),
+                    NamedOnnxValue.CreateFromTensor("point_coords", point_coords_tensor),
+                    NamedOnnxValue.CreateFromTensor("point_labels", point_label_tensor),
+                    NamedOnnxValue.CreateFromTensor("mask_input", mask_tensor),
+                    NamedOnnxValue.CreateFromTensor("has_mask_input", hasMaskValues_tensor),
+                    NamedOnnxValue.CreateFromTensor("orig_im_size", orig_im_size_values_tensor)
+                };
+            }
             MaskData md = new MaskData();
             var segmask = this.mDecoder.Run(decode_inputs).ToList();
             md.mMask = segmask[0].AsTensor<float>().ToArray().ToList();

@@ -30,6 +30,12 @@ namespace BioGTK
         {
             int neww = 0;
             int newh = 0;
+            if(SAM.SAM2)
+            {
+                neww = 1024;
+                newh = 1024;
+            }
+            else
             this.GetPreprocessShape(b.SizeX, b.SizeY, this.mTargetLength, ref neww, ref newh);
 
             float[,,] resizeImg = this.Resize(b,neww,newh);
