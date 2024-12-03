@@ -29,7 +29,7 @@ A .NET application & library for editing & annotating various microscopy image f
 
 - Exporting ROI's from each OME image in a folder of images to CSV.
 
-- Easy segmentation with Segment Anything (SAM). Required model files downloadable from [Releases.](https://github.com/BiologyTools/BioGTK/releases/tag/SAM-Models)
+- Easy segmentation with Segment Anything 2 (SAM 2). Download required model files from [here.](https://github.com/BiologyTools/BioGTK/releases/tag/SAM-Models)
 
 ## Dependencies
 - [BioFormats.NET8](https://github.com/BiologyTools/BioFormatsNET8) [GPL3](https://www.gnu.org/licenses/gpl-3.0.en.html)
@@ -41,6 +41,7 @@ A .NET application & library for editing & annotating various microscopy image f
 - [ScottPlot](https://oxyplot.github.io/) [MIT](https://github.com/ScottPlot/ScottPlot/blob/main/LICENSE)
 - [LibVips](https://www.libvips.org/install.html) (Optional) [LGPL]([https://www.libvips.org/install.html](https://github.com/libvips/libvips/blob/master/LICENSE))
 - [Segment-Anything-CSharp](https://github.com/AIDajiangtang/Segment-Anything-CSharp) (Optional) [Apache License 2.0](https://github.com/AIDajiangtang/Segment-Anything-CSharp/blob/main/LICENSE)
+- [ONNX-SAM2-Segment-Anything](https://github.com/ibaiGorordo/ONNX-SAM2-Segment-Anything) (Optional) [MIT](https://github.com/ibaiGorordo/ONNX-SAM2-Segment-Anything/blob/main/LICENSE)
 - [OpenSlideGTK](https://github.com/BiologyTools/OpenSlideSharp) (Optional) [MIT](https://github.com/BiologyTools/OpenSlideSharp/blob/master/LICENSE)
 
 ## Scripting
