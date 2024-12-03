@@ -18,6 +18,7 @@ namespace BioGTK
 
     class SAM : IDisposable
     {
+        public static bool SAM2 = true;
         public static SAM theSingleton = null;
         InferenceSession mEncoder;
         InferenceSession mDecoder;
@@ -92,18 +93,37 @@ namespace BioGTK
                 Transforms tranform = new Transforms(1024);
                 float[] img = tranform.ApplyImage(bu);
                 var tensor = new DenseTensor<float>(img, new[] { 1, 3, 1024, 1024 });
-                var inputs = new List<NamedOnnxValue>
+                IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results = null;
+                List<NamedOnnxValue> inputs = new List<NamedOnnxValue>
                 {
-                    NamedOnnxValue.CreateFromTensor("x", tensor)
+                    NamedOnnxValue.CreateFromTensor("image", tensor)
                 };
-
-                var results = this.mEncoder.Run(inputs);
+                try
+                {
+                    results = this.mEncoder.Run(inputs);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Tried running SAM-2 next trying SAM-1");
+                    SAM2 = false;
+                }
+                if(!SAM2)
+                {
+                    inputs = new List<NamedOnnxValue>
+                    {
+                        NamedOnnxValue.CreateFromTensor("x", tensor)
+                    };
+                    results = this.mEncoder.Run(inputs);
+                }
                 if (b.Tag == null)
                 {
                     b.Tag = new List<float[]>();
                 }
                 List<float[]> l = (List<float[]>)b.Tag;
-                l.Add(results.First().AsTensor<float>().ToArray());
+                if(!SAM2)
+                    l.Add(results.First().AsTensor<float>().ToArray());
+                else
+                    l.Add(results.Last().AsTensor<float>().ToArray());
                 b.Tag = l;
                 results.Dispose();
                 pr.ProgressValue = (double)i/b.Buffers.Count;
@@ -130,7 +150,8 @@ namespace BioGTK
         {
             ZCT c = App.viewer.GetCoordinate();
             List<float[]> lts = (List<float[]>)b.Tag;
-            var embedding_tensor = new DenseTensor<float>(lts[b.GetFrameIndex(c.Z,c.C,c.T)], new[] { 1, 256, 64, 64 });
+            int fr = b.GetFrameIndex(c.Z, c.C, c.T);
+            var embedding_tensor = new DenseTensor<float>(lts[fr], new[] { 1, 256, 64, 64 });
             var bpmos = promotions.FindAll(e => e.mType == PromotionType.Box);
             var pproms = promotions.FindAll(e => e.mType == PromotionType.Point);
             int boxCount = promotions.FindAll(e => e.mType == PromotionType.Box).Count();
@@ -178,19 +199,41 @@ namespace BioGTK
             float[] hasMaskValues = new float[1] { 0 };
             var hasMaskValues_tensor = new DenseTensor<float>(hasMaskValues, new[] { 1 });
 
-            float[] orig_im_size_values = { (float)orgHei, (float)orgWid };
-            var orig_im_size_values_tensor = new DenseTensor<float>(orig_im_size_values, new[] { 2 });
-
-            var decode_inputs = new List<NamedOnnxValue>
+            var decode_inputs = new List<NamedOnnxValue>();
+            if (SAM2)
             {
+                int[] orig_im_size_values = { (int)orgHei, (int)orgWid };
+                var orig_im_size_values_tensor = new DenseTensor<int>(orig_im_size_values, new[] { 2 });
+                var fs = new float[32 * 256 * 256];
+                var feats = new DenseTensor<float>(fs, new[] { 1, 32, 256, 256 });
+                var fs2 = new float[64 * 128 * 128];
+                var feats2 = new DenseTensor<float>(fs2, new[] { 1, 64, 128, 128 });
+                decode_inputs = new List<NamedOnnxValue>
+                {
+                NamedOnnxValue.CreateFromTensor("image_embed", embedding_tensor),
+                NamedOnnxValue.CreateFromTensor("high_res_feats_0", feats),
+                NamedOnnxValue.CreateFromTensor("high_res_feats_1", feats2),
+                NamedOnnxValue.CreateFromTensor("point_coords", point_coords_tensor),
+                NamedOnnxValue.CreateFromTensor("point_labels", point_label_tensor),
+                NamedOnnxValue.CreateFromTensor("mask_input", mask_tensor),
+                NamedOnnxValue.CreateFromTensor("has_mask_input", hasMaskValues_tensor),
+                NamedOnnxValue.CreateFromTensor("orig_im_size", orig_im_size_values_tensor)
+                };
+            }
+            else
+            {
+                float[] orig_im_size_values = { (float)orgHei, (float)orgWid };
+                var orig_im_size_values_tensor = new DenseTensor<float>(orig_im_size_values, new[] { 2 });
+                decode_inputs = new List<NamedOnnxValue>
+                {
                 NamedOnnxValue.CreateFromTensor("image_embeddings", embedding_tensor),
                 NamedOnnxValue.CreateFromTensor("point_coords", point_coords_tensor),
                 NamedOnnxValue.CreateFromTensor("point_labels", point_label_tensor),
                 NamedOnnxValue.CreateFromTensor("mask_input", mask_tensor),
                 NamedOnnxValue.CreateFromTensor("has_mask_input", hasMaskValues_tensor),
                 NamedOnnxValue.CreateFromTensor("orig_im_size", orig_im_size_values_tensor)
-            };
-
+                };
+            }
             var segmask = this.mDecoder.Run(decode_inputs);
             var outputmask = segmask.First().AsTensor<float>().ToArray();
             return outputmask;
