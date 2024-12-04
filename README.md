@@ -29,7 +29,7 @@ A .NET application & library for editing & annotating various microscopy image f
 
 - Exporting ROI's from each OME image in a folder of images to CSV.
 
-- Easy segmentation with Segment Anything 2 (SAM 2). Download required model files from [here.](https://github.com/BiologyTools/BioGTK/releases/tag/SAM-Models) Reaming them to "decoder-quant.onnx" and "encoder-quant.onnx" then placing them in the "StartUpPath" folder of the program.
+- Easy segmentation with Segment Anything 2 (SAM 2). Download required model files from [here.](https://github.com/BiologyTools/BioGTK/releases/tag/SAM-Models) Renaming them to "decoder-quant.onnx" and "encoder-quant.onnx" then placing them in the "StartUpPath" folder of the program.
 
 ## Dependencies
 - [BioFormats.NET8](https://github.com/BiologyTools/BioFormatsNET8) [GPL3](https://www.gnu.org/licenses/gpl-3.0.en.html)
