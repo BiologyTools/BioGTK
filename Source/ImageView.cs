@@ -401,9 +401,9 @@ namespace BioGTK
 
                         if (an.type == ROI.Type.Mask || an.roiMask != null)
                         {
-                            SKImage sim = an.roiMask.GetColored(an.fillColor).ToSKImage();
+                            SKImage sim = an.roiMask.GetColored(an.fillColor,100).ToSKImage();
                             RectangleD p = ToScreenRect(an.X, an.Y, sim.Width * im.PhysicalSizeX, sim.Height * im.PhysicalSizeY);
-                            canvas.DrawImage(sim, ToRectangle((float)p.X, (float)p.Y, (float)p.W, (float)p.H), paint);
+                            canvas.DrawImage(sim, ToRectangle((float)p.X, (float)0, (float)0, (float)p.H), paint);
                             sim.Dispose();
                         }
                         if (an.type == ROI.Type.Point)
@@ -700,6 +700,11 @@ namespace BioGTK
                 throw new NotSupportedException("PixelFormat " + bitm.PixelFormat + " is not supported for SKImage.");
         }
 
+        public void SetTitle(string s)
+        {
+            this.Title = s;
+        }
+
         /// It updates the images.
         public void UpdateImages(bool updatePyramidal = false)
         {
@@ -849,6 +854,7 @@ namespace BioGTK
             this.KeyPressEvent += ImageView_KeyPressEvent;
             this.DestroyEvent += ImageView_DestroyEvent;
             this.DeleteEvent += ImageView_DeleteEvent;
+            this.FocusInEvent += ImageView_FocusInEvent;
             rBox.Changed += RBox_Changed;
             gBox.Changed += GBox_Changed;
             bBox.Changed += BBox_Changed;
@@ -875,11 +881,17 @@ namespace BioGTK
 
         }
 
+        private void ImageView_FocusInEvent(object o, FocusInEventArgs args)
+        {
+            App.SelectWindow(this.Title);
+        }
+
         private void ImageView_DestroyEvent(object o, DestroyEventArgs args)
         {
             foreach (var item in this.Images)
             {
                 BioLib.Images.RemoveImage(item);
+                App.tabsView.RemoveViewer(this);
             }
         }
 
@@ -1268,10 +1280,10 @@ namespace BioGTK
         /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-events-delete.html.en
         private void ImageView_DeleteEvent(object o, DeleteEventArgs args)
         {
-            foreach (var item in this.Images)
+            for (int i = 0; i < this.Images.Count; i++)
             {
+                var item = this.Images[i];
                 App.tabsView.RemoveTab(item.Filename);
-                BioLib.Images.RemoveImage(item);
             }
         }
 

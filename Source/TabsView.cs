@@ -4,7 +4,9 @@ using Gtk;
 using ij.plugin.filter;
 using ikvm.runtime;
 using java.nio.file;
+using sun.applet.resources;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
@@ -19,13 +21,37 @@ namespace BioGTK
     public class TabsView : Window
     {
         #region Properties
-
         private Builder _builder;
-        public List<ImageView> viewers = new List<ImageView>();
-        public static ImageView SelectedViewer
+        private List<ImageView> viewers = new List<ImageView>();
+        public ImageView GetViewer(int i)
         {
-            get { return App.viewer; }
+            return viewers[i];
         }
+        public ImageView? GetViewer(string name)
+        {
+            for (int v = 0; v < viewers.Count; v++)
+            {
+                for (int i = 0; i < viewers.Count; i++)
+                {
+                    if (viewers[v].Images[i].Filename == name)
+                        return viewers[v];
+                } 
+            }
+            return null;
+        }
+        public int GetViewerCount()
+        {
+            return viewers.Count;
+        }
+        public void RemoveViewer(ImageView v)
+        {
+            viewers.Remove(v);
+        }
+        public void AddViewer(ImageView v)
+        {
+            viewers.Add(v);
+        }
+
 #pragma warning disable 649
         [Builder.Object]
         public MenuBar ImageJMenu;
@@ -227,6 +253,7 @@ namespace BioGTK
             commandsMenu.Submenu = me;
             commandsMenu.ShowAll();
             recentMenu.Submenu = recent;
+
             App.ApplyStyles(this);
             Menu rm = new Menu();
             foreach(Scripting.Script s in Scripting.scripts.Values)
@@ -239,6 +266,7 @@ namespace BioGTK
             Plugins.Initialize();
             ML.ML.Initialize();
         }
+
         /// This function creates a file chooser dialog that allows the user to select the location of
         /// the ImageJ executable
         /// 
@@ -397,7 +425,7 @@ namespace BioGTK
 
             tabClose.ButtonPressEvent += TabClose_ButtonPressEvent;
             tabDuplicate.ButtonPressEvent += TabDuplicate_ButtonPressEvent;
-            this.Focused += TabsView_Focused;
+            this.FocusInEvent += TabsView_FocusInEvent;
             rgbMenu.ButtonPressEvent += RgbMenu_ButtonPressEvent;
             filteredMenu.ButtonPressEvent += FilteredMenu_ButtonPressEvent;
             rawMenu.ButtonPressEvent += RawMenu_ButtonPressEvent;
@@ -412,12 +440,45 @@ namespace BioGTK
             renameMenu.ButtonPressEvent += RenameMenu_ButtonPressEvent;
         }
 
+        public void RenameTab(string name, string newName)
+        {
+            int i = 0;
+            foreach (Widget item in tabsView.Children)
+            {
+                // Get the tab widget for the page and set the new title
+                Label l = (Label)tabsView.GetTabLabel(tabsView.GetNthPage(i));
+                if (l.Text == name)
+                {
+                    l.Text = newName;
+                    return;
+                }
+            }
+        }
+        void RenameNotebookTab(int pageIndex, string newTitle)
+        {
+            if (pageIndex >= 0 && pageIndex < tabsView.NPages)
+            {
+                // Get the tab widget for the page and set the new title
+                Widget tabLabel = tabsView.GetTabLabel(tabsView.GetNthPage(pageIndex));
+                if (tabLabel is Label label)
+                {
+                    label.Text = newTitle;
+                }
+            }
+        }
+        private void TabsView_FocusInEvent(object o, FocusInEventArgs args)
+        {
+            App.tabsView = this;
+        }
+
         private void RenameMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             TextInput ti = TextInput.Create();
             ti.Show();
             if ((int)ti.Run() == (int)ResponseType.Ok)
-                ImageView.SelectedImage.Rename(ti.Text);
+            {
+                App.Rename(ti.Text);
+            }
         }
 
         private void TabsView_DeleteEvent(object o, DeleteEventArgs args)
@@ -576,10 +637,10 @@ namespace BioGTK
         private void FocusMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             if (ImageView.SelectedImage == null) return;
-            ZCT co = SelectedViewer.GetCoordinate();
+            ZCT co = App.viewer.GetCoordinate();
             int f = BioImage.FindFocus(ImageView.SelectedImage, co.C, co.T);
             ZCT z = ImageView.SelectedImage.Buffers[f].Coordinate;
-            SelectedViewer.SetCoordinate(z.Z, z.C, z.T);
+            App.viewer.SetCoordinate(z.Z, z.C, z.T);
         }
 
         /// When the user clicks on the Script Recorder menu item, the Script Recorder window is shown
@@ -688,6 +749,7 @@ namespace BioGTK
             if(viewers.Count == 0) return;
             viewers[(int)args.PageNum].Present();
             App.viewer = viewers[(int)args.PageNum];
+            ImageView.SelectedImage = App.viewer.Images[0];
         }
 
         /// If the emission menu is active, then deactivate it. Otherwise, activate it
@@ -754,7 +816,14 @@ namespace BioGTK
             emissionMenu.Active = false;
             App.viewer.Mode = ImageView.ViewMode.RGBImage;
         }
-
+        /// <summary>
+        /// Sets the current tab index.
+        /// </summary>
+        /// <param name="i"></param>
+        public void SetTab(int i)
+        {
+            tabsView.Page = i;
+        }
         /// It adds a new tab to the tab control
         /// 
         /// @param BioImage This is the image that you want to display.
@@ -764,15 +833,26 @@ namespace BioGTK
             {
                 Application.Invoke(delegate
                 {
+                    for (int vi = 0; vi < viewers.Count; vi++)
+                    {
+                        for (int i = 0; i < viewers[vi].Images.Count; i++)
+                        {
+                            if (viewers[vi].Images[i].Filename == im.Filename)
+                                return;
+                        }
+                    }
                     ImageView v = ImageView.Create(im);
                     viewers.Add(v);
-                    v.Show();
-                    Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file) + "/" + im.Filename);
+                    Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file.Replace("\\", "/")) + "/" + im.Filename);
+                    dummy.Text = im.file.Replace("\\", "/") + "/" + im.Filename;
                     dummy.Visible = false;
-                    tabsView.AppendPage(dummy, new Gtk.Label(im.Filename));
-                    tabsView.ShowAll(); 
+                    Label l = new Gtk.Label(System.IO.Path.GetFileName(im.Filename));
+                    l.Text = System.IO.Path.GetFileName(im.Filename);
+                    tabsView.AppendPage(dummy, l);                
                     Console.WriteLine("New tab added for " + im.Filename);
                     App.nodeView.UpdateItems();
+                    tabsView.ShowAll();
+                    v.Show();
                 });
             }
             catch (Exception e)
@@ -780,16 +860,6 @@ namespace BioGTK
                 Console.WriteLine(e.ToString());
             }
         }
-
-        /// When the TabsView is focused, set the tabsView variable in the App class to the TabsView
-        /// 
-        /// @param o The object that is being focused
-        /// @param FocusedArgs This is a class that contains the following properties:
-        private void TabsView_Focused(object o, FocusedArgs args)
-        {
-            App.tabsView = this;
-        }
-
         Gtk.FileChooserDialog filechooser;
         /// It opens a file chooser dialog, and when the user selects a file, it creates a new BioImage
        /// object, creates a new ImageView object, and adds the ImageView object to the list of viewers
@@ -1371,9 +1441,7 @@ namespace BioGTK
             foreach (Widget item in tabsView.Children)
             {
                 Gtk.Label l = item as Gtk.Label;
-                string name = System.IO.Path.GetFileName(l.Text);
-                name = name.Replace("_", "");
-                tabName = tabName.Replace("_", "");
+                string name = System.IO.Path.GetFileName(l.LabelMarkup);
                 if (name == tabName)
                 {
                     ImageView iv = viewers[i];
@@ -1382,7 +1450,6 @@ namespace BioGTK
                         Images.RemoveImage(iv.Images[v]);
                     }
                     tabsView.Remove(item);
-                    //viewers[i].Dispose();
                     viewers.RemoveAt(i);
                     App.nodeView.UpdateItems();
                     return;
@@ -1397,10 +1464,16 @@ namespace BioGTK
         {
             BioImage b = BioImage.OpenFile(file);
             ImageView view = ImageView.Create(b);
-            viewers.Add(view);
+            if (!viewers.Contains(App.viewer))
+                viewers.Add(view);
             Label dummy = new Gtk.Label(b.Filename);
+            dummy.Text = b.Filename;
+            dummy.UseMarkup = false;
             dummy.Visible = false;
-            tabsView.AppendPage(dummy, new Gtk.Label(b.Filename));
+            Label l = new Gtk.Label(b.Filename);
+            l.Text = b.Filename;
+            l.UseMarkup = false;
+            tabsView.AppendPage(dummy, l);
             view.Present();
         }
         #endregion

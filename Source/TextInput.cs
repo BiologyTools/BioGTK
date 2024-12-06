@@ -87,13 +87,20 @@ namespace BioGTK
 
         void SetText()
         {
-            Tools.selectedROI.Text = textinputBox.Text;
-            string s = fontBut.Font;
-            s = s.Replace(",", "");
-            string[] sts = s.Split(' ');
-            s = s.Replace(sts[sts.Length-1],"");
-            Tools.selectedROI.family = fontBut.FontFamily.Name;
-            Tools.selectedROI.fontSize = float.Parse(sts[sts.Length - 1]);
+            try
+            {
+                Tools.selectedROI.Text = textinputBox.Text;
+                string s = fontBut.Font;
+                s = s.Replace(",", "");
+                string[] sts = s.Split(' ');
+                s = s.Replace(sts[sts.Length-1],"");
+                Tools.selectedROI.family = fontBut.FontFamily.Name;
+                Tools.selectedROI.fontSize = float.Parse(sts[sts.Length - 1]);
+            }
+            catch (Exception e)
+            {
+
+            }
         }
 
         /* A property that returns the Text value of the text input textbox. */

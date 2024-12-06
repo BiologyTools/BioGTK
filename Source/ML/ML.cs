@@ -12,7 +12,7 @@ using YamlDotNet.Serialization.NamingConventions;
 using YamlDotNet.Serialization;
 using System.Collections;
 using Bitmap = AForge.Bitmap;
-using jdk.nashorn.@internal.runtime.regexp.joni.constants;
+
 namespace BioGTK.ML
 {
     public static class ML
@@ -152,6 +152,7 @@ namespace BioGTK.ML
                         }
                     }
                 }
+                BioLib.Recorder.AddLine("BioGTK.ML.Model model = new BioGTK.ML.Model(\"" + file + "\");",false);
             }
             public Dictionary<string, object> Metadata { get; set; } = null;
             public InferenceSession InferenceSession { get; set; }
@@ -275,6 +276,7 @@ namespace BioGTK.ML
                     RunONNX(b);
                 else if (File.EndsWith(".pt"))
                     RunTorch(b);
+                BioLib.Recorder.AddLine("model.Run(Images.GetImage(\"" + b.Filename + "\");",false);
             }
             public void RunONNX(BioImage b)
             {

@@ -38,10 +38,10 @@ namespace BioGTK
                             float pred_iou_thresh = 0.5f,
                             float stability_score_thresh = 0.5f,
                             float stability_score_offset = 1.0f,
-                            float box_nms_thresh = 0.7f,
-                            int crop_n_layers = 0,
-                            float crop_nms_thresh = 0.7f,
-                            float crop_overlap_ratio = (float)512 / 1500,
+                            float box_nms_thresh = 0.3f,
+                            int crop_n_layers = 1,
+                            float crop_nms_thresh = 0.3f,
+                            float crop_overlap_ratio = 0.5f,
                             int crop_n_points_downscale_factor = 1,
                             List<double[,]> point_grids = null,
                             int min_mask_region_area = 0,
@@ -188,10 +188,10 @@ namespace BioGTK
                 yield return batch;
             }
         }
-        public MaskData Generate(BioImage im, int buffer)
+        public MaskData Generate(BioImage im, ZCT buffer)
         {
             this.mImage = im;
-            mImgEmbedding = ((List<float[]>)im.Tag)[buffer];
+            mImgEmbedding = ((List<float[]>)im.Tag)[ImageView.SelectedImage.Coords[buffer.Z,buffer.C,buffer.T]];
             if (points_per_side != 0)
             {
                 this.point_grids = build_all_layer_point_grids(

@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Gdk;
 using System.Threading;
 using System.IO;
-
 namespace BioGTK
 {
 
@@ -75,6 +74,12 @@ namespace BioGTK
         private Gtk.Scale predictionBar;
         [Builder.Object]
         private Gtk.Scale stabilityBar;
+        [Builder.Object]
+        private Gtk.Scale layersBar;
+        [Builder.Object]
+        private Gtk.Button deleteDuplicatesBut;
+        [Builder.Object]
+        private Gtk.Button clearSliceBut;
 #pragma warning restore 649
 
         #endregion
@@ -127,6 +132,9 @@ namespace BioGTK
             pointsBar.Adjustment.Upper = 100;
             pointsBar.Adjustment.StepIncrement = 1;
             pointsBar.Value = 4;
+            layersBar.Adjustment.Lower = 0;
+            layersBar.Adjustment.Upper = 4;
+            layersBar.Value = 1;
             Directory.CreateDirectory("Masks");
             filechooser =
             new Gtk.FileChooserDialog("Choose file to open",
@@ -157,6 +165,42 @@ namespace BioGTK
             toROIMenu.ButtonPressEvent += ToROIMenu_ButtonPressEvent;
             runButton.ButtonPressEvent += AutoSAMMenu_ButtonPressEvent;
             clearButton.ButtonPressEvent += ClearButton_ButtonPressEvent;
+            deleteDuplicatesBut.ButtonPressEvent += DeleteDuplicatesBut_ButtonPressEvent;
+        }
+
+        private void DeleteDuplicatesBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            double range = 0.5;
+            List<ROI> rois = new List<ROI>();
+            foreach (var item in ImageView.SelectedImage.Annotations)
+            {
+                if (item.coord == App.viewer.GetCoordinate())
+                    rois.Add(item);
+            }
+            List<ROI> rs = new List<ROI>();
+            List<ROI> dups = new List<ROI>();
+            for (int r = 0; r < rois.Count-1; r++)
+            {
+                ROI ro = rois[r];
+                PointD p = new PointD(ro.X, ro.Y);
+                ROI roi = rois[r+1];
+                double x1 = ro.BoundingBox.X;
+                double x2 = roi.BoundingBox.X;
+                double y1 = ro.BoundingBox.Y;
+                double y2 = roi.BoundingBox.Y;
+                double deltaX = x2 - x1;
+                double deltaY = y2 - y1;
+                double len = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (len <= 5)
+                    dups.Add(ro);
+                double a = roi.BoundingBox.W * roi.BoundingBox.H;
+                if(a > (((ImageView.SelectedImage.SizeX - 10) * ImageView.SelectedImage.Resolutions[0].PhysicalSizeX) * ((ImageView.SelectedImage.SizeY - 10) * ImageView.SelectedImage.Resolutions[0].PhysicalSizeY)))
+                    dups.Add(ro);
+            }
+            for (int i = 0; i < dups.Count; i++)
+            {
+                ImageView.SelectedImage.Annotations.Remove(dups[i]);
+            }
         }
 
         private void ClearButton_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -176,33 +220,33 @@ namespace BioGTK
 
         private void AutoSAMMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            AutoSAM asm = new AutoSAM((int)pointsBar.Value,64,(float)predictionBar.Value,(float)stabilityBar.Value,1,0.7f,0,0.7f,0.3413333f,1,null,0,"binary_mask");
+            AutoSAM asm = new AutoSAM((int)pointsBar.Value,64,(float)predictionBar.Value,(float)stabilityBar.Value);
+            for (int c = 0; c < ImageView.SelectedImage.SizeC; c++)
+            {
+                for (int z = 0; z < ImageView.SelectedImage.SizeZ; z++)
+                {
+                    for (int t = 0; t < ImageView.SelectedImage.SizeT; t++)
+                    {
+                        MaskData md = asm.Generate(ImageView.SelectedImage,new ZCT(z,c,t));
+                        for (int i = 0; i < md.mfinalMask.Count; i++)
+                        {
+                            PointD loc = new PointD(ImageView.SelectedImage.StageSizeX, ImageView.SelectedImage.StageSizeY);
+                            ROI an = ROI.CreateMask(new ZCT(z,c,t), md.mfinalMask[i].ToArray(), ImageView.SelectedImage.SizeX, ImageView.SelectedImage.SizeY, loc, ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY);
+                            byte r = (byte)rng.Next(0, 255);
+                            byte g = (byte)rng.Next(0, 255);
+                            byte bb = (byte)rng.Next(0, 255);
+                            an.fillColor.R = r;
+                            an.fillColor.G = g;
+                            an.fillColor.B = bb;
+                            an.coord = new ZCT(z, c, t);
+                            ImageView.SelectedImage.Annotations.Add(an);
+                        }
+                    }
+                }
+            }
             for (int b = 0; b < ImageView.SelectedImage.Buffers.Count; b++)
             {
-                MaskData md = asm.Generate(ImageView.SelectedImage,b);
-                for (int i = 0; i < md.mfinalMask.Count; i++)
-                {
-                    PointD loc = new PointD(ImageView.SelectedImage.StageSizeX, ImageView.SelectedImage.StageSizeY);
-                    /*
-                    int width = md.mBox[(i * 4) + 2];
-                    int height = md.mBox[(i * 4) + 3];
-                    int x = md.mBox[i * 4];
-                    int y = md.mBox[(i * 4) + 1];
-                    
-                    ROI roi = ROI.CreateRectangle(ImageView.SelectedImage.Buffers[b].Coordinate,loc.X + (x * ImageView.SelectedImage.PhysicalSizeX), loc.Y + (x * ImageView.SelectedImage.PhysicalSizeY),
-                        width * ImageView.SelectedImage.PhysicalSizeX, height * ImageView.SelectedImage.PhysicalSizeY);
-                    ImageView.SelectedImage.Annotations.Add(roi);
-                    */
-                    ROI an = ROI.CreateMask(ImageView.SelectedImage.Buffers[b].Coordinate, md.mfinalMask[i].ToArray(), ImageView.SelectedImage.SizeX, ImageView.SelectedImage.SizeY, loc, ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY);
-                    byte r = (byte)rng.Next(0, 255);
-                    byte g = (byte)rng.Next(0, 255);
-                    byte bb = (byte)rng.Next(0, 255);
-                    an.fillColor.R = r;
-                    an.fillColor.G = g;
-                    an.fillColor.B = bb;
-                    ImageView.SelectedImage.Annotations.Add(an);
-                    
-                }
+                
             }
         }
 
@@ -354,6 +398,8 @@ namespace BioGTK
                 SelectedROI = view.Images[0].Annotations[0];
             List<ROI> rois = new List<ROI>();
             rois.AddRange(ImageView.SelectedImage.Annotations);
+            SelectedROI.W = SelectedROI.BoundingBox.W;
+            SelectedROI.H = SelectedROI.BoundingBox.H;
             PointD[] pls = SelectedROI.ImagePoints(ImageView.SelectedImage.Resolutions[0]);
             if (Tools.currentTool.type == Tools.Tool.Type.point && rois.Count > 0 && e.Event.State.HasFlag(ModifierType.Button1Mask))
             {

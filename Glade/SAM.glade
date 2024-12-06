@@ -210,12 +210,38 @@
           <object class="GtkScale" id="pointsBar">
             <property name="visible">True</property>
             <property name="can-focus">True</property>
-            <property name="round-digits">1</property>
+            <property name="round-digits">0</property>
+            <property name="digits">0</property>
           </object>
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
             <property name="position">9</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">AutoSAM: Grid Layers</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">10</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkScale" id="layersBar">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="round-digits">0</property>
+            <property name="digits">0</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">11</property>
           </packing>
         </child>
         <child>
@@ -241,11 +267,37 @@
                 <property name="x">56</property>
               </packing>
             </child>
+            <child>
+              <object class="GtkButton" id="deleteDuplicatesBut">
+                <property name="label" translatable="yes">Delete Duplicates</property>
+                <property name="width-request">125</property>
+                <property name="height-request">34</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="x">277</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="clearSliceBut">
+                <property name="label" translatable="yes">Clear Slice Masks</property>
+                <property name="width-request">125</property>
+                <property name="height-request">34</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+              <packing>
+                <property name="x">152</property>
+              </packing>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
-            <property name="position">10</property>
+            <property name="position">12</property>
           </packing>
         </child>
       </object>

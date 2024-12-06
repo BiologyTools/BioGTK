@@ -33,6 +33,7 @@ namespace BioGTK
         public static Recorder recorder;
         public static SAMTool samTool;
         public static Updater updater;
+        private static int selectedIndex;
         static bool useGPU = true, useVips = false, useImageSharp = false;
         public static bool UseGPU
         {
@@ -232,6 +233,38 @@ namespace BioGTK
         {
             Window w = (Window)o;
             w.Destroy();
+        }
+
+        public static void SelectWindow(string name)
+        {
+            TabsView tbs = App.tabsView;
+            
+            int c = tbs.GetViewerCount();
+            for (int v = 0; v < c; v++)
+            {
+                int cc = tbs.GetViewer(v).Images.Count;
+                for (int im = 0; im < cc; im++)
+                {
+                    if (tbs.GetViewer(v).Images[im].Filename == Path.GetFileName(name))
+                    {
+                        tbs.SetTab(v);
+                        BioLib.Recorder.Record("App.SelectWindow(\"" + name + "\")");
+                        ImageView.SelectedImage = tbs.GetViewer(v).Images[im];
+                        viewer = tbs.GetViewer(v);
+                        viewer.Present();
+                        return;
+                    }
+                }
+            }
+        }
+
+        public static void Rename(string text)
+        {
+            App.tabsView.RenameTab(ImageView.SelectedImage.Filename, text);
+            ImageView.SelectedImage.Rename(text);
+            ImageView v = App.tabsView.GetViewer(ImageView.SelectedImage.Filename);
+            v.SetTitle(ImageView.SelectedImage.Filename);
+            BioLib.Recorder.AddLine("App.Rename(\"" + text + "\");",false);
         }
 
         /// The function FindItem takes a Menu object and a label as input, and returns the MenuItem
