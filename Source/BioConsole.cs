@@ -234,9 +234,9 @@ namespace BioGTK
         {
             if (ImageView.SelectedImage == null)
                 return;
-            Fiji.RunOnImage(ImageView.SelectedImage,textBox.Buffer.Text, headless, onTab, useBioformats, resultsBox.Active);
-            consoleBox.Buffer.Text += textBox.Buffer.Text + Environment.NewLine;
-            textBox.Buffer.Text = "";
+            Fiji.RunOnImage(ImageView.SelectedImage, consoleBox.Buffer.Text, headless, onTab, useBioformats, resultsBox.Active);
+            textBox.Buffer.Text += textBox.Buffer.Text + Environment.NewLine;
+            consoleBox.Buffer.Text = "";
         }
 
         /// It runs the code in the textbox and prints the output to the console
@@ -245,9 +245,9 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         private void RunBut_Clicked(object sender, EventArgs e)
         {
-            object o = Scripting.Script.RunString(textBox.Buffer.Text);
-            consoleBox.Buffer.Text += textBox.Buffer.Text + Environment.NewLine + o.ToString() + Environment.NewLine;
-            textBox.Buffer.Text = "";
+            object o = Scripting.Script.RunString(consoleBox.Buffer.Text);
+            textBox.Buffer.Text += textBox.Buffer.Text + Environment.NewLine + o.ToString() + Environment.NewLine;
+            consoleBox.Buffer.Text = "";
         }
 
         #endregion
