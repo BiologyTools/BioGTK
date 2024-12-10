@@ -7,11 +7,11 @@
 	- dotnet msbuild BioGTKApp.csproj /t:CreateTarball /p:RuntimeIdentifier=linux-x64 /p:Configuration=Release
 
 # Building Micro-SAM ONNX models.
-- Recommended to just download the pre-built models from BioGTK releases. Due to the large amount of dependencies etc. required to install & run Micro-SAM repository.
+- Recommended to just download the pre-built models from [Zenodo releases](https://zenodo.org/records/14343909). Due to the large amount of dependencies etc. required to install & run Micro-SAM repository.
 - Setup Micro-SAM by cloning the [Micro-SAM](https://github.com/computational-cell-analytics/micro-sam) repository.
 	- In the base directory of Micro-SAM create python files "export_encoder.py" and "export_decoder.py" and add the code provided below. 
 
--For exporting Micro-SAM ONNX encoder & decoder.
+-For exporting Micro-SAM ONNX encoder.
 ```
 import os
 import warnings
