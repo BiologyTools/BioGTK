@@ -164,6 +164,13 @@
                         <property name="use-underline">True</property>
                       </object>
                     </child>
+                    <child>
+                      <object class="GtkMenuItem" id="saveNumPy">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Save NumPy</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>
@@ -244,6 +251,13 @@
                         <property name="can-focus">False</property>
                         <property name="label" translatable="yes">Plate Tool</property>
                         <property name="use-underline">True</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkMenuItem" id="runMicroSAMMenu">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Run Micro-SAM</property>
                       </object>
                     </child>
                   </object>

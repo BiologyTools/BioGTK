@@ -82,6 +82,8 @@ namespace BioGTK
         [Builder.Object]
         private MenuItem addImagesToTabMenu;
         [Builder.Object]
+        private MenuItem saveNumPyBut;
+        [Builder.Object]
         private MenuItem addOMEImagesToTab;
         [Builder.Object]
         private MenuItem saveSelectedTiff;
@@ -375,6 +377,8 @@ namespace BioGTK
             addOMEImagesToTab.ButtonPressEvent += addOMEImagesToTabClick;
             saveSelectedTiff.ButtonPressEvent += saveSelectedTiffClick;
             saveSelectedOME.ButtonPressEvent += saveSelectedOMEClick;
+            saveNumPyBut.ButtonPressEvent += SaveNumPyBut_ButtonPressEvent;
+
             saveTabOME.ButtonPressEvent += saveTabOMEClick;
             saveTabTiffMenu.ButtonPressEvent += saveTabTiffMenuClick;
             saveSeriesMenu.ButtonPressEvent += saveSeriesMenuClick;
@@ -441,6 +445,21 @@ namespace BioGTK
             searchMenu.ButtonPressEvent += SearchMenu_ButtonPressEvent;
             updateMenu.ButtonPressEvent += UpdateMenu_ButtonPressEvent;
             renameMenu.ButtonPressEvent += RenameMenu_ButtonPressEvent;
+        }
+
+        private void SaveNumPyBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Gtk.FileChooserDialog filechooser =
+        new Gtk.FileChooserDialog("Choose filename for NumPy file to save to.",
+            this,
+            FileChooserAction.Save,
+            "Cancel", ResponseType.Cancel,
+            "Open", ResponseType.Accept);
+            filechooser.SelectMultiple = false;
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            NumPy.SaveNumPy(ImageView.SelectedImage,filechooser.Filename);
+            filechooser.Hide();
         }
 
         private void RunMicroSAMMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
