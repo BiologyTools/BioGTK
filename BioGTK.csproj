@@ -21,7 +21,7 @@
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes></PackageReleaseNotes>
+    <PackageReleaseNotes>Micro-SAM implementation. SAM 2 mask memory and GUI related fixes. App.SelectWindow and other new functions.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   

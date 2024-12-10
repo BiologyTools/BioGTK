@@ -272,7 +272,18 @@ namespace BioGTK
             {
                 Resolution = 0;
             }
-            
+            if(im.Type == BioImage.ImageType.pyramidal)
+            {
+                WidthRequest = 800;
+                HeightRequest = 600;
+                im.PyramidalSize = new AForge.Size(800, 600);
+            }
+            else
+            if(im.SizeX > 1920 || im.SizeY > 1080)
+            {
+                WidthRequest = 800;
+                HeightRequest = 600;
+            }
         }
         private static SkiaSharp.SKRect ToRectangle(float x1, float y1, float x2, float y2)
         {
@@ -403,7 +414,7 @@ namespace BioGTK
                         {
                             SKImage sim = an.roiMask.GetColored(an.fillColor,100).ToSKImage();
                             RectangleD p = ToScreenRect(an.X, an.Y, sim.Width * im.PhysicalSizeX, sim.Height * im.PhysicalSizeY);
-                            canvas.DrawImage(sim, ToRectangle((float)p.X, (float)0, (float)0, (float)p.H), paint);
+                            canvas.DrawImage(sim, ToRectangle((float)p.X, (float)p.Y, (float)p.W, (float)p.H), paint);
                             sim.Dispose();
                         }
                         if (an.type == ROI.Type.Point)

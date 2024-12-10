@@ -246,6 +246,13 @@
                         <property name="use-underline">True</property>
                       </object>
                     </child>
+                    <child>
+                      <object class="GtkMenuItem" id="runMicroSAMMenu">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Run Micro-SAM</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>

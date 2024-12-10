@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Gdk;
 using System.Threading;
 using System.IO;
+
 namespace BioGTK
 {
 
@@ -17,9 +18,10 @@ namespace BioGTK
         static Random rng = new Random();
         #region Properties
         ImageView view;
-        static SAM mSam = SAM.Instance();
+        static SAM sam = null;
         List<Promotion> mPromotionList = new List<Promotion>();
         public bool init = false;
+        public static bool microSAM = false;
         int id = 1;
         string autoSavePath = "Masks";
         private ROI SelectedROI
@@ -55,10 +57,6 @@ namespace BioGTK
         [Builder.Object]
         private MenuItem toROIMenu;
         [Builder.Object]
-        private Gtk.CheckMenuItem addMaskMenu;
-        [Builder.Object]
-        private Gtk.CheckMenuItem removeMaskMenu;
-        [Builder.Object]
         private Gtk.CheckMenuItem autoSaveMenu;
         [Builder.Object]
         private Gtk.Button runButton;
@@ -80,6 +78,10 @@ namespace BioGTK
         private Gtk.Button deleteDuplicatesBut;
         [Builder.Object]
         private Gtk.Button clearSliceBut;
+        [Builder.Object]
+        private Gtk.Button SAMEncodeBut;
+        [Builder.Object]
+        private Gtk.CheckButton foregroundBut;
 #pragma warning restore 649
 
         #endregion
@@ -90,9 +92,14 @@ namespace BioGTK
         /// Gtk.Window
         /// 
         /// @return A new instance of the SAMTool class.
-        public static SAMTool Create()
+        public static SAMTool Create(bool micro_SAM)
         {
+            microSAM = micro_SAM;
             Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/SAM.glade", FileMode.Open));
+            if (micro_SAM)
+                sam = MicroSAM.Instance();
+            else
+                sam = SAM.Instance();
             return new SAMTool(builder, builder.GetObject("SAMTool").Handle);
         }
 
@@ -101,16 +108,33 @@ namespace BioGTK
         {
             //First lets make sure the model files are installed.
             string app = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            if (!File.Exists(app + "/decoder-quant.onnx") || !File.Exists(app + "/encoder-quant.onnx"))
+            if (microSAM)
             {
-                MessageDialog dialog = new MessageDialog(
-             this,
-             DialogFlags.Modal,
-             MessageType.Info,
-             ButtonsType.Ok,
-             "Place Model files \"decoder-quant.onnx\" and \"encoder-quant.onnx\" in the application folder to use SAM Tool.");
-                dialog.Run();
-                return;
+                if (!File.Exists(app + "/micro-sam-decoder.onnx") || !File.Exists(app + "/micro-sam-encoder.onnx"))
+                {
+                    MessageDialog dialog = new MessageDialog(
+                 this,
+                 DialogFlags.Modal,
+                 MessageType.Info,
+                 ButtonsType.Ok,
+                 "Place Model files \"micro-sam-decoder.onnx\" and \"micro-sam-encoder.onnx\" in the application folder to use SAM Tool.");
+                    dialog.Run();
+                    return;
+                }
+            }
+            else
+            {
+                if (!File.Exists(app + "/decoder-quant.onnx") || !File.Exists(app + "/encoder-quant.onnx"))
+                {
+                    MessageDialog dialog = new MessageDialog(
+                 this,
+                 DialogFlags.Modal,
+                 MessageType.Info,
+                 ButtonsType.Ok,
+                 "Place Model files \"decoder-quant.onnx\" and \"encoder-quant.onnx\" in the application folder to use SAM Tool.");
+                    dialog.Run();
+                    return;
+                }
             }
             view = App.viewer;
             _builder = builder;
@@ -134,7 +158,8 @@ namespace BioGTK
             pointsBar.Value = 4;
             layersBar.Adjustment.Lower = 0;
             layersBar.Adjustment.Upper = 4;
-            layersBar.Value = 1;
+            layersBar.Value = 0;
+            foregroundBut.Active = true;
             Directory.CreateDirectory("Masks");
             filechooser =
             new Gtk.FileChooserDialog("Choose file to open",
@@ -157,8 +182,6 @@ namespace BioGTK
         {
             saveSelected.ButtonPressEvent += saveSelectedTiffClick;
             view.ButtonReleaseEvent += PictureBox_ButtonReleaseEvent;
-            addMaskMenu.ButtonPressEvent += AddMaskMenu_ButtonPressEvent;
-            removeMaskMenu.ButtonPressEvent += RemoveMaskMenu_ButtonPressEvent;
             setAutoSave.ButtonPressEvent += SetAutoSave_ButtonPressEvent;
             this.DeleteEvent += SAMTool_DeleteEvent;
             textBox.Changed += TextBox_Changed;
@@ -166,40 +189,76 @@ namespace BioGTK
             runButton.ButtonPressEvent += AutoSAMMenu_ButtonPressEvent;
             clearButton.ButtonPressEvent += ClearButton_ButtonPressEvent;
             deleteDuplicatesBut.ButtonPressEvent += DeleteDuplicatesBut_ButtonPressEvent;
+            SAMEncodeBut.ButtonPressEvent += SAMEncodeBut_ButtonPressEvent;
+            clearSliceBut.ButtonPressEvent += ClearSliceBut_ButtonPressEvent;
         }
 
-        private void DeleteDuplicatesBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        private void ClearSliceBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            double range = 0.5;
+            for (int i = 0; i < ImageView.SelectedImage.Annotations.Count; i++)
+            {
+                if (ImageView.SelectedImage.Annotations[i].coord == App.viewer.GetCoordinate())
+                    ImageView.SelectedImage.Annotations.Remove(ImageView.SelectedImage.Annotations[i]);
+            }
+        }
+
+        private void SAMEncodeBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            sam.Encode(ImageView.SelectedImage);
+        }
+
+        private void DeleteDuplicatesBut_ButtonPressEvent(object sender, ButtonPressEventArgs args)
+        {
+            float distanceThreshold = 3;
+            // List of selected ROIs from annotations
             List<ROI> rois = new List<ROI>();
-            foreach (var item in ImageView.SelectedImage.Annotations)
+            foreach (var annotation in ImageView.SelectedImage.Annotations)
             {
-                if (item.coord == App.viewer.GetCoordinate())
-                    rois.Add(item);
+                if (annotation.coord == App.viewer.GetCoordinate())
+                {
+                    rois.Add(annotation);
+                }
             }
-            List<ROI> rs = new List<ROI>();
+
+            // Lists to track unique ROIs and duplicates
             List<ROI> dups = new List<ROI>();
-            for (int r = 0; r < rois.Count-1; r++)
+
+            for (int r = 0; r < rois.Count - 1; r++)
             {
-                ROI ro = rois[r];
-                PointD p = new PointD(ro.X, ro.Y);
-                ROI roi = rois[r+1];
-                double x1 = ro.BoundingBox.X;
-                double x2 = roi.BoundingBox.X;
-                double y1 = ro.BoundingBox.Y;
-                double y2 = roi.BoundingBox.Y;
-                double deltaX = x2 - x1;
-                double deltaY = y2 - y1;
-                double len = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
-                if (len <= 5)
-                    dups.Add(ro);
-                double a = roi.BoundingBox.W * roi.BoundingBox.H;
-                if(a > (((ImageView.SelectedImage.SizeX - 10) * ImageView.SelectedImage.Resolutions[0].PhysicalSizeX) * ((ImageView.SelectedImage.SizeY - 10) * ImageView.SelectedImage.Resolutions[0].PhysicalSizeY)))
-                    dups.Add(ro);
+                ROI roi1 = rois[r];
+                ROI roi2 = rois[r + 1];
+
+                // Calculate the center points of the bounding boxes
+                double centerX1 = roi1.BoundingBox.X + roi1.BoundingBox.W / 2;
+                double centerY1 = roi1.BoundingBox.Y + roi1.BoundingBox.H / 2;
+                double centerX2 = roi2.BoundingBox.X + roi2.BoundingBox.W / 2;
+                double centerY2 = roi2.BoundingBox.Y + roi2.BoundingBox.H / 2;
+
+                // Calculate the Euclidean distance between the centers
+                double deltaX = centerX2 - centerX1;
+                double deltaY = centerY2 - centerY1;
+                double distance = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
+
+                // Add to duplicates if the distance is below the threshold
+                if (distance <= distanceThreshold)
+                {
+                    dups.Add(roi1);
+                }
+
+                // Optionally, filter out very large masks that may not be useful
+                double imageArea = (ImageView.SelectedImage.SizeX - 10) * ImageView.SelectedImage.Resolutions[0].PhysicalSizeX *
+                                   (ImageView.SelectedImage.SizeY - 10) * ImageView.SelectedImage.Resolutions[0].PhysicalSizeY;
+                double roiArea = roi2.BoundingBox.W * roi2.BoundingBox.H;
+                if (roiArea > imageArea)
+                {
+                    dups.Add(roi1);
+                }
             }
-            for (int i = 0; i < dups.Count; i++)
+
+            // Remove duplicate ROIs from annotations
+            foreach (var duplicate in dups)
             {
-                ImageView.SelectedImage.Annotations.Remove(dups[i]);
+                ImageView.SelectedImage.Annotations.Remove(duplicate);
             }
         }
 
@@ -216,20 +275,36 @@ namespace BioGTK
                 ImageView.SelectedImage.Annotations.Remove(mask);
                 mask.Dispose();
             }
+            foreach(ROI mask in ImageView.selectedAnnotations)
+            {
+                if(mask.type == ROI.Type.Mask)
+                mask.Dispose();
+            }
+            ImageView.selectedAnnotations.Clear();
+            mPromotionList.Clear();
+
         }
 
         private void AutoSAMMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            AutoSAM asm = new AutoSAM((int)pointsBar.Value,64,(float)predictionBar.Value,(float)stabilityBar.Value);
-            for (int c = 0; c < ImageView.SelectedImage.SizeC; c++)
+            mPromotionList.Clear();
+            AutoSAM asm = new AutoSAM((int)pointsBar.Value,64,(float)predictionBar.Value,(float)stabilityBar.Value,1,0.7f,(int)layersBar.Value,0.7f,0.3413333f,1,null,0,"binary_mask");
+
+            for (int z = 0; z < ImageView.SelectedImage.SizeZ; z++)
             {
-                for (int z = 0; z < ImageView.SelectedImage.SizeZ; z++)
+                for (int c = 0; c < ImageView.SelectedImage.SizeC; c++)
                 {
                     for (int t = 0; t < ImageView.SelectedImage.SizeT; t++)
                     {
-                        MaskData md = asm.Generate(ImageView.SelectedImage,new ZCT(z,c,t));
+                        MaskData md = asm.Generate(ImageView.SelectedImage, ImageView.SelectedImage.Coords[z,c,t]);
                         for (int i = 0; i < md.mfinalMask.Count; i++)
                         {
+                            if (md.mfinalMask[i].Count < ImageView.SelectedImage.SizeX * ImageView.SelectedImage.SizeY)
+                            {
+                                md.mfinalMask[i] = null;
+                                md.mfinalMask.RemoveAt(i);
+                                continue;
+                            }
                             PointD loc = new PointD(ImageView.SelectedImage.StageSizeX, ImageView.SelectedImage.StageSizeY);
                             ROI an = ROI.CreateMask(new ZCT(z,c,t), md.mfinalMask[i].ToArray(), ImageView.SelectedImage.SizeX, ImageView.SelectedImage.SizeY, loc, ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY);
                             byte r = (byte)rng.Next(0, 255);
@@ -238,15 +313,11 @@ namespace BioGTK
                             an.fillColor.R = r;
                             an.fillColor.G = g;
                             an.fillColor.B = bb;
-                            an.coord = new ZCT(z, c, t);
                             ImageView.SelectedImage.Annotations.Add(an);
                         }
+                        md.Dispose();
                     }
                 }
-            }
-            for (int b = 0; b < ImageView.SelectedImage.Buffers.Count; b++)
-            {
-                
             }
         }
 
@@ -319,7 +390,7 @@ namespace BioGTK
         }
         private void SAMTool_DeleteEvent(object o, DeleteEventArgs args)
         {
-            mSam.Dispose();
+            sam.Dispose();
         }
 
         /// The SetAutoSave_ButtonPressEvent function allows the user to select a folder for auto-saving
@@ -348,16 +419,6 @@ namespace BioGTK
             id = 1;
         }
 
-        private void RemoveMaskMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
-        {
-            addMaskMenu.Active = false;
-        }
-
-        private void AddMaskMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
-        {
-            removeMaskMenu.Active = false;
-        }
-
         /// The Init function loads an ONNX model, calculates image embedding, and updates the status
         /// accordingly.
         /// 
@@ -368,13 +429,13 @@ namespace BioGTK
         {
             if (ImageView.SelectedImage == null)
                 return;
-            Thread th = new Thread(mSam.LoadONNXModel);
+            Thread th = new Thread(sam.LoadONNXModel);
             th.Start();
         }
 
         internal static void Encode()
         {
-            mSam.Encode(ImageView.SelectedImage);//Image Embedding
+            sam.Encode(ImageView.SelectedImage);
         }
 
         /// The function handles the button release event for a picture box and performs various
@@ -398,20 +459,18 @@ namespace BioGTK
                 SelectedROI = view.Images[0].Annotations[0];
             List<ROI> rois = new List<ROI>();
             rois.AddRange(ImageView.SelectedImage.Annotations);
-            SelectedROI.W = SelectedROI.BoundingBox.W;
-            SelectedROI.H = SelectedROI.BoundingBox.H;
             PointD[] pls = SelectedROI.ImagePoints(ImageView.SelectedImage.Resolutions[0]);
             if (Tools.currentTool.type == Tools.Tool.Type.point && rois.Count > 0 && e.Event.State.HasFlag(ModifierType.Button1Mask))
             {
-                OpType type = this.addMaskMenu.Active == true ? OpType.ADD : OpType.REMOVE;
+                ForeGround type = this.foregroundBut.Active == true ? ForeGround.foreground : ForeGround.background;
                 Promotion promtt = new PointPromotion(type);
                 (promtt as PointPromotion).X = (int)pls[0].X;
                 (promtt as PointPromotion).Y = (int)pls[0].Y;
                 Transforms trs = new Transforms(1024);
                 PointPromotion ptn = trs.ApplyCoords((promtt as PointPromotion), ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 this.mPromotionList.Add(ptn);
-                float[] maskk = mSam.Decode(ImageView.SelectedImage, this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
-                this.ShowMask(maskk, ImageView.SelectedBuffer.Width,ImageView.SelectedBuffer.Height);
+                float[] maskk = sam.Decode(ImageView.SelectedImage, this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
+                this.ShowMask(maskk, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 this.mPromotionList.Clear();
             }
 
@@ -436,9 +495,8 @@ namespace BioGTK
                 Transforms ts = new Transforms(1024);
                 var pb = ts.ApplyBox(promt, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 this.mPromotionList.Add(pb);
-                float[] mask = mSam.Decode(ImageView.SelectedImage,this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
+                float[] mask = sam.Decode(ImageView.SelectedImage, this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 ShowMask(mask, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
-                this.mPromotionList.Clear();
             }
         }
 

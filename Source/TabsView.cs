@@ -190,6 +190,8 @@ namespace BioGTK
         private MenuItem tabClose;
         [Builder.Object]
         private MenuItem tabDuplicate;
+        [Builder.Object]
+        private MenuItem runMicroSAMMenu;
 #pragma warning restore 649
 
         #endregion
@@ -388,6 +390,7 @@ namespace BioGTK
             toolsMenu.ButtonPressEvent += toolsMenuClick;
             setToolMenu.ButtonPressEvent += setToolMenuClick;
             runSAMMenu.ButtonPressEvent += RunSAMMenu_ButtonPressEvent;
+            runMicroSAMMenu.ButtonPressEvent += RunMicroSAMMenu_ButtonPressEvent;
             plateToolMenu.ButtonPressEvent += PlateToolMenu_ButtonPressEvent;
             extractRegionMenu.ButtonPressEvent += ExtractRegionMenu_ButtonPressEvent;
 
@@ -438,6 +441,14 @@ namespace BioGTK
             searchMenu.ButtonPressEvent += SearchMenu_ButtonPressEvent;
             updateMenu.ButtonPressEvent += UpdateMenu_ButtonPressEvent;
             renameMenu.ButtonPressEvent += RenameMenu_ButtonPressEvent;
+        }
+
+        private void RunMicroSAMMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            SAMTool sam = SAMTool.Create(true);
+            if (sam.init)
+                sam.Show();
+            App.samTool = sam;
         }
 
         public void RenameTab(string name, string newName)
@@ -605,7 +616,7 @@ namespace BioGTK
 
         private void RunSAMMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            SAMTool sam = SAMTool.Create();
+            SAMTool sam = SAMTool.Create(false);
             if(sam.init)
             sam.Show();
             App.samTool = sam;
@@ -1102,7 +1113,7 @@ namespace BioGTK
                 return;
             filechooser.Hide();
             StartProgress("Save Selected Tiff","Saving");
-            await BioImage.SaveAsync(filechooser.Filename,ImageView.SelectedImage.ID, 0, false);
+            await BioImage.SaveAsync(filechooser.Filename,ImageView.SelectedImage.Filename, 0, false);
             StopProgress();
         }
         /// This function saves the selected image in the OME-TIFF format
@@ -1118,7 +1129,7 @@ namespace BioGTK
                 return;
             filechooser.Hide();
             StartProgress("Save Selected OME", "Saving");
-            await BioImage.SaveAsync(filechooser.Filename, ImageView.SelectedImage.ID, 0, true);
+            await BioImage.SaveAsync(filechooser.Filename, ImageView.SelectedImage.Filename, 0, true);
             StopProgress();
         }
         /// This function saves the current series of images to an OME-TIFF file

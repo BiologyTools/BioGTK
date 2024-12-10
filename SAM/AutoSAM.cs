@@ -38,10 +38,10 @@ namespace BioGTK
                             float pred_iou_thresh = 0.5f,
                             float stability_score_thresh = 0.5f,
                             float stability_score_offset = 1.0f,
-                            float box_nms_thresh = 0.3f,
-                            int crop_n_layers = 1,
-                            float crop_nms_thresh = 0.3f,
-                            float crop_overlap_ratio = 0.5f,
+                            float box_nms_thresh = 0.7f,
+                            int crop_n_layers = 0,
+                            float crop_nms_thresh = 0.7f,
+                            float crop_overlap_ratio = (float)512 / 1500,
                             int crop_n_points_downscale_factor = 1,
                             List<double[,]> point_grids = null,
                             int min_mask_region_area = 0,
@@ -60,7 +60,10 @@ namespace BioGTK
             this.point_grids = point_grids;
             this.min_mask_region_area = min_mask_region_area;
             this.output_mode = output_mode;
-            mSAM = SAM.Instance();
+            if (SAM.theSingleton == null)
+                mSAM = MicroSAM.Instance();
+            else
+                mSAM = SAM.Instance();
             if (points_per_side != 0)
             {
                 this.point_grids = build_all_layer_point_grids(
@@ -188,10 +191,10 @@ namespace BioGTK
                 yield return batch;
             }
         }
-        public MaskData Generate(BioImage im, ZCT buffer)
+        public MaskData Generate(BioImage im, int buffer)
         {
             this.mImage = im;
-            mImgEmbedding = ((List<float[]>)im.Tag)[ImageView.SelectedImage.Coords[buffer.Z,buffer.C,buffer.T]];
+            mImgEmbedding = ((List<float[]>)im.Tag)[buffer];
             if (points_per_side != 0)
             {
                 this.point_grids = build_all_layer_point_grids(
@@ -229,7 +232,7 @@ namespace BioGTK
             Transforms ts = new Transforms(1024);
             for (int i = 0; i < gps.GetLength(0); i++)
             {
-                Promotion promt = new PointPromotion(OpType.ADD);
+                Promotion promt = new PointPromotion(ForeGround.foreground);
                 (promt as PointPromotion).X = (int)(gps[i, 0] * r.Width);
                 (promt as PointPromotion).Y = (int)(gps[i, 1] * r.Height);
                 PointPromotion ptn = ts.ApplyCoords((promt as PointPromotion), r.Width, r.Height);
@@ -256,7 +259,7 @@ namespace BioGTK
                 for (int i=0;i<pts.Length;i++)
                 {
                     MaskData md = this.mSAM.Decode(new List<Promotion>() { pts[i] }, this.mImgEmbedding, cropimgwid, cropimghei);
-                    md.mStalibility = md.CalculateStabilityScore(this.mSAM.mask_threshold, this.stability_score_offset).ToList();
+                    md.mStability = md.CalculateStabilityScore(this.mSAM.mask_threshold, this.stability_score_offset).ToList();
                     md.Filter(this.pred_iou_thresh, this.stability_score_thresh);
                     batch.Cat(md);
                 }

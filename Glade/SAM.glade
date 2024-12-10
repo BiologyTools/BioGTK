@@ -9,7 +9,7 @@
     <property name="resizable">False</property>
     <property name="default-width">250</property>
     <child>
-      <object class="GtkBox">
+      <object class="GtkBox" id="box">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
         <property name="orientation">vertical</property>
@@ -67,21 +67,6 @@
                   <object class="GtkMenu">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <child>
-                      <object class="GtkCheckMenuItem" id="addMaskMenu">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="label" translatable="yes">Add Mask</property>
-                        <property name="active">True</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkCheckMenuItem" id="removeMaskMenu">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="label" translatable="yes">Remove Mask</property>
-                      </object>
-                    </child>
                     <child>
                       <object class="GtkCheckMenuItem" id="autoSaveMenu">
                         <property name="visible">True</property>
@@ -298,6 +283,40 @@
             <property name="expand">False</property>
             <property name="fill">True</property>
             <property name="position">12</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkFixed">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <child>
+              <object class="GtkButton" id="SAMEncodeBut">
+                <property name="label" translatable="yes">Run SAM Encode</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="foregroundBut">
+                <property name="label" translatable="yes">Foreground</property>
+                <property name="width-request">95</property>
+                <property name="height-request">23</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">False</property>
+                <property name="draw-indicator">True</property>
+              </object>
+              <packing>
+                <property name="x">134</property>
+                <property name="y">6</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">13</property>
           </packing>
         </child>
       </object>

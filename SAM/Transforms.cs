@@ -30,7 +30,7 @@ namespace BioGTK
         {
             int neww = 0;
             int newh = 0;
-            if(SAM.SAM2)
+            if(SAM.SAM2 && MicroSAM.theSingleton == null)
             {
                 neww = 1024;
                 newh = 1024;
@@ -128,7 +128,7 @@ namespace BioGTK
             int neww = 0;
             int newh = 0;
             this.GetPreprocessShape(orgw, orgh, this.mTargetLength, ref neww, ref newh);
-            PointPromotion newpointp = new PointPromotion(org_point.m_Optype);
+            PointPromotion newpointp = new PointPromotion(org_point.foreGround);
             float scalx = (float)neww / (float)orgw;
             float scaly = (float)newh / (float)orgh;
             newpointp.X = (int)(org_point.X * scalx);
