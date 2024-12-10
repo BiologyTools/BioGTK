@@ -1,10 +1,41 @@
 # Building BioGTK
 
-- Clone the repository then run the following dotnet build script based on your platform and CPU.
+- Clone the BioGTK repository then create a new .NET8 project named "BioGTKApp"
+	- Add the following code to Program.cs
+```
+using Gtk;
+using BioGTK;
+using Application = Gtk.Application;
+
+namespace BioGTKApp
+{
+    internal static class Program
+    {
+        /// <summary>
+        ///  The main entry point for the application.
+        /// </summary>
+        [STAThread]
+        static void Main(string[] args)
+        {
+            Console.WriteLine("Initializing GTK.");
+            Application.Init();
+            Console.WriteLine("Creating NodeView.");
+            BioGTK.NodeView node = BioGTK.NodeView.Create(args);
+            Console.WriteLine("Show NodeView.");
+            node.Show();
+            Console.WriteLine("Application.Run()");
+            Application.Run();
+            Console.WriteLine("Application Started.");
+        }
+    }
+}
+```
+-   Then run the following dotnet build script based on your platform and CPU.
 	- dotnet msbuild -t:BundleApp -p:RuntimeIdentifier=osx-x64 -p:Configuration=Release
 	- dotnet msbuild -t:BundleApp -p:RuntimeIdentifier=osx-arm64 -p:Configuration=Release
 	- dotnet msbuild BioGTKApp.csproj /t:CreateTarball /p:RuntimeIdentifier=linux-arm64 /p:Configuration=Release
 	- dotnet msbuild BioGTKApp.csproj /t:CreateTarball /p:RuntimeIdentifier=linux-x64 /p:Configuration=Release
+	- dotnet publish -c Release -r win-x64 --self-contained false /p:Platform="Any CPU" -o ./publish 	
 
 # Building Micro-SAM ONNX models.
 - Recommended to just download the pre-built models from [Zenodo releases](https://zenodo.org/records/14343909). Due to the large amount of dependencies etc. required to install & run Micro-SAM repository.
