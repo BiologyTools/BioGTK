@@ -336,75 +336,83 @@ namespace BioGTK
 
         public static void RemoveDuplicates(bool removeDistance, float distance, bool removeLarge, float largeArea)
         {
-            // List of selected ROIs from annotations
-            List<ROI> rois = new List<ROI>();
-            foreach (var annotation in ImageView.SelectedImage.Annotations)
-            {
-                if (annotation.coord == App.viewer.GetCoordinate())
-                {
-                    rois.Add(annotation);
-                }
-            }
-
             // Lists to track duplicates
             HashSet<ROI> dups = new HashSet<ROI>();
-
-            // Check and remove large ROIs
-            if (removeLarge)
+            for (int z = 0; z < ImageView.SelectedImage.SizeZ; z++)
             {
-                double imageArea = (ImageView.SelectedImage.SizeX - 10) * ImageView.SelectedImage.Resolutions[0].PhysicalSizeX *
-                                   (ImageView.SelectedImage.SizeY - 10) * ImageView.SelectedImage.Resolutions[0].PhysicalSizeY;
-
-                foreach (var roi in rois)
+                for (int c = 0; c < ImageView.SelectedImage.SizeC; c++)
                 {
-                    double roiArea = roi.BoundingBox.W * roi.BoundingBox.H;
-                    if (roiArea > largeArea * imageArea) // Use `largeArea` as a fraction threshold
+                    for (int t = 0; t < ImageView.SelectedImage.SizeT; t++)
                     {
-                        dups.Add(roi);
-                    }
-                }
-            }
-
-            // Check and remove ROIs based on distance
-            if (removeDistance)
-            {
-                for (int r1 = 0; r1 < rois.Count - 1; r1++)
-                {
-                    for (int r2 = r1 + 1; r2 < rois.Count; r2++)
-                    {
-                        ROI roi1 = rois[r1];
-                        ROI roi2 = rois[r2];
-
-                        // Calculate the center points of the bounding boxes
-                        double centerX1 = roi1.BoundingBox.X + roi1.BoundingBox.W / 2;
-                        double centerY1 = roi1.BoundingBox.Y + roi1.BoundingBox.H / 2;
-                        double centerX2 = roi2.BoundingBox.X + roi2.BoundingBox.W / 2;
-                        double centerY2 = roi2.BoundingBox.Y + roi2.BoundingBox.H / 2;
-
-                        // Calculate the Euclidean distance between the centers
-                        double deltaX = centerX2 - centerX1;
-                        double deltaY = centerY2 - centerY1;
-                        double dist = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
-
-                        // Add to duplicates if the distance is below the threshold
-                        if (dist <= distance)
+                        // List of selected ROIs from annotations
+                        List<ROI> rois = new List<ROI>();
+                        foreach (var annotation in ImageView.SelectedImage.Annotations)
                         {
-                            dups.Add(roi2); // Prioritize keeping roi1 and mark roi2 as duplicate
+                            if (annotation.coord == new ZCT(z,c,t))
+                            {
+                                rois.Add(annotation);
+                            }
+                        }
+
+                        // Check and remove large ROIs
+                        if (removeLarge)
+                        {
+                            double imageArea = (ImageView.SelectedImage.SizeX - 10) * ImageView.SelectedImage.Resolutions[0].PhysicalSizeX *
+                                               (ImageView.SelectedImage.SizeY - 10) * ImageView.SelectedImage.Resolutions[0].PhysicalSizeY;
+
+                            foreach (var roi in rois)
+                            {
+                                double roiArea = roi.BoundingBox.W * roi.BoundingBox.H;
+                                if (roiArea > largeArea * imageArea) // Use `largeArea` as a fraction threshold
+                                {
+                                    dups.Add(roi);
+                                }
+                            }
+                        }
+
+                        // Check and remove ROIs based on distance
+                        if (removeDistance)
+                        {
+                            for (int r1 = 0; r1 < rois.Count - 1; r1++)
+                            {
+                                for (int r2 = r1 + 1; r2 < rois.Count; r2++)
+                                {
+                                    ROI roi1 = rois[r1];
+                                    ROI roi2 = rois[r2];
+
+                                    // Calculate the center points of the bounding boxes
+                                    double centerX1 = roi1.BoundingBox.X + roi1.BoundingBox.W / 2;
+                                    double centerY1 = roi1.BoundingBox.Y + roi1.BoundingBox.H / 2;
+                                    double centerX2 = roi2.BoundingBox.X + roi2.BoundingBox.W / 2;
+                                    double centerY2 = roi2.BoundingBox.Y + roi2.BoundingBox.H / 2;
+
+                                    // Calculate the Euclidean distance between the centers
+                                    double deltaX = centerX2 - centerX1;
+                                    double deltaY = centerY2 - centerY1;
+                                    double dist = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
+
+                                    // Add to duplicates if the distance is below the threshold
+                                    if (dist <= distance)
+                                    {
+                                        dups.Add(roi2); // Prioritize keeping roi1 and mark roi2 as duplicate
+                                    }
+                                }
+                            }
+                        }
+
+                        // Remove duplicate ROIs from annotations
+                        foreach (var duplicate in dups)
+                        {
+                            ImageView.SelectedImage.Annotations.Remove(duplicate);
                         }
                     }
                 }
             }
-
-            // Remove duplicate ROIs from annotations
-            foreach (var duplicate in dups)
-            {
-                ImageView.SelectedImage.Annotations.Remove(duplicate);
-            }
+           
 
             // Record the operation
             BioLib.Recorder.Record($"SAM.RemoveDuplicates({removeDistance}, {distance}, {removeLarge}, {largeArea})");
         }
-
 
         /// The Dispose function disposes of resources and sets variables to null.
         public void Dispose()
