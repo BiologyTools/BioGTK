@@ -170,9 +170,16 @@ namespace BioGTK
             float scale = long_side_length * 1.0f / Math.Max(oldh, oldw);
             float newht = oldh * scale;
             float newwt = oldw * scale;
-
-            neww = (int)(newwt);//+0.5
-            newh = (int)(newht);//+0.5
+            if (MicroSAM.theSingleton == null)
+            {
+                neww = (int)(newwt);//+0.5
+                newh = (int)(newht);//+0.5
+            }
+            else
+            {
+                neww = 1024;
+                newh = 1024;
+            }
         }
         int mTargetLength;
     }
