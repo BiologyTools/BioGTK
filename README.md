@@ -60,7 +60,8 @@ A .NET application & library for editing & annotating various microscopy image f
 - Save models into "StartupPath/Models" supports [BioImage.IO](https://bioimage.io/) models.
 - Supports ONNX (".onnx") and PyTorch models (".pt"). For PyTorch models include the ".yaml" metadata file with the same name as the model file in the models folder.
 
-## Mac Installation
+## Mac installation, 
+- See [this video](https://www.youtube.com/watch?v=bEC4b8DlNLg) or follow the instructions below.
 - Install Mac package manager [homebrew.](https://brew.sh/)
 - From brew install [GTK3.](https://formulae.brew.sh/formula/gtk+3#default)
 - Download the BioGTK application for either OSX-x64 or OSX-Arm from releases.
@@ -70,13 +71,15 @@ A .NET application & library for editing & annotating various microscopy image f
 - Optionally for SAM install ONNX Runtime by running "brew install onnxruntime".
 
 ## Windows Installation
+- See [this video](https://www.youtube.com/watch?v=BKJM6PQizkw) or follow the instructions below.
 - Install package manager [MSYS2.](https://github.com/GtkSharp/GtkSharp/wiki/Installing-Gtk-on-Windows) to install package GTK3. (Required for GTK Apps.)
 - Download the BioGTK Windows installer from releases.
 - Optionally install [OpenSlide](https://openslide.org/docs/windows/) for better navigation of whole-slide-images. Be sure to set the PATH variable correctly.
 - Optionally install [CUDA](https://developer.nvidia.com/cuda-downloads) for hardware accelerated stitching as well as tile cache in graphics card memory instead of RAM.
 - Optionally install [PyTorch](https://learn.microsoft.com/en-us/windows/ai/windows-ml/tutorials/pytorch-installation) for running BioImage.io models.
 
-## Linux Installation
+## Linux Installation 
+- See [this video](https://www.youtube.com/watch?v=SzFWyXQnfDU) or follow the instructions below.
 - Download the latest tarball(tar.gz) from Releases as linux already includes GTK3 package.
 - Extract the tarball and go to the "Glade" folder and select all the glade files and change permissions to read-write.
 - Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance and functions with whole-slide-images.
