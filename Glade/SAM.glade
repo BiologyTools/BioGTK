@@ -230,6 +230,56 @@
           </packing>
         </child>
         <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">AutoSAM: Min Area</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">12</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkScale" id="minAreaBar">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="round-digits">0</property>
+            <property name="digits">0</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">13</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="label" translatable="yes">AutoSAM: Max Area</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">14</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkScale" id="maxAreaBar">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="round-digits">0</property>
+            <property name="digits">0</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">15</property>
+          </packing>
+        </child>
+        <child>
           <object class="GtkFixed">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -282,7 +332,7 @@
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
-            <property name="position">12</property>
+            <property name="position">16</property>
           </packing>
         </child>
         <child>
@@ -316,7 +366,7 @@
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
-            <property name="position">13</property>
+            <property name="position">17</property>
           </packing>
         </child>
       </object>

@@ -398,7 +398,7 @@ namespace BioGTK
                             if (!showBROIs && an.coord.C == 2)
                                 continue;
                         }
-                        else if (zBar.Value != an.coord.Z || cBar.Value != an.coord.C || tBar.Value != an.coord.T)
+                        if (zBar.Value != an.coord.Z || cBar.Value != an.coord.C || tBar.Value != an.coord.T)
                             continue;
                         if (an.Selected)
                         {

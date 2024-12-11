@@ -82,6 +82,10 @@ namespace BioGTK
         private Gtk.Button SAMEncodeBut;
         [Builder.Object]
         private Gtk.CheckButton foregroundBut;
+        [Builder.Object]
+        private Gtk.Scale minAreaBar;
+        [Builder.Object]
+        private Gtk.Scale maxAreaBar;
 #pragma warning restore 649
 
         #endregion
@@ -159,6 +163,13 @@ namespace BioGTK
             layersBar.Adjustment.Lower = 0;
             layersBar.Adjustment.Upper = 4;
             layersBar.Value = 0;
+            minAreaBar.Value = 0;
+            minAreaBar.Adjustment.Upper = ImageView.SelectedImage.Volume.Width * ImageView.SelectedImage.Volume.Height;
+            minAreaBar.Adjustment.Lower = 0;
+            
+            maxAreaBar.Adjustment.Upper = ImageView.SelectedImage.Volume.Width * ImageView.SelectedImage.Volume.Height;
+            maxAreaBar.Adjustment.Lower = 0;
+            maxAreaBar.Value = ImageView.SelectedImage.Volume.Width * ImageView.SelectedImage.Volume.Height;
             foregroundBut.Active = true;
             Directory.CreateDirectory("Masks");
             filechooser =
@@ -209,59 +220,8 @@ namespace BioGTK
 
         private void DeleteDuplicatesBut_ButtonPressEvent(object sender, ButtonPressEventArgs args)
         {
-            float distanceThreshold = 3;
-            // List of selected ROIs from annotations
-            List<ROI> rois = new List<ROI>();
-            foreach (var annotation in ImageView.SelectedImage.Annotations)
-            {
-                if (annotation.coord == App.viewer.GetCoordinate())
-                {
-                    rois.Add(annotation);
-                }
-            }
-
-            // Lists to track unique ROIs and duplicates
-            List<ROI> dups = new List<ROI>();
-
-            for (int r = 0; r < rois.Count - 1; r++)
-            {
-                ROI roi1 = rois[r];
-                ROI roi2 = rois[r + 1];
-
-                // Calculate the center points of the bounding boxes
-                double centerX1 = roi1.BoundingBox.X + roi1.BoundingBox.W / 2;
-                double centerY1 = roi1.BoundingBox.Y + roi1.BoundingBox.H / 2;
-                double centerX2 = roi2.BoundingBox.X + roi2.BoundingBox.W / 2;
-                double centerY2 = roi2.BoundingBox.Y + roi2.BoundingBox.H / 2;
-
-                // Calculate the Euclidean distance between the centers
-                double deltaX = centerX2 - centerX1;
-                double deltaY = centerY2 - centerY1;
-                double distance = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
-
-                // Add to duplicates if the distance is below the threshold
-                if (distance <= distanceThreshold)
-                {
-                    dups.Add(roi1);
-                }
-
-                // Optionally, filter out very large masks that may not be useful
-                double imageArea = (ImageView.SelectedImage.SizeX - 10) * ImageView.SelectedImage.Resolutions[0].PhysicalSizeX *
-                                   (ImageView.SelectedImage.SizeY - 10) * ImageView.SelectedImage.Resolutions[0].PhysicalSizeY;
-                double roiArea = roi2.BoundingBox.W * roi2.BoundingBox.H;
-                if (roiArea > imageArea)
-                {
-                    dups.Add(roi1);
-                }
-            }
-
-            // Remove duplicate ROIs from annotations
-            foreach (var duplicate in dups)
-            {
-                ImageView.SelectedImage.Annotations.Remove(duplicate);
-            }
+            SAM.RemoveDuplicates(true, (float)(3 * ImageView.SelectedImage.PhysicalSizeX), true, (float)maxAreaBar.Value);
         }
-
         private void ClearButton_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             List<ROI> masks = new List<ROI>();
@@ -307,6 +267,10 @@ namespace BioGTK
                             }
                             PointD loc = new PointD(ImageView.SelectedImage.StageSizeX, ImageView.SelectedImage.StageSizeY);
                             ROI an = ROI.CreateMask(new ZCT(z,c,t), md.mfinalMask[i].ToArray(), ImageView.SelectedImage.SizeX, ImageView.SelectedImage.SizeY, loc, ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY);
+                            if (an.W * an.H < minAreaBar.Value)
+                                continue;
+                            if (an.W * an.H > maxAreaBar.Value)
+                                continue;
                             byte r = (byte)rng.Next(0, 255);
                             byte g = (byte)rng.Next(0, 255);
                             byte bb = (byte)rng.Next(0, 255);

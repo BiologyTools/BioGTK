@@ -415,7 +415,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="BioLib" Version="3.2.0" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="ImageJ.NET" Version="154.0.0.2" />
@@ -436,6 +435,10 @@
     <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.116.1" />
     <PackageReference Include="TorchSharp-cpu" Version="0.104.0" />
     <PackageReference Include="YamlDotNet" Version="16.2.1" />  
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BioLib\BioLib.csproj" />
   </ItemGroup>
 
   <ItemGroup>
