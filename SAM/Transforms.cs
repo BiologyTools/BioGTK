@@ -170,6 +170,7 @@ namespace BioGTK
             float scale = long_side_length * 1.0f / Math.Max(oldh, oldw);
             float newht = oldh * scale;
             float newwt = oldw * scale;
+            //The micro-sam model has a width and height of 1024 we take this into account.
             if (MicroSAM.theSingleton == null)
             {
                 neww = (int)(newwt);//+0.5

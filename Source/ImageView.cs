@@ -889,7 +889,7 @@ namespace BioGTK
             zBar.ButtonPressEvent += ZBar_ButtonPressEvent;
             tBar.ButtonPressEvent += TBar_ButtonPressEvent;
             cBar.ButtonPressEvent += CBar_ButtonPressEvent;
-
+            
         }
 
         private void ImageView_FocusInEvent(object o, FocusInEventArgs args)
@@ -1923,9 +1923,11 @@ namespace BioGTK
             }
             set
             {
-                // Ensure the new resolution is valid for the selected image type
-                if (SelectedImage.Type == BioImage.ImageType.well && value > SelectedImage.Resolutions.Count - 1)
+                if (SelectedImage.Type == BioImage.ImageType.well)
+                {
+                    SelectedImage.Resolution = value;
                     return;
+                }
 
                 // Calculate the scaling factor based on the new and current resolution
                 double scalingFactor = value / SelectedImage.Resolution;
@@ -1942,7 +1944,7 @@ namespace BioGTK
                     SelectedImage.PyramidalSize.Height / 2
                 );
                 // Update the resolution
-                SelectedImage.Resolution = value;
+                
                 // Calculate new PyramidalOrigin so that the image stays centered on the middle
                 PyramidalOrigin = new PointD(
                     imageMousePosition.X - (viewportCenter.X * (scalingFactor - 1)),
@@ -1950,17 +1952,31 @@ namespace BioGTK
                 );
             }
         }
+        private int l;
         public int Level
         {
             get
             {
-                int l = 0;
+                if(SelectedImage.Type == BioImage.ImageType.well)
+                {
+                    return (int)SelectedImage.Level;
+                }
                 if(SelectedImage.isPyramidal)
                 if (!openSlide)
                     l = OpenSlideGTK.TileUtil.GetLevel(_slideBase.Schema.Resolutions, Resolution);
                 else
                     l = OpenSlideGTK.TileUtil.GetLevel(_openSlideBase.Schema.Resolutions, Resolution);
                 return l;
+            }
+            set
+            {
+                l = value;
+                SelectedImage.Level = l;
+                if (SelectedImage.Type == BioImage.ImageType.well)
+                {
+                    UpdateImages();
+                    UpdateView();
+                }
             }
         }
 
@@ -2058,7 +2074,7 @@ namespace BioGTK
             App.tools.ToolMove(p, e);
             Tools.currentTool.Rectangle = new RectangleD(mouseDown.X, mouseDown.Y, p.X - mouseDown.X, p.Y - mouseDown.Y);
             mousePoint = "(" + (p.X.ToString("F")) + ", " + (p.Y.ToString("F")) + ")";
-            //Check 
+            
             if (SelectedImage.isPyramidal && overview.IntersectsWith(e.Event.X, e.Event.Y)  && e.Event.State.HasFlag(ModifierType.Button1Mask))
             {
                 if (!OpenSlide)
@@ -2282,7 +2298,18 @@ namespace BioGTK
             if (SelectedImage == null)
                 return;
             PointD ip = pointer; // SelectedImage.ToImageSpace(pointer);
-            
+            if (ImageView.SelectedImage.Type == BioImage.ImageType.well)
+            {
+                if (e.Event.Button == 4)
+                {
+                    Level = ImageView.SelectedImage.Level - 1;
+                }
+                else
+                if (e.Event.Button == 5)
+                {
+                    Level = ImageView.SelectedImage.Level + 1;
+                }
+            }
             if (e.Event.Button == 3)
                 contextMenu.Popup();
             if (e.Event.Button == 4 && Mode != ViewMode.RGBImage)

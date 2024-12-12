@@ -247,42 +247,7 @@ namespace BioGTK
 
         private void AutoSAMMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            mPromotionList.Clear();
-            AutoSAM asm = new AutoSAM((int)pointsBar.Value,64,(float)predictionBar.Value,(float)stabilityBar.Value,1,0.7f,(int)layersBar.Value,0.7f,0.3413333f,1,null,0,"binary_mask");
-
-            for (int z = 0; z < ImageView.SelectedImage.SizeZ; z++)
-            {
-                for (int c = 0; c < ImageView.SelectedImage.SizeC; c++)
-                {
-                    for (int t = 0; t < ImageView.SelectedImage.SizeT; t++)
-                    {
-                        MaskData md = asm.Generate(ImageView.SelectedImage, ImageView.SelectedImage.Coords[z,c,t]);
-                        for (int i = 0; i < md.mfinalMask.Count; i++)
-                        {
-                            if (md.mfinalMask[i].Count < ImageView.SelectedImage.SizeX * ImageView.SelectedImage.SizeY)
-                            {
-                                md.mfinalMask[i] = null;
-                                md.mfinalMask.RemoveAt(i);
-                                continue;
-                            }
-                            PointD loc = new PointD(ImageView.SelectedImage.StageSizeX, ImageView.SelectedImage.StageSizeY);
-                            ROI an = ROI.CreateMask(new ZCT(z,c,t), md.mfinalMask[i].ToArray(), ImageView.SelectedImage.SizeX, ImageView.SelectedImage.SizeY, loc, ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY);
-                            if (an.W * an.H < minAreaBar.Value)
-                                continue;
-                            if (an.W * an.H > maxAreaBar.Value)
-                                continue;
-                            byte r = (byte)rng.Next(0, 255);
-                            byte g = (byte)rng.Next(0, 255);
-                            byte bb = (byte)rng.Next(0, 255);
-                            an.fillColor.R = r;
-                            an.fillColor.G = g;
-                            an.fillColor.B = bb;
-                            ImageView.SelectedImage.Annotations.Add(an);
-                        }
-                        md.Dispose();
-                    }
-                }
-            }
+            SAM.Run(mPromotionList, (float)minAreaBar.Value, (float)maxAreaBar.Value, (float)stabilityBar.Value, (float)predictionBar.Value, (int)layersBar.Value, (int)pointsBar.Value);
         }
 
         private void ToROIMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)

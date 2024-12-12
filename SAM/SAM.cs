@@ -413,6 +413,45 @@ namespace BioGTK
             // Record the operation
             BioLib.Recorder.Record($"SAM.RemoveDuplicates({removeDistance}, {distance}, {removeLarge}, {largeArea})");
         }
+        static Random rng = new Random();
+        public static void Run(List<Promotion> prs, float minArea, float maxArea,float stability,float prediction, int layers, int points)
+        {
+            AutoSAM asm = new AutoSAM(points, 64, prediction, stability, 1, 0.7f, points, 0.7f, 0.3413333f, 1, null, 0, "binary_mask");
+
+            for (int z = 0; z < ImageView.SelectedImage.SizeZ; z++)
+            {
+                for (int c = 0; c < ImageView.SelectedImage.SizeC; c++)
+                {
+                    for (int t = 0; t < ImageView.SelectedImage.SizeT; t++)
+                    {
+                        MaskData md = asm.Generate(ImageView.SelectedImage, ImageView.SelectedImage.Coords[z, c, t]);
+                        for (int i = 0; i < md.mfinalMask.Count; i++)
+                        {
+                            if (md.mfinalMask[i].Count < ImageView.SelectedImage.SizeX * ImageView.SelectedImage.SizeY)
+                            {
+                                md.mfinalMask[i] = null;
+                                md.mfinalMask.RemoveAt(i);
+                                continue;
+                            }
+                            PointD loc = new PointD(ImageView.SelectedImage.StageSizeX, ImageView.SelectedImage.StageSizeY);
+                            ROI an = ROI.CreateMask(new ZCT(z, c, t), md.mfinalMask[i].ToArray(), ImageView.SelectedImage.SizeX, ImageView.SelectedImage.SizeY, loc, ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY);
+                            if (an.W * an.H < minArea)
+                                continue;
+                            if (an.W * an.H > maxArea)
+                                continue;
+                            byte r = (byte)rng.Next(0, 255);
+                            byte g = (byte)rng.Next(0, 255);
+                            byte bb = (byte)rng.Next(0, 255);
+                            an.fillColor.R = r;
+                            an.fillColor.G = g;
+                            an.fillColor.B = bb;
+                            ImageView.SelectedImage.Annotations.Add(an);
+                        }
+                        md.Dispose();
+                    }
+                }
+            }
+        }
 
         /// The Dispose function disposes of resources and sets variables to null.
         public void Dispose()
