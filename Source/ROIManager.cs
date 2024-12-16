@@ -79,6 +79,7 @@ namespace Bio
         #endregion
 
         #region Constructors / Destructors
+        public BioImage image;
         public static Dictionary<string, ROI> rois = new Dictionary<string, ROI>();
         public static ROIManager Create()
         {
@@ -182,7 +183,12 @@ namespace Bio
 
         private void ROIManager_FocusInEvent(object o, FocusInEventArgs args)
         {
-            UpdateAnnotationList();
+            this.image = ImageView.SelectedImage;
+            rois.Clear();
+            foreach (var item in image.Annotations)
+            {
+                rois.Add(item.id,item);
+            }
         }
 
 
@@ -210,9 +216,9 @@ namespace Bio
                     string id = (string)roiView.Model.GetValue(iter, 1);
                     string text = (string)roiView.Model.GetValue(iter, 2);
                     string bounds = (string)roiView.Model.GetValue(iter, 3);
-                    if (rois.ContainsKey(type.ToString() + "," + id + "," + text + "," + bounds))
+                    if (rois.ContainsKey(id))
                     {
-                        anno = rois[type.ToString() + "," + id + "," + text + "," + bounds];
+                        anno = rois[id];
                         if (App.viewer != null)
                             App.viewer.SetCoordinate(anno.coord.Z, anno.coord.C, anno.coord.T);
 
@@ -364,7 +370,6 @@ namespace Bio
             if (anno == null)
                 return;
             anno.X = (double)xBox.Value;
-            UpdateAnnotationList();
             UpdateView();
         }
         /// When the value of the yBox is changed, the value of the yBox is assigned to the Y property
@@ -380,7 +385,6 @@ namespace Bio
                 return;
             anno.Y = (double)yBox.Value;
             UpdateView();
-            UpdateAnnotationList();
         }
         /// When the value of the width box changes, the width of the annotation is updated
         /// 
@@ -395,7 +399,6 @@ namespace Bio
             if(anno.type == ROI.Type.Rectangle || anno.type == ROI.Type.Ellipse)
                 anno.W = (double)wBox.Value;
             UpdateView();
-            UpdateAnnotationList();
         }
         /// This function is called when the value of the hBox is changed
         /// 
@@ -409,7 +412,6 @@ namespace Bio
                 return;
             if (anno.type == ROI.Type.Rectangle || anno.type == ROI.Type.Ellipse)
                 anno.H = (double)hBox.Value;
-            UpdateAnnotationList();
             UpdateView();
         }
         /// This function is called when the value of the checkbox is changed
@@ -422,7 +424,6 @@ namespace Bio
         {
             if (anno == null)
                 return;
-            UpdateAnnotationList();
             UpdateView();
         }
         /// When the value of the Z coordinate changes, update the annotation's Z coordinate and update
@@ -522,7 +523,6 @@ namespace Bio
                 return;
             anno.Text = textBox.Text;
             UpdateView();
-            UpdateAnnotationList();
         }
         /// When the text in the idBox changes, the id of the annotation is set to the text in the idBox
         /// 
@@ -537,7 +537,6 @@ namespace Bio
                 return;
             anno.id = idBox.Text;
             UpdateView();
-            UpdateAnnotationList();
         }
         /// When the ROI Manager is activated, if the selected image is not null, the name of the image
         /// is displayed in the imageNameLabel
@@ -553,7 +552,6 @@ namespace Bio
             string n = System.IO.Path.GetFileName(ImageView.SelectedImage.ID);
             if (imageNameLabel.Text != n)
                 imageNameLabel.Text = n;
-            UpdateAnnotationList();
         }
 
         /// The function adds the annotation to the image and updates the view

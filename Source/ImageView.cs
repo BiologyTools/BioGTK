@@ -2396,7 +2396,7 @@ namespace BioGTK
                             an.Selected = false;
                         if(an.type == ROI.Type.Mask)
                         {
-                            RectangleD rd = new RectangleD(an.X + (an.roiMask.X * an.roiMask.PhysicalSizeX), an.Y + (an.roiMask.Y * an.roiMask.PhysicalSizeY), an.roiMask.Width * an.roiMask.PhysicalSizeX, an.roiMask.Height * an.roiMask.PhysicalSizeY);
+                            RectangleD rd = new RectangleD(SelectedImage.StageSizeX + (an.roiMask.X * an.roiMask.PhysicalSizeX), SelectedImage.StageSizeY + (an.roiMask.Y * an.roiMask.PhysicalSizeY), an.roiMask.Width * an.roiMask.PhysicalSizeX, an.roiMask.Height * an.roiMask.PhysicalSizeY);
                             if (rd.IntersectsWith(new RectangleD((float)pointer.X, (float)pointer.Y, SelectedImage.PhysicalSizeX, SelectedImage.PhysicalSizeY)))
                                 an.Selected = true;
                             else

@@ -16,13 +16,20 @@
         <property name="visible">True</property>
         <property name="can-focus">False</property>
         <child>
-          <object class="GtkTreeView" id="roiView">
-            <property name="width-request">271</property>
-            <property name="height-request">555</property>
+          <object class="GtkScrolledWindow">
             <property name="visible">True</property>
             <property name="can-focus">True</property>
-            <child internal-child="selection">
-              <object class="GtkTreeSelection"/>
+            <property name="shadow-type">in</property>
+            <child>
+              <object class="GtkTreeView" id="roiView">
+                <property name="width-request">271</property>
+                <property name="height-request">555</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <child internal-child="selection">
+                  <object class="GtkTreeSelection"/>
+                </child>
+              </object>
             </child>
           </object>
           <packing>
@@ -153,13 +160,12 @@
             </child>
             <child>
               <object class="GtkLabel">
-                <property name="width-request">33</property>
-                <property name="height-request">20</property>
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="label" translatable="yes">ZCT</property>
               </object>
               <packing>
+                <property name="x">8</property>
                 <property name="y">123</property>
               </packing>
             </child>
@@ -220,14 +226,13 @@
             </child>
             <child>
               <object class="GtkLabel">
-                <property name="width-request">88</property>
-                <property name="height-request">24</property>
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="label" translatable="yes">Stroke Width</property>
               </object>
               <packing>
-                <property name="y">183</property>
+                <property name="x">7</property>
+                <property name="y">185</property>
               </packing>
             </child>
             <child>
@@ -298,13 +303,12 @@
             </child>
             <child>
               <object class="GtkLabel">
-                <property name="width-request">115</property>
-                <property name="height-request">20</property>
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="label" translatable="yes">Stroke Color RGB</property>
               </object>
               <packing>
+                <property name="x">5</property>
                 <property name="y">243</property>
               </packing>
             </child>
