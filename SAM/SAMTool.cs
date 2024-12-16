@@ -18,10 +18,20 @@ namespace BioGTK
         static Random rng = new Random();
         #region Properties
         ImageView view;
-        static SAM sam = null;
+        static SAM sam;
+        static MicroSAM microsam;
         List<Promotion> mPromotionList = new List<Promotion>();
         public bool init = false;
-        public static bool microSAM = false;
+        public static bool microSAM
+        {
+            get
+            {
+                if (microsam == null)
+                    return false;
+                else
+                    return true;
+            }
+        }
         int id = 1;
         string autoSavePath = "Masks";
         private ROI SelectedROI
@@ -98,10 +108,12 @@ namespace BioGTK
         /// @return A new instance of the SAMTool class.
         public static SAMTool Create(bool micro_SAM)
         {
-            microSAM = micro_SAM;
             Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/SAM.glade", FileMode.Open));
             if (micro_SAM)
+            {
                 sam = MicroSAM.Instance();
+                microsam = MicroSAM.Instance();
+            }
             else
                 sam = SAM.Instance();
             return new SAMTool(builder, builder.GetObject("SAMTool").Handle);
@@ -215,7 +227,10 @@ namespace BioGTK
 
         private void SAMEncodeBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            sam.Encode(ImageView.SelectedImage);
+            if(MicroSAM.theSingleton== null)
+                sam.Encode(ImageView.SelectedImage);
+            else
+                microsam.Encode(ImageView.SelectedImage);
         }
 
         private void DeleteDuplicatesBut_ButtonPressEvent(object sender, ButtonPressEventArgs args)
@@ -261,7 +276,7 @@ namespace BioGTK
             {
                 if (r.roiMask == null)
                     continue;
-                List<PointD> ps = GetEdgePolygonFromMask(new Bitmap("",r.roiMask.Width,r.roiMask.Height,PixelFormat.Format32bppArgb, r.roiMask.GetBytes(), App.viewer.GetCoordinate(), 0));
+                List<PointD> ps = GetEdgePolygonFromMask(new Bitmap("",r.roiMask.Width,r.roiMask.Height,PixelFormat.Format32bppArgb, r.roiMask.GetBytesCropped(), App.viewer.GetCoordinate(), 0));
                 for (int i = 0; i < ps.Count; i++)
                 {
                     ps[i] = new PointD(ps[i].X * ImageView.SelectedImage.PhysicalSizeX, ps[i].Y * ImageView.SelectedImage.PhysicalSizeY);
@@ -319,7 +334,10 @@ namespace BioGTK
         }
         private void SAMTool_DeleteEvent(object o, DeleteEventArgs args)
         {
-            sam.Dispose();
+            if (MicroSAM.theSingleton == null)
+                sam.Dispose();
+            else
+                microsam.Dispose();
         }
 
         /// The SetAutoSave_ButtonPressEvent function allows the user to select a folder for auto-saving
@@ -358,13 +376,26 @@ namespace BioGTK
         {
             if (ImageView.SelectedImage == null)
                 return;
-            Thread th = new Thread(sam.LoadONNXModel);
-            th.Start();
+            if (MicroSAM.theSingleton == null)
+            {
+                sam.LoadONNXModel();
+                Thread th2 = new Thread(sam.Encode);
+                th2.Start();
+            }
+            else
+            {
+                microsam.LoadONNXModel();
+                Thread th2 = new Thread(microsam.Encode);
+                th2.Start();
+            }
         }
 
         internal static void Encode()
         {
-            sam.Encode(ImageView.SelectedImage);
+            if(MicroSAM.theSingleton == null)
+                sam.Encode(ImageView.SelectedImage);
+            else
+                microsam.Encode(ImageView.SelectedImage);
         }
 
         /// The function handles the button release event for a picture box and performs various
@@ -398,7 +429,11 @@ namespace BioGTK
                 Transforms trs = new Transforms(1024);
                 PointPromotion ptn = trs.ApplyCoords((promtt as PointPromotion), ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 this.mPromotionList.Add(ptn);
-                float[] maskk = sam.Decode(ImageView.SelectedImage, this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
+                float[] maskk;
+                if(MicroSAM.theSingleton != null)
+                    maskk = microsam.Decode(ImageView.SelectedImage, this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
+                else
+                    maskk = sam.Decode(ImageView.SelectedImage, this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 this.ShowMask(maskk, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 this.mPromotionList.Clear();
             }
@@ -424,7 +459,12 @@ namespace BioGTK
                 Transforms ts = new Transforms(1024);
                 var pb = ts.ApplyBox(promt, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 this.mPromotionList.Add(pb);
-                float[] mask = sam.Decode(ImageView.SelectedImage, this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
+
+                float[] mask;
+                if (MicroSAM.theSingleton != null)
+                    mask = microsam.Decode(ImageView.SelectedImage, this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
+                else
+                    mask = sam.Decode(ImageView.SelectedImage, this.mPromotionList, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
                 ShowMask(mask, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
             }
         }

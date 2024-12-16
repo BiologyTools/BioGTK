@@ -24,6 +24,7 @@ namespace BioGTK
         public float mask_threshold = 0.0f;
         protected MicroSAM()
         {
+
         }
         /// The function returns an instance of the SAM class, creating it if it doesn't already exist.
         /// 
@@ -51,7 +52,10 @@ namespace BioGTK
             this.encoder = new InferenceSession(encoder_model_path);
 
         }
-
+        public new void Encode()
+        {
+            Encode(ImageView.SelectedImage);
+        }
         /// The Encode function takes a BioImage object, applies a transformation to it, converts it to
         /// a tensor, runs it through an encoder model, and stores the resulting embedding.
         /// 
@@ -96,18 +100,29 @@ namespace BioGTK
                 try
                 {
                     results = this.encoder.Run(inputs);
-                    if (b.Tag == null)
-                    {
-                        b.Tag = new List<float[]>();
-                    }
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e.Message);
+                    Console.WriteLine("Tried running SAM-2 next trying SAM-1");
+                    SAM2 = false;
                 }
-                
+                if (!SAM2)
+                {
+                    inputs = new List<NamedOnnxValue>
+                    {
+                        NamedOnnxValue.CreateFromTensor("x", tensor)
+                    };
+                    results = this.encoder.Run(inputs);
+                }
+                if (b.Tag == null)
+                {
+                    b.Tag = new List<float[]>();
+                }
                 List<float[]> l = (List<float[]>)b.Tag;
-                l.Add(results.First().AsTensor<float>().ToArray());
+                if (!SAM2)
+                    l.Add(results.First().AsTensor<float>().ToArray());
+                else
+                    l.Add(results.Last().AsTensor<float>().ToArray());
                 b.Tag = l;
                 results.Dispose();
                 pr.ProgressValue = (double)i / b.Buffers.Count;
@@ -183,7 +198,8 @@ namespace BioGTK
             var hasMaskValues_tensor = new DenseTensor<float>(hasMaskValues, new[] { 1 });
 
             var decode_inputs = new List<NamedOnnxValue>();
-            float[] orig_im_size_values = { (float)orgWid, (float)orgHei };
+            
+            float[] orig_im_size_values = { (float)orgHei, (float)orgWid };
             var orig_im_size_values_tensor = new DenseTensor<float>(orig_im_size_values, new[] { 2 });
             decode_inputs = new List<NamedOnnxValue>
             {
@@ -194,6 +210,7 @@ namespace BioGTK
             NamedOnnxValue.CreateFromTensor("has_mask_input", hasMaskValues_tensor),
             NamedOnnxValue.CreateFromTensor("orig_im_size", orig_im_size_values_tensor)
             };
+           
             var segmask = this.decoder.Run(decode_inputs);
             var outputmask = segmask.First().AsTensor<float>().ToArray();
             return outputmask;
@@ -251,6 +268,7 @@ namespace BioGTK
             float[] hasMaskValues = new float[1] { 0 };
             var hasMaskValues_tensor = new DenseTensor<float>(hasMaskValues, new[] { 1 });
             List<NamedOnnxValue> decode_inputs;
+            
             float[] orig_im_size_values = { (float)orgHei, (float)orgWid };
             var orig_im_size_values_tensor = new DenseTensor<float>(orig_im_size_values, new[] { 2 });
             decode_inputs = new List<NamedOnnxValue>
@@ -262,6 +280,7 @@ namespace BioGTK
                 NamedOnnxValue.CreateFromTensor("has_mask_input", hasMaskValues_tensor),
                 NamedOnnxValue.CreateFromTensor("orig_im_size", orig_im_size_values_tensor)
             };
+           
             MaskData md = new MaskData();
             var segmask = this.decoder.Run(decode_inputs).ToList();
             md.mMask = segmask[0].AsTensor<float>().ToArray().ToList();
@@ -270,7 +289,6 @@ namespace BioGTK
             return md;
 
         }
-
         /// <summary>
         /// Resizes a tensor of shape [1, sizeX, sizeY] using bilinear interpolation.
         /// </summary>

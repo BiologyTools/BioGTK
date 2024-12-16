@@ -56,7 +56,10 @@ namespace BioGTK
             this.mDecoder = new InferenceSession(decode_model_path);
             SAMTool.Encode();
         }
-
+        public void Encode()
+        {
+            Encode(ImageView.SelectedImage);
+        }
         /// The Encode function takes a BioImage object, applies a transformation to it, converts it to
         /// a tensor, runs it through an encoder model, and stores the resulting embedding.
         /// 
@@ -416,8 +419,7 @@ namespace BioGTK
         static Random rng = new Random();
         public static void Run(List<Promotion> prs, float minArea, float maxArea,float stability,float prediction, int layers, int points)
         {
-            AutoSAM asm = new AutoSAM(points, 64, prediction, stability, 1, 0.7f, points, 0.7f, 0.3413333f, 1, null, 0, "binary_mask");
-
+            AutoSAM asm = new AutoSAM(points, 64, prediction, stability, 1, 0.7f, layers, 0.7f, 0.3413333f, 1, null, 0, "binary_mask");
             for (int z = 0; z < ImageView.SelectedImage.SizeZ; z++)
             {
                 for (int c = 0; c < ImageView.SelectedImage.SizeC; c++)

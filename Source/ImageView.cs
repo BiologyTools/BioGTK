@@ -16,6 +16,7 @@ using System.IO;
 using SkiaSharp;
 using SkiaSharp.Views.Gtk;
 using System.Runtime.InteropServices;
+using static NetVips.Enums;
 
 namespace BioGTK
 {
@@ -296,15 +297,17 @@ namespace BioGTK
         private bool refresh = false;
         private async void Render(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e)
         {
+            int ri = 0;
             try
             {
                 if (!refresh)
                     return;
                 var canvas = e.Surface.Canvas;
-                canvas.Clear(SKColors.White);
+                canvas.Clear(SKColors.Transparent);
                 var paint = new SKPaint();
                 paint.Color = SKColors.Gray;
-                paint.IsAntialias = false;
+                paint.BlendMode = SKBlendMode.SrcOver;
+                paint.IsAntialias = true;
                 paint.Style = SKPaintStyle.Fill;
                 if ((SKImages.Count == 0 || Bitmaps.Count != Images.Count))
                     UpdateImages(true);
@@ -321,6 +324,7 @@ namespace BioGTK
                 rr.Size = new SKSize((float)rd.W, (float)rd.H);
                 canvas.DrawRect(rr, paint);
                 int i = 0;
+                
                 foreach (BioImage im in Images)
                 {
                     RectangleD rec = ToScreenRect(im.Volume.Location.X, im.Volume.Location.Y, im.Volume.Width, im.Volume.Height);
@@ -386,7 +390,7 @@ namespace BioGTK
                         var recd = ToScreenRect(Tools.currentTool.Rectangle.X, Tools.currentTool.Rectangle.Y, Tools.currentTool.Rectangle.W, Tools.currentTool.Rectangle.H);
                         canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
                     }
-
+                    ri = 0;
                     foreach (ROI an in rois)
                     {
                         if (Mode == ViewMode.RGBImage)
@@ -398,8 +402,6 @@ namespace BioGTK
                             if (!showBROIs && an.coord.C == 2)
                                 continue;
                         }
-                        if (zBar.Value != an.coord.Z || cBar.Value != an.coord.C || tBar.Value != an.coord.T)
-                            continue;
                         if (an.Selected)
                         {
                             paint.Color = SKColors.Magenta;
@@ -410,13 +412,20 @@ namespace BioGTK
                         PointF pc = new PointF((float)(an.BoundingBox.X + (an.BoundingBox.W / 2)), (float)(an.BoundingBox.Y + (an.BoundingBox.H / 2)));
                         float width = ROI.selectBoxSize;
 
-                        if (an.type == ROI.Type.Mask || an.roiMask != null)
+                        if (an.type == ROI.Type.Mask && an.coord == App.viewer.GetCoordinate())
                         {
-                            SKImage sim = an.roiMask.GetColored(an.fillColor,100).ToSKImage();
-                            RectangleD p = ToScreenRect(an.X, an.Y, sim.Width * im.PhysicalSizeX, sim.Height * im.PhysicalSizeY);
+                            paint.BlendMode = SKBlendMode.Modulate;
+                            SKImage sim;
+                            if(an.Selected)
+                                sim = an.roiMask.GetColored(Color.Blue, 10, true).ToSKImage();
+                            else
+                                sim = an.roiMask.GetColored(Color.FromArgb(1,an.fillColor.R, an.fillColor.G, an.fillColor.B), 1, true).ToSKImage();
+                            RectangleD p = ToScreenSpace(new RectangleD(an.roiMask.X * an.roiMask.PhysicalSizeX, an.roiMask.Y * an.roiMask.PhysicalSizeY, an.W,an.H));
                             canvas.DrawImage(sim, ToRectangle((float)p.X, (float)p.Y, (float)p.W, (float)p.H), paint);
                             sim.Dispose();
+                            continue;
                         }
+                        else
                         if (an.type == ROI.Type.Point)
                         {
                             RectangleD r1 = ToScreenRect(an.Point.X, an.Point.Y, ToViewW(3), ToViewH(3));
@@ -492,46 +501,49 @@ namespace BioGTK
                             RectangleD p = ToScreenRect(an.Point.X, an.Point.Y, 1, 1);
                             canvas.DrawText(an.Text, (float)p.X, (float)p.Y, new SKFont(SKTypeface.Default, an.fontSize, 1, 0), paint);
                         }
-                        if (ROIManager.showBounds && an.type != ROI.Type.Rectangle && an.type != ROI.Type.Label)
+                        if (ROIManager.showBounds && an.type != ROI.Type.Rectangle && an.type != ROI.Type.Mask && an.type != ROI.Type.Label)
                         {
                             RectangleD rrf = ToScreenRect(an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
                             canvas.DrawRect((float)rrf.X, (float)rrf.Y, (float)rrf.W, (float)rrf.H, paint);
                         }
                         paint.Color = SKColors.Red;
                         if (!(an.type == ROI.Type.Freeform && !an.Selected) && an.type != ROI.Type.Mask)
-                            foreach (RectangleD re in an.GetSelectBoxes(1))
-                            {
-                                RectangleD recd = ToScreenRect(re.X, re.Y, re.W, re.H);
-                                canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
-                            }
-                        //Lets draw the selection Boxes.
-                        List<RectangleD> rects = new List<RectangleD>();
-                        RectangleD[] sels = an.GetSelectBoxes(width);
-                        for (int p = 0; p < an.selectedPoints.Count; p++)
+                        foreach (RectangleD re in an.GetSelectBoxes(1))
                         {
-                            if (an.selectedPoints[p] < an.GetPointCount())
-                            {
-                                rects.Add(sels[an.selectedPoints[p]]);
-                            }
+                            RectangleD recd = ToScreenRect(re.X, re.Y, re.W, re.H);
+                            canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
                         }
-                        //Lets draw selected selection boxes.
-                        paint.Color = SKColors.Blue;
-                        if (rects.Count > 0)
+                        if (an.type != ROI.Type.Mask)
                         {
-                            int ind = 0;
-                            foreach (RectangleD re in an.GetSelectBoxes(1))
+                            //Lets draw the selection Boxes.
+                            List<RectangleD> rects = new List<RectangleD>();
+                            RectangleD[] sels = an.GetSelectBoxes(width);
+                            for (int p = 0; p < an.selectedPoints.Count; p++)
                             {
-                                RectangleD recd = ToScreenRect(re.X, re.Y, re.W, re.H);
-                                if (an.selectedPoints.Contains(ind))
+                                if (an.selectedPoints[p] < an.GetPointCount())
                                 {
-                                    canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
+                                    rects.Add(sels[an.selectedPoints[p]]);
                                 }
-                                ind++;
                             }
+                            //Lets draw selected selection boxes.
+                            paint.Color = SKColors.Blue;
+                            if (rects.Count > 0)
+                            {
+                                int ind = 0;
+                                foreach (RectangleD re in an.GetSelectBoxes(1))
+                                {
+                                    RectangleD recd = ToScreenRect(re.X, re.Y, re.W, re.H);
+                                    if (an.selectedPoints.Contains(ind))
+                                    {
+                                        canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
+                                    }
+                                    ind++;
+                                }
+                            }
+                            rects.Clear();
                         }
-                        rects.Clear();
+                        ri++;
                     }
-
                 }
                 Plugins.Render(sender, e);
                 paint.Dispose();
@@ -2007,7 +2019,7 @@ namespace BioGTK
             {
                 statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
                 mousePoint + mouseColor + ", " + SelectedImage.Buffers[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") " 
-                + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2") + " , Well:" + SelectedImage.Level;
+                + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2") + " , Well:" + SelectedImage.Resolution;
             }
             else
             statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
@@ -2382,6 +2394,15 @@ namespace BioGTK
                     {
                         if (!Modifiers.HasFlag(ModifierType.ControlMask))
                             an.Selected = false;
+                        if(an.type == ROI.Type.Mask)
+                        {
+                            RectangleD rd = new RectangleD(an.X + (an.roiMask.X * an.roiMask.PhysicalSizeX), an.Y + (an.roiMask.Y * an.roiMask.PhysicalSizeY), an.roiMask.Width * an.roiMask.PhysicalSizeX, an.roiMask.Height * an.roiMask.PhysicalSizeY);
+                            if (rd.IntersectsWith(new RectangleD((float)pointer.X, (float)pointer.Y, SelectedImage.PhysicalSizeX, SelectedImage.PhysicalSizeY)))
+                                an.Selected = true;
+                            else
+                                an.Selected = false;
+                        }
+                        else
                         if((an.coord == GetCoordinate() && Mode != ViewMode.RGBImage) || (an.coord.Z == GetCoordinate().Z && an.coord.T == GetCoordinate().T && Mode == ViewMode.RGBImage))
                         if (an.GetSelectBound(ROI.selectBoxSize * SelectedImage.PhysicalSizeX, ROI.selectBoxSize * SelectedImage.PhysicalSizeY).IntersectsWith(new RectangleD((float)pointer.X, (float)pointer.Y,SelectedImage.PhysicalSizeX, SelectedImage.PhysicalSizeY)))
                         {

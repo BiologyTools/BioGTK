@@ -31,7 +31,9 @@ namespace BioGTK
         string output_mode = "binary_mask";
         BioImage mImage;
         public SAM mSAM;
+        public MicroSAM microSAM;
         public float[] mImgEmbedding;
+        public bool isMicro = false;
 
         public AutoSAM(int points_per_side = 4,
                             int points_per_batch = 64,
@@ -61,7 +63,10 @@ namespace BioGTK
             this.min_mask_region_area = min_mask_region_area;
             this.output_mode = output_mode;
             if (SAM.theSingleton == null)
+            {
                 mSAM = MicroSAM.Instance();
+                this.isMicro = true;
+            }
             else
                 mSAM = SAM.Instance();
             if (points_per_side != 0)
@@ -244,7 +249,6 @@ namespace BioGTK
                 MaskData mask = this._process_batch(v.ToList(), r.Width, r.Height, crop_box, this.mImage.SizeX, this.mImage.SizeY);
                 masks.Cat(mask);
             }
-            //roiImage.Dispose();
             return masks;
         }
 
@@ -258,7 +262,14 @@ namespace BioGTK
                 PointPromotion[] pts = v as PointPromotion[];
                 for (int i=0;i<pts.Length;i++)
                 {
-                    MaskData md = this.mSAM.Decode(new List<Promotion>() { pts[i] }, this.mImgEmbedding, cropimgwid, cropimghei);
+                    MaskData md = null;
+                    if (MicroSAM.theSingleton == null)
+                        md = this.mSAM.Decode(new List<Promotion>() { pts[i] }, this.mImgEmbedding, cropimgwid, cropimghei);
+                    else
+                    {
+                        this.microSAM = (MicroSAM)this.mSAM;
+                        md = this.microSAM.Decode(new List<Promotion>() { pts[i] }, this.mImgEmbedding, cropimgwid, cropimghei);
+                    }
                     md.mStability = md.CalculateStabilityScore(this.mSAM.mask_threshold, this.stability_score_offset).ToList();
                     md.Filter(this.pred_iou_thresh, this.stability_score_thresh);
                     batch.Cat(md);

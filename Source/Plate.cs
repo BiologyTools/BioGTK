@@ -58,7 +58,7 @@ namespace BioGTK
                         Rectangle re = new Rectangle(r, (w.Column - 1) * l, l, l);
                         if(re.IntersectsWith(new Rectangle((int)args.Event.X, (int)args.Event.Y,1,1)))
                         {
-                            ImageView.SelectedImage.Level = s.Index;
+                            ImageView.SelectedImage.Resolution = s.Index;
                             selected = s;
                             App.viewer.UpdateImage();
                             App.viewer.UpdateView();
@@ -80,7 +80,7 @@ namespace BioGTK
                 int r = 0;
                 foreach (BioImage.WellPlate.Well.Sample s in w.Samples)
                 {
-                    if (s.Index != ImageView.SelectedImage.Level)
+                    if (s.Index != ImageView.SelectedImage.Resolution)
                     {
                         args.Cr.SetSourceColor(new Cairo.Color(0, 0, 0));
                         args.Cr.Rectangle(r, (w.Column - 1) * l, l, l);
@@ -95,7 +95,7 @@ namespace BioGTK
                 int r = 0;
                 foreach (BioImage.WellPlate.Well.Sample s in w.Samples)
                 {
-                    if (s.Index == ImageView.SelectedImage.Level)
+                    if (s.Index == ImageView.SelectedImage.Resolution)
                     {
                         args.Cr.SetSourceColor(new Cairo.Color(255, 0, 0));
                         args.Cr.Rectangle(r, (w.Column - 1) * l, l, l);
