@@ -17,6 +17,7 @@ using SkiaSharp;
 using SkiaSharp.Views.Gtk;
 using System.Runtime.InteropServices;
 using static NetVips.Enums;
+using sun.applet;
 
 namespace BioGTK
 {
@@ -135,6 +136,9 @@ namespace BioGTK
             get { return allowNavigation; }
             set { allowNavigation = value; }
         }
+
+        public bool ShowMasks { get; set; }
+
        /* Getting the selected buffer from the selected image. */
         public static AForge.Bitmap SelectedBuffer
         {
@@ -251,6 +255,7 @@ namespace BioGTK
             roi.Submenu = roiMenu;
             roi.ShowAll();
             AddImage(im);
+            ShowMasks = true;
             pxWmicron = SelectedImage.PhysicalSizeX;
             pxHmicron = SelectedImage.PhysicalSizeY;
             SetupHandlers();
@@ -412,7 +417,7 @@ namespace BioGTK
                         PointF pc = new PointF((float)(an.BoundingBox.X + (an.BoundingBox.W / 2)), (float)(an.BoundingBox.Y + (an.BoundingBox.H / 2)));
                         float width = ROI.selectBoxSize;
 
-                        if (an.type == ROI.Type.Mask && an.coord == App.viewer.GetCoordinate())
+                        if (an.type == ROI.Type.Mask && an.coord == App.viewer.GetCoordinate() && ShowMasks)
                         {
                             paint.BlendMode = SKBlendMode.Modulate;
                             SKImage sim;
@@ -1306,7 +1311,7 @@ namespace BioGTK
             for (int i = 0; i < this.Images.Count; i++)
             {
                 var item = this.Images[i];
-                App.tabsView.RemoveTab(item.Filename);
+                App.CloseWindow(item.Filename);
             }
         }
 

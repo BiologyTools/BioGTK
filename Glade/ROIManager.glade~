@@ -17,13 +17,12 @@
         <property name="can-focus">False</property>
         <child>
           <object class="GtkScrolledWindow">
+            <property name="width-request">350</property>
             <property name="visible">True</property>
             <property name="can-focus">True</property>
             <property name="shadow-type">in</property>
             <child>
               <object class="GtkTreeView" id="roiView">
-                <property name="width-request">271</property>
-                <property name="height-request">555</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <child internal-child="selection">
@@ -527,8 +526,8 @@
                 <property name="digits">1</property>
               </object>
               <packing>
-                <property name="x">231</property>
-                <property name="y">517</property>
+                <property name="x">284</property>
+                <property name="y">515</property>
               </packing>
             </child>
             <child>
@@ -540,8 +539,8 @@
                 <property name="label" translatable="yes">Select Box Size</property>
               </object>
               <packing>
-                <property name="x">232</property>
-                <property name="y">491</property>
+                <property name="x">287</property>
+                <property name="y">484</property>
               </packing>
             </child>
             <child>
@@ -552,6 +551,21 @@
               <packing>
                 <property name="x">39</property>
                 <property name="y">313</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="showMasksBox">
+                <property name="label" translatable="yes">Show Masks</property>
+                <property name="width-request">81</property>
+                <property name="height-request">21</property>
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">False</property>
+                <property name="draw-indicator">True</property>
+              </object>
+              <packing>
+                <property name="x">188</property>
+                <property name="y">482</property>
               </packing>
             </child>
           </object>

@@ -73,6 +73,8 @@ namespace Bio
         [Builder.Object]
         private Label imageNameLabel;
         [Builder.Object]
+        private CheckButton showMasksBox;
+        [Builder.Object]
         private Menu menu;
 #pragma warning restore 649
 
@@ -114,6 +116,7 @@ namespace Bio
             showRBox.Clicked += showRBox_ActiveChanged;
             showGBox.Clicked += showGBox_ActiveChanged;
             showBBox.Clicked += showBBox_ActiveChanged;
+            showMasksBox.Clicked += ShowMasksBox_Clicked;
             this.DeleteEvent += ROIManager_DeleteEvent;
             
             //roiView.Selection.Changed += roiView_SelectedIndexChanged;
@@ -168,6 +171,12 @@ namespace Bio
             selBox.Adjustment.StepIncrement = 1;
             InitItems();
             App.ApplyStyles(this);
+        }
+
+        private void ShowMasksBox_Clicked(object sender, EventArgs e)
+        {
+            App.viewer.ShowMasks = showMasksBox.Active;
+            UpdateView();
         }
 
         private void ROIManager_DeleteEvent(object o, DeleteEventArgs args)
@@ -263,6 +272,7 @@ namespace Bio
                         idBox.Text = anno.id;
                         textBox.Text = anno.Text;
                         typeLabel.Text = anno.type.ToString();
+                        imageNameLabel.Text = image.Filename;
                         UpdatePointBox();
                         if(ImageView.SelectedImage.isPyramidal)
                         App.viewer.PyramidalOrigin = new PointD((int)(anno.X), (int)(anno.Y));

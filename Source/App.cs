@@ -258,6 +258,37 @@ namespace BioGTK
             }
         }
 
+        public static void CloseWindow(string name)
+        {
+            TabsView tbs = App.tabsView;
+            int c = tbs.GetViewerCount();
+            for (int v = 0; v < c; v++)
+            {
+                int cc = tbs.GetViewer(v).Images.Count;
+                for (int im = 0; im < cc; im++)
+                {
+                    ImageView vi = tbs.GetViewer(v);
+                    if (vi.Images[im].Filename == Path.GetFileName(name))
+                    {
+                        tbs.RemoveTab(name);
+                        vi.Close();
+                        vi.Destroy();
+                        BioLib.Recorder.Record("App.CloseWindow(\"" + name + "\")");
+                        return;
+                    }
+                    else if(vi.Title == name)
+                    {
+                        tbs.RemoveTab(name);
+                        vi.Close();
+                        vi.Destroy();
+                        BioLib.Recorder.Record("App.CloseWindow(\"" + name + "\")");
+                        return;
+                    }
+                }
+            }
+            
+        }
+
         public static void Rename(string text)
         {
             App.tabsView.RenameTab(ImageView.SelectedImage.Filename, text);
