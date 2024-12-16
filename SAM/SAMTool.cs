@@ -276,7 +276,7 @@ namespace BioGTK
             {
                 if (r.roiMask == null)
                     continue;
-                List<PointD> ps = GetEdgePolygonFromMask(new Bitmap("",r.roiMask.Width,r.roiMask.Height,PixelFormat.Format32bppArgb, r.roiMask.GetBytesCropped(), App.viewer.GetCoordinate(), 0));
+                List<PointD> ps = GetEdgePolygonFromMask(new Bitmap("",r.roiMask.Width,r.roiMask.Height,PixelFormat.Format32bppArgb, r.roiMask.GetBytes(), App.viewer.GetCoordinate(), 0));
                 for (int i = 0; i < ps.Count; i++)
                 {
                     ps[i] = new PointD(ps[i].X * ImageView.SelectedImage.PhysicalSizeX, ps[i].Y * ImageView.SelectedImage.PhysicalSizeY);
