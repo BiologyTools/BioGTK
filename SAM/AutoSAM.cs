@@ -62,6 +62,7 @@ namespace BioGTK
             this.point_grids = point_grids;
             this.min_mask_region_area = min_mask_region_area;
             this.output_mode = output_mode;
+
             if (SAM.theSingleton == null)
             {
                 mSAM = MicroSAM.Instance();

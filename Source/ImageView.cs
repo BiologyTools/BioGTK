@@ -419,7 +419,7 @@ namespace BioGTK
 
                         if (an.type == ROI.Type.Mask && an.coord == App.viewer.GetCoordinate() && ShowMasks)
                         {
-                            paint.BlendMode = SKBlendMode.Modulate;
+                            //paint.BlendMode = SKBlendMode.Modulate;
                             SKImage sim;
                             if(an.Selected)
                                 sim = an.roiMask.GetColored(Color.Blue, 10, true).ToSKImage();

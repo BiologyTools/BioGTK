@@ -10,7 +10,7 @@ namespace BioGTK
     /// A structure for storing masks and their related data in batched format.
     /// Implements basic filtering and concatenation.
     /// </summary>
-    class MaskData : IDisposable
+    public class MaskData : IDisposable
     {
         public int[] mShape;
         public List<float> mMask;

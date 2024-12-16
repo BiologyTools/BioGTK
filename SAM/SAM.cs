@@ -16,7 +16,7 @@ using Gtk;
 namespace BioGTK
 {
 
-    class SAM : IDisposable
+    public class SAM : IDisposable
     {
         public static bool SAM2 = true;
         public static SAM theSingleton = null;
@@ -138,6 +138,7 @@ namespace BioGTK
                 pr.Hide();
             });
             this.mReady = true;
+            BioLib.Recorder.AddLine("SAM.Encode(Images.GetImage(\"" + b.Filename + "\"));", false);
         }
 
         /// The function takes a list of promotions, original width, and original height as input, and
@@ -239,6 +240,7 @@ namespace BioGTK
             }
             var segmask = this.mDecoder.Run(decode_inputs);
             var outputmask = segmask.First().AsTensor<float>().ToArray();
+            BioLib.Recorder.AddLine("App.samTool.sam.Decode(Images.GetImage(\"" + b.Filename + "\"),App.samTool.Promotions," + orgWid + "," + orgHei + ");", false);
             return outputmask;
            
         }
@@ -333,91 +335,101 @@ namespace BioGTK
             md.mMask = segmask[0].AsTensor<float>().ToArray().ToList();
             md.mShape = segmask[0].AsTensor<float>().Dimensions.ToArray();
             md.mIoU = segmask[1].AsTensor<float>().ToList();
+            BioLib.Recorder.AddLine("MaskData md = App.samTool.sam.Decode(App.samTool.Promotions,(float[])ImageView.SelectedImage.Tag," + orgWid + "," + orgHei, false);
             return md;
 
         }
 
         public static void RemoveDuplicates(bool removeDistance, float distance, bool removeLarge, float largeArea)
         {
-            // Lists to track duplicates
+            // Track duplicates to remove
             HashSet<ROI> dups = new HashSet<ROI>();
+
+            // Loop through all Z, C, T dimensions
             for (int z = 0; z < ImageView.SelectedImage.SizeZ; z++)
             {
                 for (int c = 0; c < ImageView.SelectedImage.SizeC; c++)
                 {
                     for (int t = 0; t < ImageView.SelectedImage.SizeT; t++)
                     {
-                        // List of selected ROIs from annotations
-                        List<ROI> rois = new List<ROI>();
-                        foreach (var annotation in ImageView.SelectedImage.Annotations)
-                        {
-                            if (annotation.coord == new ZCT(z,c,t))
-                            {
-                                rois.Add(annotation);
-                            }
-                        }
+                        // Collect all ROIs matching the current Z, C, T coordinates
+                        List<ROI> rois = ImageView.SelectedImage.Annotations
+                            .Where(annotation => annotation.coord.Equals(new ZCT(z, c, t)))
+                            .ToList();
 
-                        // Check and remove large ROIs
+                        // Remove ROIs that exceed the large area threshold
                         if (removeLarge)
                         {
-                            double imageArea = (ImageView.SelectedImage.SizeX - 10) * ImageView.SelectedImage.Resolutions[0].PhysicalSizeX *
-                                               (ImageView.SelectedImage.SizeY - 10) * ImageView.SelectedImage.Resolutions[0].PhysicalSizeY;
+                            double imageArea = (ImageView.SelectedImage.SizeX) * ImageView.SelectedImage.Resolutions[0].PhysicalSizeX *
+                                               (ImageView.SelectedImage.SizeY) * ImageView.SelectedImage.Resolutions[0].PhysicalSizeY;
 
                             foreach (var roi in rois)
                             {
-                                double roiArea = roi.BoundingBox.W * roi.BoundingBox.H;
-                                if (roiArea > largeArea * imageArea) // Use `largeArea` as a fraction threshold
+                                double roiArea = 0;
+                                if(roi.type == ROI.Type.Mask)
+                                {
+                                    roiArea = (roi.roiMask.Width * roi.roiMask.PhysicalSizeX) * (roi.roiMask.Height * roi.roiMask.PhysicalSizeY);
+                                }
+                                else
+                                    roiArea = roi.BoundingBox.W * roi.BoundingBox.H;
+                                if (roiArea > largeArea * imageArea) // Check if ROI exceeds the threshold
                                 {
                                     dups.Add(roi);
                                 }
                             }
                         }
-
-                        // Check and remove ROIs based on distance
+                        double px = ImageView.SelectedImage.PhysicalSizeX;
+                        double py = ImageView.SelectedImage.PhysicalSizeY;
+                        // Remove ROIs that are too close to each other
                         if (removeDistance)
                         {
-                            for (int r1 = 0; r1 < rois.Count - 1; r1++)
+                            for (int i = 0; i < rois.Count - 1; i++)
                             {
-                                for (int r2 = r1 + 1; r2 < rois.Count; r2++)
+                                ROI roi1 = rois[i];
+                                if(dups.Contains(roi1))
+                                    continue;
+                                for (int j = i + 1; j < rois.Count; j++)
                                 {
-                                    ROI roi1 = rois[r1];
-                                    ROI roi2 = rois[r2];
+                                    ROI roi2 = rois[j];
+                                    if (dups.Contains(roi2))
+                                        continue;
+                                    // Calculate Euclidean distance between centers
+                                    double centerX1 = ImageView.SelectedImage.StageSizeX + (roi1.roiMask.X * px) + ((roi1.roiMask.Width * px) / 2);
+                                    double centerY1 = ImageView.SelectedImage.StageSizeY + (roi1.roiMask.Y * py) + ((roi1.roiMask.Height * py) / 2);
+                                    double centerX2 = ImageView.SelectedImage.StageSizeX + (roi2.roiMask.X * px) + ((roi2.roiMask.Width * px) / 2);
+                                    double centerY2 = ImageView.SelectedImage.StageSizeY + (roi2.roiMask.Y * py) + ((roi2.roiMask.Height * py) / 2);
 
-                                    // Calculate the center points of the bounding boxes
-                                    double centerX1 = roi1.BoundingBox.X + roi1.BoundingBox.W / 2;
-                                    double centerY1 = roi1.BoundingBox.Y + roi1.BoundingBox.H / 2;
-                                    double centerX2 = roi2.BoundingBox.X + roi2.BoundingBox.W / 2;
-                                    double centerY2 = roi2.BoundingBox.Y + roi2.BoundingBox.H / 2;
-
-                                    // Calculate the Euclidean distance between the centers
                                     double deltaX = centerX2 - centerX1;
                                     double deltaY = centerY2 - centerY1;
                                     double dist = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
 
-                                    // Add to duplicates if the distance is below the threshold
-                                    if (dist <= distance)
+                                    // Mark the second ROI as duplicate if distance is below threshold
+                                    if (dist < distance)
                                     {
-                                        dups.Add(roi2); // Prioritize keeping roi1 and mark roi2 as duplicate
+                                        dups.Add(roi2); // Keep roi1 by default
                                     }
                                 }
                             }
                         }
 
-                        // Remove duplicate ROIs from annotations
+                        // Remove duplicates from the annotations list
                         foreach (var duplicate in dups)
                         {
                             ImageView.SelectedImage.Annotations.Remove(duplicate);
                         }
+
+                        // Clear duplicates list for the next iteration
+                        dups.Clear();
                     }
                 }
             }
-           
 
             // Record the operation
-            BioLib.Recorder.Record($"SAM.RemoveDuplicates({removeDistance}, {distance}, {removeLarge}, {largeArea})");
+            BioLib.Recorder.Record($"SAM.RemoveDuplicates({removeDistance}, {distance}, {removeLarge}, {largeArea});");
         }
+
         static Random rng = new Random();
-        public static void Run(List<Promotion> prs, float minArea, float maxArea,float stability,float prediction, int layers, int points)
+        public static void Run(float minArea, float maxArea,float stability,float prediction, int layers, int points)
         {
             AutoSAM asm = new AutoSAM(points, 64, prediction, stability, 1, 0.7f, layers, 0.7f, 0.3413333f, 1, null, 0, "binary_mask");
             for (int z = 0; z < ImageView.SelectedImage.SizeZ; z++)
@@ -453,6 +465,7 @@ namespace BioGTK
                     }
                 }
             }
+            BioLib.Recorder.AddLine("SAM.Run(SAM.Promotions," + minArea + "," + maxArea + "," + stability + "," + prediction + "," + layers + "," + points + ");",false);
         }
 
         /// The Dispose function disposes of resources and sets variables to null.

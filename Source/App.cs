@@ -1,6 +1,5 @@
 ﻿using Bio;
 using Gtk;
-using javax.swing.filechooser;
 using OpenSlideGTK;
 using System;
 using System.Collections.Generic;
@@ -260,32 +259,55 @@ namespace BioGTK
 
         public static void CloseWindow(string name)
         {
+            BioLib.Recorder.Record("App.CloseWindow(\"" + name + "\")");
             TabsView tbs = App.tabsView;
             int c = tbs.GetViewerCount();
-            for (int v = 0; v < c; v++)
-            {
-                int cc = tbs.GetViewer(v).Images.Count;
-                for (int im = 0; im < cc; im++)
+            if (name == "ROI Manager")
+                App.roiManager.Close();
+            else
+            if (name == "Stack Tool")
+                App.stack.Close();
+            else
+            if (name == "Channels Tool")
+                App.channelsTool.Close();
+            else
+            if (name == "Scripting")
+                App.scripting.Close();
+            else
+            if (name == "SAM Tool")
+                App.samTool.Close();
+            else
+            if (name == "Recorder")
+                App.recorder.Close();
+            else
+            if (name == "Tools")
+                App.tools.Close();
+            else
+            if (name == "Color Tool")
+                App.color.Destroy();
+            else
+                for (int v = 0; v < c; v++)
                 {
-                    ImageView vi = tbs.GetViewer(v);
-                    if (vi.Images[im].Filename == Path.GetFileName(name))
+                    int cc = tbs.GetViewer(v).Images.Count;
+                    for (int im = 0; im < cc; im++)
                     {
-                        tbs.RemoveTab(name);
-                        vi.Close();
-                        vi.Destroy();
-                        BioLib.Recorder.Record("App.CloseWindow(\"" + name + "\")");
-                        return;
-                    }
-                    else if(vi.Title == name)
-                    {
-                        tbs.RemoveTab(name);
-                        vi.Close();
-                        vi.Destroy();
-                        BioLib.Recorder.Record("App.CloseWindow(\"" + name + "\")");
-                        return;
+                        ImageView vi = tbs.GetViewer(v);
+                        if (vi.Images[im].Filename == Path.GetFileName(name))
+                        {
+                            tbs.RemoveTab(name);
+                            vi.Close();
+                            vi.Destroy();
+                            return;
+                        }
+                        else if (vi.Title == name)
+                        {
+                            tbs.RemoveTab(name);
+                            vi.Close();
+                            vi.Destroy();
+                            return;
+                        }
                     }
                 }
-            }
             
         }
 

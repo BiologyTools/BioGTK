@@ -16,12 +16,16 @@ using System.Runtime.InteropServices;
 
 namespace BioGTK
 {
-    class MicroSAM : SAM, IDisposable
+    public class MicroSAM : SAM, IDisposable
     {
         public static MicroSAM theSingleton = null;
         InferenceSession decoder;
         InferenceSession encoder;
         public float mask_threshold = 0.0f;
+        public bool Initialized
+        {
+            get { if (encoder != null) return true; else return false; }
+        }
         protected MicroSAM()
         {
 
@@ -133,6 +137,7 @@ namespace BioGTK
             {
                 pr.Hide();
             });
+            BioLib.Recorder.AddLine("MicroSAM.Encode(Images.GetImage(\"" + b.Filename + "\"));", false);
         }
 
         /// The function takes a list of promotions, original width, and original height as input, and
@@ -213,8 +218,8 @@ namespace BioGTK
            
             var segmask = this.decoder.Run(decode_inputs);
             var outputmask = segmask.First().AsTensor<float>().ToArray();
+            BioLib.Recorder.AddLine("App.samTool.microsam.Decode(Images.GetImage(\"" + b.Filename + "\"),App.samTool.Promotions," + orgWid + "," + orgHei + ");", false);
             return outputmask;
-
         }
 
         public new MaskData Decode(List<Promotion> promotions, float[] embedding, int orgWid, int orgHei)
@@ -286,6 +291,7 @@ namespace BioGTK
             md.mMask = segmask[0].AsTensor<float>().ToArray().ToList();
             md.mShape = segmask[0].AsTensor<float>().Dimensions.ToArray();
             md.mIoU = segmask[1].AsTensor<float>().ToList();
+            BioLib.Recorder.AddLine("MaskData md = App.samTool.microsam.Decode(App.samTool.Promotions,(float[])ImageView.SelectedImage.Tag," + orgWid + "," + orgHei + ");", false);
             return md;
 
         }
