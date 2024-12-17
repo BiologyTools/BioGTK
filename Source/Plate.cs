@@ -58,7 +58,7 @@ namespace BioGTK
                         Rectangle re = new Rectangle(r, (w.Column - 1) * l, l, l);
                         if(re.IntersectsWith(new Rectangle((int)args.Event.X, (int)args.Event.Y,1,1)))
                         {
-                            ImageView.SelectedImage.Level = s.Index;
+                            App.viewer.Level = s.Index;
                             selected = s;
                             App.viewer.UpdateImages();
                             App.viewer.UpdateView();
