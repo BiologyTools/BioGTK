@@ -1,11 +1,8 @@
 ﻿using AForge;
 using BioLib;
-using com.sun.corba.se.spi.orb;
 using Gdk;
 using Gtk;
-using javax.swing.text;
 using omero.gateway.model;
-using org.springframework.orm.jpa.vendor;
 using System;
 using System.Collections.Generic;
 using System.IO;
