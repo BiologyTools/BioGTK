@@ -3,25 +3,25 @@
     <TargetFramework>net8.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RuntimeIdentifiers>osx-x64;linux-x64;win-x64;win-arm64;linux-arm64;osx-arm64;</RuntimeIdentifiers>
-    <AssemblyVersion>6.0.0</AssemblyVersion>
-    <FileVersion>6.0.0</FileVersion>
+    <AssemblyVersion>6.1.0</AssemblyVersion>
+    <FileVersion>6.1.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>BioGTK</PackageId>
     <Title>BioGTK</Title>
     <PackageProjectUrl>https://github.com/BiologyTools/BioGTK</PackageProjectUrl>
     <PackageIcon>banner.jpg</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageVersion>6.0.0</PackageVersion>
+    <PackageVersion>6.1.0</PackageVersion>
     <RepositoryUrl>https://github.com/BiologyTools/BioGTK</RepositoryUrl>
     <PackageTags>Biology; GTK; ImageJ; Bio-Formats; Image-Stacks; Microscopy; Whole-Slide-Image; Segment-Anything; SAM; QuPath;</PackageTags>
     <PackageLicenseExpression> GPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Description>A .NET application &amp; library for editing &amp; annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters &amp; macro functions. Supports Windows, Linux and Mac.</Description>
-    <Version>6.0.0</Version>
+    <Version>6.1.0</Version>
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>ROI Mask &amp; ROI Manager improvements. As well as well plate related bug fixes.</PackageReleaseNotes>
+    <PackageReleaseNotes>OMERO server support.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
@@ -49,6 +49,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <WarningLevel>7</WarningLevel>
   </PropertyGroup>
+
+
   <ItemGroup>
     <Content Include="bio.icns">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -60,10 +62,20 @@
       <Pack>True</Pack>
       <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
+    <Content Include="Glade\login.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		<PackageCopyToOutput>true</PackageCopyToOutput>
+		<Pack>True</Pack>
+    </Content>
     <Content Include="Glade\NumberPicker.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Pack>True</Pack>
       <PackageCopyToOutput>true</PackageCopyToOutput>
+    </Content>
+    <Content Include="Glade\omero.glade">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		<PackageCopyToOutput>true</PackageCopyToOutput>
+		<Pack>True</Pack>
     </Content>
     <Content Include="Glade\Plate.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -415,7 +427,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="BioLib" Version="3.3.0" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="ImageJ.NET" Version="154.0.0.2" />
@@ -439,6 +450,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BioLib\BioLib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="macro-commands.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -458,12 +473,12 @@
     <CFBundleName>BioGTK</CFBundleName>
     <CFBundleDisplayName>BioGTK</CFBundleDisplayName>
     <CFBundleIdentifier>com.BioGTK</CFBundleIdentifier>
-    <CFBundleVersion>6.0.0</CFBundleVersion>
+    <CFBundleVersion>6.1.0</CFBundleVersion>
     <CFBundlePackageType>APPL</CFBundlePackageType>
     <CFBundleSignature>????</CFBundleSignature>
     <CFBundleExecutable>BioGTKApp</CFBundleExecutable>
     <CFBundleIconFile>bio.icns</CFBundleIconFile>
-    <CFBundleShortVersionString>6.0.0</CFBundleShortVersionString>
+    <CFBundleShortVersionString>6.1.0</CFBundleShortVersionString>
     <NSPrincipalClass>NSApplication</NSPrincipalClass>
     <NSHighResolutionCapable>true</NSHighResolutionCapable>
     <ImplicitUsings>enable</ImplicitUsings>

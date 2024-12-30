@@ -194,6 +194,8 @@ namespace BioGTK
         private MenuItem tabDuplicate;
         [Builder.Object]
         private MenuItem runMicroSAMMenu;
+        [Builder.Object]
+        private MenuItem omeroMenu;
 #pragma warning restore 649
 
         #endregion
@@ -441,10 +443,22 @@ namespace BioGTK
             tabsView.ButtonPressEvent += TabsView_ButtonPressEvent;
             this.WindowStateEvent += TabsView_WindowStateEvent;
             this.DeleteEvent += TabsView_DeleteEvent;
+            omeroMenu.ButtonPressEvent += OmeroMenu_ButtonPressEvent;
 
             searchMenu.ButtonPressEvent += SearchMenu_ButtonPressEvent;
             updateMenu.ButtonPressEvent += UpdateMenu_ButtonPressEvent;
             renameMenu.ButtonPressEvent += RenameMenu_ButtonPressEvent;
+        }
+
+        private void OmeroMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Login log = Login.Create();
+            int status = log.Run();
+            if (status == (int)ResponseType.Ok)
+            {
+                OMERO omr = OMERO.Create();
+                omr.Show();
+            }
         }
 
         private void SaveNumPyBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
