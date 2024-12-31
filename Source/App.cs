@@ -82,13 +82,13 @@ namespace BioGTK
             {
                 useGPU = false;
                 OpenSlideBase.useGPU = false;
-                SlideBase.useGPU = false;
+                //SlideBase.useGPU = false;
                 OpenSlideBase.UseVips = false;
                 SlideBase.UseVips = false;
                 return;
             }
             OpenSlideBase.useGPU = useGPU;
-            SlideBase.useGPU = useGPU;
+            //SlideBase.useGPU = useGPU;
             OpenSlideBase.UseVips = useVips;
             SlideBase.UseVips = useVips;
  

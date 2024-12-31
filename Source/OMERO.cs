@@ -119,11 +119,16 @@ namespace BioGTK
                 {
                     TreePath path = args.Path;
                     listStore.GetIter(out TreeIter iter, path);
-                    string selectedItem = (string)listStore.GetValue(iter, 1);
+                    string selectedItem = (string)listStore.GetValue(iter, 0);
                     string[] sts = selectedItem.Split(' ');
-                    long id = long.Parse(sts[1]);
-                    BioImage bm = BioLib.OMERO.GetImage(id);
-                    App.tabsView.AddTab(bm);
+                    foreach (var item in images)
+                    {
+                        if (item.name == sts[0])
+                        {
+                            BioImage bm = BioLib.OMERO.GetImage(sts[0],item.dataset);
+                            App.tabsView.AddTab(bm);
+                        }
+                    }
                 };
             }
             else
@@ -146,7 +151,7 @@ namespace BioGTK
                         {
                             Image image = new Image();
                             //.pixbuf = item.Value;
-                            image.dataset = item;
+                            image.dataset = db.getId();
                             image.name = BioLib.OMERO.GetNameFromID(item);
                             images.Add(image);
                         }
@@ -161,11 +166,16 @@ namespace BioGTK
                 {
                     TreePath path = args.Path;
                     listStore.GetIter(out TreeIter iter, path);
-                    string selectedItem = (string)listStore.GetValue(iter, 1);
+                    string selectedItem = (string)listStore.GetValue(iter, 0);
                     string[] sts = selectedItem.Split(' ');
-                    long id = long.Parse(sts[1]);
-                    BioImage bm = BioLib.OMERO.GetImage(id);
-                    App.tabsView.AddTab(bm);
+                    foreach (var item in images)
+                    {
+                        if(item.name == sts[0])
+                        {
+                            BioImage bm = BioLib.OMERO.GetImage(sts[0],item.dataset);
+                            App.tabsView.AddTab(bm);
+                        }
+                    }
                 };
             }
             

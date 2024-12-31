@@ -745,7 +745,7 @@ namespace BioGTK
             int bi = 0;
             if (SelectedImage.isPyramidal && sk.AllocatedHeight <= 1 || sk.AllocatedWidth <= 1)
                 return;
-            if (SelectedImage.isPyramidal && updatePyramidal)
+            if (SelectedImage.isPyramidal && updatePyramidal || SelectedImage.Buffers.Count == 0)
             {
                 SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
                 SelectedImage.UpdateBuffersPyramidal().Wait();
@@ -1940,13 +1940,7 @@ namespace BioGTK
             }
             set
             {
-                if (SelectedImage.Type == BioImage.ImageType.well)
-                {
-                    SelectedImage.Resolution = value;
-                    
-                    return;
-                }
-
+                SelectedImage.Resolution = value;
                 // Calculate the scaling factor based on the new and current resolution
                 double scalingFactor = value / SelectedImage.Resolution;
 
