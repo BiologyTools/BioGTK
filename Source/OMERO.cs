@@ -104,7 +104,7 @@ namespace BioGTK
                         {
                             Image image = new Image();
                             image.pixbuf = item.Value;
-                            image.dataset = item.Key;
+                            image.dataset = db.getId();
                             image.name = BioLib.OMERO.GetNameFromID(item.Key);
                             images.Add(image);
                         }
@@ -119,7 +119,11 @@ namespace BioGTK
                 {
                     TreePath path = args.Path;
                     listStore.GetIter(out TreeIter iter, path);
-                    string selectedItem = (string)listStore.GetValue(iter, 0);
+                    string selectedItem;
+                    if (loadIconsBut.Active)
+                        selectedItem = (string)listStore.GetValue(iter, 1);
+                    else
+                        selectedItem = (string)listStore.GetValue(iter, 0);
                     string[] sts = selectedItem.Split(' ');
                     foreach (var item in images)
                     {
@@ -166,7 +170,11 @@ namespace BioGTK
                 {
                     TreePath path = args.Path;
                     listStore.GetIter(out TreeIter iter, path);
-                    string selectedItem = (string)listStore.GetValue(iter, 0);
+                    string selectedItem;
+                    if(loadIconsBut.Active)
+                        selectedItem = (string)listStore.GetValue(iter, 1);
+                    else
+                        selectedItem = (string)listStore.GetValue(iter, 0);
                     string[] sts = selectedItem.Split(' ');
                     foreach (var item in images)
                     {
