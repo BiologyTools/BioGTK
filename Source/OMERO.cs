@@ -43,6 +43,7 @@ namespace BioGTK
         public static int IconHeight = 50;
         public string database = "";
         public List<Image> images = new List<Image>();
+        private ListStore store;
         /// It creates a new Search object, which is a Gtk.Window, and returns it
         /// 
         /// @return A new instance of the Search class.
@@ -62,6 +63,27 @@ namespace BioGTK
             this.SizeAllocated += OMERO_SizeAllocated;
             searchBox.Changed += SearchBox_Changed;
             comboBox.Changed += ComboBox_Changed;
+            view.ItemActivated += View_ItemActivated;
+        }
+
+        private void View_ItemActivated(object o, ItemActivatedArgs args)
+        {
+            TreePath path = args.Path;
+            store.GetIter(out TreeIter iter, path);
+            string selectedItem;
+            if (loadIconsBut.Active)
+                selectedItem = (string)store.GetValue(iter, 1);
+            else
+                selectedItem = (string)store.GetValue(iter, 0);
+            string[] sts = selectedItem.Split(' ');
+            foreach (var item in images)
+            {
+                if (item.name.Contains(sts[0]))
+                {
+                    BioImage bm = BioLib.OMERO.GetImage(sts[0], item.dataset);
+                    App.tabsView.AddTab(bm);
+                }
+            }
         }
 
         private void OMERO_SizeAllocated(object o, SizeAllocatedArgs args)
@@ -114,26 +136,7 @@ namespace BioGTK
                     listStore.AppendValues(im.pixbuf, im.name);
                 }
                 view.Model = listStore;
-                // Handle item selection
-                view.ItemActivated += (o, args) =>
-                {
-                    TreePath path = args.Path;
-                    listStore.GetIter(out TreeIter iter, path);
-                    string selectedItem;
-                    if (loadIconsBut.Active)
-                        selectedItem = (string)listStore.GetValue(iter, 1);
-                    else
-                        selectedItem = (string)listStore.GetValue(iter, 0);
-                    string[] sts = selectedItem.Split(' ');
-                    foreach (var item in images)
-                    {
-                        if (item.name == sts[0])
-                        {
-                            BioImage bm = BioLib.OMERO.GetImage(sts[0],item.dataset);
-                            App.tabsView.AddTab(bm);
-                        }
-                    }
-                };
+                store = listStore;
             }
             else
             {
@@ -165,26 +168,7 @@ namespace BioGTK
                     listStore.AppendValues(im.name);
                 }
                 view.Model = listStore;
-                // Handle item selection
-                view.ItemActivated += (o, args) =>
-                {
-                    TreePath path = args.Path;
-                    listStore.GetIter(out TreeIter iter, path);
-                    string selectedItem;
-                    if(loadIconsBut.Active)
-                        selectedItem = (string)listStore.GetValue(iter, 1);
-                    else
-                        selectedItem = (string)listStore.GetValue(iter, 0);
-                    string[] sts = selectedItem.Split(' ');
-                    foreach (var item in images)
-                    {
-                        if(item.name == sts[0])
-                        {
-                            BioImage bm = BioLib.OMERO.GetImage(sts[0],item.dataset);
-                            App.tabsView.AddTab(bm);
-                        }
-                    }
-                };
+                store = listStore;
             }
             
         }
@@ -197,6 +181,7 @@ namespace BioGTK
                 comStore.AppendValues(im.getName() + " " + im.getId());
             }
             comboBox.Model = comStore;
+
         }
         public void UpdateItems(string filt)
         {
@@ -209,7 +194,6 @@ namespace BioGTK
                 listStore.AppendValues(im.pixbuf, im.name);
             }
             view.Model = listStore;
-            InitIcons();
         }
 
         private void SearchBox_Changed(object sender, EventArgs e)

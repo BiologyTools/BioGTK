@@ -747,6 +747,7 @@ namespace BioGTK
                 return;
             if (SelectedImage.isPyramidal && updatePyramidal || SelectedImage.Buffers.Count == 0)
             {
+                SelectedImage.Coordinate = GetCoordinate();
                 SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
                 SelectedImage.UpdateBuffersPyramidal().Wait();
             }
