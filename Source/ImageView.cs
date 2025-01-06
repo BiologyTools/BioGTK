@@ -346,8 +346,10 @@ namespace BioGTK
                                 canvas.DrawImage(SKImages[i], 0, 0, paint);
                                 if (overviewImage != null)
                                 {
+                                    var ims = BitmapToSKImage(overviewImage.GetImageRGB());
+                                    paint.Style = SKPaintStyle.Fill;
                                     // Draw the overview image at the top-left corner
-                                    canvas.DrawImage(BitmapToSKImage(overviewImage), 0, 0, paint);
+                                    canvas.DrawImage(ims, 0, 0, paint);
                                 }
                                 // Set the paint style to stroke for drawing rectangles
                                 paint.Style = SKPaintStyle.Stroke;
@@ -355,27 +357,13 @@ namespace BioGTK
                                 paint.Color = SKColors.Gray;
                                 canvas.DrawRect(overview.X, overview.Y, overview.Width, overview.Height, paint);
                                 paint.Color = SKColors.Red;
-                                if (!openSlide)
-                                {
-                                    double dsx = _slideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
-                                    Resolution rs = SelectedImage.Resolutions[Level];
-                                    double dx = ((double)PyramidalOrigin.X / (rs.SizeX * dsx)) * overview.Width;
-                                    double dy = ((double)PyramidalOrigin.Y / (rs.SizeY * dsx)) * overview.Height;
-                                    double dw = ((double)viewStack.AllocatedWidth / (rs.SizeX)) * overview.Width * dsx;
-                                    double dh = ((double)viewStack.AllocatedHeight / (rs.SizeY)) * overview.Height * dsx;
-                                    canvas.DrawRect((int)dx, (int)dy, (int)dw, (int)dh, paint);
-                                }
-                                else
-                                {
-                                    double dsx = _openSlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
-                                    var rs = _openSlideBase.Schema.Resolutions.Last();
-                                    Resolution rss = SelectedImage.Resolutions[Level];
-                                    double dx = ((double)PyramidalOrigin.X / (rss.SizeX * dsx)) * overview.Width;
-                                    double dy = ((double)PyramidalOrigin.Y / (rss.SizeY * dsx)) * overview.Height;
-                                    double dw = ((double)viewStack.AllocatedWidth / (rss.SizeX * dsx)) * overview.Width;
-                                    double dh = ((double)viewStack.AllocatedHeight / (rss.SizeY * dsx)) * overview.Height;
-                                    canvas.DrawRect((int)dx, (int)dy, (int)dw, (int)dh, paint);
-                                }
+                                double dsx = _slideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
+                                Resolution rs = SelectedImage.Resolutions[Level];
+                                double dx = ((double)PyramidalOrigin.X / (rs.SizeX * dsx)) * overview.Width;
+                                double dy = ((double)PyramidalOrigin.Y / (rs.SizeY * dsx)) * overview.Height;
+                                double dw = ((double)viewStack.AllocatedWidth / (rs.SizeX)) * overview.Width * dsx;
+                                double dh = ((double)viewStack.AllocatedHeight / (rs.SizeY)) * overview.Height * dsx;
+                                canvas.DrawRect((int)dx, (int)dy, (int)dw, (int)dh, paint);
                             }
                         }
                         catch (Exception ex)
@@ -832,7 +820,6 @@ namespace BioGTK
                 Bitmap bm = BioImage.GetTile(SelectedImage, SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T), MacroResolution.Value - 2, 0, 0, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeY);
                 ResizeBilinear re = new ResizeBilinear(overview.Width, overview.Height);
                 Bitmap bmp = re.Apply(bm.GetImageRGB());
-                bmp.SwitchRedBlue();
                 overviewImage = bmp;
             }
             else
@@ -851,7 +838,6 @@ namespace BioGTK
                 Bitmap bm = BioImage.GetTile(SelectedImage, SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T), lev, 0, 0, SelectedImage.Resolutions[lev].SizeX, SelectedImage.Resolutions[lev].SizeY);
                 ResizeBilinear re = new ResizeBilinear(overview.Width, overview.Height);
                 Bitmap bmp = re.Apply(bm.GetImageRGB());
-                bmp.SwitchRedBlue();
                 overviewImage = bmp;
             }
             ShowOverview = true;

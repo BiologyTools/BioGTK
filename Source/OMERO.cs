@@ -68,6 +68,7 @@ namespace BioGTK
 
         private void View_ItemActivated(object o, ItemActivatedArgs args)
         {
+            BioLib.OMERO.ReConnect();
             TreePath path = args.Path;
             store.GetIter(out TreeIter iter, path);
             string selectedItem;
@@ -154,6 +155,8 @@ namespace BioGTK
                         if (db.getId() == long.Parse(sts[1]))
                             continue;
                         List<long> str = BioLib.OMERO.GetDatasetIds(db.getId());
+                        if (str.Count == 0)
+                            BioLib.OMERO.ReConnect();
                         foreach (var item in str)
                         {
                             Image image = new Image();

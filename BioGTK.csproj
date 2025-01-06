@@ -427,6 +427,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="BioLib" Version="3.4.1" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="ImageJ.NET" Version="154.0.0.2" />
@@ -439,18 +440,14 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="ScottPlot" Version="5.0.47" />
+    <PackageReference Include="ScottPlot" Version="5.0.48" />
     <PackageReference Include="SkiaSharp" Version="3.116.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.116.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.116.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.116.1" />
     <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.116.1" />
-    <PackageReference Include="TorchSharp-cpu" Version="0.104.0" />
-    <PackageReference Include="YamlDotNet" Version="16.2.1" />  
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\BioLib\BioLib.csproj" />
+    <PackageReference Include="TorchSharp-cpu" Version="0.105.0" />
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />  
   </ItemGroup>
 
   <ItemGroup>
