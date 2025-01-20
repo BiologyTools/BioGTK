@@ -82,6 +82,7 @@ namespace BioGTK
 
         private void UploadMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
+            files.Clear();
             FileChooserDialog filechooser = new FileChooserDialog("Choose files to import.", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
             filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
@@ -115,7 +116,7 @@ namespace BioGTK
                 uploading = true;
                 Thread th = new Thread(UpdateProgress);
                 th.Start();
-                BioLib.OMERO.Upload(BioImage.OpenFile(f), dataset, id); 
+                BioLib.OMERO.Upload(BioImage.OpenFile(f), id); 
                 uploading = false;
                 prog.Hide();
                 prog.Destroy();
@@ -132,6 +133,7 @@ namespace BioGTK
 
         private void View_DragDataReceived(object o, DragDataReceivedArgs args)
         {
+            files.Clear();
             // Convert the received data to a string
             string receivedData = System.Text.Encoding.UTF8.GetString(args.SelectionData.Data);
 
@@ -142,10 +144,10 @@ namespace BioGTK
                 if (Uri.TryCreate(uri, UriKind.Absolute, out Uri fileUri) && fileUri.IsFile)
                 {
                     string filePath = fileUri.LocalPath;
-                    BioLib.OMERO.Upload(BioImage.OpenFile(filePath), dataset, id);
+                    files.Add(filePath);
                 }
             }
-
+            StartUpload();
             args.RetVal = true; // Indicate the drop was handled
         }
 
