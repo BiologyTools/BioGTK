@@ -58,9 +58,11 @@ namespace BioGTK
             hostBox.Buffer.Text = BioLib.OMERO.host;
             usernameBox.Buffer.Text = BioLib.OMERO.username;
             string p = BioLib.Settings.GetSettings("port");
-            if(p != "")
-            BioLib.OMERO.port = int.Parse(p);
-            portBox.Value = BioLib.OMERO.port;
+            if (p != "")
+            {
+                BioLib.OMERO.port = int.Parse(p);
+                portBox.Value = BioLib.OMERO.port;
+            }
         }
 
         private void LoginButton_ButtonPressEvent(object o, ButtonPressEventArgs args)

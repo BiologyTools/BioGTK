@@ -448,6 +448,33 @@ namespace BioGTK
             searchMenu.ButtonPressEvent += SearchMenu_ButtonPressEvent;
             updateMenu.ButtonPressEvent += UpdateMenu_ButtonPressEvent;
             renameMenu.ButtonPressEvent += RenameMenu_ButtonPressEvent;
+
+            // Enable drag-and-drop for this window
+            Gtk.Drag.DestSet(this, DestDefaults.All, new TargetEntry[]
+            {
+            new TargetEntry("text/uri-list", TargetFlags.OtherApp, 0)
+            }, Gdk.DragAction.Copy);
+            this.DragDataReceived += TabsView_DragDataReceived;
+
+        }
+
+        private void TabsView_DragDataReceived(object o, DragDataReceivedArgs args)
+        {
+            // Convert the received data to a string
+            string receivedData = System.Text.Encoding.UTF8.GetString(args.SelectionData.Data);
+
+            // Parse the URIs (file paths)
+            string[] uris = receivedData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (string uri in uris)
+            {
+                if (Uri.TryCreate(uri, UriKind.Absolute, out Uri fileUri) && fileUri.IsFile)
+                {
+                    string filePath = fileUri.LocalPath;
+                    AddTab(BioImage.OpenFile(filePath));
+                }
+            }
+
+            args.RetVal = true; // Indicate the drop was handled
         }
 
         private void OmeroMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)

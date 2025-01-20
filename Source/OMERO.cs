@@ -3,6 +3,7 @@ using BioLib;
 using Gdk;
 using Gtk;
 using omero.gateway.model;
+using org.checkerframework.checker.units.qual;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -19,7 +20,7 @@ namespace BioGTK
             public long dataset;
             public string name;
         }
-
+        public static Progress prog;
         #region Properties
         private Builder _builder;
 
@@ -34,6 +35,8 @@ namespace BioGTK
         private Gtk.ScrolledWindow scrollWind;
         [Builder.Object]
         private Gtk.CheckButton loadIconsBut;
+        [Builder.Object]
+        private Gtk.MenuItem uploadMenu;
 #pragma warning restore 649
 
         #endregion
@@ -41,7 +44,10 @@ namespace BioGTK
         #region Constructors / Destructors
         public static int IconWidth = 50;
         public static int IconHeight = 50;
-        public string database = "";
+        public static string dataset = "";
+        public static long id;
+        public static List<string> files = new List<string>();
+        public static bool uploading = false;
         public List<Image> images = new List<Image>();
         private ListStore store;
         /// It creates a new Search object, which is a Gtk.Window, and returns it
@@ -63,7 +69,84 @@ namespace BioGTK
             this.SizeAllocated += OMERO_SizeAllocated;
             searchBox.Changed += SearchBox_Changed;
             comboBox.Changed += ComboBox_Changed;
+            uploadMenu.ButtonPressEvent += UploadMenu_ButtonPressEvent;
             view.ItemActivated += View_ItemActivated;
+
+            // Enable drag-and-drop for this window
+            Gtk.Drag.DestSet(this, DestDefaults.All, new TargetEntry[]
+            {
+            new TargetEntry("text/uri-list", TargetFlags.OtherApp, 0)
+            }, Gdk.DragAction.Copy);
+            this.DragDataReceived += View_DragDataReceived;
+        }
+
+        private void UploadMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            FileChooserDialog filechooser = new FileChooserDialog("Choose files to import.", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
+            filechooser.SelectMultiple = true;
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            string[] sts = filechooser.Filenames;
+            filechooser.Hide();
+            if(BioLib.OMERO.password == "")
+            {
+                Login log = Login.Create();
+                int status = log.Run();
+                if (status != (int)ResponseType.Ok)
+                {
+                    return;
+                }
+            }
+            files.AddRange(sts);
+            foreach (string s in sts)
+            {
+                Thread ths = new Thread(StartUpload);
+                ths.Start();
+            }
+        }
+
+
+        public static void StartUpload()
+        {
+            foreach (var f in files)
+            {
+                prog = Progress.Create("Uploading", "Uploading image.",f);
+                prog.Show();
+                uploading = true;
+                Thread th = new Thread(UpdateProgress);
+                th.Start();
+                BioLib.OMERO.Upload(BioImage.OpenFile(f), dataset, id); 
+                uploading = false;
+                prog.Hide();
+                prog.Destroy();
+            }
+        }
+        public static void UpdateProgress()
+        {
+            do
+            {
+                OMERO.prog.ProgressValue = BioLib.OMERO.progress;
+                Thread.Sleep(250);
+            } while (OMERO.uploading);
+        }
+
+        private void View_DragDataReceived(object o, DragDataReceivedArgs args)
+        {
+            // Convert the received data to a string
+            string receivedData = System.Text.Encoding.UTF8.GetString(args.SelectionData.Data);
+
+            // Parse the URIs (file paths)
+            string[] uris = receivedData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (string uri in uris)
+            {
+                if (Uri.TryCreate(uri, UriKind.Absolute, out Uri fileUri) && fileUri.IsFile)
+                {
+                    string filePath = fileUri.LocalPath;
+                    BioLib.OMERO.Upload(BioImage.OpenFile(filePath), dataset, id);
+                }
+            }
+
+            args.RetVal = true; // Indicate the drop was handled
         }
 
         private void View_ItemActivated(object o, ItemActivatedArgs args)
@@ -98,7 +181,8 @@ namespace BioGTK
             comboBox.Model.GetIterFromString(out iter, comboBox.Active.ToString());
             string selectedItem = (string)comboBox.Model.GetValue(iter, 0);
             string[] sts = selectedItem.Split(' ');
-            database = sts[0];
+            dataset = sts[0];
+            id = long.Parse(sts[1]);
             InitIcons();
         }
         #endregion

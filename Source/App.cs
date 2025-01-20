@@ -198,6 +198,7 @@ namespace BioGTK
 
         public static void ApplyStyles(Widget widget)
         {
+       
             if (widget != null)
             {
                 if (widget is not Button || widget is not SpinButton)
@@ -224,6 +225,7 @@ namespace BioGTK
             if(widget is Window)
             {
                 var window = (Window)widget;
+                window.Icon = new Gdk.Pixbuf("bio.png");
                 window.DeleteEvent += Window_DeleteEvent;
             }
         }
