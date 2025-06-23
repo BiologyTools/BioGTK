@@ -1,6 +1,8 @@
 ﻿using Bio;
+using Gdk;
 using Gtk;
 using OpenSlideGTK;
+using org.checkerframework.common.returnsreceiver.qual;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -222,17 +224,43 @@ namespace BioGTK
             {
                 Console.WriteLine(e.Message.ToString());
             }
-            if(widget is Window)
+            if(widget is Gtk.Window)
             {
-                var window = (Window)widget;
+                var window = (Gtk.Window)widget;
                 window.Icon = new Gdk.Pixbuf("bio.png");
                 window.DeleteEvent += Window_DeleteEvent;
+                window.DestroyEvent += Window_DestroyEvent;
+                window.FocusInEvent += Window_FocusInEvent;
             }
         }
+        private static void Window_FocusInEvent(object o, FocusInEventArgs args)
+        {
+            Gtk.Window w = (Gtk.Window)o;
+            w.GrabFocus();
+        }
+        private static void Window_DestroyEvent(object o, DestroyEventArgs args)
+        {
+            Gtk.Window w = (Gtk.Window)o;
+            w.Hide();
+            w.Destroy();
+        }
 
+        private static void Dialog_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            Dialog w = (Dialog)o;
+            w.Hide();
+            w.Destroy();
+        }
+        private static void Dialog_DestroyEvent(object o, DestroyEventArgs args)
+        {
+            Dialog w = (Dialog)o;
+            w.Hide();
+            w.Destroy();
+        }
         private static void Window_DeleteEvent(object o, DeleteEventArgs args)
         {
-            Window w = (Window)o;
+            Gtk.Window w = (Gtk.Window)o;
+            w.Hide();
             w.Destroy();
         }
 

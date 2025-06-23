@@ -64,20 +64,19 @@ namespace BioGTK
         {
             _builder = builder;
             builder.Autoconnect(this);
-            App.ApplyStyles(this);
             InitItems();
             this.SizeAllocated += OMERO_SizeAllocated;
             searchBox.Changed += SearchBox_Changed;
             comboBox.Changed += ComboBox_Changed;
             uploadMenu.ButtonPressEvent += UploadMenu_ButtonPressEvent;
             view.ItemActivated += View_ItemActivated;
-
             // Enable drag-and-drop for this window
             Gtk.Drag.DestSet(this, DestDefaults.All, new TargetEntry[]
             {
             new TargetEntry("text/uri-list", TargetFlags.OtherApp, 0)
             }, Gdk.DragAction.Copy);
             this.DragDataReceived += View_DragDataReceived;
+            App.ApplyStyles(this);
         }
 
         private void UploadMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -116,11 +115,17 @@ namespace BioGTK
                 uploading = true;
                 Thread th = new Thread(UpdateProgress);
                 th.Start();
-                BioLib.OMERO.Upload(BioImage.OpenFile(f), id); 
-                uploading = false;
-                prog.Hide();
-                prog.Destroy();
+                fi = f;
+                Thread ths = new Thread(Upload);
+                ths.Start();
             }
+        }
+        static string fi;
+        private static void Upload()
+        {
+            BioLib.OMERO.Upload(BioImage.OpenFile(fi), id);
+            //BioLib.OMERO.Upload(BioImage.OpenFile(fi), id);
+            uploading = false;
         }
         public static void UpdateProgress()
         {
@@ -129,6 +134,7 @@ namespace BioGTK
                 OMERO.prog.ProgressValue = BioLib.OMERO.progress;
                 Thread.Sleep(250);
             } while (OMERO.uploading);
+            OMERO.prog.Hide();
         }
 
         private void View_DragDataReceived(object o, DragDataReceivedArgs args)
@@ -199,25 +205,23 @@ namespace BioGTK
                 images.Clear();
 
                 if (comboBox.Active != -1)
-                    foreach (var db in dbs)
-                    {
-                        TreeIter iter;
-                        comboBox.Model.GetIterFromString(out iter, comboBox.Active.ToString());
-                        string selectedItem = (string)comboBox.Model.GetValue(iter, 0);
-                        string[] sts = selectedItem.Split(' ');
-                        if (db.getId() == long.Parse(sts[1]))
-                            continue;
-                        List<string> str = BioLib.OMERO.GetDatasetFiles(db.getId());
-                        Dictionary<long, Pixbuf> dict = BioLib.OMERO.GetThumbnails(str.ToArray(), IconWidth, IconHeight);
+                {
+                    TreeIter iter;
+                    comboBox.Model.GetIterFromString(out iter, comboBox.Active.ToString());
+                    string selectedItem = (string)comboBox.Model.GetValue(iter, 0);
+                    string[] sts = selectedItem.Split(' ');
+                    List<string> str = BioLib.OMERO.GetDatasetFiles(id);
+                    Dictionary<long, Pixbuf> dict = BioLib.OMERO.GetThumbnails(str.ToArray(), IconWidth, IconHeight);
+                    if (dict != null)
                         foreach (var item in dict)
                         {
                             Image image = new Image();
                             image.pixbuf = item.Value;
-                            image.dataset = db.getId();
+                            image.dataset = id;
                             image.name = BioLib.OMERO.GetNameFromID(item.Key);
                             images.Add(image);
                         }
-                    }
+                }
                 foreach (var im in images)
                 {
                     listStore.AppendValues(im.pixbuf, im.name);
@@ -259,7 +263,6 @@ namespace BioGTK
                 view.Model = listStore;
                 store = listStore;
             }
-            
         }
         public void InitItems()
         {

@@ -27,6 +27,8 @@ namespace BioGTK
         private Gtk.SpinButton portBox;
         [Builder.Object]
         private Gtk.Button loginBut;
+        [Builder.Object]
+        private Gtk.Button cancelBut;
 #pragma warning restore 649
 
         #endregion
@@ -50,6 +52,9 @@ namespace BioGTK
             _builder = builder;
             builder.Autoconnect(this);
             App.ApplyStyles(this);
+            this.FocusInEvent += Login_FocusInEvent;
+            this.DeleteEvent += Login_DeleteEvent;
+            cancelBut.ButtonPressEvent += CancelBut_ButtonPressEvent;
             loginBut.ButtonPressEvent += LoginButton_ButtonPressEvent;
             portBox.Adjustment = new Adjustment(4064,0,9999,1,1,1);
             BioLib.Settings.Load();
@@ -63,6 +68,22 @@ namespace BioGTK
                 BioLib.OMERO.port = int.Parse(p);
                 portBox.Value = BioLib.OMERO.port;
             }
+        }
+
+        private void Login_FocusInEvent(object o, FocusInEventArgs args)
+        {
+            GrabFocus();
+        }
+
+        private void Login_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            this.Hide();
+        }
+
+        private void CancelBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            this.Hide();
+            this.Destroy();
         }
 
         private void LoginButton_ButtonPressEvent(object o, ButtonPressEventArgs args)

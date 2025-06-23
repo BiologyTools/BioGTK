@@ -357,7 +357,11 @@ namespace BioGTK
                                 paint.Color = SKColors.Gray;
                                 canvas.DrawRect(overview.X, overview.Y, overview.Width, overview.Height, paint);
                                 paint.Color = SKColors.Red;
-                                double dsx = _slideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
+                                double dsx;
+                                if(!openSlide)
+                                    dsx = _slideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
+                                else
+                                    dsx = _openSlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
                                 Resolution rs = SelectedImage.Resolutions[Level];
                                 double dx = ((double)PyramidalOrigin.X / (rs.SizeX * dsx)) * overview.Width;
                                 double dy = ((double)PyramidalOrigin.Y / (rs.SizeY * dsx)) * overview.Height;
@@ -835,7 +839,7 @@ namespace BioGTK
                 else
                     showOverview = true;
                 overview = new Rectangle(0, 0, (int)(aspx * 120), (int)(aspy * 120));
-                Bitmap bm = BioImage.GetTile(SelectedImage, SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T), lev, 0, 0, SelectedImage.Resolutions[lev].SizeX, SelectedImage.Resolutions[lev].SizeY);
+                Bitmap bm = BioImage.GetTile(SelectedImage, SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T), 0, 0, 0, SelectedImage.Resolutions[lev].SizeX, SelectedImage.Resolutions[lev].SizeY);
                 ResizeBilinear re = new ResizeBilinear(overview.Width, overview.Height);
                 Bitmap bmp = re.Apply(bm.GetImageRGB());
                 overviewImage = bmp;

@@ -45,7 +45,13 @@ namespace BioGTK
             pixbuf = new Pixbuf(s + "Images/banner.jpg");
             label.Text = "BioGTK " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString() + " by Erik Repo, Github.com/BiologyTools/BioGTK.";
             image.Drawn += Image_Drawn;
+            this.DeleteEvent += About_DeleteEvent;
             App.ApplyStyles(this);
+        }
+
+        private void About_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            this.Hide();
         }
 
         /// The function resizes an image and draws it onto a Cairo context.
