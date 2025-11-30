@@ -1,5 +1,6 @@
 ﻿using AForge;
 using BioGTK;
+using CSScripting;
 using Gtk;
 using System;
 using System.Collections.Generic;
@@ -9,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+
 
 namespace Bio
 {
@@ -82,7 +84,7 @@ namespace Bio
 
         #region Constructors / Destructors
         public BioImage image;
-        public static Dictionary<string, ROI> rois = new Dictionary<string, ROI>();
+        public static Dictionary<long, ROI> rois = new Dictionary<long, ROI>();
         public static ROIManager Create()
         {
             Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ROIManager.glade", FileMode.Open));
@@ -123,7 +125,7 @@ namespace Bio
             roiView.RowActivated += RoiView_RowActivated;
             roiView.ActivateOnSingleClick = true;
             this.FocusInEvent += ROIManager_FocusInEvent;
-
+            this.FocusActivated += ROIManager_Activated;
             xBox.Adjustment.Upper = PointD.MaxX;
             xBox.Adjustment.StepIncrement= 0.1;
             xBox.Adjustment.PageIncrement= 1;
@@ -184,7 +186,7 @@ namespace Bio
             args.RetVal = true;
             Hide();
         }
-
+        Random rng = new Random();
         /// When the ROIManager gets focus, update the annotation list.
         /// 
         /// @param o The object that raised the event.
@@ -196,8 +198,22 @@ namespace Bio
             rois.Clear();
             foreach (var item in image.Annotations)
             {
-                rois.Add(item.id,item);
+                if (item.id != "")
+                {
+                    if(rois.ContainsKey(long.Parse(item.id)))
+                    {
+                        continue;
+                    }
+                    else
+                        rois.Add(long.Parse(item.id), item);
+                }
+                else
+                {
+                    item.id = rng.Next().ToString();
+                    rois.Add(long.Parse(item.id), item);
+                }
             }
+            UpdateAnnotationList();
         }
 
 
@@ -225,9 +241,9 @@ namespace Bio
                     string id = (string)roiView.Model.GetValue(iter, 1);
                     string text = (string)roiView.Model.GetValue(iter, 2);
                     string bounds = (string)roiView.Model.GetValue(iter, 3);
-                    if (rois.ContainsKey(id))
+                    if (rois.ContainsKey(long.Parse(id)))
                     {
-                        anno = rois[id];
+                        anno = rois[long.Parse(id)];
                         if (App.viewer != null)
                             App.viewer.SetCoordinate(anno.coord.Z, anno.coord.C, anno.coord.T);
 
@@ -344,8 +360,16 @@ namespace Bio
                 Gtk.TreeIter iter = store.AppendValues(System.IO.Path.GetFileName(b.Filename));
                 foreach (ROI r in b.Annotations)
                 {
-                    rois.Add(r.type.ToString() + "," + r.id + "," + r.Text + "," + r.BoundingBox.ToString(),r);
-                    store.AppendValues(iter, r.type.ToString(), r.id, r.Text, r.BoundingBox.ToString());
+                    if (r.id == "")
+                    {
+                        store.AppendValues(iter, r.type.ToString(), rng.Next(), r.Text, r.BoundingBox.ToString());
+                    }
+                    else
+                    {
+                        if (!rois.ContainsKey(long.Parse(r.id)))
+                            rois.Add(long.Parse(r.id), r);
+                        store.AppendValues(iter, r.type.ToString(), r.id, r.Text, r.BoundingBox.ToString());
+                    }
                 }
             }
             roiView.Model = store;
@@ -379,7 +403,7 @@ namespace Bio
         {
             if (anno == null)
                 return;
-            anno.X = (double)xBox.Value;
+            anno.BoundingBox = new RectangleD((double)xBox.Value, (double)yBox.Value, wBox.Value, hBox.Value); 
             UpdateView();
         }
         /// When the value of the yBox is changed, the value of the yBox is assigned to the Y property
@@ -393,7 +417,7 @@ namespace Bio
         {
             if (anno == null)
                 return;
-            anno.Y = (double)yBox.Value;
+            anno.BoundingBox = new RectangleD((double)xBox.Value, (double)yBox.Value, wBox.Value, hBox.Value);
             UpdateView();
         }
         /// When the value of the width box changes, the width of the annotation is updated
@@ -407,7 +431,7 @@ namespace Bio
             if (anno == null)
                 return;
             if(anno.type == ROI.Type.Rectangle || anno.type == ROI.Type.Ellipse)
-                anno.W = (double)wBox.Value;
+                anno.BoundingBox = new RectangleD((double)xBox.Value, (double)yBox.Value, wBox.Value, hBox.Value);
             UpdateView();
         }
         /// This function is called when the value of the hBox is changed
@@ -421,7 +445,7 @@ namespace Bio
             if (anno == null)
                 return;
             if (anno.type == ROI.Type.Rectangle || anno.type == ROI.Type.Ellipse)
-                anno.H = (double)hBox.Value;
+                anno.BoundingBox = new RectangleD((double)xBox.Value, (double)yBox.Value, wBox.Value, hBox.Value);
             UpdateView();
         }
         /// This function is called when the value of the checkbox is changed
@@ -562,6 +586,7 @@ namespace Bio
             string n = System.IO.Path.GetFileName(ImageView.SelectedImage.ID);
             if (imageNameLabel.Text != n)
                 imageNameLabel.Text = n;
+            UpdateAnnotationList();
         }
 
         /// The function adds the annotation to the image and updates the view

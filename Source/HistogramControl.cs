@@ -202,6 +202,11 @@ namespace BioGTK
             mouseValY = (float)args.Event.Y / fy;
         }
 
+        public Cairo.Color ToCairoColor(Color c)
+        {
+            return new Cairo.Color((double)c.R / 255.0, (double)c.G / 255.0, (double)c.B / 255.0, (double)c.A / 255.0);
+        }
+
         /// It draws the histogram
         /// 
         /// @param o The object that is being drawn.
@@ -211,7 +216,7 @@ namespace BioGTK
             Cairo.Context g = args.Cr;
             if (graphMax == 0)
                 graphMax = ushort.MaxValue;
-            g.SetSourceColor(ImageView.FromColor(Color.LightGray));
+            g.SetSourceColor(ToCairoColor(Color.LightGray));
             //g.Restore();
             //g.Translate(-graphMin, 0);
             g.LineWidth = 1;
@@ -236,7 +241,7 @@ namespace BioGTK
             {
                 //We draw the mouse line
 
-                g.SetSourceColor(ImageView.FromColor(Color.Black));
+                g.SetSourceColor(ToCairoColor(Color.Black));
                 g.MoveTo(mouseX, 0);
                 g.LineTo(mouseX, this.AllocatedHeight);
                 g.Stroke();
@@ -251,8 +256,8 @@ namespace BioGTK
                     else
                         stat = channel.stats[i];
                     g.LineWidth = 1;// bin * fx;
-                    Cairo.Color black = ImageView.FromColor(Color.FromArgb(35, 0, 0, 0));
-                    Cairo.Color blackd = ImageView.FromColor(Color.FromArgb(150, 0, 0, 0));
+                    Cairo.Color black = ToCairoColor(Color.FromArgb(35, 0, 0, 0));
+                    Cairo.Color blackd = ToCairoColor(Color.FromArgb(150, 0, 0, 0));
                     Cairo.Color pen = new Cairo.Color();
                     Cairo.Color pend = new Cairo.Color();
                     int dark = 100;
@@ -264,7 +269,7 @@ namespace BioGTK
 
                     if (channel.Emission != 0)
                     {
-                        Cairo.Color cc = ImageView.FromColor(SpectralColor(channel.Emission));
+                        Cairo.Color cc = ToCairoColor(SpectralColor(channel.Emission));
                         cc.A = 0.2;
                         pen = cc;
                         cc.A = 0.6;
@@ -274,18 +279,18 @@ namespace BioGTK
                     {
                         if (i == 0)
                         {
-                            pen = ImageView.FromColor(Color.FromArgb(light, 255, 0, 0));
-                            pend = ImageView.FromColor(Color.FromArgb(dark, 255, 0, 0));
+                            pen = ToCairoColor(Color.FromArgb(light, 255, 0, 0));
+                            pend = ToCairoColor(Color.FromArgb(dark, 255, 0, 0));
                         }
                         else if (i == 1)
                         {
-                            pen = ImageView.FromColor(Color.FromArgb(light, 0, 255, 0));
-                            pend = ImageView.FromColor(Color.FromArgb(dark, 0, 255, 0));
+                            pen = ToCairoColor(Color.FromArgb(light, 0, 255, 0));
+                            pend = ToCairoColor(Color.FromArgb(dark, 0, 255, 0));
                         }
                         else
                         {
-                            pen = ImageView.FromColor(Color.FromArgb(light, 0, 0, 255));
-                            pend = ImageView.FromColor(Color.FromArgb(dark, 0, 0, 255));
+                            pen = ToCairoColor(Color.FromArgb(light, 0, 0, 255));
+                            pend = ToCairoColor(Color.FromArgb(dark, 0, 0, 255));
                         }
                     }
 
@@ -347,7 +352,7 @@ namespace BioGTK
                         bininds++;
 
                     }
-                    g.SetSourceColor(ImageView.FromColor(SpectralColor(channel.Emission)));
+                    g.SetSourceColor(ToCairoColor(SpectralColor(channel.Emission)));
                     g.MoveTo((fx * channel.range[i].Max), 0);
                     g.LineTo((fx * channel.range[i].Max), this.AllocatedHeight);
                     g.Stroke();
@@ -451,6 +456,7 @@ namespace BioGTK
             g.ShowText(st);
             g.Stroke();
         }
+        
         private float bin = 10;
         public float Bin
         {

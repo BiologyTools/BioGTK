@@ -456,9 +456,8 @@ namespace BioGTK
                             byte r = (byte)rng.Next(0, 255);
                             byte g = (byte)rng.Next(0, 255);
                             byte bb = (byte)rng.Next(0, 255);
-                            an.fillColor.R = r;
-                            an.fillColor.G = g;
-                            an.fillColor.B = bb;
+                            Color fc = Color.FromArgb(r, g, bb);
+                            an.fillColor = fc;
                             ImageView.SelectedImage.Annotations.Add(an);
                         }
                         md.Dispose();

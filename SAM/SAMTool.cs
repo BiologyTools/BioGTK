@@ -528,9 +528,7 @@ namespace BioGTK
             byte r = (byte)rng.Next(0, 255);
             byte g = (byte)rng.Next(0, 255);
             byte b = (byte)rng.Next(0, 255);
-            an.fillColor.R = r;
-            an.fillColor.G = g;
-            an.fillColor.B = b;
+            an.fillColor = AForge.Color.FromArgb(r, g, b);
             
             if (autoSaveMenu.Active)
             {

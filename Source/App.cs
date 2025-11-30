@@ -14,8 +14,8 @@ namespace BioGTK
 {
     public static class App
     {
-        public static TabsView tabsView;
         public static Tools tools;
+        public static TabsView tabsView;
         public static ImageView viewer;
         public static ColorTool color;
         public static Progress progress;
@@ -187,6 +187,7 @@ namespace BioGTK
             scripting = Scripting.Create();
             funcs = Functions.Create();
             progress = Progress.Create("","","");
+            tools= Tools.Create();
             //channelsTool = ChannelsTool.Create();
             console = BioConsole.Create();
             stack = StackTools.Create();
@@ -310,9 +311,6 @@ namespace BioGTK
             if (name == "Recorder")
                 App.recorder.Close();
             else
-            if (name == "Tools")
-                App.tools.Close();
-            else
             if (name == "Color Tool")
                 App.color.Destroy();
             else
@@ -322,18 +320,12 @@ namespace BioGTK
                     for (int im = 0; im < cc; im++)
                     {
                         ImageView vi = tbs.GetViewer(v);
-                        if (vi.Images[im].Filename == Path.GetFileName(name))
+                        if (vi.Images[im].Filename == Path.GetFileName(name) || vi.Title == name)
                         {
                             tbs.RemoveTab(name);
                             vi.Close();
                             vi.Destroy();
-                            return;
-                        }
-                        else if (vi.Title == name)
-                        {
-                            tbs.RemoveTab(name);
-                            vi.Close();
-                            vi.Destroy();
+                            Images.RemoveImage(vi.Images[im]);
                             return;
                         }
                     }

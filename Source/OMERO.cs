@@ -1,8 +1,13 @@
 ﻿using AForge;
 using BioLib;
+using com.google.errorprone.annotations;
 using Gdk;
 using Gtk;
+using ome.model.roi;
+using omero;
+using omero.gateway;
 using omero.gateway.model;
+using omero.model;
 using org.checkerframework.checker.units.qual;
 using System;
 using System.Collections.Generic;
@@ -10,6 +15,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+
 namespace BioGTK
 {
     public class OMERO : Gtk.Window
@@ -23,7 +29,15 @@ namespace BioGTK
         public static Progress prog;
         #region Properties
         private Builder _builder;
-
+        public static int IconWidth = 50;
+        public static int IconHeight = 50;
+        public static string dataset = "";
+        public static long id;
+        public static List<string> files = new List<string>();
+        public static bool uploading = false;
+        public List<Image> images = new List<Image>();
+        private ListStore store;
+        
 #pragma warning disable 649
         [Builder.Object]
         private Gtk.SearchEntry searchBox;
@@ -42,14 +56,7 @@ namespace BioGTK
         #endregion
 
         #region Constructors / Destructors
-        public static int IconWidth = 50;
-        public static int IconHeight = 50;
-        public static string dataset = "";
-        public static long id;
-        public static List<string> files = new List<string>();
-        public static bool uploading = false;
-        public List<Image> images = new List<Image>();
-        private ListStore store;
+        
         /// It creates a new Search object, which is a Gtk.Window, and returns it
         /// 
         /// @return A new instance of the Search class.
@@ -124,7 +131,6 @@ namespace BioGTK
         private static void Upload()
         {
             BioLib.OMERO.Upload(BioImage.OpenFile(fi), id);
-            //BioLib.OMERO.Upload(BioImage.OpenFile(fi), id);
             uploading = false;
         }
         public static void UpdateProgress()
@@ -274,6 +280,11 @@ namespace BioGTK
             }
             comboBox.Model = comStore;
 
+        }
+        public void UpdateROIs()
+        {
+            var ro = BioLib.OMERO.gateway.getROIService(BioLib.OMERO.sc);
+           
         }
         public void UpdateItems(string filt)
         {

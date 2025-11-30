@@ -1,10 +1,7 @@
 ﻿using AForge;
 using Bio;
 using Gtk;
-using ij.plugin.filter;
-using ikvm.runtime;
-using java.nio.file;
-using sun.applet.resources;
+using Pango;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -196,6 +193,9 @@ namespace BioGTK
         private MenuItem runMicroSAMMenu;
         [Builder.Object]
         private MenuItem omeroMenu;
+        [Builder.Object]
+        private MenuItem AIMenu;
+
 #pragma warning restore 649
 
         #endregion
@@ -271,7 +271,23 @@ namespace BioGTK
             //runMenu.ShowAll();
             Plugins.Initialize();
             ML.ML.Initialize();
+            AIMenu.ShowAll();
         }
+        /*
+        public PointD GetTextSize(string s, string font, int size)
+        {
+            // Get the Pango context from the window
+            SKCanvas context = CreatePangoContext();
+
+            // Create a Pango layout for measuring text
+            Pango.Layout layout = new Pango.Layout(context);
+            layout.FontDescription = FontDescription.FromString(font + " " + size);
+            layout.SetText(s);
+            // Get pixel size
+            layout.GetPixelSize(out int width, out int height);
+            return new PointD(width, height);
+        }
+        */
 
         /// This function creates a file chooser dialog that allows the user to select the location of
         /// the ImageJ executable
@@ -448,6 +464,7 @@ namespace BioGTK
             searchMenu.ButtonPressEvent += SearchMenu_ButtonPressEvent;
             updateMenu.ButtonPressEvent += UpdateMenu_ButtonPressEvent;
             renameMenu.ButtonPressEvent += RenameMenu_ButtonPressEvent;
+            AIMenu.ButtonPressEvent += AiMenu_ButtonPressEvent;
 
             // Enable drag-and-drop for this window
             Gtk.Drag.DestSet(this, DestDefaults.All, new TargetEntry[]
@@ -456,6 +473,11 @@ namespace BioGTK
             }, Gdk.DragAction.Copy);
             this.DragDataReceived += TabsView_DragDataReceived;
 
+        }
+
+        private void AiMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            AI.Create();
         }
 
         private void TabsView_DragDataReceived(object o, DragDataReceivedArgs args)
@@ -900,8 +922,11 @@ namespace BioGTK
         /// @param BioImage This is the image that you want to display.
         public void AddTab(BioImage im)
         {
+            
             try
             {
+                if (im == null)
+                    return;
                 Application.Invoke(delegate
                 {
                     for (int vi = 0; vi < viewers.Count; vi++)
@@ -1189,7 +1214,7 @@ namespace BioGTK
                 return;
             filechooser.Hide();
             StartProgress("Save Selected OME", "Saving");
-            await BioImage.SaveAsync(filechooser.Filename, ImageView.SelectedImage.Filename, 0, true);
+            await BioImage.SaveAsync(filechooser.Filename, ImageView.SelectedImage.ID, 0, true);
             StopProgress();
         }
         /// This function saves the current series of images to an OME-TIFF file
