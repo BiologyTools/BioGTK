@@ -1,6 +1,7 @@
 ﻿using AForge;
 using Bio;
 using Gtk;
+using omero.gateway;
 using Pango;
 using System;
 using System.Collections;
@@ -98,6 +99,8 @@ namespace BioGTK
         private MenuItem saveQuPathProject;
         [Builder.Object]
         private MenuItem imagesToStack;
+        [Builder.Object]
+        private MenuItem uploadImageMenu;
 
         [Builder.Object]
         private Gtk.CheckMenuItem rgbMenu;
@@ -403,6 +406,7 @@ namespace BioGTK
             savePyramidalMenu.ButtonPressEvent += SavePyramidalMenu_ButtonPressEvent;
             saveQuPathProject.ButtonPressEvent += saveQuPathProject_ButtonPressEvent;
             imagesToStack.ButtonPressEvent += imagesToStackClick;
+            uploadImageMenu.ButtonPressEvent += UploadImageMenu_ButtonPressEvent;
 
             rgbMenu.ButtonPressEvent += RgbMenu_ButtonPressEvent;
             filteredMenu.ButtonPressEvent += FilteredMenu_ButtonPressEvent;
@@ -473,6 +477,36 @@ namespace BioGTK
             }, Gdk.DragAction.Copy);
             this.DragDataReceived += TabsView_DragDataReceived;
 
+        }
+
+        private void UploadImageMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            if (BioLib.OMERO.sc == null)
+            OmeroMenu_ButtonPressEvent(o, args);
+            BioImage b = ImageView.SelectedImage;
+            var user = BioLib.OMERO.gateway.getLoggedInUser();
+            long userId = user.getId();
+            long imgid = 0;
+            try
+            {
+                imgid = long.Parse(b.ID);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+            if(imgid == 0)
+            {
+                BioLib.OMERO.Upload(b, userId);
+            }
+            try
+            {
+                imgid = long.Parse(b.ID);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
         }
 
         private void AiMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
