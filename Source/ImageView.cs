@@ -17,7 +17,6 @@ using SkiaSharp;
 using SkiaSharp.Views.Gtk;
 using System.Runtime.InteropServices;
 using static NetVips.Enums;
-using sun.applet;
 
 namespace BioGTK
 {
@@ -157,7 +156,19 @@ namespace BioGTK
             }
         }
         Menu imagesMenu;
-        public static List<ROI> selectedAnnotations = new List<ROI>();
+        public static List<ROI> selectedAnnotations
+        {
+            get
+            {
+                List<ROI> rois = new List<ROI>();
+                foreach (var item in SelectedImage.Annotations)
+                {
+                    if (item.BoundingBox.IntersectsWith(App.viewer.MouseDown))
+                        rois.Add(item);
+                }
+                return rois;
+            }
+        }
 
 #pragma warning disable 649
         [Builder.Object]
@@ -329,7 +340,7 @@ namespace BioGTK
                 rr.Size = new SKSize((float)rd.W, (float)rd.H);
                 canvas.DrawRect(rr, paint);
                 int i = 0;
-                
+
                 foreach (BioImage im in Images)
                 {
                     RectangleD rec = ToScreenRect(im.Volume.Location.X, im.Volume.Location.Y, im.Volume.Width, im.Volume.Height);
@@ -358,7 +369,7 @@ namespace BioGTK
                                 canvas.DrawRect(overview.X, overview.Y, overview.Width, overview.Height, paint);
                                 paint.Color = SKColors.Red;
                                 double dsx;
-                                if(!openSlide)
+                                if (!openSlide)
                                     dsx = _slideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
                                 else
                                     dsx = _openSlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
@@ -382,7 +393,7 @@ namespace BioGTK
                     paint.Style = SKPaintStyle.Stroke;
                     List<ROI> rois = new List<ROI>();
                     rois.AddRange(im.Annotations);
-                    if (Tools.currentTool.type == Tools.Tool.Type.select && Modifiers == ModifierType.Button1Mask)
+                    if (Tools.currentTool.type == Tools.Tool.Type.move || Tools.currentTool.type == Tools.Tool.Type.move && Modifiers == ModifierType.Button1Mask)
                     {
                         var recd = ToScreenRect(Tools.currentTool.Rectangle.X, Tools.currentTool.Rectangle.Y, Tools.currentTool.Rectangle.W, Tools.currentTool.Rectangle.H);
                         canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
@@ -390,6 +401,9 @@ namespace BioGTK
                     ri = 0;
                     foreach (ROI an in rois)
                     {
+                        ZCT co = GetCoordinate();
+                        if (!(an.coord.Z == co.Z && an.coord.C == co.C && an.coord.T == co.T))
+                            continue;
                         if (Mode == ViewMode.RGBImage)
                         {
                             if (!showRROIs && an.coord.C == 0)
@@ -405,97 +419,71 @@ namespace BioGTK
                         }
                         else
                             paint.Color = new SKColor(an.strokeColor.R, an.strokeColor.G, an.strokeColor.B);
+                        
                         paint.StrokeWidth = (float)an.strokeWidth;
                         PointF pc = new PointF((float)(an.BoundingBox.X + (an.BoundingBox.W / 2)), (float)(an.BoundingBox.Y + (an.BoundingBox.H / 2)));
                         float width = ROI.selectBoxSize;
-
-                        if (an.type == ROI.Type.Mask && an.coord == App.viewer.GetCoordinate() && ShowMasks)
+                        if(an.type == ROI.Type.Rectangle)
                         {
-                            //paint.BlendMode = SKBlendMode.Modulate;
-                            SKImage sim;
-                            if(an.Selected)
-                                sim = an.roiMask.GetColored(Color.Blue, 10, true).ToSKImage();
-                            else
-                                sim = an.roiMask.GetColored(Color.FromArgb(1,an.fillColor.R, an.fillColor.G, an.fillColor.B), 1, true).ToSKImage();
-                            RectangleD p = ToScreenSpace(new RectangleD(an.roiMask.X * an.roiMask.PhysicalSizeX, an.roiMask.Y * an.roiMask.PhysicalSizeY, an.W,an.H));
-                            canvas.DrawImage(sim, ToRectangle((float)p.X, (float)p.Y, (float)p.W, (float)p.H), paint);
-                            sim.Dispose();
-                            continue;
-                        }
-                        else
-                        if (an.type == ROI.Type.Point)
-                        {
-                            RectangleD r1 = ToScreenRect(an.Point.X, an.Point.Y, ToViewW(3), ToViewH(3));
-                            canvas.DrawCircle((float)r1.X, (float)r1.Y, 3, paint);
-                        }
-                        else
-                        if (an.type == ROI.Type.Line)
-                        {
-                            for (int p = 0; p < an.PointsD.Count - 1; p++)
-                            {
-                                PointD p1 = ToScreenSpace(an.PointsD[p].X, an.PointsD[p].Y);
-                                PointD p2 = ToScreenSpace(an.PointsD[p + 1].X, an.PointsD[p + 1].Y);
-                                canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
-                            }
-                        }
-                        else
-                        if (an.type == ROI.Type.Rectangle)
-                        {
-                            RectangleD rectt = ToScreenRect(an.PointsD[0].X, an.PointsD[0].Y, Math.Abs(an.PointsD[0].X - an.PointsD[1].X), Math.Abs(an.PointsD[0].Y - an.PointsD[2].Y));
-                            canvas.DrawRect((float)rectt.X, (float)rectt.Y, (float)rectt.W, (float)rectt.H, paint);
-                        }
-                        else
-                        if (an.type == ROI.Type.Ellipse)
-                        {
-                            RectangleD rect = ToScreenRect(an.X + (an.W / 2), an.Y + (an.H / 2), an.W, an.H);
-                            canvas.DrawOval((float)rect.X, (float)rect.Y, (float)rect.W / 2, (float)rect.H / 2, paint);
+                            RectangleD p = ToScreenRect(an.X, an.Y, an.W, an.H);
+                            canvas.DrawRect((float)p.X, (float)p.Y, (float)p.W, (float)p.H, paint);
                         }
                         else
                         if ((an.type == ROI.Type.Polygon && an.closed))
                         {
-                            for (int p = 0; p < an.PointsD.Count - 1; p++)
+                            for (int p = 0; p < an.Points.Count - 1; p++)
                             {
-                                RectangleD p1 = ToScreenRect(an.PointsD[p].X, an.PointsD[p].Y, 1, 1);
-                                RectangleD p2 = ToScreenRect(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
+                                RectangleD p1 = ToScreenRect(an.Points[p].X, an.Points[p].Y, 1, 1);
+                                RectangleD p2 = ToScreenRect(an.Points[p + 1].X, an.Points[p + 1].Y, 1, 1);
                                 canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
                             }
-                            RectangleD pp1 = ToScreenRect(an.PointsD[0].X, an.PointsD[0].Y, 1, 1);
-                            RectangleD pp2 = ToScreenRect(an.PointsD[an.PointsD.Count - 1].X, an.PointsD[an.PointsD.Count - 1].Y, 1, 1);
+                            RectangleD pp1 = ToScreenRect(an.Points[0].X, an.Points[0].Y, 1, 1);
+                            RectangleD pp2 = ToScreenRect(an.Points[an.Points.Count - 1].X, an.Points[an.Points.Count - 1].Y, 1, 1);
                             canvas.DrawLine(new SKPoint((float)pp1.X, (float)pp1.Y), new SKPoint((float)pp2.X, (float)pp2.Y), paint);
                         }
                         else
-                        if ((an.type == ROI.Type.Polygon && !an.closed) || an.type == ROI.Type.Polyline)
+                        if (an.type == ROI.Type.Polyline)
                         {
-                            for (int p = 0; p < an.PointsD.Count - 1; p++)
+                            for (int p = 0; p < an.Points.Count - 1; p++)
                             {
-                                RectangleD p1 = ToScreenRect(an.PointsD[p].X, an.PointsD[p].Y, 1, 1);
-                                RectangleD p2 = ToScreenRect(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
+                                RectangleD p1 = ToScreenRect(an.Points[p].X, an.Points[p].Y, 1, 1);
+                                RectangleD p2 = ToScreenRect(an.Points[p + 1].X, an.Points[p + 1].Y, 1, 1);
                                 canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
                             }
                         }
                         else
                         if (an.type == ROI.Type.Freeform)
                         {
-                            for (int p = 0; p < an.PointsD.Count - 1; p++)
+                            for (int p = 0; p < an.Points.Count - 1; p++)
                             {
-                                RectangleD p1 = ToScreenRect(an.PointsD[p].X, an.PointsD[p].Y, 1, 1);
-                                RectangleD p2 = ToScreenRect(an.PointsD[p + 1].X, an.PointsD[p + 1].Y, 1, 1);
+                                RectangleD p1 = ToScreenRect(an.Points[p].X, an.Points[p].Y, 1, 1);
+                                RectangleD p2 = ToScreenRect(an.Points[p + 1].X, an.Points[p + 1].Y, 1, 1);
                                 canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
                             }
-                            RectangleD pp1 = ToScreenRect(an.PointsD[0].X, an.PointsD[0].Y, 1, 1);
-                            RectangleD pp2 = ToScreenRect(an.PointsD[an.PointsD.Count - 1].X, an.PointsD[an.PointsD.Count - 1].Y, 1, 1);
+                            RectangleD pp1 = ToScreenRect(an.Points[0].X, an.Points[0].Y, 1, 1);
+                            RectangleD pp2 = ToScreenRect(an.Points[an.Points.Count - 1].X, an.Points[an.Points.Count - 1].Y, 1, 1);
                             canvas.DrawLine(new SKPoint((float)pp1.X, (float)pp1.Y), new SKPoint((float)pp2.X, (float)pp2.Y), paint);
                         }
                         else
                         if (an.type == ROI.Type.Label)
                         {
-                            RectangleD p = ToScreenRect(an.Point.X, an.Point.Y, 1, 1);
+                            RectangleD p = ToScreenRect((float)an.Points[0].X, (float)an.Points[0].Y, 1, 1);
                             canvas.DrawText(an.Text, (float)p.X, (float)p.Y, new SKFont(SKTypeface.Default, an.fontSize, 1, 0), paint);
                         }
-
+                        else if (an.type == ROI.Type.Line)
+                        {
+                            RectangleD p = ToScreenRect((float)an.Points[0].X, (float)an.Points[0].Y, 0, 0);
+                            RectangleD p2 = ToScreenRect((float)an.Points[1].X, (float)an.Points[1].Y, 0, 0);
+                            canvas.DrawLine(new SKPoint((float)p.X, (float)p.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
+                        }
+                        else if (an.type == ROI.Type.Ellipse)
+                        {
+                            RectangleD p = ToScreenRect((float)an.Points[0].X, (float)an.Points[0].Y, an.W, an.H);
+                            canvas.DrawOval(new SKPoint((float)p.X + (float)(p.W / 2), (float)p.Y + (float)p.H / 2), new SKSize((float)p.W / 2, (float)p.H / 2), paint);
+                        }
                         if (ROIManager.showText)
                         {
-                            RectangleD p = ToScreenRect(an.Point.X, an.Point.Y, 1, 1);
+                            RectangleD p = ToScreenRect(an.X, an.Y, 1, 1);
                             canvas.DrawText(an.Text, (float)p.X, (float)p.Y, new SKFont(SKTypeface.Default, an.fontSize, 1, 0), paint);
                         }
                         if (ROIManager.showBounds && an.type != ROI.Type.Rectangle && an.type != ROI.Type.Mask && an.type != ROI.Type.Label)
@@ -503,41 +491,31 @@ namespace BioGTK
                             RectangleD rrf = ToScreenRect(an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
                             canvas.DrawRect((float)rrf.X, (float)rrf.Y, (float)rrf.W, (float)rrf.H, paint);
                         }
-                        paint.Color = SKColors.Red;
+
+                        // Draw selection boxes with proper color coding
                         if (!(an.type == ROI.Type.Freeform && !an.Selected) && an.type != ROI.Type.Mask)
-                        foreach (RectangleD re in an.GetSelectBoxes(1))
                         {
-                            RectangleD recd = ToScreenRect(re.X, re.Y, re.W, re.H);
-                            canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
-                        }
-                        if (an.type != ROI.Type.Mask)
-                        {
-                            //Lets draw the selection Boxes.
-                            List<RectangleD> rects = new List<RectangleD>();
-                            RectangleD[] sels = an.GetSelectBoxes(width);
-                            for (int p = 0; p < an.selectedPoints.Count; p++)
+                            RectangleD[] sels = an.GetSelectBoxes(ROI.selectBoxSize * SelectedImage.PhysicalSizeX);
+
+                            // Draw all selection boxes
+                            for (int p = 0; p < sels.Length; p++)
                             {
-                                if (an.selectedPoints[p] < an.GetPointCount())
+                                RectangleD recd = ToScreenRect(sels[p].X, sels[p].Y, sels[p].W, sels[p].H);
+
+                                // Check if this point is selected
+                                if (an.selectedPoints.Contains(p))
                                 {
-                                    rects.Add(sels[an.selectedPoints[p]]);
+                                    // Draw selected points in blue
+                                    paint.Color = SKColors.Blue;
+                                    canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
+                                }
+                                else
+                                {
+                                    // Draw unselected points in red
+                                    paint.Color = SKColors.Red;
+                                    canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
                                 }
                             }
-                            //Lets draw selected selection boxes.
-                            paint.Color = SKColors.Blue;
-                            if (rects.Count > 0)
-                            {
-                                int ind = 0;
-                                foreach (RectangleD re in an.GetSelectBoxes(1))
-                                {
-                                    RectangleD recd = ToScreenRect(re.X, re.Y, re.W, re.H);
-                                    if (an.selectedPoints.Contains(ind))
-                                    {
-                                        canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
-                                    }
-                                    ind++;
-                                }
-                            }
-                            rects.Clear();
                         }
                         ri++;
                     }
@@ -551,9 +529,7 @@ namespace BioGTK
                 Console.WriteLine(ex.Message);
                 refresh = false;
             }
-
         }
-
         #endregion
 
         private static SKImage Convert24bppBitmapToSKImage(Bitmap sourceBitmap)
@@ -1190,17 +1166,17 @@ namespace BioGTK
                     else
                     if (item.type == ROI.Type.Rectangle)
                     {
-                        g.FillRectangle(SelectedImage.ToImageSpace(item.Rect), p.color);
+                        g.FillRectangle(SelectedImage.ToImageSpace(item.BoundingBox), p.color);
                     }
                     else
                     if (item.type == ROI.Type.Ellipse)
                     {
-                        g.FillEllipse(SelectedImage.ToImageSpace(item.Rect), p.color);
+                        g.FillEllipse(SelectedImage.ToImageSpace(item.BoundingBox), p.color);
                     }
                     else
                     if (item.type == ROI.Type.Freeform || item.type == ROI.Type.Polygon || item.type == ROI.Type.Polyline)
                     {
-                        g.FillPolygon(SelectedImage.ToImageSpace(item.GetPointsF()), SelectedImage.ToImageSpace(item.Rect), p.color);
+                        g.FillPolygon(SelectedImage.ToImageSpace(item.GetPointsF()), SelectedImage.ToImageSpace(item.BoundingBox), p.color);
                     }
                 }
             }
@@ -1234,12 +1210,12 @@ namespace BioGTK
                     else
                     if (item.type == ROI.Type.Rectangle)
                     {
-                        g.DrawRectangle(SelectedImage.ToImageSpace(item.Rect));
+                        g.DrawRectangle(SelectedImage.ToImageSpace(item.BoundingBox));
                     }
                     else
                     if (item.type == ROI.Type.Ellipse)
                     {
-                        g.DrawEllipse(SelectedImage.ToImageSpace(item.Rect));
+                        g.DrawEllipse(SelectedImage.ToImageSpace(item.BoundingBox));
                     }
                     else
                     if (item.type == ROI.Type.Freeform || item.type == ROI.Type.Polygon || item.type == ROI.Type.Polyline)
@@ -1332,7 +1308,7 @@ namespace BioGTK
             foreach (var item in selectedAnnotations)
             {
                 SelectedImage.Annotations.Remove(item);
-                Tools.selectedROI = null;
+                //Tools.selectedROI = null;
             }
             UpdateView();
         }
@@ -1612,7 +1588,7 @@ namespace BioGTK
         /// @param o The object that the event is being called from.
         /// @param KeyPressEventArgs
         /// https://developer.gnome.org/gtk-sharp/stable/Gtk.KeyPressEventArgs.html
-        private void ImageView_KeyUpEvent(object o, KeyPressEventArgs e)
+        private void ImageView_KeyUpEvent(object o, KeyReleaseEventArgs e)
         {
             Plugins.KeyUpEvent(o, e);
             keyDown = Gdk.Key.Key_3270_Test;
@@ -2045,202 +2021,6 @@ namespace BioGTK
         public static bool mouseLeftState;
         public static ModifierType Modifiers;
         PointD mouseD = new PointD(0, 0);
-
-        public List<ROI> GetSelectedROIs()
-        {
-            List<ROI> roi = new List<ROI>();
-            List<ROI> rois = new List<ROI>();
-            rois.AddRange(SelectedImage.AnnotationsR);
-            rois.AddRange(SelectedImage.AnnotationsG);
-            rois.AddRange(SelectedImage.AnnotationsB);
-            foreach (ROI r in rois)
-            {
-                if(r.Selected)
-                {
-                    roi.Add(r);
-                }
-            }
-            return roi;
-        }
-
-        /// This function is called when the mouse is moved over the image. It updates the mouse
-        /// position, and if the user is drawing a brush stroke, it draws the stroke on the image
-        /// 
-        /// @param o the object that the event is being called from
-        /// @param MotionNotifyEventArgs 
-        private void ImageView_MotionNotifyEvent(object o, MotionNotifyEventArgs e)
-        {
-            UpdateView(true, false);
-            App.viewer = this;
-            Modifiers = e.Event.State;
-            MouseMove = new PointD(e.Event.X,e.Event.Y);
-            MouseMoveInt = new PointD((int)e.Event.X, (int)e.Event.Y);
-            PointD p = ImageToViewSpace(e.Event.X, e.Event.Y);
-            PointD ip = SelectedImage.ToImageSpace(p);
-            App.tools.ToolMove(p, e);
-            Tools.currentTool.Rectangle = new RectangleD(mouseDown.X, mouseDown.Y, p.X - mouseDown.X, p.Y - mouseDown.Y);
-            mousePoint = "(" + (p.X.ToString("F")) + ", " + (p.Y.ToString("F")) + ")";
-            
-            if (SelectedImage.isPyramidal && overview.IntersectsWith(e.Event.X, e.Event.Y)  && e.Event.State.HasFlag(ModifierType.Button1Mask))
-            {
-                if (!OpenSlide)
-                {
-                    double dsx = SelectedImage.SlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
-                    Resolution rs = SelectedImage.Resolutions[Level];
-                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX * dsx) - ((SelectedImage.PyramidalSize.Width / 2) * dsx);
-                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY * dsx) - ((SelectedImage.PyramidalSize.Height / 2) * dsx);
-                    PyramidalOrigin = new PointD(dx, dy);
-                }
-                else
-                {
-                    double dsx = SelectedImage.OpenSlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
-                    Resolution rs = SelectedImage.Resolutions[Level];
-                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX * dsx) - ((SelectedImage.PyramidalSize.Width / 2) * dsx);
-                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY * dsx) - ((SelectedImage.PyramidalSize.Height / 2) * dsx);
-                    PyramidalOrigin = new PointD(dx, dy);
-                }
-                UpdateView(true);
-            }
-            //If point selection tool is clicked we  
-            if (Tools.currentTool.type == Tools.Tool.Type.pointSel && e.Event.State.HasFlag(ModifierType.Button1Mask))
-            {
-                List<ROI> rois = new List<ROI>();
-                rois.AddRange(SelectedImage.Annotations);
-                foreach (ROI an in rois)
-                {
-                    if(an.Selected)
-                    if (an.selectedPoints.Count > 0 && an.selectedPoints.Count < an.GetPointCount())
-                    {
-                        //If the selection is rectangle or ellipse we resize the annotation based on corners
-                        if (an.type == ROI.Type.Rectangle || an.type == ROI.Type.Ellipse)
-                        {
-                            RectangleD d = an.Rect;
-                            if (an.selectedPoints[0] == 0)
-                            {
-                                double dw = d.X - p.X;
-                                double dh = d.Y - p.Y;
-                                d.X = p.X;
-                                d.Y = p.Y;
-                                d.W += dw;
-                                d.H += dh;
-                            }
-                            else
-                            if (an.selectedPoints[0] == 1)
-                            {
-                                double dw = p.X - (d.W + d.X);
-                                double dh = d.Y - p.Y;
-                                d.W += dw;
-                                d.H += dh;
-                                d.Y -= dh;
-                            }
-                            else
-                            if (an.selectedPoints[0] == 2)
-                            {
-                                double dw = d.X - p.X;
-                                double dh = p.Y - (d.Y + d.H);
-                                d.W += dw;
-                                d.H += dh;
-                                d.X -= dw;
-                            }
-                            else
-                            if (an.selectedPoints[0] == 3)
-                            {
-                                double dw = d.X - p.X;
-                                double dh = d.Y - p.Y;
-                                d.W = p.X - an.X;
-                                d.H = p.Y - an.Y;
-                            }
-                            an.Rect = d;
-                        }
-                        else
-                        {
-                            PointD pod = new PointD(p.X - pd.X, p.Y - pd.Y);
-                            //PointD dif = new PointD((e.Event.X - ed.X) * PxWmicron, (e.Event.Y - ed.Y) * PxHmicron);
-                            for (int i = 0; i < an.selectedPoints.Count; i++)
-                            {
-                                PointD poid = an.GetPoint(an.selectedPoints[i]);
-                                an.UpdatePoint(new PointD(poid.X + pod.X, poid.Y + pod.Y), an.selectedPoints[i]);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        PointD pod = new PointD(p.X - pd.X, p.Y - pd.Y);
-                        for (int i = 0; i < an.GetPointCount(); i++)
-                        {
-                            PointD poid = an.PointsD[i];
-                            an.UpdatePoint(new PointD(poid.X + pod.X, poid.Y + pod.Y), i);
-                        }
-                    }
-                }
-                UpdateView();
-            }
-
-            if (Tools.currentTool != null)
-            {
-                if(SelectedImage.isPyramidal)
-                {
-                    ip = new PointD(e.Event.X, e.Event.Y);
-                }
-                if (Tools.currentTool.type == Tools.Tool.Type.brush && e.Event.State.HasFlag(ModifierType.Button1Mask))
-                {
-                    Tools.Tool tool = Tools.currentTool;
-                    Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(SelectedBuffer);
-                    g.pen = new Bio.Graphics.Pen(Tools.DrawColor, (int)Tools.StrokeWidth, ImageView.SelectedImage.bitsPerPixel);
-                    g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)Tools.StrokeWidth, (int)Tools.StrokeWidth), g.pen.color);
-                    UpdateImage(true);
-                }
-                else
-                if (Tools.currentTool.type == Tools.Tool.Type.eraser && e.Event.State.HasFlag(ModifierType.Button1Mask))
-                {
-                    Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(ImageView.SelectedBuffer);
-                    Bio.Graphics.Pen pen = new Bio.Graphics.Pen(Tools.EraseColor, (int)Tools.StrokeWidth, ImageView.SelectedBuffer.BitsPerPixel);
-                    g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)Tools.StrokeWidth, (int)Tools.StrokeWidth), pen.color);
-                    //pen.Dispose();
-                    App.viewer.UpdateImages(true);
-                }
-            }
-            UpdateStatus();
-            pd = p;
-        }
-        
-        /// The function is called when the mouse button is released. It checks if the mouse button is
-        /// the left button, and if it is, it sets the mouseLeftState to false. It then sets the viewer
-        /// to the current viewer, and converts the mouse coordinates to view space. It then sets the
-        /// mouseUp variable to the pointer variable. It then checks if the mouse button is the middle
-        /// button, and if it is, it checks if the selected image is pyramidal. If it is, it sets the
-        /// pyramidal origin to the mouse coordinates. If it isn't, it sets the origin to the mouse
-        /// coordinates. It then updates the image and the view. It then checks if the selected image is
-        /// null, and if it is, it returns. It then calls the ToolUp function in the tools class,
-        /// passing in the pointer and the event
-        /// 
-        /// @param o The object that the event is being called on.
-        /// @param ButtonReleaseEventArgs 
-        /// 
-        /// @return The image is being returned.
-        private void ImageView_ButtonReleaseEvent(object o, ButtonReleaseEventArgs e)
-        {
-            Modifiers = e.Event.State;
-            MouseUpInt = new PointD((int)e.Event.X, (int)e.Event.Y);
-            if (e.Event.Button == 1)
-                mouseLeftState = false;
-            App.viewer = this;
-            PointD pointer = ImageToViewSpace(e.Event.X, e.Event.Y);
-            mouseUp = pointer;
-            if (e.Event.State.HasFlag(ModifierType.Button2Mask))
-            {
-                if (SelectedImage != null && !SelectedImage.isPyramidal)
-                {
-                    PointD pd = new PointD(pointer.X - mouseDown.X, pointer.Y - mouseDown.Y);
-                    origin = new PointD(origin.X + pd.X, origin.Y + pd.Y);
-                }
-                UpdateImages(true);
-                UpdateView();
-            }
-            if (SelectedImage == null)
-                return;
-            App.tools.ToolUp(pointer, e);
-        }
         PointD pd;
         PointD mouseDownInt = new PointD(0, 0);
         PointD mouseMoveInt = new PointD(0, 0);
@@ -2248,6 +2028,7 @@ namespace BioGTK
         PointD mouseUp = new PointD(0, 0);
         PointD mouseDown = new PointD(0, 0);
         PointD mouseMove = new PointD(0, 0);
+        public ROI selectedROI = new ROI();
         /* A property that returns the value of the mouseDownInt variable. */
         public PointD MouseDownInt
         {
@@ -2279,46 +2060,141 @@ namespace BioGTK
             get { return mouseMove; }
             set { mouseMove = value; }
         }
-        /// The function is called when the user clicks on the image. It checks if the user clicked on
-        /// an annotation, and if so, it selects the annotation
-        /// 
-        /// @param o the object that the event is being called on
-        /// @param ButtonPressEventArgs e.Event.State
-        /// 
-        /// @return The return value is a tuple of the form (x,y,z,c,t) where x,y,z,c,t are the
-        /// coordinates of the pixel in the image.
+        
+        List<ROI> copys = new List<ROI>();
+        public List<ROI> GetSelectedROIs()
+        {
+            List<ROI> roi = new List<ROI>();
+            List<ROI> rois = new List<ROI>();
+            rois.AddRange(SelectedImage.AnnotationsR);
+            rois.AddRange(SelectedImage.AnnotationsG);
+            rois.AddRange(SelectedImage.AnnotationsB);
+            foreach (ROI r in rois)
+            {
+                if(r.Selected)
+                {
+                    roi.Add(r);
+                }
+            }
+            return roi;
+        }
+        // Replace the three mouse event methods in ImageView.cs with these simplified versions
+
+        /// <summary>
+        /// Mouse motion event - delegates to Tools.cs for all tool logic
+        /// </summary>
+        private void ImageView_MotionNotifyEvent(object o, MotionNotifyEventArgs e)
+        {
+            App.viewer = this;
+            Modifiers = e.Event.State;
+            MouseMove = new PointD(e.Event.X, e.Event.Y);
+            MouseMoveInt = new PointD((int)e.Event.X, (int)e.Event.Y);
+
+            // Convert to view space (world coordinates)
+            PointD p = ImageToViewSpace(e.Event.X, e.Event.Y);
+            mousePoint = "(" + (p.X.ToString("F")) + ", " + (p.Y.ToString("F")) + ")";
+
+            // Handle pyramidal overview navigation
+            if (SelectedImage.isPyramidal && overview.IntersectsWith(e.Event.X, e.Event.Y) &&
+                e.Event.State.HasFlag(ModifierType.Button1Mask))
+            {
+                if (!OpenSlide)
+                {
+                    double dsx = SelectedImage.SlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
+                    Resolution rs = SelectedImage.Resolutions[Level];
+                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX * dsx) -
+                               ((SelectedImage.PyramidalSize.Width / 2) * dsx);
+                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY * dsx) -
+                               ((SelectedImage.PyramidalSize.Height / 2) * dsx);
+                    PyramidalOrigin = new PointD(dx, dy);
+                }
+                else
+                {
+                    double dsx = SelectedImage.OpenSlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
+                    Resolution rs = SelectedImage.Resolutions[Level];
+                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX * dsx) -
+                               ((SelectedImage.PyramidalSize.Width / 2) * dsx);
+                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY * dsx) -
+                               ((SelectedImage.PyramidalSize.Height / 2) * dsx);
+                    PyramidalOrigin = new PointD(dx, dy);
+                }
+                UpdateView(true);
+            }
+
+            // Delegate all tool logic to Tools.cs
+            App.tools.ToolMove(p, e);
+
+            UpdateStatus();
+            UpdateView(true, false);
+            pd = p;
+        }
+
+        /// <summary>
+        /// Mouse button release event - delegates to Tools.cs for all tool logic
+        /// </summary>
+        private void ImageView_ButtonReleaseEvent(object o, ButtonReleaseEventArgs e)
+        {
+            Modifiers = e.Event.State;
+            MouseUpInt = new PointD((int)e.Event.X, (int)e.Event.Y);
+
+            if (e.Event.Button == 1)
+                mouseLeftState = false;
+
+            App.viewer = this;
+            PointD pointer = ImageToViewSpace(e.Event.X, e.Event.Y);
+            mouseUp = pointer;
+
+            if (SelectedImage == null)
+                return;
+
+            // Delegate all tool logic to Tools.cs
+            App.tools.ToolUp(pointer, e);
+        }
+
+        /// <summary>
+        /// Mouse button press event - handles basic UI interactions and delegates tool logic
+        /// </summary>
         private void ImageView_ButtonPressEvent(object o, ButtonPressEventArgs e)
         {
             Modifiers = e.Event.State;
+
             if (e.Event.Button == 1)
                 mouseLeftState = true;
             else
                 mouseLeftState = false;
+
             App.viewer = this;
             PointD pointer = ImageToViewSpace(e.Event.X, e.Event.Y);
             MouseDownInt = new PointD(e.Event.X, e.Event.Y);
             pd = pointer;
             mouseDown = pd;
-            mouseD = SelectedImage.ToImageSpace(pd);
-            
+
             if (SelectedImage == null)
                 return;
-            PointD ip = pointer; // SelectedImage.ToImageSpace(pointer);
+
+            mouseD = SelectedImage.ToImageSpace(pd);
+
+            // Handle well plate level navigation
             if (ImageView.SelectedImage.Type == BioImage.ImageType.well)
             {
                 if (e.Event.Button == 4)
                 {
                     Level = ImageView.SelectedImage.Level - 1;
                 }
-                else
-                if (e.Event.Button == 5)
+                else if (e.Event.Button == 5)
                 {
                     Level = ImageView.SelectedImage.Level + 1;
                 }
             }
 
+            // Context menu
             if (e.Event.Button == 3)
+            {
                 contextMenu.Popup();
+                return; // Don't process tool events for right-click
+            }
+
+            // Mouse wheel scrolling for channel/time navigation
             if (e.Event.Button == 4 && Mode != ViewMode.RGBImage)
             {
                 if (cBar.Value < cBar.Adjustment.Upper)
@@ -2331,6 +2207,7 @@ namespace BioGTK
                     tBar.Value++;
                 x1State = true;
             }
+
             if (e.Event.State != ModifierType.Button4Mask)
                 x1State = false;
 
@@ -2346,145 +2223,97 @@ namespace BioGTK
                     tBar.Value--;
                 x2State = true;
             }
+
             if (e.Event.State != ModifierType.Button5Mask)
                 x2State = false;
+
+            // Select which image is clicked (for multi-image views)
             int ind = 0;
-            //We select the image that has been clicked
             foreach (BioImage b in Images)
             {
-                RectangleD r = new RectangleD(b.Volume.Location.X, b.Volume.Location.Y, b.Volume.Width, b.Volume.Height);
+                RectangleD r = new RectangleD(b.Volume.Location.X, b.Volume.Location.Y,
+                                              b.Volume.Width, b.Volume.Height);
                 if (r.IntersectsWith(pointer))
                 {
                     selectedIndex = ind;
                     UpdateGUI();
                     break;
                 }
-                else
-                {
-                    foreach (var item in b.Annotations)
-                    {
-                        if (!item.BoundingBox.IntersectsWith(pointer))
-                            item.Selected = false;
-                    }
-                }
                 ind++;
             }
 
-            //Lets handle point selection & move tool clicks.
-            if (Tools.currentTool.type == Tools.Tool.Type.pointSel || Tools.currentTool.type == Tools.Tool.Type.move  && e.Event.Button == 1 )
-            {
-                bool clearSel = true;
-                float width = ROI.selectBoxSize;
-                foreach (BioImage bi in Images)
-                {
-                    List<ROI> rois = new List<ROI>();
-                    rois.AddRange(SelectedImage.Annotations);
-                    foreach (ROI an in rois)
-                    {
-                        if (!Modifiers.HasFlag(ModifierType.ControlMask))
-                            an.Selected = false;
-                        if(an.type == ROI.Type.Mask)
-                        {
-                            RectangleD rd = new RectangleD(SelectedImage.StageSizeX + (an.roiMask.X * an.roiMask.PhysicalSizeX), SelectedImage.StageSizeY + (an.roiMask.Y * an.roiMask.PhysicalSizeY), an.roiMask.Width * an.roiMask.PhysicalSizeX, an.roiMask.Height * an.roiMask.PhysicalSizeY);
-                            if (rd.IntersectsWith(new RectangleD((float)pointer.X, (float)pointer.Y, SelectedImage.PhysicalSizeX, SelectedImage.PhysicalSizeY)))
-                                an.Selected = true;
-                            else
-                                an.Selected = false;
-                        }
-                        else
-                        if((an.coord == GetCoordinate() && Mode != ViewMode.RGBImage) || (an.coord.Z == GetCoordinate().Z && an.coord.T == GetCoordinate().T && Mode == ViewMode.RGBImage))
-                        if (an.GetSelectBound(ROI.selectBoxSize * SelectedImage.PhysicalSizeX, ROI.selectBoxSize * SelectedImage.PhysicalSizeY).IntersectsWith(new RectangleD((float)pointer.X, (float)pointer.Y,SelectedImage.PhysicalSizeX, SelectedImage.PhysicalSizeY)))
-                        {
-                            //We clicked inside an ROI so selection should not be cleared.
-                            clearSel = false;
-                            selectedAnnotations.Add(an);
-                            an.Selected = true;
-                            Tools.selectedROI = an;
-                            RectangleD[] sels = an.GetSelectBoxes(width);
-                            RectangleD r = new RectangleD((float)pointer.X, (float)pointer.Y, (float)sels[0].W, (float)sels[0].H);
-                            if(an.type != ROI.Type.Mask)
-                            for (int i = 0; i < sels.Length; i++)
-                            {
-                                RectangleF rd = new RectangleF((float)pointer.X, (float)pointer.Y, (float)ToViewW(1), (float)ToViewH(1));
-                                if (sels[i].ToRectangleF().IntersectsWith(rd))
-                                {
-                                    an.selectedPoints.Add(i);
-                                }
-                            }
-                        }  
-                    }
-                }
-                UpdateView();
-            }
+            // Get pixel value at cursor for display (only for left-click)
             if (e.Event.Button == 1)
             {
                 PointD s = new PointD(e.Event.X, e.Event.Y);
-                if ((s.X < SelectedImage.SizeX && (s.Y < SelectedImage.SizeY)) || (s.X >= 0 && (s.Y >= 0)))
+
+                // Sample pixel value for status display
+                if ((s.X < SelectedImage.SizeX && s.Y < SelectedImage.SizeY) ||
+                    (s.X >= 0 && s.Y >= 0))
                 {
                     int zc = SelectedImage.Coordinate.Z;
                     int cc = SelectedImage.Coordinate.C;
                     int tc = SelectedImage.Coordinate.T;
-                    if (SelectedImage.isPyramidal)
+
+                    try
                     {
-                        if (SelectedImage.isRGB)
+                        if (SelectedImage.isPyramidal)
                         {
-                            float r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc, (int)s.X, (int)s.Y, 0);
-                            float g = SelectedImage.GetValueRGB(zc, GChannel.Index, tc, (int)s.X, (int)s.Y, 1);
-                            float b = SelectedImage.GetValueRGB(zc, BChannel.Index, tc, (int)s.X, (int)s.Y, 2);
-                            mouseColor = ", " + r + "," + g + "," + b;
+                            if (SelectedImage.isRGB)
+                            {
+                                float r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc,
+                                                                   (int)s.X, (int)s.Y, 0);
+                                float g = SelectedImage.GetValueRGB(zc, GChannel.Index, tc,
+                                                                   (int)s.X, (int)s.Y, 1);
+                                float b = SelectedImage.GetValueRGB(zc, BChannel.Index, tc,
+                                                                   (int)s.X, (int)s.Y, 2);
+                                mouseColor = ", RGB(" + r + "," + g + "," + b + ")";
+                            }
+                            else
+                            {
+                                float r = SelectedImage.GetValueRGB(zc, (int)cBar.Value, tc,
+                                                                   (int)mouseD.X, (int)mouseD.Y, 0);
+                                mouseColor = ", Val(" + r + ")";
+                            }
                         }
                         else
                         {
-                            float r = SelectedImage.GetValueRGB(zc, (int)cBar.Value, tc, (int)mouseD.X, (int)mouseD.Y, 0);
-                            mouseColor = ", " + r;
+                            if (SelectedImage.isRGB)
+                            {
+                                float r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc,
+                                                                   (int)s.X, (int)s.Y, 0);
+                                float g = SelectedImage.GetValueRGB(zc, GChannel.Index, tc,
+                                                                   (int)s.X, (int)s.Y, 1);
+                                float b = SelectedImage.GetValueRGB(zc, BChannel.Index, tc,
+                                                                   (int)s.X, (int)s.Y, 2);
+                                mouseColor = ", RGB(" + r + "," + g + "," + b + ")";
+                            }
+                            else
+                            {
+                                float r = SelectedImage.GetValueRGB(zc, (int)cBar.Value, tc,
+                                                                   (int)s.X, (int)s.Y, 0);
+                                mouseColor = ", Val(" + r + ")";
+                            }
                         }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        if (SelectedImage.isRGB)
-                        {
-                            float r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc, (int)s.X, (int)s.Y, 0);
-                            float g = SelectedImage.GetValueRGB(zc, GChannel.Index, tc, (int)s.X, (int)s.Y, 1);
-                            float b = SelectedImage.GetValueRGB(zc, BChannel.Index, tc, (int)s.X, (int)s.Y, 2);
-                            mouseColor = ", " + r + "," + g + "," + b;
-                        }
-                        else
-                        {
-                            float r = SelectedImage.GetValueRGB(zc, (int)cBar.Value, tc, (int)s.X, (int)s.Y, 0);
-                            mouseColor = ", " + r;
-                        }
-                    }
-                }
-                if (Tools.currentTool != null)
-                {
-                    if (SelectedImage.isPyramidal)
-                    {
-                        ip = new PointD(e.Event.X, e.Event.Y);
-                    }
-                    if (Tools.currentTool.type == Tools.Tool.Type.brush && e.Event.State.HasFlag(ModifierType.Button1Mask))
-                    {
-                        Tools.Tool tool = Tools.currentTool;
-                        Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(SelectedBuffer);
-                        g.pen = new Bio.Graphics.Pen(Tools.DrawColor, (int)Tools.StrokeWidth, ImageView.SelectedImage.bitsPerPixel);
-                        g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)Tools.StrokeWidth, (int)Tools.StrokeWidth), g.pen.color);
-                        UpdateImage(true);
-                    }
-                    else
-                    if (Tools.currentTool.type == Tools.Tool.Type.eraser && e.Event.State.HasFlag(ModifierType.Button1Mask))
-                    {
-                        Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(ImageView.SelectedBuffer);
-                        Bio.Graphics.Pen pen = new Bio.Graphics.Pen(Tools.EraseColor, (int)Tools.StrokeWidth, ImageView.SelectedBuffer.BitsPerPixel);
-                        g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)Tools.StrokeWidth, (int)Tools.StrokeWidth), pen.color);
-                        //pen.Dispose();
-                        App.viewer.UpdateImages(true);
+                        mouseColor = "";
+                        Console.WriteLine("Error reading pixel value: " + ex.Message);
                     }
                 }
             }
-            UpdateStatus();
-            App.tools.ToolDown(pointer, e);
-        }
-        List<ROI> copys = new List<ROI>();
 
+            UpdateStatus();
+
+            // Delegate all tool logic to Tools.cs (for left-click only)
+            if (e.Event.Button == 1 || e.Event.Button == 2)
+            {
+                App.tools.ToolDown(pointer, e);
+            }
+
+            UpdateView();
+        }
         #region Conversion
         private int Width
         {

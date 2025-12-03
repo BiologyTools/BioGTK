@@ -89,13 +89,24 @@ namespace BioGTK
         {
             try
             {
-                Tools.selectedROI.Text = textinputBox.Text;
+                ROI ro = null;
+                foreach (var r in ImageView.SelectedImage.Annotations)
+                {
+                    if (r.Selected)
+                    {
+                        ro = r;
+                        break;
+                    }
+                }
+                if (ro == null)
+                    return;
+                ro.Text = textinputBox.Text;
                 string s = fontBut.Font;
                 s = s.Replace(",", "");
                 string[] sts = s.Split(' ');
                 s = s.Replace(sts[sts.Length-1],"");
-                Tools.selectedROI.family = fontBut.FontFamily.Name;
-                Tools.selectedROI.fontSize = float.Parse(sts[sts.Length - 1]);
+                ro.family = fontBut.FontFamily.Name;
+                ro.fontSize = float.Parse(sts[sts.Length - 1]);
             }
             catch (Exception e)
             {

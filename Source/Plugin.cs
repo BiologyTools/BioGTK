@@ -20,7 +20,7 @@ namespace BioGTK
             string MenuPath { get; }
             bool ContextMenu { get; }
             void Execute(string[] args);
-            void KeyUpEvent(object o, KeyPressEventArgs e);
+            void KeyUpEvent(object o, KeyReleaseEventArgs e);
             void KeyDownEvent(object o, KeyPressEventArgs e);
             void ScrollEvent(object o, ScrollEventArgs args);
             void Render(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e);
@@ -64,7 +64,7 @@ namespace BioGTK
                 
             }
         }
-        public static void KeyUpEvent(object o, KeyPressEventArgs e)
+        public static void KeyUpEvent(object o, KeyReleaseEventArgs e)
         {
             foreach (IPlugin p in Plugin.Plugins.Values)
             {

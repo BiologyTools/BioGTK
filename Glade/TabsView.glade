@@ -582,6 +582,13 @@
                 <property name="label" translatable="yes">OMERO</property>
               </object>
             </child>
+            <child>
+              <object class="GtkMenuItem" id="AIMenu">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">AI</property>
+              </object>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>

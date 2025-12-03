@@ -7,6 +7,9 @@ using Gdk;
 
 namespace BioGTK
 {
+    /// <summary>
+    /// 
+    /// </summary>
     public class Functions : Gtk.Window
     {
         //public static InputSimulator input = new InputSimulator();

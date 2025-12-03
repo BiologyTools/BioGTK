@@ -575,6 +575,13 @@
                 <property name="label" translatable="yes">Update</property>
               </object>
             </child>
+            <child>
+              <object class="GtkMenuItem" id="omeroMenu">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">OMERO</property>
+              </object>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>
