@@ -347,6 +347,7 @@ namespace Bio
                     }
                     else
                     {
+                        if(!rois.ContainsKey(r.id))
                         rois.Add(r.id, r);
                         store.AppendValues(iter, r.type.ToString(), r.id, r.Text, r.BoundingBox.ToString());
                     }

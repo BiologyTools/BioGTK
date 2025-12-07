@@ -2303,17 +2303,11 @@ namespace BioGTK
                     }
                 }
             }
-
             UpdateStatus();
-
-            // Delegate all tool logic to Tools.cs (for left-click only)
-            if (e.Event.Button == 1 || e.Event.Button == 2)
-            {
-                App.tools.ToolDown(pointer, e);
-            }
-
+            App.tools.ToolDown(pointer, e);
             UpdateView();
         }
+
         #region Conversion
         private int Width
         {

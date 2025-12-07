@@ -9,9 +9,9 @@ using Gtk;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Color = Cairo.Color;
 using PointD = AForge.PointD;
 using Rectangle = AForge.Rectangle;
-
 namespace BioGTK
 {
     /// <summary>
@@ -19,6 +19,7 @@ namespace BioGTK
     /// </summary>
     public class Tools : Gtk.Window
     {
+
 #pragma warning disable 649
 
         [Builder.Object]
@@ -114,7 +115,6 @@ namespace BioGTK
             else
                 roi.serie = ImageView.SelectedImage.series;
             roi.coord = App.viewer.GetCoordinate();
-            selectedROIs.Add(roi);
             roi.UpdateBoundingBox();
             ImageView.SelectedImage.Annotations.Add(roi);
         }
@@ -250,8 +250,65 @@ namespace BioGTK
         {
             App.viewer.UpdateView();
         }
-        // Replace the ToolDown, ToolUp, and ToolMove methods in Tools.cs with these fixed versions
 
+        // Normalize bounding box (makes W/H >= 0) and update ROI.Points to match corners
+        private void SyncPointsFromBoundingBox(ROI roi)
+        {
+            if (roi == null) return;
+            RectangleD r = roi.BoundingBox;
+
+            double left = Math.Min(r.X, r.X + r.W);
+            double top = Math.Min(r.Y, r.Y + r.H);
+            double right = Math.Max(r.X, r.X + r.W);
+            double bottom = Math.Max(r.Y, r.Y + r.H);
+
+            // update normalized bounding box
+            roi.BoundingBox = new RectangleD(left, top, right - left, bottom - top);
+
+            // Ensure Points list exists & has 4 corner points for rectangle/ellipse
+            if (roi.Points == null) roi.Points = new List<PointD>();
+
+            if (roi.Points.Count < 4)
+            {
+                roi.Points.Clear();
+                roi.Points.Add(new PointD(left, top));      // 0: TL
+                roi.Points.Add(new PointD(right, top));     // 1: TR
+                roi.Points.Add(new PointD(right, bottom));  // 2: BR
+                roi.Points.Add(new PointD(left, bottom));   // 3: BL
+            }
+            else
+            {
+                // Keep the index mapping consistent
+                roi.UpdatePoint(new PointD(left, top), 0);
+                roi.UpdatePoint(new PointD(right, top), 1);
+                roi.UpdatePoint(new PointD(right, bottom), 2);
+                roi.UpdatePoint(new PointD(left, bottom), 3);
+            }
+        }
+
+        // Recompute bounding box from the ROI points (useful after moving points)
+        private void SyncBoundingBoxFromPoints(ROI roi)
+        {
+            if (roi == null || roi.Points == null || roi.Points.Count == 0) return;
+
+            double minx = double.MaxValue, miny = double.MaxValue;
+            double maxx = double.MinValue, maxy = double.MinValue;
+
+            foreach (var p in roi.Points)
+            {
+                if (p.X < minx) minx = p.X;
+                if (p.Y < miny) miny = p.Y;
+                if (p.X > maxx) maxx = p.X;
+                if (p.Y > maxy) maxy = p.Y;
+            }
+
+            roi.BoundingBox = new RectangleD(minx, miny, maxx - minx, maxy - miny);
+        }
+
+
+        // -----------------------------
+        // Fixed tool implementations
+        // -----------------------------
         public void ToolDown(PointD e, ButtonPressEventArgs buts)
         {
             if (App.viewer == null || currentTool == null || ImageView.SelectedImage == null)
@@ -260,459 +317,88 @@ namespace BioGTK
             Plugins.MouseDown(ImageView.SelectedImage, e, buts);
             Scripting.UpdateState(Scripting.State.GetDown(e, buts.Event.Button));
 
-            PointF p = new PointF((float)e.X, (float)e.Y);
-
-            // Move tool - selection and dragging
-            if (currentTool.type == Tool.Type.move && buts.Event.Button == 1)
+            switch (currentTool.type)
             {
-                // Store starting position
-                App.viewer.MouseDown = new PointD(e.X, e.Y);
-
-                // Check if Control key is held for multi-selection
-                bool controlHeld = buts.Event.State.HasFlag(ModifierType.ControlMask);
-
-                // First check if clicking on a control point (vertex) of a selected ROI
-                bool clickedOnVertex = false;
-                foreach (var ann in ImageView.SelectedImage.Annotations)
-                {
-                    if (ann != null && ann.Selected)
-                    {
-                        RectangleD[] selectBoxes = ann.GetSelectBoxes(ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeX);
-                        for (int i = 0; i < selectBoxes.Length; i++)
-                        {
-                            if (selectBoxes[i].IntersectsWith(new RectangleD(e.X, e.Y, 1, 1)))
-                            {
-                                // Clicking on a vertex
-                                clickedOnVertex = true;
-                                selectedROI = ann;
-
-                                if (controlHeld)
-                                {
-                                    // Control held: toggle selection of this point
-                                    if (ann.selectedPoints.Contains(i))
-                                        ann.selectedPoints.Remove(i);
-                                    else
-                                        ann.selectedPoints.Add(i);
-                                }
-                                else
-                                {
-                                    // No control: select only this point
-                                    ann.selectedPoints.Clear();
-                                    ann.selectedPoints.Add(i);
-                                }
-                                break;
-                            }
-                        }
-                        if (clickedOnVertex)
-                            break;
-                    }
-                }
-
-                // If not on vertex, check if clicking on an existing selected ROI's body
-                bool clickedOnSelectedROI = false;
-                if (!clickedOnVertex)
-                {
-                    foreach (var ann in ImageView.SelectedImage.Annotations)
-                    {
-                        if (ann != null && ann.Selected && ann.BoundingBox.IntersectsWith(new RectangleD(e.X, e.Y, 1, 1)))
-                        {
-                            clickedOnSelectedROI = true;
-                            selectedROI = ann;
-                            break;
-                        }
-                    }
-                }
-
-                // If not clicking on selected ROI or vertex, check if clicking on any ROI
-                if (!clickedOnVertex && !clickedOnSelectedROI)
-                {
-                    bool clickedOnAnyROI = false;
-                    foreach (var ann in ImageView.SelectedImage.Annotations)
-                    {
-                        if (ann != null && ann.BoundingBox.IntersectsWith(new RectangleD(e.X, e.Y, 1, 1)))
-                        {
-                            if (controlHeld)
-                            {
-                                // Control held: add to selection
-                                ann.Selected = true;
-                                ann.selectedPoints?.Clear();
-                                selectedROI = ann;
-                            }
-                            else
-                            {
-                                // Clear other selections
-                                foreach (var other in ImageView.SelectedImage.Annotations)
-                                {
-                                    if (other != null && other != ann)
-                                    {
-                                        other.Selected = false;
-                                        other.selectedPoints?.Clear();
-                                    }
-                                }
-
-                                // Select this ROI
-                                ann.Selected = true;
-                                ann.selectedPoints?.Clear();
-                                selectedROI = ann;
-                            }
-                            clickedOnAnyROI = true;
-                            break;
-                        }
-                    }
-
-                    // If not clicking on any ROI, start new selection rectangle
-                    if (!clickedOnAnyROI)
-                    {
-                        if (!controlHeld)
-                        {
-                            // Clear previous selections only if Control not held
-                            foreach (var ann in ImageView.SelectedImage.Annotations)
-                            {
-                                if (ann != null)
-                                {
-                                    ann.Selected = false;
-                                    ann.selectedPoints?.Clear();
-                                }
-                            }
-                            selectedROI = null;
-                        }
-
-                        // Initialize selection rectangle
-                        Tools.GetTool(Tools.Tool.Type.move).Rectangle = new RectangleD(e.X, e.Y, 0, 0);
-                    }
-                }
-
-                UpdateView();
-            }
-            // Line tool
-            else if (currentTool.type == Tool.Type.line && buts.Event.Button == 1)
-            {
-                selectedROI = new ROI();
-                selectedROI.type = ROI.Type.Line;
-                selectedROI.AddPoint(new PointD(e.X, e.Y));
-                selectedROI.AddPoint(new PointD(e.X, e.Y));
-                selectedROI.coord = App.viewer.GetCoordinate();
-                selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
-                AddROI(selectedROI);
-            }
-            // Polygon tool
-            else if (currentTool.type == Tool.Type.polygon && buts.Event.Button == 1)
-            {
-                if (selectedROI == null)
-                {
-                    selectedROI = new ROI();
-                    selectedROI.type = ROI.Type.Polygon;
-                    selectedROI.AddPoint(new PointD(e.X, e.Y));
-                    selectedROI.coord = App.viewer.GetCoordinate();
-                    selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
-                    AddROI(selectedROI);
-                }
-                else
-                {
-                    RectangleD[] rds = selectedROI.GetSelectBoxes();
-                    if (rds != null && rds.Length > 0 &&
-                        rds[0].IntersectsWith(new RectangleD(e.X, e.Y, 1, 1)))
-                    {
-                        selectedROI.closed = true;
-                        selectedROI.Selected = false;
-                        selectedROI = null;
-                        return;
-                    }
-                    else
-                    {
-                        if (!selectedROI.closed)
-                            selectedROI.AddPoint(new PointD(e.X, e.Y));
-                    }
-                }
-            }
-            // Freeform tool
-            else if (currentTool.type == Tool.Type.freeform && buts.Event.Button == 1)
-            {
-                if (selectedROI == null)
-                {
-                    selectedROI = new ROI();
-                    selectedROI.type = ROI.Type.Freeform;
-                    selectedROI.AddPoint(new PointD(e.X, e.Y));
-                    selectedROI.coord = App.viewer.GetCoordinate();
-                    selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
-                    AddROI(selectedROI);
-                }
-                else
-                {
-                    selectedROI.AddPoint(new PointD(e.X, e.Y));
-                }
-            }
-            // Rectangle tool
-            else if (currentTool.type == Tool.Type.rect && buts.Event.Button == 1)
-            {
-                selectedROI = new ROI();
-                selectedROI.type = ROI.Type.Rectangle;
-                selectedROI.BoundingBox = new RectangleD(e.X, e.Y, 1, 1);
-                selectedROI.coord = App.viewer.GetCoordinate();
-                selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
-                AddROI(selectedROI);
-            }
-            // Ellipse tool
-            else if (currentTool.type == Tool.Type.ellipse && buts.Event.Button == 1)
-            {
-                selectedROI = new ROI();
-                selectedROI.type = ROI.Type.Ellipse;
-                selectedROI.BoundingBox = new RectangleD(e.X, e.Y, 1, 1);
-                selectedROI.coord = App.viewer.GetCoordinate();
-                selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
-                AddROI(selectedROI);
-            }
-            // Delete tool
-            else if (currentTool.type == Tool.Type.delete && buts.Event.Button == 1)
-            {
-                for (int i = 0; i < ImageView.SelectedImage.Annotations.Count; i++)
-                {
-                    ROI an = ImageView.SelectedImage.Annotations[i];
-                    if (an == null) continue;
-                    if (an.BoundingBox.IntersectsWith(new RectangleD(e.X, e.Y, 1, 1)))
-                    {
-                        if (an.selectedPoints == null || an.selectedPoints.Count == 0)
-                        {
-                            ImageView.SelectedImage.Annotations.Remove(an);
-                            break;
-                        }
-                        else if (an.selectedPoints.Count == 1 && !(an.type == ROI.Type.Polygon || an.type == ROI.Type.Polyline || an.type == ROI.Type.Freeform))
-                        {
-                            ImageView.SelectedImage.Annotations.Remove(an);
-                            break;
-                        }
-                        else
-                        {
-                            if (an.type == ROI.Type.Polygon || an.type == ROI.Type.Polyline || an.type == ROI.Type.Freeform)
-                            {
-                                an.closed = false;
-                                an.RemovePoints(an.selectedPoints.ToArray());
-                                break;
-                            }
-                        }
-                    }
-                }
-                UpdateView();
-            }
-            // Text tool
-            else if (currentTool.type == Tool.Type.text && buts.Event.Button == 1)
-            {
-                selectedROI = new ROI();
-                selectedROI.type = ROI.Type.Label;
-                if (selectedROI.Points.Count == 0)
-                    selectedROI.AddPoint(new PointD(e.X, e.Y));
-                else
-                    selectedROI.UpdatePoint(new PointD(e.X, e.Y), 0);
-                selectedROI.coord = App.viewer.GetCoordinate();
-                selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
-                ti = TextInput.Create();
-                ti.ShowAll();
-                ti.Run();
-                AddROI(selectedROI);
-            }
-            // Brush tool
-            else if (currentTool.type == Tool.Type.brush && buts.Event.Button == 1)
-            {
-                PointD ip = ImageView.SelectedImage.ToImageSpace(e);
-                if (ImageView.SelectedImage.isPyramidal)
-                    ip = new PointD(e.X, e.Y);
-
-                Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(ImageView.SelectedBuffer);
-                g.pen = new Bio.Graphics.Pen(DrawColor, (int)StrokeWidth, ImageView.SelectedImage.bitsPerPixel);
-                g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)StrokeWidth, (int)StrokeWidth), g.pen.color);
-                App.viewer.UpdateImage(true);
-                App.viewer.UpdateView();
-            }
-            // Eraser tool
-            else if (currentTool.type == Tool.Type.eraser && buts.Event.Button == 1)
-            {
-                PointD ip = ImageView.SelectedImage.ToImageSpace(e);
-                if (ImageView.SelectedImage.isPyramidal)
-                    ip = new PointD(e.X, e.Y);
-
-                Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(ImageView.SelectedBuffer);
-                Bio.Graphics.Pen pen = new Bio.Graphics.Pen(EraseColor, (int)StrokeWidth, ImageView.SelectedBuffer.BitsPerPixel);
-                g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)StrokeWidth, (int)StrokeWidth), pen.color);
-                App.viewer.UpdateImages(true);
-                App.viewer.UpdateView();
-            }
-            // Script tool
-            else if (currentTool.type == Tool.Type.script && buts.Event.Button == 1)
-            {
-                if (!string.IsNullOrEmpty(currentTool.script))
-                {
-                    try
-                    {
-                        Scripting.RunScript(currentTool.script);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine("Script execution error: " + ex.Message);
-                    }
-                }
-            }
-            // Middle mouse button - pan
-            else if (buts.Event.Button == 2)
-            {
-                currentTool = GetTool(Tool.Type.pan);
+                case Tool.Type.pan:
+                    ToolDown_Pan(e, buts);
+                    break;
+                case Tool.Type.point:
+                    //ToolUp_Point(e, buts);
+                    break;
+                case Tool.Type.move:
+                    ToolDown_Move(e, buts);
+                    break;
+                case Tool.Type.line:
+                    ToolDown_Line(e, buts);
+                    break;
+                case Tool.Type.rect:
+                    ToolDown_Rectangle(e, buts);
+                    break;
+                case Tool.Type.ellipse:
+                    ToolDown_Ellipse(e, buts);
+                    break;
+                case Tool.Type.polygon:
+                    ToolDown_Polygon(e, buts);
+                    break;
+                case Tool.Type.text:
+                    ToolDown_Text(e, buts);
+                    break;
+                case Tool.Type.delete:
+                    ToolDown_Delete(e, buts);
+                    break;
+                case Tool.Type.freeform:
+                    ToolDown_Freeform(e, buts);
+                    break;
+                default:
+                    break;
             }
         }
 
         public void ToolUp(PointD e, ButtonReleaseEventArgs buts)
         {
-            Plugins.MouseUp(ImageView.SelectedImage, e, buts);
-            PointD p = new PointD((float)e.X, (float)e.Y);
-            PointD MouseU = ImageView.SelectedImage.ToImageSpace(p);
-            PointD MouseD = ImageView.SelectedImage.ToImageSpace(new PointD(App.viewer.MouseDown.X, App.viewer.MouseDown.Y));
-
             if (App.viewer == null || currentTool == null || ImageView.SelectedImage == null)
                 return;
 
+            Plugins.MouseUp(ImageView.SelectedImage, e, buts);
             Scripting.UpdateState(Scripting.State.GetUp(e, buts.Event.Button));
 
-            // Pan tool
-            if (currentTool.type == Tool.Type.pan && buts.Event.Button == 2)
-                currentTool = GetTool(Tool.Type.move);
-
-            // Point tool
-            if (currentTool.type == Tool.Type.point && buts.Event.Button == 1)
+            switch (currentTool.type)
             {
-                ROI an = new ROI();
-                an.AddPoint(new PointD(e.X, e.Y));
-                an.type = ROI.Type.Point;
-                an.coord = App.viewer.GetCoordinate();
-                an.Selected = true;
-                selectedROI = an;
-                AddROI(an);
-            }
-            // Bucket tool
-            else if (currentTool.type == Tool.Type.bucket && buts.Event.Button == 1)
-            {
-                if (MouseU.X >= ImageView.SelectedImage.SizeX || MouseU.Y >= ImageView.SelectedImage.SizeY)
-                    return;
-                floodFiller.FillColor = DrawColor;
-                floodFiller.Tolerance = tolerance;
-                floodFiller.Bitmap = ImageView.SelectedBuffer;
-                floodFiller.FloodFill(new AForge.Point((int)MouseU.X, (int)MouseU.Y));
-                App.viewer.UpdateImages();
-                App.viewer.UpdateView();
-            }
-            // Dropper tool
-            else if (currentTool.type == Tool.Type.dropper && buts.Event.Button == 1)
-            {
-                if (MouseU.X < ImageView.SelectedImage.SizeX && MouseU.Y < ImageView.SelectedImage.SizeY)
-                {
-                    DrawColor = ImageView.SelectedBuffer.GetPixel((int)MouseU.X, (int)MouseU.Y);
-                    App.viewer.UpdateView();
-                }
-            }
-            // Magic select tool
-            else if (currentTool.type == Tool.Type.magic && buts.Event.Button == 1)
-            {
-                RectangleD rectangle = new RectangleD(
-                    Math.Min(App.viewer.MouseDown.X, App.viewer.MouseUp.X),
-                    Math.Min(App.viewer.MouseDown.Y, App.viewer.MouseUp.Y),
-                    Math.Abs(App.viewer.MouseUp.X - App.viewer.MouseDown.X),
-                    Math.Abs(App.viewer.MouseUp.Y - App.viewer.MouseDown.Y)
-                );
-
-                AForge.RectangleF rectInImageSpace = ImageView.SelectedImage.ToImageSpace(rectangle);
-                ZCT coord = App.viewer.GetCoordinate();
-                Bitmap bitmap;
-
-                if (ImageView.SelectedImage.Buffers[0].RGBChannelsCount > 1)
-                {
-                    bitmap = ImageView.SelectedImage.GetFiltered(
-                        coord,
-                        new IntRange((int)ImageView.SelectedBuffer.Stats[0].Min, (int)ImageView.SelectedBuffer.Stats[0].Max),
-                        new IntRange((int)ImageView.SelectedBuffer.Stats[1].Min, (int)ImageView.SelectedBuffer.Stats[1].Max),
-                        new IntRange((int)ImageView.SelectedBuffer.Stats[2].Min, (int)ImageView.SelectedBuffer.Stats[2].Max)
-                    );
-                }
-                else
-                {
-                    bitmap = ImageView.SelectedImage.GetFiltered(
-                        coord,
-                        new IntRange((int)ImageView.SelectedBuffer.Stats[0].Min, (int)ImageView.SelectedBuffer.Stats[0].Max),
-                        new IntRange((int)ImageView.SelectedBuffer.Stats[0].Min, (int)ImageView.SelectedBuffer.Stats[0].Max),
-                        new IntRange((int)ImageView.SelectedBuffer.Stats[0].Min, (int)ImageView.SelectedBuffer.Stats[0].Max)
-                    );
-                }
-
-                bitmap.Crop(rectInImageSpace.ToRectangleInt());
-                Statistics[] st = Statistics.FromBytes(bitmap.Bytes, bitmap.SizeX, bitmap.Height, bitmap.RGBChannelsCount, bitmap.BitsPerPixel, bitmap.Stride, bitmap.PixelFormat);
-                int threshold = magicSelect.Numeric ? magicSelect.Threshold : CalculateThreshold(magicSelect.Index, st[0]);
-
-                BlobCounter blobCounter = new BlobCounter();
-                OtsuThreshold th = new OtsuThreshold();
-                th.ApplyInPlace(bitmap);
-                blobCounter.FilterBlobs = true;
-                blobCounter.MinWidth = 2;
-                blobCounter.MinHeight = 2;
-                blobCounter.ProcessImage(bitmap);
-
-                Blob[] blobs = blobCounter.GetObjectsInformation();
-                double pixelSizeX = ImageView.SelectedImage.PhysicalSizeX;
-                double pixelSizeY = ImageView.SelectedImage.PhysicalSizeY;
-
-                foreach (Blob blob in blobs)
-                {
-                    AForge.RectangleD blobRectangle = new AForge.RectangleD(
-                        blob.Rectangle.X * pixelSizeX,
-                        blob.Rectangle.Y * pixelSizeY,
-                        blob.Rectangle.Width * pixelSizeX,
-                        blob.Rectangle.Height * pixelSizeY
-                    );
-
-                    PointD location = new PointD(rectangle.X + blobRectangle.X, rectangle.Y + blobRectangle.Y);
-                    ROI annotation = ROI.CreateRectangle(coord, location.X, location.Y, blobRectangle.W, blobRectangle.H);
-                    ImageView.SelectedImage.Annotations.Add(annotation);
-                }
-
-                // Clear magic selection rectangle
-                Tools.GetTool(Tools.Tool.Type.move).Rectangle = new RectangleD(0, 0, 0, 0);
-                App.viewer.UpdateView(true);
-            }
-            // Move tool - finalize selection
-            else if (currentTool.type == Tool.Type.move && buts.Event.Button == 1)
-            {
-                // Clear selection rectangle
-                Tools.GetTool(Tools.Tool.Type.move).Rectangle = new RectangleD(0, 0, 0, 0);
-                App.viewer.UpdateView();
-            }
-
-            if (selectedROI == null)
-                return;
-
-            // Line tool completion
-            if (currentTool.type == Tool.Type.line && selectedROI.type == ROI.Type.Line && buts.Event.Button == 1)
-            {
-                if (selectedROI.GetPointCount() > 0)
-                {
-                    selectedROI.UpdatePoint(new PointD(e.X, e.Y), 1);
-                    selectedROI = null;
-                }
-            }
-            // Rectangle tool completion
-            else if (currentTool.type == Tool.Type.rect && selectedROI.type == ROI.Type.Rectangle && buts.Event.Button == 1)
-            {
-                if (selectedROI.GetPointCount() == 4)
-                {
-                    selectedROI = null;
-                }
-            }
-            // Ellipse tool completion
-            else if (currentTool.type == Tool.Type.ellipse && selectedROI.type == ROI.Type.Ellipse && buts.Event.Button == 1)
-            {
-                if (selectedROI.GetPointCount() == 4)
-                {
-                    selectedROI = null;
-                }
-            }
-            // Freeform tool completion
-            else if (currentTool.type == Tool.Type.freeform && selectedROI.type == ROI.Type.Freeform && buts.Event.Button == 1)
-            {
-                selectedROI = null;
+                case Tool.Type.pan:
+                    ToolUp_Pan(e, buts);
+                    break;
+                case Tool.Type.move:
+                    ToolUp_Move(e, buts);
+                    break;
+                case Tool.Type.line:
+                    ToolUp_Line(e, buts);
+                    break;
+                case Tool.Type.rect:
+                    ToolUp_Rectangle(e, buts);
+                    break;
+                case Tool.Type.ellipse:
+                    ToolUp_Ellipse(e, buts);
+                    break;
+                case Tool.Type.polygon:
+                    //ToolUp_Polygon(e, buts);
+                    break;
+                case Tool.Type.text:
+                    //ToolUp_Text(e, buts);
+                    break;
+                case Tool.Type.delete:
+                    //
+                    break;
+                case Tool.Type.freeform:
+                    ToolUp_Freeform(e, buts);
+                    break;
+                case Tool.Type.bucket:
+                    ToolUp_Bucket(e, buts);
+                    break;
+                case Tool.Type.dropper:
+                    ToolUp_Dropper(e, buts);
+                    break;
+                default:
+                    break;
             }
         }
 
@@ -723,7 +409,7 @@ namespace BioGTK
 
             Plugins.MouseMove(ImageView.SelectedImage, e, buts);
 
-            // Update scripting state
+            // Update scripting state using available button masks
             if (buts.Event.State.HasFlag(ModifierType.Button1Mask))
                 Scripting.UpdateState(Scripting.State.GetMove(e, 1));
             else if (buts.Event.State.HasFlag(ModifierType.Button2Mask))
@@ -737,19 +423,816 @@ namespace BioGTK
             else
                 Scripting.UpdateState(Scripting.State.GetMove(e, 0));
 
-            // Pan handling
-            if ((currentTool.type == Tool.Type.pan && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask)) ||
-                buts.Event.State.HasFlag(Gdk.ModifierType.Button2Mask))
+            switch (currentTool.type)
+            {
+                case Tool.Type.pan:
+                    ToolMove_Pan(e, buts);
+                    break;
+                case Tool.Type.move:
+                    ToolMove_Move(e, buts);
+                    break;
+                case Tool.Type.line:
+                    ToolMove_Line(e, buts);
+                    break;
+                case Tool.Type.rect:
+                    ToolMove_Rectangle(e, buts);
+                    break;
+                case Tool.Type.ellipse:
+                    ToolMove_Ellipse(e, buts);
+                    break;
+                case Tool.Type.polygon:
+                    //ToolMove_Polygon(e, buts);
+                    break;
+                case Tool.Type.text:
+                    //ToolMove_Text(e, buts);
+                    break;
+                case Tool.Type.freeform:
+                    ToolMove_Freeform(e, buts);
+                    break;
+                case Tool.Type.brush:
+                    ToolMove_Brush(e, buts);
+                    break;
+                case Tool.Type.eraser:
+                    ToolMove_Eraser(e, buts);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        // ============================================================================
+        // 1. MOVE TOOL - Selection and Dragging (fixed)
+        // ============================================================================
+        public void ToolDown_Move(PointD e, ButtonPressEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.move || buts.Event.Button != 1)
+                return;
+
+            App.viewer.MouseDown = e;
+            bool ctrl = buts.Event.State.HasFlag(ModifierType.ControlMask);
+
+            selectedROI = null;
+
+            // 1 — Vertex hit test on selected ROIs
+            foreach (var ann in ImageView.SelectedImage.Annotations)
+            {
+                if (ann == null || !ann.Selected) continue;
+
+                var boxes = ann.GetSelectBoxes(ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeX);
+                if (boxes == null) continue;
+
+                for (int i = 0; i < boxes.Length; i++)
+                {
+                    if (boxes[i].Contains(e))
+                    {
+                        selectedROI = ann;
+                        if (ctrl)
+                        {
+                            if (ann.selectedPoints.Contains(i)) ann.selectedPoints.Remove(i);
+                            else ann.selectedPoints.Add(i);
+                        }
+                        else
+                        {
+                            ann.selectedPoints.Clear();
+                            ann.selectedPoints.Add(i);
+                        }
+                        UpdateView();
+                        return;
+                    }
+                }
+            }
+
+            // 2 — Click on body of already-selected ROI
+            foreach (var ann in ImageView.SelectedImage.Annotations)
+            {
+                if (ann != null && ann.Selected && ann.BoundingBox.Contains(e))
+                {
+                    selectedROI = ann;
+                    UpdateView();
+                    return;
+                }
+            }
+
+            // 3 — Click on any ROI (select it)
+            foreach (var ann in ImageView.SelectedImage.Annotations)
+            {
+                if (ann != null && ann.BoundingBox.Contains(e))
+                {
+                    if (!ctrl)
+                    {
+                        foreach (var other in ImageView.SelectedImage.Annotations)
+                        {
+                            if (other != ann)
+                            {
+                                other.Selected = false;
+                                other.selectedPoints?.Clear();
+                            }
+                        }
+                    }
+
+                    ann.Selected = true;
+                    ann.selectedPoints?.Clear();
+                    selectedROI = ann;
+                    UpdateView();
+                    return;
+                }
+            }
+
+            // 4 — Start selection rectangle
+            if (!ctrl)
+            {
+                foreach (var ann in ImageView.SelectedImage.Annotations)
+                {
+                    if (ann != null)
+                    {
+                        ann.Selected = false;
+                        ann.selectedPoints?.Clear();
+                    }
+                }
+                selectedROI = null;
+            }
+
+            Tools.GetTool(Tools.Tool.Type.move).Rectangle = new RectangleD(e.X, e.Y, 0, 0);
+            UpdateView();
+        }
+        public void ToolMove_Move(PointD e, MotionNotifyEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.move ||
+                !buts.Event.State.HasFlag(ModifierType.Button1Mask))
+                return;
+
+            // Moving selected vertices/control points or ROIs
+            if (selectedROI != null && selectedROI.Selected && selectedROI.selectedPoints != null)
+            {
+                PointD delta = new PointD(e.X - App.viewer.MouseDown.X, e.Y - App.viewer.MouseDown.Y);
+
+                // Rectangle / Ellipse special handling
+                if (selectedROI.type == ROI.Type.Rectangle || selectedROI.type == ROI.Type.Ellipse)
+                {
+                    // If exactly one corner is selected -> resize by that corner
+                    if (selectedROI.selectedPoints.Count == 1)
+                    {
+                        int pointIndex = selectedROI.selectedPoints[0];
+                        RectangleD rect = selectedROI.BoundingBox;
+
+                        // Work with normalized copy to make logic clearer
+                        double left = rect.X;
+                        double top = rect.Y;
+                        double right = rect.X + rect.W;
+                        double bottom = rect.Y + rect.H;
+
+                        switch (pointIndex)
+                        {
+                            case 0: // Top-Left
+                                left += delta.X;
+                                top += delta.Y;
+                                break;
+                            case 1: // Top-Right
+                                right += delta.X;
+                                top += delta.Y;
+                                break;
+                            case 2: // Bottom-Right
+                                right += delta.X;
+                                bottom += delta.Y;
+                                break;
+                            case 3: // Bottom-Left
+                                left += delta.X;
+                                bottom += delta.Y;
+                                break;
+                            default:
+                                break;
+                        }
+
+                        // Build and assign normalized bounding box
+                        RectangleD newRect = new RectangleD(
+                            Math.Min(left, right),
+                            Math.Min(top, bottom),
+                            Math.Abs(right - left),
+                            Math.Abs(bottom - top)
+                        );
+
+                        selectedROI.BoundingBox = newRect;
+
+                        // Important: keep points and bbox in sync
+                        SyncPointsFromBoundingBox(selectedROI);
+                        selectedROI.UpdateBoundingBox(); // if your ROI uses this to recalc derived fields
+
+                        App.viewer.MouseDown = new PointD(e.X, e.Y);
+                        App.viewer.UpdateView();
+                        return;
+                    }
+                    else
+                    {
+                        // No corner selected -> move entire ROI by delta
+                        for (int i = 0; i < selectedROI.Points.Count; i++)
+                        {
+                            selectedROI.UpdatePoint(
+                                new PointD(selectedROI.Points[i].X + delta.X,
+                                            selectedROI.Points[i].Y + delta.Y), i);
+                        }
+
+                        // Keep bounding box in sync with points
+                        SyncBoundingBoxFromPoints(selectedROI);
+                        selectedROI.UpdateBoundingBox();
+
+                        App.viewer.MouseDown = new PointD(e.X, e.Y);
+                        App.viewer.UpdateView();
+                        return;
+                    }
+                }
+                else
+                {
+                    // Other shapes: polygons, polylines, freeforms, lines, points
+                    if (selectedROI.selectedPoints.Count == 0)
+                    {
+                        // Move all points
+                        for (int i = 0; i < selectedROI.Points.Count; i++)
+                        {
+                            selectedROI.UpdatePoint(
+                                new PointD(selectedROI.Points[i].X + delta.X,
+                                          selectedROI.Points[i].Y + delta.Y), i);
+                        }
+                    }
+                    else
+                    {
+                        // Move only selected points
+                        foreach (int pointIndex in selectedROI.selectedPoints.ToArray())
+                        {
+                            if (pointIndex >= 0 && pointIndex < selectedROI.Points.Count)
+                            {
+                                PointD pt = selectedROI.Points[pointIndex];
+                                selectedROI.UpdatePoint(
+                                    new PointD(pt.X + delta.X, pt.Y + delta.Y), pointIndex);
+                            }
+                        }
+                    }
+
+                    // Keep bbox updated
+                    SyncBoundingBoxFromPoints(selectedROI);
+                    selectedROI.UpdateBoundingBox();
+
+                    App.viewer.MouseDown = new PointD(e.X, e.Y);
+                    App.viewer.UpdateView();
+                    return;
+                }
+            }
+            // Dragging entire selected ROI (no selectedPoints list)
+            else if (selectedROI != null && selectedROI.Selected)
+            {
+                PointD delta = new PointD(e.X - App.viewer.MouseDown.X, e.Y - App.viewer.MouseDown.Y);
+
+                for (int i = 0; i < selectedROI.Points.Count; i++)
+                {
+                    selectedROI.UpdatePoint(
+                        new PointD(selectedROI.Points[i].X + delta.X,
+                                  selectedROI.Points[i].Y + delta.Y), i);
+                }
+
+                SyncBoundingBoxFromPoints(selectedROI);
+                selectedROI.UpdateBoundingBox();
+
+                App.viewer.MouseDown = new PointD(e.X, e.Y);
+                App.viewer.UpdateView();
+                return;
+            }
+            // Drawing / updating selection rectangle
+            else
+            {
+                PointD d = new PointD(e.X - App.viewer.MouseDown.X, e.Y - App.viewer.MouseDown.Y);
+                RectangleD selRect = new RectangleD(
+                    Math.Min(App.viewer.MouseDown.X, e.X),
+                    Math.Min(App.viewer.MouseDown.Y, e.Y),
+                    Math.Abs(d.X), Math.Abs(d.Y));
+
+                Tools.GetTool(Tools.Tool.Type.move).Rectangle = selRect;
+
+                bool controlHeld = buts.Event.State.HasFlag(ModifierType.ControlMask);
+
+                // Select ROIs intersecting with rectangle
+                foreach (ROI an in ImageView.SelectedImage.Annotations)
+                {
+                    if (an == null) continue;
+
+                    RectangleD selBound = an.GetSelectBound(
+                        ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeX,
+                        ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeY);
+
+                    if (selBound.IntersectsWith(selRect))
+                    {
+                        an.Selected = true;
+
+                        if (!controlHeld)
+                            an.selectedPoints?.Clear();
+
+                        // Select points within rectangle
+                        RectangleD[] sels = an.GetSelectBoxes(
+                            ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeX);
+                        if (sels != null)
+                        {
+                            for (int i = 0; i < sels.Length; i++)
+                            {
+                                if (sels[i].IntersectsWith(selRect))
+                                {
+                                    if (an.selectedPoints == null) an.selectedPoints = new List<int>();
+                                    if (!an.selectedPoints.Contains(i))
+                                        an.selectedPoints.Add(i);
+                                }
+                            }
+                        }
+                    }
+                    else if (!controlHeld)
+                    {
+                        an.Selected = false;
+                        an.selectedPoints?.Clear();
+                    }
+                }
+
+                if (selectedROI != null)
+                    selectedROI.UpdateBoundingBox();
+
+                App.viewer.UpdateView();
+            }
+        }
+
+        public void ToolUp_Move(PointD e, ButtonReleaseEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.move || buts.Event.Button != 1)
+                return;
+
+            // Clear selection rectangle
+            Tools.GetTool(Tools.Tool.Type.move).Rectangle = new RectangleD(0, 0, 0, 0);
+            selectedROI?.UpdateBoundingBox();
+            App.viewer.UpdateView();
+        }
+
+        // ============================================================================
+        // 2. POINT TOOL
+        // ============================================================================
+        public void ToolUp_Point(PointD e, ButtonReleaseEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.point || buts.Event.Button != 1)
+                return;
+
+            ROI an = new ROI();
+            an.AddPoint(new PointD(e.X, e.Y));
+            an.type = ROI.Type.Point;
+            an.coord = App.viewer.GetCoordinate();
+            an.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
+            an.Selected = true;
+            selectedROI = an;
+            AddROI(an);
+            UpdateView();
+        }
+
+        // ============================================================================
+        // 3. LINE TOOL
+        // ============================================================================
+        public void ToolDown_Line(PointD e, ButtonPressEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.line || buts.Event.Button != 1)
+                return;
+
+            selectedROI = new ROI();
+            selectedROI.type = ROI.Type.Line;
+            selectedROI.AddPoint(new PointD(e.X, e.Y));
+            selectedROI.AddPoint(new PointD(e.X + ImageView.SelectedImage.PhysicalSizeX * ROI.selectBoxSize,
+                                           e.Y + ImageView.SelectedImage.PhysicalSizeX * ROI.selectBoxSize));
+            selectedROI.coord = App.viewer.GetCoordinate();
+            selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
+            AddROI(selectedROI);
+        }
+
+        public void ToolMove_Line(PointD e, MotionNotifyEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.line ||
+                !buts.Event.State.HasFlag(ModifierType.Button1Mask))
+                return;
+
+            if (selectedROI != null)
+            {
+                if (selectedROI.selectedPoints.Count == 1)
+                {
+                    selectedROI.UpdatePoint(new PointD(e.X, e.Y), selectedROI.selectedPoints[0]);
+                    selectedROI.UpdateBoundingBox();
+                    UpdateView();
+                }
+                else
+                {
+                    selectedROI.UpdatePoint(new PointD(e.X, e.Y), 1);
+                    selectedROI.UpdateBoundingBox();
+                    UpdateView();
+                }
+            }
+        }
+
+        public void ToolUp_Line(PointD e, ButtonReleaseEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.line || buts.Event.Button != 1)
+                return;
+
+            if (selectedROI != null && selectedROI.GetPointCount() >= 2)
+            {
+                selectedROI.UpdatePoint(new PointD(e.X, e.Y), 1);
+                selectedROI.UpdateBoundingBox();
+                selectedROI = null;
+                UpdateView();
+            }
+        }
+
+        // ============================================================================
+        // 4. RECTANGLE TOOL
+        // ============================================================================
+        public void ToolDown_Rectangle(PointD e, ButtonPressEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.rect || buts.Event.Button != 1)
+                return;
+
+            selectedROI = new ROI();
+            selectedROI.type = ROI.Type.Rectangle;
+            selectedROI.BoundingBox = new RectangleD(e.X, e.Y, 1, 1);
+            selectedROI.coord = App.viewer.GetCoordinate();
+            selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
+            AddROI(selectedROI);
+        }
+
+        public void ToolMove_Rectangle(PointD e, MotionNotifyEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.rect ||
+                !buts.Event.State.HasFlag(ModifierType.Button1Mask))
+                return;
+
+            if (selectedROI != null && selectedROI.type == ROI.Type.Rectangle)
+            {
+                selectedROI.BoundingBox = RectangleDExtensions.FromCorners(
+                    new PointD(selectedROI.BoundingBox.X, selectedROI.BoundingBox.Y),
+                    new PointD(e.X, e.Y));
+                selectedROI.UpdateBoundingBox();
+                UpdateView();
+            }
+        }
+
+        public void ToolUp_Rectangle(PointD e, ButtonReleaseEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.rect || buts.Event.Button != 1)
+                return;
+
+            if (selectedROI != null && selectedROI.type == ROI.Type.Rectangle)
+            {
+                selectedROI.UpdateBoundingBox();
+                selectedROI = null;
+                UpdateView();
+            }
+        }
+
+        // ============================================================================
+        // 5. ELLIPSE TOOL
+        // ============================================================================
+        public void ToolDown_Ellipse(PointD e, ButtonPressEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.ellipse || buts.Event.Button != 1)
+                return;
+
+            selectedROI = new ROI();
+            selectedROI.type = ROI.Type.Ellipse;
+            selectedROI.BoundingBox = new RectangleD(e.X, e.Y, 1, 1);
+            selectedROI.coord = App.viewer.GetCoordinate();
+            selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
+            AddROI(selectedROI);
+        }
+
+        public void ToolMove_Ellipse(PointD e, MotionNotifyEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.ellipse ||
+                !buts.Event.State.HasFlag(ModifierType.Button1Mask))
+                return;
+
+            if (selectedROI != null && selectedROI.type == ROI.Type.Ellipse)
+            {
+                selectedROI.BoundingBox = RectangleDExtensions.FromCorners(
+                    new PointD(selectedROI.BoundingBox.X, selectedROI.BoundingBox.Y),
+                    new PointD(e.X, e.Y));
+                selectedROI.UpdateBoundingBox();
+                UpdateView();
+            }
+        }
+
+        public void ToolUp_Ellipse(PointD e, ButtonReleaseEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.ellipse || buts.Event.Button != 1)
+                return;
+
+            if (selectedROI != null && selectedROI.type == ROI.Type.Ellipse)
+            {
+                selectedROI.UpdateBoundingBox();
+                selectedROI = null;
+                UpdateView();
+            }
+        }
+
+        // ============================================================================
+        // 6. POLYGON TOOL
+        // ============================================================================
+        public void ToolDown_Polygon(PointD e, ButtonPressEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.polygon || buts.Event.Button != 1)
+                return;
+
+            if (selectedROI == null)
+            {
+                // Start new polygon
+                selectedROI = new ROI();
+                selectedROI.type = ROI.Type.Polygon;
+                selectedROI.AddPoint(new PointD(e.X, e.Y));
+                selectedROI.coord = App.viewer.GetCoordinate();
+                selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
+                AddROI(selectedROI);
+            }
+            else
+            {
+                // Check if clicking on first point to close polygon
+                RectangleD[] rds = selectedROI.GetSelectBoxes();
+                if (rds != null && rds.Length > 0 && rds[0].IntersectsWith(new RectangleD(e.X, e.Y, 1, 1)))
+                {
+                    // Close polygon
+                    selectedROI.closed = true;
+                    selectedROI.Selected = false;
+                    selectedROI.UpdateBoundingBox();
+                    selectedROI = null;
+                    UpdateView();
+                    return;
+                }
+                else
+                {
+                    // Add new point
+                    if (!selectedROI.closed)
+                    {
+                        selectedROI.AddPoint(new PointD(e.X, e.Y));
+                        selectedROI.UpdateBoundingBox();
+                        UpdateView();
+                    }
+                }
+            }
+        }
+
+        // ============================================================================
+        // 7. FREEFORM TOOL
+        // ============================================================================
+        public void ToolDown_Freeform(PointD e, ButtonPressEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.freeform || buts.Event.Button != 1)
+                return;
+
+            if (selectedROI == null)
+            {
+                selectedROI = new ROI();
+                selectedROI.type = ROI.Type.Freeform;
+                selectedROI.AddPoint(new PointD(e.X, e.Y));
+                selectedROI.coord = App.viewer.GetCoordinate();
+                selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
+                AddROI(selectedROI);
+            }
+            else
+            {
+                selectedROI.AddPoint(new PointD(e.X, e.Y));
+            }
+        }
+
+        public void ToolMove_Freeform(PointD e, MotionNotifyEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.freeform ||
+                !buts.Event.State.HasFlag(ModifierType.Button1Mask))
+                return;
+
+            if (selectedROI != null && selectedROI.GetPointCount() > 0)
+            {
+                selectedROI.AddPoint(new PointD(e.X, e.Y));
+                selectedROI.UpdateBoundingBox();
+                UpdateView();
+            }
+        }
+
+        public void ToolUp_Freeform(PointD e, ButtonReleaseEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.freeform || buts.Event.Button != 1)
+                return;
+
+            if (selectedROI != null)
+            {
+                selectedROI.UpdateBoundingBox();
+                //selectedROI = null;
+                UpdateView();
+            }
+        }
+
+        // ============================================================================
+        // 8. TEXT/LABEL TOOL
+        // ============================================================================
+        public void ToolDown_Text(PointD e, ButtonPressEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.text || buts.Event.Button != 1)
+                return;
+
+            selectedROI = new ROI();
+            selectedROI.type = ROI.Type.Label;
+            selectedROI.AddPoint(new PointD(e.X, e.Y));
+            selectedROI.coord = App.viewer.GetCoordinate();
+            selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
+
+            // Show text input dialog
+            ti = TextInput.Create();
+            ti.ShowAll();
+            ti.Run();
+
+            AddROI(selectedROI);
+            selectedROI.UpdateBoundingBox();
+            UpdateView();
+        }
+
+        // ============================================================================
+        // 9. DELETE TOOL
+        // ============================================================================
+        public void ToolDown_Delete(PointD e, ButtonPressEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.delete || buts.Event.Button != 1)
+                return;
+
+            for (int i = ImageView.SelectedImage.Annotations.Count - 1; i >= 0; i--)
+            {
+                ROI an = ImageView.SelectedImage.Annotations[i];
+                if (an == null) continue;
+
+                if (an.BoundingBox.IntersectsWith(new RectangleD(e.X, e.Y, 1, 1)))
+                {
+                    if (an.selectedPoints == null || an.selectedPoints.Count == 0)
+                    {
+                        // Delete entire ROI
+                        ImageView.SelectedImage.Annotations.RemoveAt(i);
+                        break;
+                    }
+                    else if (an.selectedPoints.Count == 1 &&
+                             !(an.type == ROI.Type.Polygon ||
+                               an.type == ROI.Type.Polyline ||
+                               an.type == ROI.Type.Freeform))
+                    {
+                        // Delete ROI with single selected point (for non multi-point types)
+                        ImageView.SelectedImage.Annotations.RemoveAt(i);
+                        break;
+                    }
+                    else
+                    {
+                        // Delete selected points from polygon/polyline/freeform
+                        if (an.type == ROI.Type.Polygon ||
+                            an.type == ROI.Type.Polyline ||
+                            an.type == ROI.Type.Freeform)
+                        {
+                            an.closed = false;
+                            an.RemovePoints(an.selectedPoints.ToArray());
+                            an.UpdateBoundingBox();
+                            break;
+                        }
+                    }
+                }
+            }
+            UpdateView();
+        }
+
+        // ============================================================================
+        // 10. BRUSH TOOL
+        // ============================================================================
+        public void ToolDown_Brush(PointD e, ButtonPressEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.brush || buts.Event.Button != 1)
+                return;
+
+            PointD ip = ImageView.SelectedImage.ToImageSpace(e);
+            if (ImageView.SelectedImage.isPyramidal)
+                ip = new PointD(e.X, e.Y);
+
+            Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(ImageView.SelectedBuffer);
+            g.pen = new Bio.Graphics.Pen(DrawColor, (int)StrokeWidth, ImageView.SelectedImage.bitsPerPixel);
+            g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)StrokeWidth, (int)StrokeWidth), g.pen.color);
+
+            App.viewer.UpdateImage(true);
+            App.viewer.UpdateView();
+        }
+
+        public void ToolMove_Brush(PointD e, MotionNotifyEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.brush ||
+                !buts.Event.State.HasFlag(ModifierType.Button1Mask))
+                return;
+
+            PointD ip = ImageView.SelectedImage.ToImageSpace(e);
+            if (ImageView.SelectedImage.isPyramidal)
+                ip = new PointD(e.X, e.Y);
+
+            Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(ImageView.SelectedBuffer);
+            g.pen = new Bio.Graphics.Pen(DrawColor, (int)StrokeWidth, ImageView.SelectedImage.bitsPerPixel);
+            g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)StrokeWidth, (int)StrokeWidth), g.pen.color);
+
+            App.viewer.UpdateImages(true);
+            App.viewer.UpdateView();
+        }
+
+        // ============================================================================
+        // 11. ERASER TOOL
+        // ============================================================================
+        public void ToolDown_Eraser(PointD e, ButtonPressEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.eraser || buts.Event.Button != 1)
+                return;
+
+            PointD ip = ImageView.SelectedImage.ToImageSpace(e);
+            if (ImageView.SelectedImage.isPyramidal)
+                ip = new PointD(e.X, e.Y);
+
+            Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(ImageView.SelectedBuffer);
+            Bio.Graphics.Pen pen = new Bio.Graphics.Pen(EraseColor, (int)StrokeWidth, ImageView.SelectedBuffer.BitsPerPixel);
+            g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)StrokeWidth, (int)StrokeWidth), pen.color);
+
+            App.viewer.UpdateImages(true);
+            App.viewer.UpdateView();
+        }
+
+        public void ToolMove_Eraser(PointD e, MotionNotifyEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.eraser ||
+                !buts.Event.State.HasFlag(ModifierType.Button1Mask))
+                return;
+
+            PointD ip = ImageView.SelectedImage.ToImageSpace(e);
+            if (ImageView.SelectedImage.isPyramidal)
+                ip = new PointD(e.X, e.Y);
+
+            Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(ImageView.SelectedBuffer);
+            Bio.Graphics.Pen pen = new Bio.Graphics.Pen(EraseColor, (int)StrokeWidth, ImageView.SelectedBuffer.BitsPerPixel);
+            g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)StrokeWidth, (int)StrokeWidth), pen.color);
+
+            App.viewer.UpdateImages(true);
+            App.viewer.UpdateView();
+        }
+
+        // ============================================================================
+        // 12. BUCKET/FILL TOOL
+        // ============================================================================
+        public void ToolUp_Bucket(PointD e, ButtonReleaseEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.bucket || buts.Event.Button != 1)
+                return;
+
+            PointD ip = ImageView.SelectedImage.ToImageSpace(e);
+
+            if (ip.X >= ImageView.SelectedImage.SizeX || ip.Y >= ImageView.SelectedImage.SizeY)
+                return;
+
+            floodFiller.FillColor = DrawColor;
+            floodFiller.Tolerance = tolerance;
+            floodFiller.Bitmap = ImageView.SelectedBuffer;
+            floodFiller.FloodFill(new AForge.Point((int)ip.X, (int)ip.Y));
+
+            App.viewer.UpdateImages();
+            App.viewer.UpdateView();
+        }
+
+        // ============================================================================
+        // 13. DROPPER/COLOR PICKER TOOL
+        // ============================================================================
+        public void ToolUp_Dropper(PointD e, ButtonReleaseEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.dropper || buts.Event.Button != 1)
+                return;
+
+            PointD ip = ImageView.SelectedImage.ToImageSpace(e);
+
+            if (ip.X >= 0 && ip.Y >= 0 && ip.X < ImageView.SelectedImage.SizeX && ip.Y < ImageView.SelectedImage.SizeY)
+            {
+                DrawColor = ImageView.SelectedBuffer.GetPixel((int)ip.X, (int)ip.Y);
+                App.viewer.UpdateView();
+            }
+        }
+
+        // ============================================================================
+        // 14. PAN TOOL
+        // ============================================================================
+        public void ToolDown_Pan(PointD e, ButtonPressEventArgs buts)
+        {
+            if (buts.Event.Button == 2)
+            {
+                currentTool = GetTool(Tool.Type.pan);
+                App.viewer.MouseDown = new PointD(e.X, e.Y);
+            }
+        }
+
+        public void ToolMove_Pan(PointD e, MotionNotifyEventArgs buts)
+        {
+            if ((currentTool.type == Tool.Type.pan && buts.Event.State.HasFlag(ModifierType.Button1Mask)) ||
+                buts.Event.State.HasFlag(ModifierType.Button2Mask))
             {
                 if (ImageView.SelectedImage.isPyramidal)
                 {
-                    if (App.viewer.MouseMoveInt.X != 0 || App.viewer.MouseMoveInt.Y != 0)
-                    {
-                        App.viewer.PyramidalOriginTransformed = new PointD(
-                            App.viewer.PyramidalOriginTransformed.X + (App.viewer.MouseDown.X - e.X),
-                            App.viewer.PyramidalOriginTransformed.Y + (App.viewer.MouseDown.Y - e.Y)
-                        );
-                    }
+                    App.viewer.PyramidalOriginTransformed = new PointD(
+                        App.viewer.PyramidalOriginTransformed.X + (App.viewer.MouseDown.X - e.X),
+                        App.viewer.PyramidalOriginTransformed.Y + (App.viewer.MouseDown.Y - e.Y));
                 }
                 else
                 {
@@ -759,271 +1242,18 @@ namespace BioGTK
                 App.viewer.MouseDown = new PointD(e.X, e.Y);
                 UpdateView();
             }
+        }
 
-            if (ImageView.SelectedImage == null)
-                return;
-
-            // Move tool logic
-            if (currentTool.type == Tool.Type.move && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
+        public void ToolUp_Pan(PointD e, ButtonReleaseEventArgs buts)
+        {
+            if (currentTool.type == Tool.Type.pan && buts.Event.Button == 2)
             {
-                // Check if we're moving selected vertices/control points
-                if (selectedROI != null && selectedROI.Selected && selectedROI.selectedPoints != null)
-                {
-                    PointD delta = new PointD(e.X - App.viewer.MouseDown.X, e.Y - App.viewer.MouseDown.Y);
-
-                    // Special handling for Rectangle and Ellipse ROIs
-                    if (selectedROI.type == ROI.Type.Rectangle || selectedROI.type == ROI.Type.Ellipse)
-                    {
-                        // Rectangle/Ellipse has 4 corner points (0=TL, 1=TR, 2=BR, 3=BL)
-                        if (selectedROI.selectedPoints.Count == 1)
-                        {
-                            int pointIndex = selectedROI.selectedPoints[0];
-                            RectangleD currentRect = selectedROI.BoundingBox;
-
-                            // Modify rectangle based on which corner is being dragged
-                            switch (pointIndex)
-                            {
-                                case 0: // Top-Left corner
-                                    selectedROI.BoundingBox = new RectangleD(
-                                        currentRect.X + delta.X,
-                                        currentRect.Y + delta.Y,
-                                        currentRect.W - delta.X,
-                                        currentRect.H - delta.Y
-                                    );
-                                    break;
-                                case 1: // Top-Right corner
-                                    selectedROI.BoundingBox = new RectangleD(
-                                        currentRect.X,
-                                        currentRect.Y + delta.Y,
-                                        currentRect.W + delta.X,
-                                        currentRect.H - delta.Y
-                                    );
-                                    break;
-                                case 2: // Bottom-Right corner
-                                    selectedROI.BoundingBox = new RectangleD(
-                                        currentRect.X,
-                                        currentRect.Y,
-                                        currentRect.W + delta.X,
-                                        currentRect.H + delta.Y
-                                    );
-                                    break;
-                                case 3: // Bottom-Left corner
-                                    selectedROI.BoundingBox = new RectangleD(
-                                        currentRect.X + delta.X,
-                                        currentRect.Y,
-                                        currentRect.W - delta.X,
-                                        currentRect.H + delta.Y
-                                    );
-                                    break;
-                            }
-                        }
-                        else
-                        {
-                            // Multiple points selected on rectangle/ellipse - move entire shape
-                            for (int i = 0; i < selectedROI.Points.Count; i++)
-                            {
-                                selectedROI.UpdatePoint(new PointD(selectedROI.Points[i].X + delta.X, selectedROI.Points[i].Y + delta.Y), i);
-                            }
-                            selectedROI.UpdateBoundingBox();
-                        }
-                    }
-                    else
-                    {
-                        // For other ROI types (polygon, polyline, freeform, line, point)
-                        // Move only the selected control points
-                        if(selectedROI.selectedPoints.Count == 0)
-                        {
-                            for (int i = 0; i < selectedROI.Points.Count; i++)
-                            {
-                                PointD currentPoint = selectedROI.Points[i];
-                                if (i >= 0 && i < selectedROI.Points.Count)
-                                {
-                                    selectedROI.UpdatePoint(new PointD(currentPoint.X + delta.X, currentPoint.Y + delta.Y), i);
-                                }
-                            }
-                        }
-                        else
-                            foreach (int pointIndex in selectedROI.selectedPoints)
-                            {
-                                if (pointIndex >= 0 && pointIndex < selectedROI.Points.Count)
-                                {
-                                    PointD currentPoint = selectedROI.Points[pointIndex];
-                                    selectedROI.UpdatePoint(new PointD(currentPoint.X + delta.X, currentPoint.Y + delta.Y), pointIndex);
-                                }
-                            }
-                    }
-
-                    // Update mouse position for next delta calculation
-                    App.viewer.MouseDown = new PointD(e.X, e.Y);
-                }
-                // Check if we're dragging an entire selected ROI
-                else if (selectedROI != null && selectedROI.Selected)
-                {
-                    PointD delta = new PointD(e.X - App.viewer.MouseDown.X, e.Y - App.viewer.MouseDown.Y);
-
-                    // Move all points of the ROI
-                    for (int i = 0; i < selectedROI.Points.Count; i++)
-                    {
-                        selectedROI.UpdatePoint(new PointD(selectedROI.Points[i].X + delta.X, selectedROI.Points[i].Y + delta.Y), i);
-                    }
-
-                    // Update mouse position for next delta calculation
-                    App.viewer.MouseDown = new PointD(e.X, e.Y);
-                }
-                else
-                {
-                    // Drawing selection rectangle
-                    PointD d = new PointD(e.X - App.viewer.MouseDown.X, e.Y - App.viewer.MouseDown.Y);
-                    RectangleD selRect = new RectangleD(
-                        Math.Min(App.viewer.MouseDown.X, e.X),
-                        Math.Min(App.viewer.MouseDown.Y, e.Y),
-                        Math.Abs(d.X),
-                        Math.Abs(d.Y)
-                    );
-
-                    Tools.GetTool(Tools.Tool.Type.move).Rectangle = selRect;
-
-                    // Check if Control is held for additive selection
-                    bool controlHeld = buts.Event.State.HasFlag(Gdk.ModifierType.ControlMask);
-
-                    // Select ROIs that intersect with selection rectangle
-                    foreach (ROI an in ImageView.SelectedImage.Annotations)
-                    {
-                        if (an == null) continue;
-
-                        RectangleD selBound = an.GetSelectBound(
-                            ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeX,
-                            ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeY
-                        );
-
-                        if (selBound.IntersectsWith(selRect))
-                        {
-                            an.Selected = true;
-
-                            if (!controlHeld)
-                            {
-                                // Without Control: replace selection
-                                an.selectedPoints.Clear();
-                            }
-                            // With Control: keep existing selected points and add new ones
-
-                            RectangleD[] sels = an.GetSelectBoxes(ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeX);
-                            for (int i = 0; i < sels.Length; i++)
-                            {
-                                if (sels[i].IntersectsWith(selRect))
-                                {
-                                    if (!an.selectedPoints.Contains(i))
-                                        an.selectedPoints.Add(i);
-                                }
-                            }
-                        }
-                        else if (!controlHeld)
-                        {
-                            // Without Control: deselect ROIs outside selection rectangle
-                            an.Selected = false;
-                            an.selectedPoints.Clear();
-                        }
-                    }
-                }
-
-                App.viewer.UpdateView();
-            }
-            // Line tool
-            else if (currentTool.type == Tool.Type.line && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
-            {
-                if (selectedROI != null)
-                {
-                    selectedROI.UpdatePoint(new PointD(e.X, e.Y), 1);
-                    UpdateView();
-                }
-            }
-            // Freeform tool
-            else if (currentTool.type == Tool.Type.freeform && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
-            {
-                if (selectedROI != null && selectedROI.GetPointCount() > 0)
-                {
-                    selectedROI.AddPoint(new PointD(e.X, e.Y));
-                    UpdateView();
-                }
-            }
-            // Rectangle tool
-            else if (currentTool.type == Tool.Type.rect && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
-            {
-                if (selectedROI != null && selectedROI.GetPointCount() == 4)
-                {
-                    selectedROI.BoundingBox = new RectangleD(selectedROI.X, selectedROI.Y, e.X - selectedROI.X, e.Y - selectedROI.Y);
-                    UpdateView();
-                }
-            }
-            // Ellipse tool
-            else if (currentTool.type == Tool.Type.ellipse && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
-            {
-                if (selectedROI != null && selectedROI.type == ROI.Type.Ellipse && selectedROI.GetPointCount() == 4)
-                {
-                    selectedROI.BoundingBox = new RectangleD(selectedROI.X, selectedROI.Y, e.X - selectedROI.X, e.Y - selectedROI.Y);
-                    UpdateView();
-                }
-            }
-            // Brush tool
-            else if (currentTool.type == Tool.Type.brush && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
-            {
-                PointD ip = ImageView.SelectedImage.ToImageSpace(e);
-                if (ImageView.SelectedImage.isPyramidal)
-                    ip = new PointD(e.X, e.Y);
-
-                Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(ImageView.SelectedBuffer);
-                g.pen = new Bio.Graphics.Pen(DrawColor, (int)StrokeWidth, ImageView.SelectedImage.bitsPerPixel);
-                g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)StrokeWidth, (int)StrokeWidth), g.pen.color);
-                App.viewer.UpdateImages(true);
-                App.viewer.UpdateView();
-            }
-            // Eraser tool
-            else if (currentTool.type == Tool.Type.eraser && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
-            {
-                PointD ip = ImageView.SelectedImage.ToImageSpace(e);
-                if (ImageView.SelectedImage.isPyramidal)
-                    ip = new PointD(e.X, e.Y);
-
-                Bio.Graphics.Graphics g = Bio.Graphics.Graphics.FromImage(ImageView.SelectedBuffer);
-                Bio.Graphics.Pen pen = new Bio.Graphics.Pen(EraseColor, (int)StrokeWidth, ImageView.SelectedBuffer.BitsPerPixel);
-                g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)StrokeWidth, (int)StrokeWidth), pen.color);
-                App.viewer.UpdateImages(true);
-                App.viewer.UpdateView();
-            }
-            // Magic tool - preview rectangle
-            else if (currentTool.type == Tool.Type.magic && buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask))
-            {
-                PointD d = new PointD(e.X - App.viewer.MouseDown.X, e.Y - App.viewer.MouseDown.Y);
-                Tools.GetTool(Tools.Tool.Type.move).Rectangle = new RectangleD(
-                    Math.Min(App.viewer.MouseDown.X, e.X),
-                    Math.Min(App.viewer.MouseDown.Y, e.Y),
-                    Math.Abs(d.X),
-                    Math.Abs(d.Y)
-                );
-                UpdateView();
-            }
-            // Delete key handling
-            else if (ImageView.keyDown == Gdk.Key.Delete)
-            {
-                foreach (ROI an in ImageView.selectedAnnotations.ToArray())
-                {
-                    if (an == null) continue;
-                    if (an.selectedPoints == null || an.selectedPoints.Count == 0)
-                    {
-                        ImageView.SelectedImage.Annotations.Remove(an);
-                    }
-                    else
-                    {
-                        if (an.type == ROI.Type.Polygon || an.type == ROI.Type.Polyline || an.type == ROI.Type.Freeform)
-                        {
-                            an.closed = false;
-                            an.RemovePoints(an.selectedPoints.ToArray());
-                        }
-                    }
-                }
-                UpdateView();
+                // Return to move tool after middle mouse button released
+                currentTool = GetTool(Tool.Type.move);
             }
         }
+
+
         /* It's a class that defines a tool */
         public class Tool
         {
@@ -1224,4 +1454,30 @@ namespace BioGTK
             };
         }
     }
+    // -----------------------------
+    // RectangleD extensions / helpers
+    // -----------------------------
+    public static class RectangleDExtensions
+    {
+        // Handles negative width/height gracefully
+        public static bool Contains(this RectangleD r, PointD p)
+        {
+            double left = Math.Min(r.X, r.X + r.W);
+            double right = Math.Max(r.X, r.X + r.W);
+            double top = Math.Min(r.Y, r.Y + r.H);
+            double bottom = Math.Max(r.Y, r.Y + r.H);
+
+            return p.X >= left && p.X <= right && p.Y >= top && p.Y <= bottom;
+        }
+
+        public static RectangleD FromCorners(PointD a, PointD b)
+        {
+            double x = Math.Min(a.X, b.X);
+            double y = Math.Min(a.Y, b.Y);
+            double w = Math.Abs(b.X - a.X);
+            double h = Math.Abs(b.Y - a.Y);
+            return new RectangleD(x, y, w, h);
+        }
+    }
+
 }
