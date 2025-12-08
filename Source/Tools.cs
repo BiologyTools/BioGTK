@@ -380,7 +380,7 @@ namespace BioGTK
                     ToolUp_Ellipse(e, buts);
                     break;
                 case Tool.Type.polygon:
-                    //ToolUp_Polygon(e, buts);
+                    ToolUp_Polygon(e, buts);
                     break;
                 case Tool.Type.text:
                     //ToolUp_Text(e, buts);
@@ -441,7 +441,7 @@ namespace BioGTK
                     ToolMove_Ellipse(e, buts);
                     break;
                 case Tool.Type.polygon:
-                    //ToolMove_Polygon(e, buts);
+                    ToolMove_Polygon(e, buts);
                     break;
                 case Tool.Type.text:
                     //ToolMove_Text(e, buts);
@@ -483,7 +483,7 @@ namespace BioGTK
 
                 for (int i = 0; i < boxes.Length; i++)
                 {
-                    if (boxes[i].Contains(e))
+                    if (boxes[i].Contains(ann.coord,e))
                     {
                         selectedROI = ann;
                         if (ctrl)
@@ -505,7 +505,7 @@ namespace BioGTK
             // 2 — Click on body of already-selected ROI
             foreach (var ann in ImageView.SelectedImage.Annotations)
             {
-                if (ann != null && ann.Selected && ann.BoundingBox.Contains(e))
+                if (ann != null && ann.Selected && ann.BoundingBox.Contains(ann.coord,e))
                 {
                     selectedROI = ann;
                     UpdateView();
@@ -516,7 +516,7 @@ namespace BioGTK
             // 3 — Click on any ROI (select it)
             foreach (var ann in ImageView.SelectedImage.Annotations)
             {
-                if (ann != null && ann.BoundingBox.Contains(e))
+                if (ann != null && ann.BoundingBox.Contains(ann.coord, e))
                 {
                     if (!ctrl)
                     {
@@ -839,9 +839,6 @@ namespace BioGTK
             }
         }
 
-        // ============================================================================
-        // 4. RECTANGLE TOOL
-        // ============================================================================
         public void ToolDown_Rectangle(PointD e, ButtonPressEventArgs buts)
         {
             if (currentTool.type != Tool.Type.rect || buts.Event.Button != 1)
@@ -849,7 +846,7 @@ namespace BioGTK
 
             selectedROI = new ROI();
             selectedROI.type = ROI.Type.Rectangle;
-            selectedROI.BoundingBox = new RectangleD(e.X, e.Y, 1, 1);
+            selectedROI.BoundingBox = new RectangleD(e.X, e.Y, 0, 0); // Start with 0 size
             selectedROI.coord = App.viewer.GetCoordinate();
             selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
             AddROI(selectedROI);
@@ -866,7 +863,6 @@ namespace BioGTK
                 selectedROI.BoundingBox = RectangleDExtensions.FromCorners(
                     new PointD(selectedROI.BoundingBox.X, selectedROI.BoundingBox.Y),
                     new PointD(e.X, e.Y));
-                selectedROI.UpdateBoundingBox();
                 UpdateView();
             }
         }
@@ -878,7 +874,13 @@ namespace BioGTK
 
             if (selectedROI != null && selectedROI.type == ROI.Type.Rectangle)
             {
-                selectedROI.UpdateBoundingBox();
+                // Update final rectangle bounds
+                selectedROI.BoundingBox = RectangleDExtensions.FromCorners(
+                    new PointD(selectedROI.BoundingBox.X, selectedROI.BoundingBox.Y),
+                    new PointD(e.X, e.Y));
+
+                // Validate the ROI (might reject if too small)
+                selectedROI.Validate();
                 selectedROI = null;
                 UpdateView();
             }
@@ -894,7 +896,7 @@ namespace BioGTK
 
             selectedROI = new ROI();
             selectedROI.type = ROI.Type.Ellipse;
-            selectedROI.BoundingBox = new RectangleD(e.X, e.Y, 1, 1);
+            selectedROI.BoundingBox = new RectangleD(e.X, e.Y, 0, 0); // Start with 0 size
             selectedROI.coord = App.viewer.GetCoordinate();
             selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
             AddROI(selectedROI);
@@ -911,7 +913,6 @@ namespace BioGTK
                 selectedROI.BoundingBox = RectangleDExtensions.FromCorners(
                     new PointD(selectedROI.BoundingBox.X, selectedROI.BoundingBox.Y),
                     new PointD(e.X, e.Y));
-                selectedROI.UpdateBoundingBox();
                 UpdateView();
             }
         }
@@ -923,7 +924,13 @@ namespace BioGTK
 
             if (selectedROI != null && selectedROI.type == ROI.Type.Ellipse)
             {
-                selectedROI.UpdateBoundingBox();
+                // Update final ellipse bounds
+                selectedROI.BoundingBox = RectangleDExtensions.FromCorners(
+                    new PointD(selectedROI.BoundingBox.X, selectedROI.BoundingBox.Y),
+                    new PointD(e.X, e.Y));
+
+                // Validate the ROI (might reject if too small)
+                selectedROI.Validate();
                 selectedROI = null;
                 UpdateView();
             }
@@ -937,41 +944,65 @@ namespace BioGTK
             if (currentTool.type != Tool.Type.polygon || buts.Event.Button != 1)
                 return;
 
-            if (selectedROI == null)
+            if (selectedROI == null || selectedROI.type != ROI.Type.Polygon)
             {
                 // Start new polygon
                 selectedROI = new ROI();
                 selectedROI.type = ROI.Type.Polygon;
+                selectedROI.closed = false;
                 selectedROI.AddPoint(new PointD(e.X, e.Y));
                 selectedROI.coord = App.viewer.GetCoordinate();
                 selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
                 AddROI(selectedROI);
+                UpdateView();
             }
-            else
+            else if (!selectedROI.closed)
             {
-                // Check if clicking on first point to close polygon
-                RectangleD[] rds = selectedROI.GetSelectBoxes();
-                if (rds != null && rds.Length > 0 && rds[0].IntersectsWith(new RectangleD(e.X, e.Y, 1, 1)))
+                // Check if clicking near first point to close polygon
+                if (selectedROI.Points.Count >= 3)
                 {
-                    // Close polygon
-                    selectedROI.closed = true;
-                    selectedROI.Selected = false;
-                    selectedROI.UpdateBoundingBox();
-                    selectedROI = null;
-                    UpdateView();
-                    return;
-                }
-                else
-                {
-                    // Add new point
-                    if (!selectedROI.closed)
+                    PointD firstPoint = selectedROI.Points[0];
+                    double distance = Math.Sqrt(Math.Pow(e.X - firstPoint.X, 2) + Math.Pow(e.Y - firstPoint.Y, 2));
+                    double threshold = 10.0; // Adjust based on your zoom/scale
+
+                    if (distance < threshold)
                     {
-                        selectedROI.AddPoint(new PointD(e.X, e.Y));
+                        // Close polygon
+                        selectedROI.closed = true;
+                        selectedROI.Selected = false;
                         selectedROI.UpdateBoundingBox();
+                        selectedROI.Validate();
+                        selectedROI = null;
                         UpdateView();
+                        return;
                     }
                 }
+
+                
             }
+            // Add new point to polygon
+            selectedROI.AddPoint(new PointD(e.X, e.Y));
+            selectedROI.UpdateBoundingBox();
+            UpdateView();
+        }
+
+        private void ToolMove_Polygon(PointD e, MotionNotifyEventArgs buts)
+        {
+            if (currentTool.type != Tool.Type.polygon)
+                return;
+
+            // Update preview of next point while drawing polygon
+            if (selectedROI != null && selectedROI.type == ROI.Type.Polygon && !selectedROI.closed)
+            {
+                // Store current mouse position for preview rendering
+                // (Assuming you have a way to render a preview line from last point to cursor)
+                UpdateView();
+            }
+        }
+        private void ToolUp_Polygon(PointD e, ButtonReleaseEventArgs buts)
+        {
+            // Polygon tool doesn't need mouse up handling since it works on clicks
+            // The tool completes either by clicking near the first point or by double-clicking
         }
 
         // ============================================================================
@@ -979,9 +1010,8 @@ namespace BioGTK
         // ============================================================================
         public void ToolDown_Freeform(PointD e, ButtonPressEventArgs buts)
         {
-            if (currentTool.type != Tool.Type.freeform || buts.Event.Button != 1)
+            if (currentTool.type != Tool.Type.freeform && buts.Event.State.HasFlag(ModifierType.Button1Mask))
                 return;
-
             if (selectedROI == null)
             {
                 selectedROI = new ROI();
@@ -989,25 +1019,22 @@ namespace BioGTK
                 selectedROI.AddPoint(new PointD(e.X, e.Y));
                 selectedROI.coord = App.viewer.GetCoordinate();
                 selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
-                AddROI(selectedROI);
             }
-            else
+            if(selectedROI.type == ROI.Type.Freeform)
             {
                 selectedROI.AddPoint(new PointD(e.X, e.Y));
+                AddROI(selectedROI);
             }
         }
 
         public void ToolMove_Freeform(PointD e, MotionNotifyEventArgs buts)
         {
-            if (currentTool.type != Tool.Type.freeform ||
-                !buts.Event.State.HasFlag(ModifierType.Button1Mask))
-                return;
-
-            if (selectedROI != null && selectedROI.GetPointCount() > 0)
+            if(currentTool.type == Tool.Type.freeform && buts.Event.State.HasFlag(ModifierType.Button1Mask))
             {
                 selectedROI.AddPoint(new PointD(e.X, e.Y));
-                selectedROI.UpdateBoundingBox();
-                UpdateView();
+                selectedROI.coord = App.viewer.GetCoordinate();
+                selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
+                AddROI(selectedROI);
             }
         }
 
@@ -1460,14 +1487,17 @@ namespace BioGTK
     public static class RectangleDExtensions
     {
         // Handles negative width/height gracefully
-        public static bool Contains(this RectangleD r, PointD p)
+        public static bool Contains(this RectangleD r, ZCT coord, PointD p)
         {
-            double left = Math.Min(r.X, r.X + r.W);
-            double right = Math.Max(r.X, r.X + r.W);
-            double top = Math.Min(r.Y, r.Y + r.H);
-            double bottom = Math.Max(r.Y, r.Y + r.H);
-
-            return p.X >= left && p.X <= right && p.Y >= top && p.Y <= bottom;
+            if (App.viewer.GetCoordinate() == coord)
+            {
+                double left = Math.Min(r.X, r.X + r.W);
+                double right = Math.Max(r.X, r.X + r.W);
+                double top = Math.Min(r.Y, r.Y + r.H);
+                double bottom = Math.Max(r.Y, r.Y + r.H);
+                return p.X >= left && p.X <= right && p.Y >= top && p.Y <= bottom;
+            }
+            return false;
         }
 
         public static RectangleD FromCorners(PointD a, PointD b)
