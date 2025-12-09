@@ -322,6 +322,9 @@ namespace BioGTK
                 case Tool.Type.pan:
                     ToolDown_Pan(e, buts);
                     break;
+                case Tool.Type.magic:
+                    ToolDown_Magic(e, buts);
+                    break;
                 case Tool.Type.point:
                     //ToolUp_Point(e, buts);
                     break;
@@ -369,6 +372,9 @@ namespace BioGTK
                     break;
                 case Tool.Type.move:
                     ToolUp_Move(e, buts);
+                    break;
+                case Tool.Type.magic:
+                    ToolUp_Magic(e, buts);
                     break;
                 case Tool.Type.line:
                     ToolUp_Line(e, buts);
@@ -430,6 +436,9 @@ namespace BioGTK
                     break;
                 case Tool.Type.move:
                     ToolMove_Move(e, buts);
+                    break;
+                case Tool.Type.magic:
+                    ToolMove_Magic(e, buts);
                     break;
                 case Tool.Type.line:
                     ToolMove_Line(e, buts);
@@ -1280,6 +1289,108 @@ namespace BioGTK
             }
         }
 
+        // ============================================================================
+        // 14. Magic Wand TOOL
+        // ============================================================================
+        public void ToolDown_Magic(PointD e, ButtonPressEventArgs buts)
+        {
+            if (selectedROI == null)
+            {
+                selectedROI = new ROI();
+                selectedROI.type = ROI.Type.Freeform;
+                selectedROI.AddPoint(new PointD(e.X, e.Y));
+                selectedROI.coord = App.viewer.GetCoordinate();
+                if (ImageView.SelectedImage.isPyramidal)
+                    selectedROI.serie = App.viewer.Level;
+                else
+                    selectedROI.serie = ImageView.SelectedImage.series;
+                AddROI(selectedROI);
+            }
+            else
+            {
+                selectedROI.AddPoint(new PointD(e.X, e.Y));
+            }
+        }
+
+        public void ToolMove_Magic(PointD e, MotionNotifyEventArgs buts)
+        {
+            //First we draw the selection rectangle
+            PointD d = new PointD(e.X - App.viewer.MouseDown.X, e.Y - App.viewer.MouseDown.Y);
+            Tools.GetTool(Tools.Tool.Type.move).Rectangle = new RectangleD(App.viewer.MouseDown.X, App.viewer.MouseDown.Y, d.X, d.Y);
+            UpdateView();
+        }
+
+        public void ToolUp_Magic(PointD e, ButtonReleaseEventArgs buts)
+        {
+            if (!buts.Event.State.HasFlag(ModifierType.Button1Mask))
+                return;
+            // Define the rectangle from mouse coordinates
+            RectangleD rectangle = new RectangleD(
+                App.viewer.MouseDown.X,
+                App.viewer.MouseDown.Y,
+                Math.Abs(App.viewer.MouseUp.X - App.viewer.MouseDown.X),
+                Math.Abs(App.viewer.MouseUp.Y - App.viewer.MouseDown.Y)
+            );
+
+            // Convert to image space coordinates
+            AForge.RectangleF rectInImageSpace = ImageView.SelectedImage.ToImageSpace(rectangle);
+            ZCT coord = App.viewer.GetCoordinate();
+            Bitmap bitmap;
+
+            // Check the number of RGB channels to choose filtering method
+            if (ImageView.SelectedImage.Buffers[0].RGBChannelsCount > 1)
+            {
+                bitmap = ImageView.SelectedImage.GetFiltered(
+                    coord,
+                    new IntRange((int)ImageView.SelectedBuffer.Stats[0].Min, (int)ImageView.SelectedBuffer.Stats[0].Max),
+                    new IntRange((int)ImageView.SelectedBuffer.Stats[1].Min, (int)ImageView.SelectedBuffer.Stats[1].Max),
+                    new IntRange((int)ImageView.SelectedBuffer.Stats[2].Min, (int)ImageView.SelectedBuffer.Stats[2].Max)
+                );
+            }
+            else
+            {
+                bitmap = ImageView.SelectedImage.GetFiltered(
+                    coord,
+                    new IntRange((int)ImageView.SelectedBuffer.Stats[0].Min, (int)ImageView.SelectedBuffer.Stats[0].Max),
+                    new IntRange((int)ImageView.SelectedBuffer.Stats[0].Min, (int)ImageView.SelectedBuffer.Stats[0].Max),
+                    new IntRange((int)ImageView.SelectedBuffer.Stats[0].Min, (int)ImageView.SelectedBuffer.Stats[0].Max)
+                );
+            }
+
+            // Crop the image to the selected rectangle
+            bitmap.Crop(rectInImageSpace.ToRectangleInt());
+            // Determine the threshold based on magicSelect settings
+            Statistics[] st = Statistics.FromBytes(bitmap.Bytes, bitmap.SizeX, bitmap.Height, bitmap.RGBChannelsCount, bitmap.BitsPerPixel, bitmap.Stride, bitmap.PixelFormat);
+            int threshold = magicSelect.Numeric ? magicSelect.Threshold : CalculateThreshold(magicSelect.Index, st[0]);
+            BlobCounter blobCounter = new BlobCounter();
+            OtsuThreshold th = new OtsuThreshold();
+            bitmap.To8Bit();
+            th.ApplyInPlace(bitmap);
+            blobCounter.FilterBlobs = true;
+            blobCounter.MinWidth = 2;
+            blobCounter.MinHeight = 2;
+            blobCounter.ProcessImage(bitmap);
+            // Retrieve detected blobs
+            Blob[] blobs = blobCounter.GetObjectsInformation();
+            double pixelSizeX = ImageView.SelectedImage.PhysicalSizeX;
+            double pixelSizeY = ImageView.SelectedImage.PhysicalSizeY;
+            // Annotate detected blobs in the original image
+            foreach (Blob blob in blobs)
+            {
+                AForge.RectangleD blobRectangle = new AForge.RectangleD(
+                    blob.Rectangle.X * pixelSizeX,
+                    blob.Rectangle.Y * pixelSizeY,
+                    blob.Rectangle.Width * pixelSizeX,
+                    blob.Rectangle.Height * pixelSizeY
+                );
+                // Calculate the location of the detected blob
+                PointD location = new PointD(rectangle.X + blobRectangle.X, rectangle.Y + blobRectangle.Y);
+                // Create and add ROI annotation
+                ROI annotation = ROI.CreateRectangle(coord, location.X, location.Y, blobRectangle.W, blobRectangle.H);
+                ImageView.SelectedImage.Annotations.Add(annotation);
+            }
+            App.viewer.UpdateView(true);
+        }
 
         /* It's a class that defines a tool */
         public class Tool
