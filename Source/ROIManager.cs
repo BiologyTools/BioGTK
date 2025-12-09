@@ -78,6 +78,12 @@ namespace Bio
         private CheckButton showMasksBox;
         [Builder.Object]
         private Menu menu;
+        [Builder.Object]
+        private MenuItem menuDelete;
+        [Builder.Object]
+        private MenuItem menuCopy;
+        [Builder.Object]
+        private MenuItem menuPaste;
 #pragma warning restore 649
 
         #endregion
@@ -120,12 +126,16 @@ namespace Bio
             showBBox.Clicked += showBBox_ActiveChanged;
             showMasksBox.Clicked += ShowMasksBox_Clicked;
             this.DeleteEvent += ROIManager_DeleteEvent;
-            
+            menuDelete.ButtonPressEvent += MenuDelete_ButtonPressEvent;
+            menuCopy.ButtonPressEvent += MenuCopy_ButtonPressEvent;
+            menuPaste.ButtonPressEvent += MenuPaste_ButtonPressEvent;
+
             //roiView.Selection.Changed += roiView_SelectedIndexChanged;
             roiView.RowActivated += RoiView_RowActivated;
             roiView.ActivateOnSingleClick = true;
             this.FocusInEvent += ROIManager_FocusInEvent;
             this.FocusActivated += ROIManager_Activated;
+            this.ButtonPressEvent += ROIManager_ButtonPressEvent;
             xBox.Adjustment.Upper = PointD.MaxX;
             xBox.Adjustment.StepIncrement= 0.1;
             xBox.Adjustment.PageIncrement= 1;
@@ -171,8 +181,85 @@ namespace Bio
             selBox.Value = ROI.selectBoxSize;
             selBox.Adjustment.Upper = 100;
             selBox.Adjustment.StepIncrement = 1;
+
             InitItems();
             App.ApplyStyles(this);
+        }
+
+        private List<ROI> copys = new List<ROI>();
+        /// It takes the selected ROIs and copies them to the clipboard
+        public void CopySelection()
+        {
+            copys.Clear();
+            string s = "";
+            List<ROI> rois = new List<ROI>();
+            rois.AddRange(ImageView.SelectedImage.AnnotationsR);
+            rois.AddRange(ImageView.SelectedImage.AnnotationsG);
+            rois.AddRange(ImageView.SelectedImage.AnnotationsB);
+            foreach (ROI item in rois)
+            {
+                if (item.Selected)
+                {
+                    copys.Add(item);
+                    s += BioImage.ROIToString(item);
+                }
+            }
+            Clipboard clipboard = Clipboard.Get(Gdk.Selection.Clipboard);
+            clipboard.Text = s;
+        }
+        /// The function takes the text from the clipboard and splits it into lines. Each line is then
+        /// converted into an ROI object and added to the list of annotations
+        public void PasteSelection()
+        {
+            Clipboard clipboard = Clipboard.Get(Gdk.Selection.Clipboard);
+            string text = clipboard.WaitForText();
+            string[] sts = text.Split(BioImage.NewLine);
+            foreach (string line in sts)
+            {
+                if (line.Length > 8)
+                {
+                    ROI an = BioImage.StringToROI(line);
+                    //We set the coordinates of the ROI's we are pasting
+                    an.coord = App.viewer.GetCoordinate();
+                    ImageView.SelectedImage.Annotations.Add(an);
+                }
+            }
+            UpdateView();
+        }
+
+
+        private void MenuPaste_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            PasteSelection();
+        }
+
+        private void MenuCopy_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            CopySelection();
+        }
+
+        private void MenuDelete_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            if (ImageView.SelectedAnnotation != null && ImageView.SelectedImage != null)
+            {
+                // Remove the selected annotation
+                ImageView.SelectedImage.Annotations.Remove(ImageView.SelectedAnnotation);
+
+                // Clear selection
+                ImageView.SelectedAnnotation = null;
+
+                // Update the view
+                App.viewer.UpdateImage();
+                App.viewer.UpdateView();
+            }
+        }
+
+
+        private void ROIManager_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            if (args.Event.Button == 1)
+                menu.Popup();
+
         }
 
         private void ShowMasksBox_Clicked(object sender, EventArgs e)
@@ -384,7 +471,7 @@ namespace Bio
         {
             if (anno == null)
                 return;
-            anno.BoundingBox = new RectangleD((double)xBox.Value, (double)yBox.Value, wBox.Value, hBox.Value); 
+            anno.BoundingBox = new RectangleD(xBox.Value, anno.Y, anno.W, anno.H); 
             UpdateView();
         }
         /// When the value of the yBox is changed, the value of the yBox is assigned to the Y property
@@ -398,7 +485,7 @@ namespace Bio
         {
             if (anno == null)
                 return;
-            anno.BoundingBox = new RectangleD((double)xBox.Value, (double)yBox.Value, wBox.Value, hBox.Value);
+            anno.BoundingBox = new RectangleD(anno.X, yBox.Value, anno.W, anno.H);
             UpdateView();
         }
         /// When the value of the width box changes, the width of the annotation is updated
@@ -412,7 +499,7 @@ namespace Bio
             if (anno == null)
                 return;
             if(anno.type == ROI.Type.Rectangle || anno.type == ROI.Type.Ellipse)
-                anno.BoundingBox = new RectangleD((double)xBox.Value, (double)yBox.Value, wBox.Value, hBox.Value);
+                anno.BoundingBox = new RectangleD(anno.X, anno.Y, wBox.Value, anno.H);
             UpdateView();
         }
         /// This function is called when the value of the hBox is changed
@@ -426,7 +513,7 @@ namespace Bio
             if (anno == null)
                 return;
             if (anno.type == ROI.Type.Rectangle || anno.type == ROI.Type.Ellipse)
-                anno.BoundingBox = new RectangleD((double)xBox.Value, (double)yBox.Value, wBox.Value, hBox.Value);
+                anno.BoundingBox = new RectangleD(anno.X, anno.Y, anno.W, hBox.Value);
             UpdateView();
         }
         /// This function is called when the value of the checkbox is changed
@@ -439,6 +526,7 @@ namespace Bio
         {
             if (anno == null)
                 return;
+            //anno.serie = (int)sBox.Value;
             UpdateView();
         }
         /// When the value of the Z coordinate changes, update the annotation's Z coordinate and update

@@ -2324,6 +2324,8 @@ namespace BioGTK
             }
         }
 
+        public static ROI SelectedAnnotation { get; internal set; }
+
         /// It takes a point in the image space and returns the point in the view space
         /// 
         /// @param x the x coordinate of the point in the image
