@@ -2324,7 +2324,18 @@ namespace BioGTK
             }
         }
 
-        public static ROI SelectedAnnotation { get; internal set; }
+        public static ROI SelectedAnnotation 
+        { 
+            get 
+            {
+                foreach (var item in SelectedImage.Annotations)
+                {
+                    if(item.Selected)
+                        return item;
+                }
+                return null;
+            }
+        }
 
         /// It takes a point in the image space and returns the point in the view space
         /// 

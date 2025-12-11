@@ -135,7 +135,8 @@ namespace Bio
             roiView.ActivateOnSingleClick = true;
             this.FocusInEvent += ROIManager_FocusInEvent;
             this.FocusActivated += ROIManager_Activated;
-            this.ButtonPressEvent += ROIManager_ButtonPressEvent;
+            roiView.ButtonPressEvent += RoiView_ButtonPressEvent;
+
             xBox.Adjustment.Upper = PointD.MaxX;
             xBox.Adjustment.StepIncrement= 0.1;
             xBox.Adjustment.PageIncrement= 1;
@@ -184,6 +185,12 @@ namespace Bio
 
             InitItems();
             App.ApplyStyles(this);
+        }
+
+        private void RoiView_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            if (args.Event.Button == 3)
+                menu.Popup();
         }
 
         private List<ROI> copys = new List<ROI>();
@@ -244,22 +251,10 @@ namespace Bio
             {
                 // Remove the selected annotation
                 ImageView.SelectedImage.Annotations.Remove(ImageView.SelectedAnnotation);
-
-                // Clear selection
-                ImageView.SelectedAnnotation = null;
-
                 // Update the view
                 App.viewer.UpdateImage();
                 App.viewer.UpdateView();
             }
-        }
-
-
-        private void ROIManager_ButtonPressEvent(object o, ButtonPressEventArgs args)
-        {
-            if (args.Event.Button == 1)
-                menu.Popup();
-
         }
 
         private void ShowMasksBox_Clicked(object sender, EventArgs e)
