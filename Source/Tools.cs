@@ -115,7 +115,6 @@ namespace BioGTK
             else
                 roi.serie = ImageView.SelectedImage.series;
             roi.coord = App.viewer.GetCoordinate();
-            roi.UpdateBoundingBox();
             ImageView.SelectedImage.Annotations.Add(roi);
         }
         /// <summary> Sets up the handlers. </summary>
@@ -326,7 +325,7 @@ namespace BioGTK
                     ToolDown_Magic(e, buts);
                     break;
                 case Tool.Type.point:
-                    //ToolUp_Point(e, buts);
+                    ToolDown_Point(e, buts);
                     break;
                 case Tool.Type.move:
                     ToolDown_Move(e, buts);
@@ -777,19 +776,20 @@ namespace BioGTK
         // ============================================================================
         // 2. POINT TOOL
         // ============================================================================
-        public void ToolUp_Point(PointD e, ButtonReleaseEventArgs buts)
+        public void ToolDown_Point(PointD e, ButtonPressEventArgs buts)
         {
             if (currentTool.type != Tool.Type.point || buts.Event.Button != 1)
                 return;
 
             ROI an = new ROI();
-            an.AddPoint(new PointD(e.X, e.Y));
             an.type = ROI.Type.Point;
+            an.Points.Clear();
+            an.Points.Add(new PointD(e.X, e.Y));
             an.coord = App.viewer.GetCoordinate();
             an.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
             an.Selected = true;
             selectedROI = an;
-            AddROI(an);
+            AddROI(selectedROI);
             UpdateView();
         }
 
@@ -1019,31 +1019,59 @@ namespace BioGTK
         // ============================================================================
         public void ToolDown_Freeform(PointD e, ButtonPressEventArgs buts)
         {
-            if (currentTool.type != Tool.Type.freeform && buts.Event.State.HasFlag(ModifierType.Button1Mask))
+            if (currentTool.type != Tool.Type.freeform || buts.Event.Button != 1)
                 return;
-            if (selectedROI == null)
+
+            if (selectedROI == null || selectedROI.type != ROI.Type.Polygon)
             {
+                // Start new freeform
                 selectedROI = new ROI();
-                selectedROI.type = ROI.Type.Freeform;
+                selectedROI.type = ROI.Type.Polygon;
+                selectedROI.closed = false;
                 selectedROI.AddPoint(new PointD(e.X, e.Y));
                 selectedROI.coord = App.viewer.GetCoordinate();
                 selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
-            }
-            if(selectedROI.type == ROI.Type.Freeform)
-            {
-                selectedROI.AddPoint(new PointD(e.X, e.Y));
                 AddROI(selectedROI);
+                UpdateView();
             }
+            else if (!selectedROI.closed)
+            {
+                // Check if clicking near first point to close freeform
+                if (selectedROI.Points.Count >= 3)
+                {
+                    PointD firstPoint = selectedROI.Points[0];
+                    double distance = Math.Sqrt(Math.Pow(e.X - firstPoint.X, 2) + Math.Pow(e.Y - firstPoint.Y, 2));
+                    double threshold = 10.0; // Adjust based on your zoom/scale
+
+                    if (distance < threshold)
+                    {
+                        // Close freeform
+                        selectedROI.closed = true;
+                        selectedROI.Selected = false;
+                        selectedROI.UpdateBoundingBox();
+                        selectedROI.Validate();
+                        selectedROI = null;
+                        UpdateView();
+                        return;
+                    }
+                }
+
+
+            }
+            // Add new point to polygon
+            selectedROI.AddPoint(new PointD(e.X, e.Y));
+            selectedROI.UpdateBoundingBox();
+            UpdateView();
         }
 
         public void ToolMove_Freeform(PointD e, MotionNotifyEventArgs buts)
         {
+            if(selectedROI!=null)
             if(currentTool.type == Tool.Type.freeform && buts.Event.State.HasFlag(ModifierType.Button1Mask))
             {
                 selectedROI.AddPoint(new PointD(e.X, e.Y));
                 selectedROI.coord = App.viewer.GetCoordinate();
                 selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
-                AddROI(selectedROI);
             }
         }
 
@@ -1250,12 +1278,34 @@ namespace BioGTK
         // ============================================================================
         // 14. PAN TOOL
         // ============================================================================
+
+        // Add these fields to store initial state
+        private PointD initialPanOrigin;
+        private PointD initialMouseDown;
+
         public void ToolDown_Pan(PointD e, ButtonPressEventArgs buts)
         {
-            if (buts.Event.Button == 2)
+            if (buts.Event.Button == 2 || buts.Event.Button == 1)
             {
                 currentTool = GetTool(Tool.Type.pan);
+
+                // Store initial mouse position
+                initialMouseDown = new PointD(e.X, e.Y);
                 App.viewer.MouseDown = new PointD(e.X, e.Y);
+
+                // Store initial origin positions
+                if (ImageView.SelectedImage.isPyramidal)
+                {
+                    initialPanOrigin = new PointD(
+                        App.viewer.PyramidalOrigin.X,
+                        App.viewer.PyramidalOrigin.Y);
+                }
+                else
+                {
+                    initialPanOrigin = new PointD(
+                        App.viewer.Origin.X,
+                        App.viewer.Origin.Y);
+                }
             }
         }
 
@@ -1264,18 +1314,26 @@ namespace BioGTK
             if ((currentTool.type == Tool.Type.pan && buts.Event.State.HasFlag(ModifierType.Button1Mask)) ||
                 buts.Event.State.HasFlag(ModifierType.Button2Mask))
             {
+                // Calculate delta from INITIAL mouse down position
+                PointD delta = new PointD(
+                    e.X - initialMouseDown.X,
+                    e.Y - initialMouseDown.Y);
+
                 if (ImageView.SelectedImage.isPyramidal)
                 {
-                    App.viewer.PyramidalOriginTransformed = new PointD(
-                        App.viewer.PyramidalOriginTransformed.X + (App.viewer.MouseDown.X - e.X),
-                        App.viewer.PyramidalOriginTransformed.Y + (App.viewer.MouseDown.Y - e.Y));
+                    // Apply delta to INITIAL origin (not current)
+                    App.viewer.PyramidalOrigin = new PointD(
+                        initialPanOrigin.X - delta.X,
+                        initialPanOrigin.Y - delta.Y);
                 }
                 else
                 {
-                    PointD pf = new PointD(e.X - App.viewer.MouseDown.X, e.Y - App.viewer.MouseDown.Y);
-                    App.viewer.Origin = new PointD(App.viewer.Origin.X + pf.X, App.viewer.Origin.Y + pf.Y);
+                    // Apply delta to INITIAL origin (not current)
+                    App.viewer.Origin = new PointD(
+                        initialPanOrigin.X + delta.X,
+                        initialPanOrigin.Y + delta.Y);
                 }
-                App.viewer.MouseDown = new PointD(e.X, e.Y);
+
                 UpdateView();
             }
         }
@@ -1288,7 +1346,6 @@ namespace BioGTK
                 currentTool = GetTool(Tool.Type.move);
             }
         }
-
         // ============================================================================
         // 14. Magic Wand TOOL
         // ============================================================================

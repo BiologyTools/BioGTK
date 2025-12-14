@@ -11,7 +11,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-
 namespace Bio
 {
     public partial class ROIManager : Window
@@ -87,10 +86,30 @@ namespace Bio
 #pragma warning restore 649
 
         #endregion
-
+        private static Random rng = new Random();
         #region Constructors / Destructors
         public BioImage image;
-        public static Dictionary<string, ROI> rois = new Dictionary<string, ROI>();
+        private static Dictionary<string, ROI> rts = new Dictionary<string, ROI>();
+        public static Dictionary<string, ROI> rois
+        {
+            get
+            {
+                foreach (var item in ImageView.SelectedImage.Annotations)
+                {
+                    if(!rts.ContainsKey(item.id))
+                    {
+                        if (item.id == "" || item.id == null)
+                            item.id = rng.Next(0,999999).ToString();
+                        rts.Add(item.id, item);
+                    }
+                }
+                return rts;
+            }
+            set 
+            {
+                rts = value;
+            }
+        }
         public static ROIManager Create()
         {
             Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ROIManager.glade", FileMode.Open));
@@ -132,7 +151,6 @@ namespace Bio
 
             //roiView.Selection.Changed += roiView_SelectedIndexChanged;
             roiView.RowActivated += RoiView_RowActivated;
-            roiView.ActivateOnSingleClick = true;
             this.FocusInEvent += ROIManager_FocusInEvent;
             this.FocusActivated += ROIManager_Activated;
             roiView.ButtonPressEvent += RoiView_ButtonPressEvent;
@@ -182,7 +200,7 @@ namespace Bio
             selBox.Value = ROI.selectBoxSize;
             selBox.Adjustment.Upper = 100;
             selBox.Adjustment.StepIncrement = 1;
-
+            roiView.ActivateOnSingleClick = true;
             InitItems();
             App.ApplyStyles(this);
         }
@@ -247,13 +265,11 @@ namespace Bio
 
         private void MenuDelete_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            if (ImageView.SelectedAnnotation != null && ImageView.SelectedImage != null)
+            if (anno != null && ImageView.SelectedImage != null)
             {
                 // Remove the selected annotation
-                ImageView.SelectedImage.Annotations.Remove(ImageView.SelectedAnnotation);
-                // Update the view
-                App.viewer.UpdateImage();
-                App.viewer.UpdateView();
+                ImageView.SelectedImage.Annotations.Remove(anno);
+                UpdateAnnotationList();
             }
         }
 
@@ -268,7 +284,7 @@ namespace Bio
             args.RetVal = true;
             Hide();
         }
-        Random rng = new Random();
+        
         /// When the ROIManager gets focus, update the annotation list.
         /// 
         /// @param o The object that raised the event.
@@ -309,34 +325,6 @@ namespace Bio
                         anno = rois[id];
                         if (App.viewer != null)
                             App.viewer.SetCoordinate(anno.coord.Z, anno.coord.C, anno.coord.T);
-
-                        if (anno.type == ROI.Type.Line || anno.type == ROI.Type.Polygon ||
-                           anno.type == ROI.Type.Polyline)
-                        {
-                            xBox.Sensitive = false;
-                            yBox.Sensitive = false;
-                            wBox.Sensitive = false;
-                            hBox.Sensitive = false;
-                        }
-                        else
-                        {
-                            xBox.Sensitive = true;
-                            yBox.Sensitive = true;
-                            wBox.Sensitive = true;
-                            hBox.Sensitive = true;
-                        }
-                        if (anno.type == ROI.Type.Rectangle || anno.type == ROI.Type.Ellipse)
-                        {
-                            pointBox.Sensitive = false;
-                            pointXBox.Sensitive = false;
-                            pointYBox.Sensitive = false;
-                        }
-                        else
-                        {
-                            pointBox.Sensitive = true;
-                            pointXBox.Sensitive = true;
-                            pointYBox.Sensitive = true;
-                        }
                         xBox.Value = anno.X;
                         yBox.Value = anno.Y;
                         wBox.Value = anno.W;

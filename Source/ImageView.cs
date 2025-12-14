@@ -70,11 +70,10 @@ namespace BioGTK
                 sk.WidthRequest = 600;
                 sk.HeightRequest = 400;
             }
-            if(im.isPyramidal)
-            {
-                Initialize();
-                InitPreview();
-            }
+
+            Initialize();
+            InitPreview();
+            
             UpdateGUI();
             UpdateImages();
             GoToImage(Images.Count - 1);
@@ -313,11 +312,11 @@ namespace BioGTK
         private bool refresh = false;
         private async void Render(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e)
         {
-            int ri = 0;
             try
             {
                 if (!refresh)
                     return;
+
                 var canvas = e.Surface.Canvas;
                 canvas.Clear(SKColors.Transparent);
                 var paint = new SKPaint();
@@ -325,22 +324,24 @@ namespace BioGTK
                 paint.BlendMode = SKBlendMode.SrcOver;
                 paint.IsAntialias = true;
                 paint.Style = SKPaintStyle.Fill;
+
                 if ((SKImages.Count == 0 || Bitmaps.Count != Images.Count))
                     UpdateImages(true);
 
+                if (SelectedImage == null)
+                    return;
+
                 if (!SelectedImage.isPyramidal)
                 {
-                    //canvas.Scale(Scale.Width, Scale.Height);
                     canvas.Translate(sk.AllocatedWidth / 2, sk.AllocatedHeight / 2);
                 }
-
                 RectangleD rd = ToScreenRect(PointD.MinX, PointD.MinY, PointD.MaxX - PointD.MinX, PointD.MaxY - PointD.MinY);
                 SKRect rr = new SKRect();
                 rr.Location = new SKPoint((float)rd.X, (float)rd.Y);
                 rr.Size = new SKSize((float)rd.W, (float)rd.H);
                 canvas.DrawRect(rr, paint);
-                int i = 0;
 
+                int i = 0;
                 foreach (BioImage im in Images)
                 {
                     RectangleD rec = ToScreenRect(im.Volume.Location.X, im.Volume.Location.Y, im.Volume.Width, im.Volume.Height);
@@ -348,37 +349,74 @@ namespace BioGTK
                     r.Location = new SKPoint((float)rec.X, (float)rec.Y);
                     r.Size = new SKSize((float)Math.Abs(rec.W), (float)Math.Abs(rec.H));
                     paint.StrokeWidth = 1;
+
                     if (SelectedImage.isPyramidal)
                     {
                         try
                         {
                             if (SelectedImage.Buffers.Count > 0)
                             {
+                                paint.Style = SKPaintStyle.Fill;
                                 canvas.DrawImage(SKImages[i], 0, 0, paint);
+
                                 if (overviewImage != null)
                                 {
-                                    var ims = BitmapToSKImage(overviewImage.GetImageRGB());
-                                    paint.Style = SKPaintStyle.Fill;
-                                    // Draw the overview image at the top-left corner
+                                    var ims = BitmapToSKImage(overviewImage);
                                     canvas.DrawImage(ims, 0, 0, paint);
+
+                                    // Draw semi-transparent overlay on overview
+                                    paint.Style = SKPaintStyle.Fill;
+                                    paint.Color = new SKColor(0, 0, 0, 128); // Semi-transparent black
+                                    canvas.DrawRect(overview.X, overview.Y, overview.Width, overview.Height, paint);
                                 }
-                                // Set the paint style to stroke for drawing rectangles
+
+                                // Draw overview border
                                 paint.Style = SKPaintStyle.Stroke;
-                                // Draw the gray rectangle representing the overview's entire visible region
+                                paint.StrokeWidth = 2;
                                 paint.Color = SKColors.Gray;
                                 canvas.DrawRect(overview.X, overview.Y, overview.Width, overview.Height, paint);
-                                paint.Color = SKColors.Red;
-                                double dsx;
-                                if (!openSlide)
-                                    dsx = _slideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
-                                else
-                                    dsx = _openSlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
+
+                                // Calculate viewport rectangle on overview
                                 Resolution rs = SelectedImage.Resolutions[Level];
-                                double dx = ((double)PyramidalOrigin.X / (rs.SizeX * dsx)) * overview.Width;
-                                double dy = ((double)PyramidalOrigin.Y / (rs.SizeY * dsx)) * overview.Height;
-                                double dw = ((double)viewStack.AllocatedWidth / (rs.SizeX)) * overview.Width * dsx;
-                                double dh = ((double)viewStack.AllocatedHeight / (rs.SizeY)) * overview.Height * dsx;
-                                canvas.DrawRect((int)dx, (int)dy, (int)dw, (int)dh, paint);
+
+                                // Get the scale factor between current level and base resolution
+                                double levelScale;
+                                if (!openSlide)
+                                    levelScale = _slideBase.Schema.Resolutions[Level].UnitsPerPixel / _slideBase.Schema.Resolutions[0].UnitsPerPixel;
+                                else
+                                    levelScale = _openSlideBase.Schema.Resolutions[Level].UnitsPerPixel / _openSlideBase.Schema.Resolutions[0].UnitsPerPixel;
+
+                                // Get full slide dimensions at base resolution
+                                double fullWidth = SelectedImage.Resolutions[0].SizeX;
+                                double fullHeight = SelectedImage.Resolutions[0].SizeY;
+
+                                // Calculate visible area in base resolution coordinates
+                                double visibleWidth = viewStack.AllocatedWidth * levelScale / Scale.Width;
+                                double visibleHeight = viewStack.AllocatedHeight * levelScale / Scale.Height;
+
+                                // Calculate position in base resolution coordinates
+                                double viewX = PyramidalOrigin.X * levelScale;
+                                double viewY = PyramidalOrigin.Y * levelScale;
+
+                                // Map to overview coordinates
+                                double dx = overview.X + (viewX / fullWidth) * overview.Width;
+                                double dy = overview.Y + (viewY / fullHeight) * overview.Height;
+                                double dw = (visibleWidth / fullWidth) * overview.Width;
+                                double dh = (visibleHeight / fullHeight) * overview.Height;
+
+                                // Draw viewport rectangle in red
+                                paint.StrokeWidth = 2;
+                                paint.Color = SKColors.Red;
+                                canvas.DrawRect((float)dx, (float)dy, (float)dw, (float)dh, paint);
+
+                                // Draw crosshair at center of viewport
+                                float centerX = (float)(dx + dw / 2);
+                                float centerY = (float)(dy + dh / 2);
+                                paint.StrokeWidth = 1;
+                                paint.Color = SKColors.Yellow;
+                                canvas.DrawLine(centerX - 5, centerY, centerX + 5, centerY, paint);
+                                canvas.DrawLine(centerX, centerY - 5, centerX, centerY + 5, paint);
+                               
                             }
                         }
                         catch (Exception ex)
@@ -388,22 +426,29 @@ namespace BioGTK
                     }
                     else
                     {
+                        paint.Style = SKPaintStyle.Fill;
                         canvas.DrawImage(SKImages[i], r, paint);
                     }
-                    paint.Style = SKPaintStyle.Stroke;
-                    List<ROI> rois = new List<ROI>();
-                    rois.AddRange(im.Annotations);
-                    if (Tools.currentTool.type == Tools.Tool.Type.move || Tools.currentTool.type == Tools.Tool.Type.move && Modifiers == ModifierType.Button1Mask)
+
+                    // Draw current tool rectangle if in move mode
+                    if (Tools.currentTool.type == Tools.Tool.Type.move && Modifiers == ModifierType.Button1Mask)
                     {
-                        var recd = ToScreenRect(Tools.currentTool.Rectangle.X, Tools.currentTool.Rectangle.Y, Tools.currentTool.Rectangle.W, Tools.currentTool.Rectangle.H);
+                        paint.Style = SKPaintStyle.Stroke;
+                        var recd = ToScreenRect(Tools.currentTool.Rectangle.X, Tools.currentTool.Rectangle.Y,
+                                               Tools.currentTool.Rectangle.W, Tools.currentTool.Rectangle.H);
                         canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
                     }
-                    ri = 0;
+
+                    // Render ROIs
+                    List<ROI> rois = new List<ROI>();
+                    rois.AddRange(im.Annotations);
+
                     foreach (ROI an in rois)
                     {
                         ZCT co = GetCoordinate();
                         if (!(an.coord.Z == co.Z && an.coord.C == co.C && an.coord.T == co.T))
                             continue;
+
                         if (Mode == ViewMode.RGBImage)
                         {
                             if (!showRROIs && an.coord.C == 0)
@@ -413,113 +458,121 @@ namespace BioGTK
                             if (!showBROIs && an.coord.C == 2)
                                 continue;
                         }
+
+                        // Set ROI color
+                        paint.Style = SKPaintStyle.Stroke;
                         if (an.Selected)
                         {
                             paint.Color = SKColors.Magenta;
                         }
                         else
+                        {
                             paint.Color = new SKColor(an.strokeColor.R, an.strokeColor.G, an.strokeColor.B);
-                        
+                        }
                         paint.StrokeWidth = (float)an.strokeWidth;
-                        PointF pc = new PointF((float)(an.BoundingBox.X + (an.BoundingBox.W / 2)), (float)(an.BoundingBox.Y + (an.BoundingBox.H / 2)));
-                        float width = ROI.selectBoxSize;
-                        if(an.type == ROI.Type.Rectangle)
+
+                        // Draw ROI based on type
+                        switch (an.type)
                         {
-                            RectangleD p = ToScreenRect(an.X, an.Y, an.W, an.H);
-                            canvas.DrawRect((float)p.X, (float)p.Y, (float)p.W, (float)p.H, paint);
-                        }
-                        else
-                        if ((an.type == ROI.Type.Polygon && an.closed))
-                        {
-                            for (int p = 0; p < an.Points.Count - 1; p++)
-                            {
-                                RectangleD p1 = ToScreenRect(an.Points[p].X, an.Points[p].Y, 1, 1);
-                                RectangleD p2 = ToScreenRect(an.Points[p + 1].X, an.Points[p + 1].Y, 1, 1);
-                                canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
-                            }
-                            RectangleD pp1 = ToScreenRect(an.Points[0].X, an.Points[0].Y, 1, 1);
-                            RectangleD pp2 = ToScreenRect(an.Points[an.Points.Count - 1].X, an.Points[an.Points.Count - 1].Y, 1, 1);
-                            canvas.DrawLine(new SKPoint((float)pp1.X, (float)pp1.Y), new SKPoint((float)pp2.X, (float)pp2.Y), paint);
-                        }
-                        else
-                        if (an.type == ROI.Type.Polyline)
-                        {
-                            for (int p = 0; p < an.Points.Count - 1; p++)
-                            {
-                                RectangleD p1 = ToScreenRect(an.Points[p].X, an.Points[p].Y, 1, 1);
-                                RectangleD p2 = ToScreenRect(an.Points[p + 1].X, an.Points[p + 1].Y, 1, 1);
-                                canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
-                            }
-                        }
-                        else
-                        if (an.type == ROI.Type.Freeform)
-                        {
-                            for (int p = 0; p < an.Points.Count - 1; p++)
-                            {
-                                RectangleD p1 = ToScreenRect(an.Points[p].X, an.Points[p].Y, 1, 1);
-                                RectangleD p2 = ToScreenRect(an.Points[p + 1].X, an.Points[p + 1].Y, 1, 1);
-                                canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
-                            }
-                            RectangleD pp1 = ToScreenRect(an.Points[0].X, an.Points[0].Y, 1, 1);
-                            RectangleD pp2 = ToScreenRect(an.Points[an.Points.Count - 1].X, an.Points[an.Points.Count - 1].Y, 1, 1);
-                            canvas.DrawLine(new SKPoint((float)pp1.X, (float)pp1.Y), new SKPoint((float)pp2.X, (float)pp2.Y), paint);
-                        }
-                        else
-                        if (an.type == ROI.Type.Label)
-                        {
-                            RectangleD p = ToScreenRect((float)an.Points[0].X, (float)an.Points[0].Y, 1, 1);
-                            canvas.DrawText(an.Text, (float)p.X, (float)p.Y, new SKFont(SKTypeface.Default, an.fontSize, 1, 0), paint);
-                        }
-                        else if (an.type == ROI.Type.Line)
-                        {
-                            RectangleD p = ToScreenRect((float)an.Points[0].X, (float)an.Points[0].Y, 0, 0);
-                            RectangleD p2 = ToScreenRect((float)an.Points[1].X, (float)an.Points[1].Y, 0, 0);
-                            canvas.DrawLine(new SKPoint((float)p.X, (float)p.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
-                        }
-                        else if (an.type == ROI.Type.Ellipse)
-                        {
-                            RectangleD p = ToScreenRect((float)an.Points[0].X, (float)an.Points[0].Y, an.W, an.H);
-                            canvas.DrawOval(new SKPoint((float)p.X + (float)(p.W / 2), (float)p.Y + (float)p.H / 2), new SKSize((float)p.W / 2, (float)p.H / 2), paint);
-                        }
-                        if (ROIManager.showText)
-                        {
-                            RectangleD p = ToScreenRect(an.X, an.Y, 1, 1);
-                            canvas.DrawText(an.Text, (float)p.X, (float)p.Y, new SKFont(SKTypeface.Default, an.fontSize, 1, 0), paint);
-                        }
-                        if (ROIManager.showBounds && an.type != ROI.Type.Rectangle && an.type != ROI.Type.Mask && an.type != ROI.Type.Label)
-                        {
-                            RectangleD rrf = ToScreenRect(an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
-                            canvas.DrawRect((float)rrf.X, (float)rrf.Y, (float)rrf.W, (float)rrf.H, paint);
+                            case ROI.Type.Point:
+                                RectangleD p = ToScreenRect(an.X, an.Y, an.W, an.H);
+                                float f = (ROI.selectBoxSize * (float)SelectedImage.PhysicalSizeX) / 2;
+                                canvas.DrawRect((float)p.X - f, (float)p.Y - f, 2 * f, 2 * f, paint);
+                                break;
+
+                            case ROI.Type.Rectangle:
+                                RectangleD rect = ToScreenRect(an.X, an.Y, an.W, an.H);
+                                canvas.DrawRect((float)rect.X, (float)rect.Y, (float)rect.W, (float)rect.H, paint);
+                                break;
+
+                            case ROI.Type.Polygon:
+                            case ROI.Type.Freeform:
+                                // Draw lines between consecutive points
+                                for (int ptIdx = 0; ptIdx < an.Points.Count - 1; ptIdx++)
+                                {
+                                    RectangleD p1 = ToScreenRect(an.Points[ptIdx].X, an.Points[ptIdx].Y, 1, 1);
+                                    RectangleD p2 = ToScreenRect(an.Points[ptIdx + 1].X, an.Points[ptIdx + 1].Y, 1, 1);
+                                    canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y),
+                                                  new SKPoint((float)p2.X, (float)p2.Y), paint);
+                                }
+                                // Close the shape
+                                RectangleD pp1 = ToScreenRect(an.Points[0].X, an.Points[0].Y, 1, 1);
+                                RectangleD pp2 = ToScreenRect(an.Points[an.Points.Count - 1].X,
+                                                             an.Points[an.Points.Count - 1].Y, 1, 1);
+                                canvas.DrawLine(new SKPoint((float)pp1.X, (float)pp1.Y),
+                                              new SKPoint((float)pp2.X, (float)pp2.Y), paint);
+                                break;
+
+                            case ROI.Type.Polyline:
+                                // Draw lines between consecutive points (don't close)
+                                for (int ptIdx = 0; ptIdx < an.Points.Count - 1; ptIdx++)
+                                {
+                                    RectangleD p1 = ToScreenRect(an.Points[ptIdx].X, an.Points[ptIdx].Y, 1, 1);
+                                    RectangleD p2 = ToScreenRect(an.Points[ptIdx + 1].X, an.Points[ptIdx + 1].Y, 1, 1);
+                                    canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y),
+                                                  new SKPoint((float)p2.X, (float)p2.Y), paint);
+                                }
+                                break;
+
+                            case ROI.Type.Label:
+                                RectangleD labelPos = ToScreenRect((float)an.Points[0].X, (float)an.Points[0].Y, 1, 1);
+                                canvas.DrawText(an.Text, (float)labelPos.X, (float)labelPos.Y,
+                                              new SKFont(SKTypeface.Default, an.fontSize, 1, 0), paint);
+                                break;
+
+                            case ROI.Type.Line:
+                                RectangleD lineP1 = ToScreenRect((float)an.Points[0].X, (float)an.Points[0].Y, 0, 0);
+                                RectangleD lineP2 = ToScreenRect((float)an.Points[1].X, (float)an.Points[1].Y, 0, 0);
+                                canvas.DrawLine(new SKPoint((float)lineP1.X, (float)lineP1.Y),
+                                              new SKPoint((float)lineP2.X, (float)lineP2.Y), paint);
+                                break;
+
+                            case ROI.Type.Ellipse:
+                                RectangleD ellipse = ToScreenRect((float)an.Points[0].X, (float)an.Points[0].Y, an.W, an.H);
+                                canvas.DrawOval(new SKPoint((float)ellipse.X + (float)(ellipse.W / 2),
+                                                           (float)ellipse.Y + (float)ellipse.H / 2),
+                                              new SKSize((float)ellipse.W / 2, (float)ellipse.H / 2), paint);
+                                break;
                         }
 
-                        // Draw selection boxes with proper color coding
-                        if (!(an.type == ROI.Type.Freeform && !an.Selected) && an.type != ROI.Type.Mask)
+                        // Draw ROI text if enabled
+                        if (ROIManager.showText && an.type != ROI.Type.Label)
+                        {
+                            RectangleD textPos = ToScreenRect(an.X, an.Y, 1, 1);
+                            canvas.DrawText(an.Text, (float)textPos.X, (float)textPos.Y,
+                                          new SKFont(SKTypeface.Default, an.fontSize, 1, 0), paint);
+                        }
+
+                        // Draw bounding box if enabled
+                        if (ROIManager.showBounds && an.type != ROI.Type.Rectangle &&
+                            an.type != ROI.Type.Mask && an.type != ROI.Type.Label)
+                        {
+                            RectangleD bounds = ToScreenRect(an.BoundingBox.X, an.BoundingBox.Y,
+                                                            an.BoundingBox.W, an.BoundingBox.H);
+                            canvas.DrawRect((float)bounds.X, (float)bounds.Y, (float)bounds.W, (float)bounds.H, paint);
+                        }
+
+                        // Draw selection boxes
+                        if (an.type != ROI.Type.Mask && !(an.type == ROI.Type.Freeform && !an.Selected))
                         {
                             RectangleD[] sels = an.GetSelectBoxes(ROI.selectBoxSize * SelectedImage.PhysicalSizeX);
+                            paint.Style = SKPaintStyle.Fill;
 
-                            // Draw all selection boxes
-                            for (int p = 0; p < sels.Length; p++)
+                            for (int ptIdx = 0; ptIdx < sels.Length; ptIdx++)
                             {
-                                RectangleD recd = ToScreenRect(sels[p].X, sels[p].Y, sels[p].W, sels[p].H);
+                                RectangleD selBox = ToScreenRect(sels[ptIdx].X, sels[ptIdx].Y,
+                                                                sels[ptIdx].W, sels[ptIdx].H);
 
-                                // Check if this point is selected
-                                if (an.selectedPoints.Contains(p))
-                                {
-                                    // Draw selected points in blue
-                                    paint.Color = SKColors.Blue;
-                                    canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
-                                }
-                                else
-                                {
-                                    // Draw unselected points in red
-                                    paint.Color = SKColors.Red;
-                                    canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
-                                }
+                                // Color code selection boxes
+                                paint.Color = an.selectedPoints.Contains(ptIdx) ? SKColors.Blue : SKColors.Red;
+                                canvas.DrawRect((float)selBox.X, (float)selBox.Y,
+                                              (float)selBox.W, (float)selBox.H, paint);
                             }
                         }
-                        ri++;
                     }
+                    i++;
                 }
+
                 Plugins.Render(sender, e);
                 paint.Dispose();
                 refresh = false;
@@ -773,56 +826,174 @@ namespace BioGTK
         public int? LabelResolution { get { return SelectedImage.LabelResolution; } }
 
         /// <summary>
-        /// It takes a large image, resizes it to a small image, and then displays it.
+        /// Initializes the overview/minimap preview for pyramidal images.
+        /// Resizes the lowest resolution level to fit in a 160x160 thumbnail while maintaining aspect ratio.
         /// </summary>
         private void InitPreview()
         {
-            if (!SelectedImage.isPyramidal)
+            // Only initialize preview for pyramidal images
+            if (SelectedImage == null || !SelectedImage.isPyramidal)
                 return;
-            refresh = false;
-            overview = new Rectangle(0, 0, 120, 120);
-            if (SelectedImage.Resolutions.Count == 1)
+
+            try
             {
+                refresh = false;
+
+                // Default overview size
+                const int OVERVIEW_SIZE = 160;
+                const long MAX_SIZE_BYTES = 1500000000; // 1.5GB limit
+
+                // Disable overview if there's only one resolution level
+                if (SelectedImage.Resolutions == null || SelectedImage.Resolutions.Count <= 1)
+                {
+                    ShowOverview = false;
+                    return;
+                }
+
+                int resolutionLevel;
+                Resolution targetResolution;
+
+                // Determine which resolution level to use
+                if (MacroResolution.HasValue && MacroResolution.Value >= 2 && MacroResolution.Value <= SelectedImage.Resolutions.Count)
+                {
+                    // Use macro resolution if available (usually a label or overview image)
+                    resolutionLevel = MacroResolution.Value - 2;
+                    targetResolution = SelectedImage.Resolutions[resolutionLevel];
+                }
+                else
+                {
+                    // Use the lowest resolution pyramid level (highest index)
+                    resolutionLevel = SelectedImage.Resolutions.Count - 1;
+                    targetResolution = SelectedImage.Resolutions[resolutionLevel];
+                }
+                Bitmap sourceBitmap = null;
+                int overviewWidth = 100;
+                int overviewHeight = 100;
+                // Check if resolution level is too large to process
+                if (targetResolution.SizeInBytes > MAX_SIZE_BYTES)
+                {
+                    ShowOverview = false;
+                    Console.WriteLine($"Preview disabled: Resolution level {resolutionLevel} is too large ({targetResolution.SizeInBytes} bytes)");
+                }
+                else
+                {
+                    ShowOverview = true;
+                    // Calculate aspect ratio and overview dimensions
+                    double aspectRatio = (double)targetResolution.SizeX / (double)targetResolution.SizeY;
+                    
+
+                    if (aspectRatio >= 1.0)
+                    {
+                        // Landscape or square - width is OVERVIEW_SIZE
+                        overviewWidth = OVERVIEW_SIZE;
+                        overviewHeight = (int)(OVERVIEW_SIZE / aspectRatio);
+                    }
+                    else
+                    {
+                        // Portrait - height is OVERVIEW_SIZE
+                        overviewHeight = OVERVIEW_SIZE;
+                        overviewWidth = (int)(OVERVIEW_SIZE * aspectRatio);
+                    }
+
+                    // Ensure minimum size
+                    overviewWidth = Math.Max(overviewWidth, 20);
+                    overviewHeight = Math.Max(overviewHeight, 20);
+
+                    overview = new Rectangle(0, 0, overviewWidth, overviewHeight);
+                    
+                    // Get the tile for the entire resolution level
+                    sourceBitmap = BioImage.GetTile(
+                        SelectedImage,
+                        SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T),
+                        resolutionLevel,
+                        0,
+                        0,
+                        SelectedImage.Resolutions[resolutionLevel].SizeX,
+                        SelectedImage.Resolutions[resolutionLevel].SizeY
+                    );
+                }
+                
+
+
+                if (sourceBitmap == null)
+                {
+                    ShowOverview = false;
+                    Console.WriteLine("Preview disabled: Failed to get source bitmap");
+                    return;
+                }
+                // Resize to overview dimensions
+                ResizeBilinear resizer = new ResizeBilinear(overviewWidth, overviewHeight);
+                overviewImage = resizer.Apply(sourceBitmap);
+                //sourceBitmap.Dispose();
+
+                ShowOverview = true;
+                Console.WriteLine($"Preview initialized: {overviewWidth}x{overviewHeight} from resolution level {resolutionLevel} ({targetResolution.SizeX}x{targetResolution.SizeY})");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initializing preview: {ex.Message}");
                 ShowOverview = false;
+                overviewImage = null;
             }
-            if (MacroResolution.HasValue)
+            finally
             {
-                double aspx = (double)SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX / (double)SelectedImage.Resolutions[MacroResolution.Value - 2].SizeY;
-                double aspy = (double)SelectedImage.Resolutions[MacroResolution.Value - 2].SizeY / (double)SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX;
-                overview = new Rectangle(0, 0, (int)(aspx * 120), (int)(aspy * 120));
-                if (SelectedImage.Resolutions[MacroResolution.Value - 2].SizeInBytes > 1500000000)
+                refresh = true;
+            }
+        }
+
+        /// <summary>
+        /// Updates the preview when coordinate (Z, C, T) changes
+        /// </summary>
+        public void UpdatePreview()
+        {
+            if (!SelectedImage.isPyramidal || !ShowOverview)
+                return;
+
+            try
+            {
+                int resolutionLevel;
+                Resolution targetResolution;
+
+                if (MacroResolution.HasValue && MacroResolution.Value >= 2 && MacroResolution.Value <= SelectedImage.Resolutions.Count)
                 {
-                    ShowOverview = false;
-                    return;
+                    resolutionLevel = MacroResolution.Value - 2;
+                    targetResolution = SelectedImage.Resolutions[resolutionLevel];
                 }
                 else
-                    showOverview = true;
-                Bitmap bm = BioImage.GetTile(SelectedImage, SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T), MacroResolution.Value - 2, 0, 0, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeX, SelectedImage.Resolutions[MacroResolution.Value - 2].SizeY);
-                ResizeBilinear re = new ResizeBilinear(overview.Width, overview.Height);
-                Bitmap bmp = re.Apply(bm.GetImageRGB());
-                overviewImage = bmp;
-            }
-            else
-            {
-                int lev = SelectedImage.Resolutions.Count-1;
-                double aspx = (double)SelectedImage.Resolutions[lev].SizeX / (double)SelectedImage.Resolutions[lev].SizeY;
-                double aspy = (double)SelectedImage.Resolutions[lev].SizeY / (double)SelectedImage.Resolutions[lev].SizeX;
-                if (SelectedImage.Resolutions[lev].SizeInBytes > 1500000000)
                 {
-                    ShowOverview = false;
-                    return;
+                    resolutionLevel = SelectedImage.Resolutions.Count - 1;
+                    targetResolution = SelectedImage.Resolutions[resolutionLevel];
                 }
-                else
-                    showOverview = true;
-                overview = new Rectangle(0, 0, (int)(aspx * 120), (int)(aspy * 120));
-                Bitmap bm = BioImage.GetTile(SelectedImage, SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T), 0, 0, 0, SelectedImage.Resolutions[lev].SizeX, SelectedImage.Resolutions[lev].SizeY);
-                ResizeBilinear re = new ResizeBilinear(overview.Width, overview.Height);
-                Bitmap bmp = re.Apply(bm.GetImageRGB());
-                overviewImage = bmp;
+
+                // Get the tile for current Z, C, T coordinate
+                Bitmap sourceBitmap = BioImage.GetTile(
+                    SelectedImage,
+                    SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T),
+                    resolutionLevel,
+                    0,
+                    0,
+                    targetResolution.SizeX,
+                    targetResolution.SizeY
+                );
+
+                if (sourceBitmap != null)
+                {
+                    Bitmap rgbBitmap = sourceBitmap.GetImageRGB();
+                    ResizeBilinear resizer = new ResizeBilinear(overview.Width, overview.Height);
+
+                    // Dispose old overview image
+                    overviewImage?.Dispose();
+                    overviewImage = resizer.Apply(rgbBitmap);
+
+                    if (rgbBitmap != sourceBitmap)
+                        rgbBitmap.Dispose();
+                    sourceBitmap.Dispose();
+                }
             }
-            ShowOverview = true;
-            Console.WriteLine("Preview Initialized.");
-            refresh = true;
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating preview: {ex.Message}");
+            }
         }
         #region Handlers
 
@@ -1608,9 +1779,11 @@ namespace BioGTK
         private void ImageView_ScrollEvent(object o, ScrollEventArgs args)
         {
             Plugins.ScrollEvent(o, args);
+
             float dx = Scale.Width / 50;
             float dy = Scale.Height / 50;
             if (!SelectedImage.isPyramidal)
+            {
                 if (args.Event.State.HasFlag(ModifierType.ControlMask))
                 {
                     if (args.Event.Direction == ScrollDirection.Up)
@@ -1636,15 +1809,46 @@ namespace BioGTK
                         zBar.Value -= 1;
                 }
                 if (args.Event.State.HasFlag(ModifierType.ControlMask) && SelectedImage.isPyramidal)
+                    if (args.Event.Direction == ScrollDirection.Up)
+                    {
+                        ZoomToPointer(MouseDown, Resolution * 1.02);
+                    }
+                    else if (args.Event.Direction == ScrollDirection.Down)
+                    {
+                        ZoomToPointer(MouseDown, Resolution * 0.98);
+                    }
+                UpdateView(true, false);
+            }
+            else
+            {
+
+                if (args.Event.State.HasFlag(ModifierType.ControlMask))
+                {
+                    if (args.Event.Direction == ScrollDirection.Up)
+                    {
+                        ZoomToPointer(MouseDown, Resolution *= 1.1);
+                    }
+                    else if(args.Event.Direction == ScrollDirection.Down)
+                    {
+                        ZoomToPointer(MouseDown, Resolution *= 0.9);
+                    }
+
+                }
+                else
                 if (args.Event.Direction == ScrollDirection.Up)
                 {
-                    Resolution *= 0.80;
+                    if (zBar.Value + 1 <= zBar.Adjustment.Upper)
+                        zBar.Value += 1;
                 }
                 else
                 {
-                    Resolution *= 1.20;
+                    if (zBar.Value - 1 >= zBar.Adjustment.Lower)
+                        zBar.Value -= 1;
                 }
+                if (args.Event.State.HasFlag(ModifierType.ControlMask) && SelectedImage.isPyramidal)
+                    
                 UpdateView(true, false);
+            }
         }
 
         /// The function ValueChanged is called when the value of the trackbar is changed.
@@ -1894,9 +2098,184 @@ namespace BioGTK
                 if (value.Y > 0)
                     p.Y = value.Y;
                 SelectedImage.PyramidalOrigin = p;
+
                 UpdateView(true, true);
             }
         }
+
+        // ============================================================================
+        // ZOOM TOOL - Zoom towards mouse pointer
+        // ============================================================================
+
+        public void ZoomToPointer(PointD mousePos, double zoomFactor)
+        {
+            if (ImageView.SelectedImage == null)
+                return;
+
+            if (ImageView.SelectedImage.isPyramidal)
+            {
+                ZoomToPointer_Pyramidal(mousePos, zoomFactor);
+            }
+            else
+            {
+                ZoomToPointer_NonPyramidal(mousePos, zoomFactor);
+            }
+        }
+
+        private void ZoomToPointer_Pyramidal(PointD mousePos, double zoomFactor)
+        {
+            // Get current scale
+            double oldScale = App.viewer.Resolution;
+            double newScale = oldScale * zoomFactor;
+
+            // Get mouse position in screen coordinates relative to center
+            double mouseScreenX = mousePos.X - (viewStack.AllocatedWidth / 2);
+            double mouseScreenY = mousePos.Y - (viewStack.AllocatedHeight / 2);
+
+            // Convert mouse position to world coordinates BEFORE zoom
+            double mouseWorldX = App.viewer.PyramidalOrigin.X + (mouseScreenX / oldScale);
+            double mouseWorldY = App.viewer.PyramidalOrigin.Y + (mouseScreenY / oldScale);
+
+            // Apply new scale
+            App.viewer.Scale = new SizeF((float)newScale, (float)newScale);
+
+            // Convert mouse position to world coordinates AFTER zoom
+            // We want the same world point to be under the mouse
+            double newOriginX = mouseWorldX - (mouseScreenX / newScale);
+            double newOriginY = mouseWorldY - (mouseScreenY / newScale);
+
+            // Update origin to keep the point under the mouse cursor
+            App.viewer.PyramidalOrigin = new PointD(newOriginX, newOriginY);
+
+            UpdateView();
+        }
+
+        private void ZoomToPointer_NonPyramidal(PointD mousePos, double zoomFactor)
+        {
+            // Get current scale
+            double oldScaleX = App.viewer.Scale.Width;
+            double oldScaleY = App.viewer.Scale.Height;
+            double newScaleX = oldScaleX * zoomFactor;
+            double newScaleY = oldScaleY * zoomFactor;
+
+            // Clamp scale to reasonable limits
+            newScaleX = Math.Max(0.1, Math.Min(100.0, newScaleX));
+            newScaleY = Math.Max(0.1, Math.Min(100.0, newScaleY));
+
+            // Get mouse position in screen coordinates relative to center
+            double mouseScreenX = mousePos.X - (viewStack.AllocatedWidth / 2);
+            double mouseScreenY = mousePos.Y - (viewStack.AllocatedHeight / 2);
+
+            // Convert mouse position to world coordinates BEFORE zoom
+            double mouseWorldX = (mouseScreenX - App.viewer.Origin.X) / oldScaleX;
+            double mouseWorldY = (mouseScreenY - App.viewer.Origin.Y) / oldScaleY;
+
+            // Apply new scale
+            App.viewer.Scale = new SizeF((float)newScaleX, (float)newScaleY);
+
+            // Calculate new origin to keep the same world point under the mouse
+            double newOriginX = mouseScreenX - (mouseWorldX * newScaleX);
+            double newOriginY = mouseScreenY - (mouseWorldY * newScaleY);
+
+            // Update origin
+            App.viewer.Origin = new PointD(newOriginX, newOriginY);
+
+            UpdateView();
+        }
+
+        // Mouse wheel handler
+        public void OnMouseWheel(object sender, ScrollEventArgs e)
+        {
+            // Get mouse position
+            PointD mousePos = new PointD(e.Event.X, e.Event.Y);
+
+            // Determine zoom direction
+            double zoomFactor = 1.0;
+            if (e.Event.Direction == Gdk.ScrollDirection.Up)
+            {
+                zoomFactor = 1.2; // Zoom in by 20%
+            }
+            else if (e.Event.Direction == Gdk.ScrollDirection.Down)
+            {
+                zoomFactor = 1.0 / 1.2; // Zoom out by 20%
+            }
+            else
+            {
+                return; // Ignore other scroll directions
+            }
+
+            ZoomToPointer(mousePos, zoomFactor);
+        }
+
+        // Alternative: Zoom with keyboard shortcuts (Ctrl + Plus/Minus)
+        public void ZoomIn()
+        {
+            // Zoom towards center of viewport
+            PointD center = new PointD(viewStack.AllocatedWidth / 2, viewStack.AllocatedHeight / 2);
+            ZoomToPointer(center, 1.2);
+        }
+
+        public void ZoomOut()
+        {
+            // Zoom towards center of viewport
+            PointD center = new PointD(viewStack.AllocatedWidth / 2, viewStack.AllocatedHeight / 2);
+            ZoomToPointer(center, 1.0 / 1.2);
+        }
+
+        // Zoom to fit entire image in viewport
+        public void ZoomToFit()
+        {
+            if (ImageView.SelectedImage == null)
+                return;
+
+            if (ImageView.SelectedImage.isPyramidal)
+            {
+                Resolution baseRes = ImageView.SelectedImage.Resolutions[0];
+                double scaleX = viewStack.AllocatedWidth / (double)baseRes.SizeX;
+                double scaleY = viewStack.AllocatedHeight / (double)baseRes.SizeY;
+                double scale = Math.Min(scaleX, scaleY) * 0.95; // 95% to add padding
+
+                App.viewer.Scale = new SizeF((float)scale, (float)scale);
+                App.viewer.PyramidalOrigin = new PointD(0, 0);
+            }
+            else
+            {
+                double scaleX = viewStack.AllocatedWidth / ImageView.SelectedImage.Volume.Width;
+                double scaleY = viewStack.AllocatedHeight / ImageView.SelectedImage.Volume.Height;
+                double scale = Math.Min(scaleX, scaleY) * 0.95;
+
+                App.viewer.Scale = new SizeF((float)scale, (float)scale);
+                App.viewer.Origin = new PointD(0, 0);
+            }
+
+            UpdateView();
+        }
+
+        // Zoom to 100% (1:1 pixel mapping)
+        public void ZoomToActualSize()
+        {
+            if (ImageView.SelectedImage == null)
+                return;
+
+            App.viewer.Scale = new SizeF(1.0f, 1.0f);
+
+            if (ImageView.SelectedImage.isPyramidal)
+            {
+                // Center the image
+                Resolution baseRes = ImageView.SelectedImage.Resolutions[0];
+                App.viewer.PyramidalOrigin = new PointD(
+                    (baseRes.SizeX - viewStack.AllocatedWidth) / 2,
+                    (baseRes.SizeY - viewStack.AllocatedHeight) / 2);
+            }
+            else
+            {
+                App.viewer.Origin = new PointD(0, 0);
+            }
+
+            UpdateView();
+        }
+
+
         /* Setting the Level of the image. */
         private double zoomFactor = 1.0;
         public double Resolution
@@ -2085,6 +2464,7 @@ namespace BioGTK
         /// </summary>
         private void ImageView_MotionNotifyEvent(object o, MotionNotifyEventArgs e)
         {
+            
             App.viewer = this;
             Modifiers = e.Event.State;
             MouseMove = new PointD(e.Event.X, e.Event.Y);
