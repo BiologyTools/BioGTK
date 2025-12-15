@@ -363,11 +363,6 @@ namespace BioGTK
                                 {
                                     var ims = BitmapToSKImage(overviewImage);
                                     canvas.DrawImage(ims, 0, 0, paint);
-
-                                    // Draw semi-transparent overlay on overview
-                                    paint.Style = SKPaintStyle.Fill;
-                                    paint.Color = new SKColor(0, 0, 0, 128); // Semi-transparent black
-                                    canvas.DrawRect(overview.X, overview.Y, overview.Width, overview.Height, paint);
                                 }
 
                                 // Draw overview border
@@ -405,18 +400,9 @@ namespace BioGTK
                                 double dh = (visibleHeight / fullHeight) * overview.Height;
 
                                 // Draw viewport rectangle in red
-                                paint.StrokeWidth = 2;
+                                paint.StrokeWidth = 1;
                                 paint.Color = SKColors.Red;
                                 canvas.DrawRect((float)dx, (float)dy, (float)dw, (float)dh, paint);
-
-                                // Draw crosshair at center of viewport
-                                float centerX = (float)(dx + dw / 2);
-                                float centerY = (float)(dy + dh / 2);
-                                paint.StrokeWidth = 1;
-                                paint.Color = SKColors.Yellow;
-                                canvas.DrawLine(centerX - 5, centerY, centerX + 5, centerY, paint);
-                                canvas.DrawLine(centerX, centerY - 5, centerX, centerY + 5, paint);
-                               
                             }
                         }
                         catch (Exception ex)
@@ -556,7 +542,7 @@ namespace BioGTK
                         if (an.type != ROI.Type.Mask && !(an.type == ROI.Type.Freeform && !an.Selected))
                         {
                             RectangleD[] sels = an.GetSelectBoxes(ROI.selectBoxSize * SelectedImage.PhysicalSizeX);
-                            paint.Style = SKPaintStyle.Fill;
+                            paint.Style = SKPaintStyle.Stroke;
 
                             for (int ptIdx = 0; ptIdx < sels.Length; ptIdx++)
                             {
@@ -922,8 +908,9 @@ namespace BioGTK
                     return;
                 }
                 // Resize to overview dimensions
-                ResizeBilinear resizer = new ResizeBilinear(overviewWidth, overviewHeight);
-                overviewImage = resizer.Apply(sourceBitmap);
+                AForge.Imaging.Filters.ResizeBicubic resizer = new ResizeBicubic(overviewWidth, overviewHeight);
+               
+                overviewImage = resizer.Apply(sourceBitmap.GetImageRGB());
                 //sourceBitmap.Dispose();
 
                 ShowOverview = true;
@@ -941,60 +928,6 @@ namespace BioGTK
             }
         }
 
-        /// <summary>
-        /// Updates the preview when coordinate (Z, C, T) changes
-        /// </summary>
-        public void UpdatePreview()
-        {
-            if (!SelectedImage.isPyramidal || !ShowOverview)
-                return;
-
-            try
-            {
-                int resolutionLevel;
-                Resolution targetResolution;
-
-                if (MacroResolution.HasValue && MacroResolution.Value >= 2 && MacroResolution.Value <= SelectedImage.Resolutions.Count)
-                {
-                    resolutionLevel = MacroResolution.Value - 2;
-                    targetResolution = SelectedImage.Resolutions[resolutionLevel];
-                }
-                else
-                {
-                    resolutionLevel = SelectedImage.Resolutions.Count - 1;
-                    targetResolution = SelectedImage.Resolutions[resolutionLevel];
-                }
-
-                // Get the tile for current Z, C, T coordinate
-                Bitmap sourceBitmap = BioImage.GetTile(
-                    SelectedImage,
-                    SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T),
-                    resolutionLevel,
-                    0,
-                    0,
-                    targetResolution.SizeX,
-                    targetResolution.SizeY
-                );
-
-                if (sourceBitmap != null)
-                {
-                    Bitmap rgbBitmap = sourceBitmap.GetImageRGB();
-                    ResizeBilinear resizer = new ResizeBilinear(overview.Width, overview.Height);
-
-                    // Dispose old overview image
-                    overviewImage?.Dispose();
-                    overviewImage = resizer.Apply(rgbBitmap);
-
-                    if (rgbBitmap != sourceBitmap)
-                        rgbBitmap.Dispose();
-                    sourceBitmap.Dispose();
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error updating preview: {ex.Message}");
-            }
-        }
         #region Handlers
 
         /// <summary> Sets up the handlers. </summary>
@@ -1010,6 +943,8 @@ namespace BioGTK
             sk.ButtonPressEvent += ImageView_ButtonPressEvent;
             sk.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
             sk.ScrollEvent += ImageView_ScrollEvent;
+            sk.ScrollEvent += OnMouseWheel;
+
             sk.PaintSurface += Render;
             sk.SizeAllocated += PictureBox_SizeAllocated;
             sk.AddEvents((int)
@@ -1776,79 +1711,9 @@ namespace BioGTK
         /// @param o the object that the event is being called on
         /// @param ScrollEventArgs
         /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-scroll-events.html.en
-        private void ImageView_ScrollEvent(object o, ScrollEventArgs args)
+        private void ImageView_ScrollEvent(object o, ScrollEventArgs e)
         {
-            Plugins.ScrollEvent(o, args);
-
-            float dx = Scale.Width / 50;
-            float dy = Scale.Height / 50;
-            if (!SelectedImage.isPyramidal)
-            {
-                if (args.Event.State.HasFlag(ModifierType.ControlMask))
-                {
-                    if (args.Event.Direction == ScrollDirection.Up)
-                    {
-                        pxWmicron -= 0.01f;
-                        pxHmicron -= 0.01f;
-                    }
-                    else
-                    {
-                        pxWmicron += 0.01f;
-                        pxHmicron += 0.01f;
-                    }
-                }
-                else
-                if (args.Event.Direction == ScrollDirection.Up)
-                {
-                    if (zBar.Value + 1 <= zBar.Adjustment.Upper)
-                        zBar.Value += 1;
-                }
-                else
-                {
-                    if (zBar.Value - 1 >= zBar.Adjustment.Lower)
-                        zBar.Value -= 1;
-                }
-                if (args.Event.State.HasFlag(ModifierType.ControlMask) && SelectedImage.isPyramidal)
-                    if (args.Event.Direction == ScrollDirection.Up)
-                    {
-                        ZoomToPointer(MouseDown, Resolution * 1.02);
-                    }
-                    else if (args.Event.Direction == ScrollDirection.Down)
-                    {
-                        ZoomToPointer(MouseDown, Resolution * 0.98);
-                    }
-                UpdateView(true, false);
-            }
-            else
-            {
-
-                if (args.Event.State.HasFlag(ModifierType.ControlMask))
-                {
-                    if (args.Event.Direction == ScrollDirection.Up)
-                    {
-                        ZoomToPointer(MouseDown, Resolution *= 1.1);
-                    }
-                    else if(args.Event.Direction == ScrollDirection.Down)
-                    {
-                        ZoomToPointer(MouseDown, Resolution *= 0.9);
-                    }
-
-                }
-                else
-                if (args.Event.Direction == ScrollDirection.Up)
-                {
-                    if (zBar.Value + 1 <= zBar.Adjustment.Upper)
-                        zBar.Value += 1;
-                }
-                else
-                {
-                    if (zBar.Value - 1 >= zBar.Adjustment.Lower)
-                        zBar.Value -= 1;
-                }
-                if (args.Event.State.HasFlag(ModifierType.ControlMask) && SelectedImage.isPyramidal)
-                    
-                UpdateView(true, false);
-            }
+            Plugins.ScrollEvent(o, e);
         }
 
         /// The function ValueChanged is called when the value of the trackbar is changed.
@@ -2124,25 +1989,29 @@ namespace BioGTK
 
         private void ZoomToPointer_Pyramidal(PointD mousePos, double zoomFactor)
         {
-            // Get current scale
-            double oldScale = App.viewer.Resolution;
-            double newScale = oldScale * zoomFactor;
+            // Get current scale and resolution
+            double oldScale = App.viewer.Resolution; // or Scale.Height, should be same
+            double resolution = App.viewer.Resolution; // UnitsPerPixel
+            double oldUnitsPerScreenPixel = resolution / oldScale;
 
-            // Get mouse position in screen coordinates relative to center
-            double mouseScreenX = mousePos.X - (viewStack.AllocatedWidth / 2);
-            double mouseScreenY = mousePos.Y - (viewStack.AllocatedHeight / 2);
+            // Calculate new scale
+            double newScale = oldScale * zoomFactor;
+            double newUnitsPerScreenPixel = resolution / newScale;
+
+            // Mouse position in screen coordinates (relative to top-left)
+            double mouseScreenX = mousePos.X;
+            double mouseScreenY = mousePos.Y;
 
             // Convert mouse position to world coordinates BEFORE zoom
-            double mouseWorldX = App.viewer.PyramidalOrigin.X + (mouseScreenX / oldScale);
-            double mouseWorldY = App.viewer.PyramidalOrigin.Y + (mouseScreenY / oldScale);
+            double mouseWorldX = App.viewer.PyramidalOrigin.X + (mouseScreenX * oldUnitsPerScreenPixel);
+            double mouseWorldY = App.viewer.PyramidalOrigin.Y + (mouseScreenY * oldUnitsPerScreenPixel);
 
             // Apply new scale
-            App.viewer.Scale = new SizeF((float)newScale, (float)newScale);
+            App.viewer.Resolution = newUnitsPerScreenPixel;
 
-            // Convert mouse position to world coordinates AFTER zoom
-            // We want the same world point to be under the mouse
-            double newOriginX = mouseWorldX - (mouseScreenX / newScale);
-            double newOriginY = mouseWorldY - (mouseScreenY / newScale);
+            // Calculate new origin so the world point stays under the mouse
+            double newOriginX = mouseWorldX - (mouseScreenX * newUnitsPerScreenPixel);
+            double newOriginY = mouseWorldY - (mouseScreenY * newUnitsPerScreenPixel);
 
             // Update origin to keep the point under the mouse cursor
             App.viewer.PyramidalOrigin = new PointD(newOriginX, newOriginY);
@@ -2287,6 +2156,7 @@ namespace BioGTK
             set
             {
                 SelectedImage.Resolution = value;
+                /*
                 // Calculate the scaling factor based on the new and current resolution
                 double scalingFactor = value / SelectedImage.Resolution;
 
@@ -2308,6 +2178,7 @@ namespace BioGTK
                     imageMousePosition.X - (viewportCenter.X * (scalingFactor - 1)),
                     imageMousePosition.Y - (viewportCenter.Y * (scalingFactor - 1))
                 );
+                */
             }
         }
         private int l;
