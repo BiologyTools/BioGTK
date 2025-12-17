@@ -1,4 +1,4 @@
-﻿using AForge;
+using AForge;
 using AForge.Imaging;
 using AForge.Imaging.Filters;
 using Bio;
@@ -312,7 +312,8 @@ namespace BioGTK
         {
             if (App.viewer == null || currentTool == null || ImageView.SelectedImage == null)
                 return;
-
+            if(buts.Event.Button == 2)
+                currentTool = GetTool(Tool.Type.pan.ToString());
             Plugins.MouseDown(ImageView.SelectedImage, e, buts);
             Scripting.UpdateState(Scripting.State.GetDown(e, buts.Event.Button));
 
@@ -1176,7 +1177,7 @@ namespace BioGTK
             g.pen = new Bio.Graphics.Pen(DrawColor, (int)StrokeWidth, ImageView.SelectedImage.bitsPerPixel);
             g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)StrokeWidth, (int)StrokeWidth), g.pen.color);
 
-            App.viewer.UpdateImage(true);
+            App.viewer.UpdateImage();
             App.viewer.UpdateView();
         }
 
@@ -1194,7 +1195,7 @@ namespace BioGTK
             g.pen = new Bio.Graphics.Pen(DrawColor, (int)StrokeWidth, ImageView.SelectedImage.bitsPerPixel);
             g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)StrokeWidth, (int)StrokeWidth), g.pen.color);
 
-            App.viewer.UpdateImages(true);
+            App.viewer.UpdateImages();
             App.viewer.UpdateView();
         }
 
@@ -1214,7 +1215,7 @@ namespace BioGTK
             Bio.Graphics.Pen pen = new Bio.Graphics.Pen(EraseColor, (int)StrokeWidth, ImageView.SelectedBuffer.BitsPerPixel);
             g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)StrokeWidth, (int)StrokeWidth), pen.color);
 
-            App.viewer.UpdateImages(true);
+            App.viewer.UpdateImages();
             App.viewer.UpdateView();
         }
 
@@ -1232,7 +1233,7 @@ namespace BioGTK
             Bio.Graphics.Pen pen = new Bio.Graphics.Pen(EraseColor, (int)StrokeWidth, ImageView.SelectedBuffer.BitsPerPixel);
             g.FillEllipse(new Rectangle((int)ip.X, (int)ip.Y, (int)StrokeWidth, (int)StrokeWidth), pen.color);
 
-            App.viewer.UpdateImages(true);
+            App.viewer.UpdateImages();
             App.viewer.UpdateView();
         }
 
@@ -1278,74 +1279,69 @@ namespace BioGTK
         // ============================================================================
         // 14. PAN TOOL
         // ============================================================================
-
         // Add these fields to store initial state
+        private double panStartX;
+        private double panStartY;
         private PointD initialPanOrigin;
-        private PointD initialMouseDown;
+        private double initialPanScale;
 
         public void ToolDown_Pan(PointD e, ButtonPressEventArgs buts)
         {
-            if (buts.Event.Button == 2 || buts.Event.Button == 1)
-            {
-                currentTool = GetTool(Tool.Type.pan);
+            if (buts.Event.Button != 1 && buts.Event.Button != 2)
+                return;
 
-                // Store initial mouse position
-                initialMouseDown = new PointD(e.X, e.Y);
-                App.viewer.MouseDown = new PointD(e.X, e.Y);
+            currentTool = GetTool(Tool.Type.pan);
 
-                // Store initial origin positions
-                if (ImageView.SelectedImage.isPyramidal)
-                {
-                    initialPanOrigin = new PointD(
-                        App.viewer.PyramidalOrigin.X,
-                        App.viewer.PyramidalOrigin.Y);
-                }
-                else
-                {
-                    initialPanOrigin = new PointD(
-                        App.viewer.Origin.X,
-                        App.viewer.Origin.Y);
-                }
-            }
+            // RAW widget coordinates — never transformed
+            panStartX = buts.Event.X;
+            panStartY = buts.Event.Y;
+
+            // Freeze scale
+            initialPanScale = App.viewer.Resolution;
+            initialPanOrigin = e;
+            
         }
-
         public void ToolMove_Pan(PointD e, MotionNotifyEventArgs buts)
         {
-            if ((currentTool.type == Tool.Type.pan && buts.Event.State.HasFlag(ModifierType.Button1Mask)) ||
-                buts.Event.State.HasFlag(ModifierType.Button2Mask))
+            // Pan ONLY if pan tool is active and a button is held
+            if (currentTool.type != Tool.Type.pan)
+                return;
+            
+            if (!buts.Event.State.HasFlag(ModifierType.Button1Mask) &&
+                !buts.Event.State.HasFlag(ModifierType.Button2Mask))
+                return;
+            
+            // Delta from initial mouse-down (widget space)
+            // Use stored panStartX/panStartY to avoid jitter from potentially changing MouseDown reference
+            double dx = e.X - panStartX;
+            double dy = e.Y - panStartY;
+
+            // Convert using INITIAL scale only
+            double deltaX = dx / initialPanScale;
+            double deltaY = dy / initialPanScale;
+
+            if (ImageView.SelectedImage.isPyramidal)
             {
-                // Calculate delta from INITIAL mouse down position
-                PointD delta = new PointD(
-                    e.X - initialMouseDown.X,
-                    e.Y - initialMouseDown.Y);
-
-                if (ImageView.SelectedImage.isPyramidal)
-                {
-                    // Apply delta to INITIAL origin (not current)
-                    App.viewer.PyramidalOrigin = new PointD(
-                        initialPanOrigin.X - delta.X,
-                        initialPanOrigin.Y - delta.Y);
-                }
-                else
-                {
-                    // Apply delta to INITIAL origin (not current)
-                    App.viewer.Origin = new PointD(
-                        initialPanOrigin.X + delta.X,
-                        initialPanOrigin.Y + delta.Y);
-                }
-
-                UpdateView();
+                App.viewer.PyramidalOrigin = new PointD(
+                    initialPanOrigin.X - deltaX,
+                    initialPanOrigin.Y - deltaY);
+            }
+            else
+            {
+                App.viewer.Origin = new PointD(
+                    initialPanOrigin.X - deltaX,
+                    initialPanOrigin.Y - deltaY);
             }
         }
-
         public void ToolUp_Pan(PointD e, ButtonReleaseEventArgs buts)
         {
-            if (currentTool.type == Tool.Type.pan && buts.Event.Button == 2)
+            if (currentTool.type == Tool.Type.pan &&
+                (buts.Event.Button == 1 || buts.Event.Button == 2))
             {
-                // Return to move tool after middle mouse button released
                 currentTool = GetTool(Tool.Type.move);
             }
         }
+
         // ============================================================================
         // 14. Magic Wand TOOL
         // ============================================================================

@@ -1,4 +1,4 @@
-﻿using Gtk;
+using Gtk;
 using Gdk;
 using System;
 using System.Collections.Generic;
@@ -17,6 +17,7 @@ using SkiaSharp;
 using SkiaSharp.Views.Gtk;
 using System.Runtime.InteropServices;
 using static NetVips.Enums;
+using BruTile;
 
 namespace BioGTK
 {
@@ -312,10 +313,11 @@ namespace BioGTK
         private bool refresh = false;
         private async void Render(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e)
         {
+
             try
             {
-                if (!refresh)
-                    return;
+                //if (!refresh)
+                //    return;
 
                 var canvas = e.Surface.Canvas;
                 canvas.Clear(SKColors.Transparent);
@@ -326,7 +328,7 @@ namespace BioGTK
                 paint.Style = SKPaintStyle.Fill;
 
                 if ((SKImages.Count == 0 || Bitmaps.Count != Images.Count))
-                    UpdateImages(true);
+                    UpdateImages();
 
                 if (SelectedImage == null)
                     return;
@@ -356,64 +358,136 @@ namespace BioGTK
                         {
                             if (SelectedImage.Buffers.Count > 0)
                             {
+                                // Draw main pyramidal image
                                 paint.Style = SKPaintStyle.Fill;
+                                paint.BlendMode = SKBlendMode.SrcOver;
                                 canvas.DrawImage(SKImages[i], 0, 0, paint);
 
-                                if (overviewImage != null)
+                                // Draw overview if enabled and available
+                                if (showOverview && overviewImage != null)
                                 {
-                                    var ims = BitmapToSKImage(overviewImage);
-                                    canvas.DrawImage(ims, 0, 0, paint);
+                                    // Step 1: Draw semi-transparent overview image
+                                    using (var overviewPaint = new SKPaint())
+                                    {
+                                        overviewPaint.Color = SKColors.White.WithAlpha(128); // 50% opacity
+                                        overviewPaint.BlendMode = SKBlendMode.SrcOver;
+                                        overviewPaint.IsAntialias = true;
+                                        using (var overviewSKImage = BitmapToSKImage(overviewImage))
+                                        {
+                                            // Draw overview scaled to fit the overview rectangle
+                                            SKRect destRect = new SKRect(
+                                                overview.X,
+                                                overview.Y,
+                                                overview.X + overview.Width,
+                                                overview.Y + overview.Height);
+
+                                            canvas.DrawImage(overviewSKImage, destRect, overviewPaint);
+                                        }
+                                    }
+
+                                    // Step 2: Draw gray border around overview
+                                    paint.Style = SKPaintStyle.Stroke;
+                                    paint.StrokeWidth = 2;
+                                    paint.Color = SKColors.Gray;
+                                    paint.IsAntialias = true;
+                                    canvas.DrawRect(overview.X, overview.Y, overview.Width, overview.Height, paint);
+
+                                    // Step 3: Calculate and draw red viewport rectangle (FIXED)
+                                    try
+                                    {
+                                        // --------------------------------------------------------------------
+                                        // 1. Base and current resolutions
+                                        // --------------------------------------------------------------------
+                                        BioLib.Resolution baseRes = SelectedImage.Resolutions[0];
+                                        BioLib.Resolution curRes = SelectedImage.Resolutions[Level];
+
+                                        double fullWidth = baseRes.SizeX;
+                                        double fullHeight = baseRes.SizeY;
+
+                                        // Downsample factor: current level → base level
+                                        //double downsampleX = curRes.UnitsPerPixelX / baseRes.UnitsPerPixelX;
+                                        double downsampleX = 0, downsampleY = 0;
+                                        if (SelectedImage.SlideBase != null)
+                                        {
+                                            downsampleX = SelectedImage.SlideBase.Schema.Resolutions[Level].UnitsPerPixel / SelectedImage.SlideBase.Schema.Resolutions[0].UnitsPerPixel;
+                                            downsampleY = SelectedImage.SlideBase.Schema.Resolutions[Level].UnitsPerPixel / SelectedImage.SlideBase.Schema.Resolutions[0].UnitsPerPixel;
+                                        }
+                                        else
+                                        {
+                                            downsampleX = SelectedImage.OpenSlideBase.Schema.Resolutions[Level].UnitsPerPixel / SelectedImage.OpenSlideBase.Schema.Resolutions[0].UnitsPerPixel;
+                                            downsampleY = SelectedImage.OpenSlideBase.Schema.Resolutions[Level].UnitsPerPixel / SelectedImage.OpenSlideBase.Schema.Resolutions[0].UnitsPerPixel;
+                                        }
+                                        // --------------------------------------------------------------------
+                                        // 2. Viewport position in base resolution pixels
+                                        // --------------------------------------------------------------------
+                                        double viewportLeft = PyramidalOrigin.X;
+                                        double viewportTop = PyramidalOrigin.Y;
+
+                                        // --------------------------------------------------------------------
+                                        // 3. Viewport size in base resolution pixels
+                                        // --------------------------------------------------------------------
+                                        double viewportWidth =
+                                            (viewStack.AllocatedWidth / SelectedImage.Resolutions[Level].SizeX) * downsampleX;
+
+                                        double viewportHeight =
+                                            (viewStack.AllocatedHeight / SelectedImage.Resolutions[Level].SizeY) * downsampleY;
+
+                                        // --------------------------------------------------------------------
+                                        // 4. Convert to fractions of full image
+                                        // --------------------------------------------------------------------
+                                        double fracX = viewportLeft / fullWidth;
+                                        double fracY = viewportTop / fullHeight;
+                                        double fracW = viewportWidth / fullWidth;
+                                        double fracH = viewportHeight / fullHeight;
+
+                                        // --------------------------------------------------------------------
+                                        // 5. Map to overview rectangle
+                                        // --------------------------------------------------------------------
+                                        double overviewLeft = overview.X + fracX * overview.Width;
+                                        double overviewTop = overview.Y + fracY * overview.Height;
+                                        double overviewWidth = fracW * overview.Width;
+                                        double overviewHeight = fracH * overview.Height;
+
+                                        // --------------------------------------------------------------------
+                                        // 6. Clamp to overview bounds
+                                        // --------------------------------------------------------------------
+                                        overviewWidth = Math.Min(overviewWidth, overview.Width);
+                                        overviewHeight = Math.Min(overviewHeight, overview.Height);
+
+                                        overviewLeft = Math.Max(
+                                            overview.X,
+                                            Math.Min(overviewLeft, overview.X + overview.Width - overviewWidth));
+
+                                        overviewTop = Math.Max(
+                                            overview.Y,
+                                            Math.Min(overviewTop, overview.Y + overview.Height - overviewHeight));
+
+                                        // --------------------------------------------------------------------
+                                        // 7. Draw viewport indicator
+                                        // --------------------------------------------------------------------
+                                        paint.Style = SKPaintStyle.Stroke;
+                                        paint.StrokeWidth = 2;
+                                        paint.Color = SKColors.Red;
+                                        paint.IsAntialias = true;
+
+                                        canvas.DrawRect(
+                                            (float)overviewLeft,
+                                            (float)overviewTop,
+                                            (float)overviewWidth,
+                                            (float)overviewHeight,
+                                            paint);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Console.WriteLine($"Error drawing viewport indicator: {ex.Message}");
+                                    }
                                 }
-
-                                // Draw overview border
-                                paint.Style = SKPaintStyle.Stroke;
-                                paint.StrokeWidth = 2;
-                                paint.Color = SKColors.Gray;
-                                canvas.DrawRect(overview.X, overview.Y, overview.Width, overview.Height, paint);
-
-                                // Calculate viewport rectangle on overview
-                                Resolution rs = SelectedImage.Resolutions[Level];
-
-                                // Get the scale factor between current level and base resolution
-                                double levelScale;
-                                if (!openSlide)
-                                    levelScale = _slideBase.Schema.Resolutions[Level].UnitsPerPixel / _slideBase.Schema.Resolutions[0].UnitsPerPixel;
-                                else
-                                    levelScale = _openSlideBase.Schema.Resolutions[Level].UnitsPerPixel / _openSlideBase.Schema.Resolutions[0].UnitsPerPixel;
-
-                                // Get full slide dimensions at base resolution
-                                double fullWidth = SelectedImage.Resolutions[0].SizeX;
-                                double fullHeight = SelectedImage.Resolutions[0].SizeY;
-
-                                // Calculate visible area in base resolution coordinates
-                                double visibleWidth = viewStack.AllocatedWidth * levelScale / Scale.Width;
-                                double visibleHeight = viewStack.AllocatedHeight * levelScale / Scale.Height;
-
-                                // Calculate position in base resolution coordinates
-                                double viewX = PyramidalOrigin.X * levelScale;
-                                double viewY = PyramidalOrigin.Y * levelScale;
-
-                                // Map to overview coordinates
-                                double dx = overview.X + (viewX / fullWidth) * overview.Width;
-                                double dy = overview.Y + (viewY / fullHeight) * overview.Height;
-                                double dw = (visibleWidth / fullWidth) * overview.Width;
-                                double dh = (visibleHeight / fullHeight) * overview.Height;
-
-                                // Draw viewport rectangle in red
-                                paint.StrokeWidth = 1;
-                                paint.Color = SKColors.Red;
-                                canvas.DrawRect((float)dx, (float)dy, (float)dw, (float)dh, paint);
                             }
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine(ex.Message);
+                            Console.WriteLine($"Error rendering pyramidal image: {ex.Message}");
                         }
-                    }
-                    else
-                    {
-                        paint.Style = SKPaintStyle.Fill;
-                        canvas.DrawImage(SKImages[i], r, paint);
                     }
 
                     // Draw current tool rectangle if in move mode
@@ -741,7 +815,7 @@ namespace BioGTK
         }
 
         /// It updates the images.
-        public void UpdateImages(bool updatePyramidal = false)
+        public void UpdateImages()
         {
             if (SelectedImage == null)
                 return;
@@ -752,7 +826,7 @@ namespace BioGTK
             int bi = 0;
             if (SelectedImage.isPyramidal && sk.AllocatedHeight <= 1 || sk.AllocatedWidth <= 1)
                 return;
-            if (SelectedImage.isPyramidal && updatePyramidal || SelectedImage.Buffers.Count == 0)
+            if (SelectedImage.isPyramidal)
             {
                 SelectedImage.Coordinate = GetCoordinate();
                 SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
@@ -790,9 +864,9 @@ namespace BioGTK
             }
         }
         /// It updates the image.
-        public void UpdateImage(bool updatePyramidal = false)
+        public void UpdateImage()
         {
-           UpdateImages(updatePyramidal);
+           UpdateImages();
         }
         bool showOverview = false;
         Rectangle overview;
@@ -837,7 +911,7 @@ namespace BioGTK
                 }
 
                 int resolutionLevel;
-                Resolution targetResolution;
+                BioLib.Resolution targetResolution;
 
                 // Determine which resolution level to use
                 if (MacroResolution.HasValue && MacroResolution.Value >= 2 && MacroResolution.Value <= SelectedImage.Resolutions.Count)
@@ -984,7 +1058,7 @@ namespace BioGTK
 
         private void ImageView_FocusInEvent(object o, FocusInEventArgs args)
         {
-            App.SelectWindow(this.Title);
+            //App.SelectWindow(this.Title);
         }
 
         private void ImageView_DestroyEvent(object o, DestroyEventArgs args)
@@ -1487,7 +1561,7 @@ namespace BioGTK
             if (SelectedImage.isPyramidal)
             {
                 SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
-                UpdateImage(true);
+                UpdateImage();
             }
             if (!initialized)
             {
@@ -1714,6 +1788,10 @@ namespace BioGTK
         private void ImageView_ScrollEvent(object o, ScrollEventArgs e)
         {
             Plugins.ScrollEvent(o, e);
+            if (e.Event.Direction == ScrollDirection.Up)
+                SelectedImage.Resolution *= 1.1;
+            if (e.Event.Direction == ScrollDirection.Down)
+                SelectedImage.Resolution *= 0.9;
         }
 
         /// The function ValueChanged is called when the value of the trackbar is changed.
@@ -1957,13 +2035,7 @@ namespace BioGTK
             {
                 if (!AllowNavigation)
                     return;
-                PointD p = new PointD();
-                if (value.X > 0)
-                    p.X = value.X;
-                if (value.Y > 0)
-                    p.Y = value.Y;
-                SelectedImage.PyramidalOrigin = p;
-
+                SelectedImage.PyramidalOrigin = value;
                 UpdateView(true, true);
             }
         }
@@ -1989,14 +2061,13 @@ namespace BioGTK
 
         private void ZoomToPointer_Pyramidal(PointD mousePos, double zoomFactor)
         {
-            // Get current scale and resolution
-            double oldScale = App.viewer.Resolution; // or Scale.Height, should be same
-            double resolution = App.viewer.Resolution; // UnitsPerPixel
-            double oldUnitsPerScreenPixel = resolution / oldScale;
+            // Get current resolution (units per screen pixel)
+            double oldUnitsPerScreenPixel = App.viewer.Resolution;
 
-            // Calculate new scale
-            double newScale = oldScale * zoomFactor;
-            double newUnitsPerScreenPixel = resolution / newScale;
+            // Calculate new resolution after zoom
+            // zoomFactor > 1 means zoom in (fewer units per pixel)
+            // zoomFactor < 1 means zoom out (more units per pixel)
+            double newUnitsPerScreenPixel = oldUnitsPerScreenPixel / zoomFactor;
 
             // Mouse position in screen coordinates (relative to top-left)
             double mouseScreenX = mousePos.X;
@@ -2006,7 +2077,7 @@ namespace BioGTK
             double mouseWorldX = App.viewer.PyramidalOrigin.X + (mouseScreenX * oldUnitsPerScreenPixel);
             double mouseWorldY = App.viewer.PyramidalOrigin.Y + (mouseScreenY * oldUnitsPerScreenPixel);
 
-            // Apply new scale
+            // Apply new resolution
             App.viewer.Resolution = newUnitsPerScreenPixel;
 
             // Calculate new origin so the world point stays under the mouse
@@ -2018,7 +2089,6 @@ namespace BioGTK
 
             UpdateView();
         }
-
         private void ZoomToPointer_NonPyramidal(PointD mousePos, double zoomFactor)
         {
             // Get current scale
@@ -2056,24 +2126,12 @@ namespace BioGTK
         public void OnMouseWheel(object sender, ScrollEventArgs e)
         {
             // Get mouse position
-            PointD mousePos = new PointD(e.Event.X, e.Event.Y);
-
-            // Determine zoom direction
-            double zoomFactor = 1.0;
-            if (e.Event.Direction == Gdk.ScrollDirection.Up)
-            {
-                zoomFactor = 1.2; // Zoom in by 20%
-            }
-            else if (e.Event.Direction == Gdk.ScrollDirection.Down)
-            {
-                zoomFactor = 1.0 / 1.2; // Zoom out by 20%
-            }
-            else
-            {
-                return; // Ignore other scroll directions
-            }
-
-            ZoomToPointer(mousePos, zoomFactor);
+            RectangleD rd = ToScreenRect(e.Event.X, e.Event.Y, 1, 1);
+            PointD p = new PointD(PyramidalOrigin.X + rd.X, PyramidalOrigin.Y + rd.Y);
+            if(e.Event.Direction.HasFlag(ScrollDirection.Up))
+                ZoomToPointer(p, 1.5);
+            if (e.Event.Direction.HasFlag(ScrollDirection.Down))
+                ZoomToPointer(p, 0.5);
         }
 
         // Alternative: Zoom with keyboard shortcuts (Ctrl + Plus/Minus)
@@ -2099,7 +2157,7 @@ namespace BioGTK
 
             if (ImageView.SelectedImage.isPyramidal)
             {
-                Resolution baseRes = ImageView.SelectedImage.Resolutions[0];
+                BioLib.Resolution baseRes = ImageView.SelectedImage.Resolutions[0];
                 double scaleX = viewStack.AllocatedWidth / (double)baseRes.SizeX;
                 double scaleY = viewStack.AllocatedHeight / (double)baseRes.SizeY;
                 double scale = Math.Min(scaleX, scaleY) * 0.95; // 95% to add padding
@@ -2131,7 +2189,7 @@ namespace BioGTK
             if (ImageView.SelectedImage.isPyramidal)
             {
                 // Center the image
-                Resolution baseRes = ImageView.SelectedImage.Resolutions[0];
+                BioLib.Resolution baseRes = ImageView.SelectedImage.Resolutions[0];
                 App.viewer.PyramidalOrigin = new PointD(
                     (baseRes.SizeX - viewStack.AllocatedWidth) / 2,
                     (baseRes.SizeY - viewStack.AllocatedHeight) / 2);
@@ -2144,41 +2202,19 @@ namespace BioGTK
             UpdateView();
         }
 
-
-        /* Setting the Level of the image. */
-        private double zoomFactor = 1.0;
+        private double ress = 0;
         public double Resolution
         {
             get
             {
-                return SelectedImage.Resolution;
+                return ress;
             }
             set
             {
                 SelectedImage.Resolution = value;
-                /*
-                // Calculate the scaling factor based on the new and current resolution
-                double scalingFactor = value / SelectedImage.Resolution;
-
-                // Convert the screen coordinates of the mouse position to image coordinates
-                PointD imageMousePosition = new PointD(
-                    (PyramidalOrigin.X / scalingFactor),
-                    (PyramidalOrigin.Y / scalingFactor)
-                );
-
-                // Calculate the mouse position in viewport space (center of viewport)
-                PointD viewportCenter = new PointD(
-                    SelectedImage.PyramidalSize.Width / 2,
-                    SelectedImage.PyramidalSize.Height / 2
-                );
-                // Update the resolution
-                
-                // Calculate new PyramidalOrigin so that the image stays centered on the middle
-                PyramidalOrigin = new PointD(
-                    imageMousePosition.X - (viewportCenter.X * (scalingFactor - 1)),
-                    imageMousePosition.Y - (viewportCenter.Y * (scalingFactor - 1))
-                );
-                */
+                UpdateStatus();
+                UpdateImages();
+                ress = value;
             }
         }
         private int l;
@@ -2223,11 +2259,6 @@ namespace BioGTK
             set
             {
                 scale = value;
-                // update ui on main UI thread
-                Application.Invoke(delegate
-                {
-                    UpdateView(true,false);
-                });
             }
         }
         /// It updates the status of the user.
@@ -2250,7 +2281,7 @@ namespace BioGTK
         public void UpdateView(bool update = false, bool updateImages = false)
         {
             if(updateImages)
-            UpdateImages(true);
+            UpdateImages();
             refresh = true;
             if(update)
             sk.QueueDraw();
@@ -2352,7 +2383,7 @@ namespace BioGTK
                 if (!OpenSlide)
                 {
                     double dsx = SelectedImage.SlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
-                    Resolution rs = SelectedImage.Resolutions[Level];
+                    BioLib.Resolution rs = SelectedImage.Resolutions[Level];
                     double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX * dsx) -
                                ((SelectedImage.PyramidalSize.Width / 2) * dsx);
                     double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY * dsx) -
@@ -2361,13 +2392,11 @@ namespace BioGTK
                 }
                 else
                 {
-                    double dsx = SelectedImage.OpenSlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
-                    Resolution rs = SelectedImage.Resolutions[Level];
-                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX * dsx) -
-                               ((SelectedImage.PyramidalSize.Width / 2) * dsx);
-                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY * dsx) -
-                               ((SelectedImage.PyramidalSize.Height / 2) * dsx);
-                    PyramidalOrigin = new PointD(dx, dy);
+                    double dsx = SelectedImage.OpenSlideBase.Schema.Resolutions[Level].UnitsPerPixel * Resolution;
+                    BioLib.Resolution rs = SelectedImage.Resolutions[Level];
+                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX / dsx);
+                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY / dsx);
+                    PyramidalOrigin = new PointD(dx , dy);
                 }
                 UpdateView(true);
             }
@@ -2624,33 +2653,52 @@ namespace BioGTK
         {
             return ToViewSpace(p.X, p.Y); ;
         }
-        /// > ToViewSpace(x, y) = (ToViewSizeW(x - (ViewWidth / 2)) / Scale.Width) - Origin.X;
-        /// 
-        /// @param x The x coordinate of the point to convert
-        /// @param y The y coordinate of the point to convert.
-        /// 
-        /// @return A PointD object.
         public PointD ToViewSpace(double x, double y)
         {
+            // Screen → centered screen coordinates
+            double sx = x - (viewStack.AllocatedWidth * 0.5);
+            double sy = y - (viewStack.AllocatedHeight * 0.5);
+
+            // Screen pixels → image pixels (zoom corrected)
+            double px = sx / Scale.Width;
+            double py = sy / Scale.Height;
+
+            // No image loaded: fall back to legacy behavior
             if (SelectedImage == null)
             {
-                double dx = (ToViewSizeW(x - (viewStack.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
-                double dy = (ToViewSizeH(y - (viewStack.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
-                return new PointD(dx, dy);
+                return new PointD(
+                    ToViewSizeW(px) - Origin.X,
+                    ToViewSizeH(py) - Origin.Y
+                );
             }
 
+            // ------------------------------------------------------------------------
+            // PYRAMIDAL IMAGE PATH (CORRECT)
+            // ------------------------------------------------------------------------
             if (SelectedImage.isPyramidal)
             {
-                PointD p = new PointD(x / Resolution, y / Resolution);
-                return new PointD(p.X - PyramidalOrigin.X, p.Y - PyramidalOrigin.Y);
+                var levelRes = !openSlide
+                    ? _slideBase.Schema.Resolutions[Level]
+                    : _openSlideBase.Schema.Resolutions[Level];
+
+                // Image pixels → WORLD UNITS (current level)
+                double wx = px * levelRes.UnitsPerPixel;
+                double wy = py * levelRes.UnitsPerPixel;
+
+                // Subtract WORLD-UNIT origin (base resolution space)
+                return new PointD(
+                    wx - PyramidalOrigin.X,
+                    wy - PyramidalOrigin.Y
+                );
             }
-            else
-            {
-                // Handle non-pyramidal case
-                double dx = (ToViewSizeW(x - (viewStack.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
-                double dy = (ToViewSizeH(y - (viewStack.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
-                return new PointD(dx, dy);
-            }
+
+            // ------------------------------------------------------------------------
+            // NON-PYRAMIDAL IMAGE PATH
+            // ------------------------------------------------------------------------
+            return new PointD(
+                ToViewSizeW(px) - Origin.X,
+                ToViewSizeH(py) - Origin.Y
+            );
         }
 
         /// Convert a value in microns to a value in pixels
