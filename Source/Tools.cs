@@ -4,6 +4,7 @@ using AForge.Imaging.Filters;
 using Bio;
 using Bio.Graphics;
 using Cairo;
+using CSScripting;
 using Gdk;
 using Gtk;
 using System;
@@ -39,7 +40,7 @@ namespace BioGTK
         /* Initializing the tools. */
         protected Tools(Builder builder, IntPtr handle) : base(handle)
         {
-            selectColor = AForge.Color.FromArgb(0,0,150,255);
+            selectColor = AForge.Color.FromArgb(0, 0, 150, 255);
             AForge.Color white = AForge.Color.FromArgb(255, 255, 255, 255);
             _builder = builder;
             builder.Autoconnect(this);
@@ -67,14 +68,14 @@ namespace BioGTK
         {
             get
             {
-                List<ROI> rs =  new List<ROI>();
+                List<ROI> rs = new List<ROI>();
                 foreach (var item in ImageView.SelectedImage.Annotations)
                 {
-                    if(item.Selected)
-                    rs.Add(item);
+                    if (item.Selected)
+                        rs.Add(item);
                 }
-                if(rs.Count>0)
-                roi = rs[0];
+                if (rs.Count > 0)
+                    roi = rs[0];
                 return roi;
             }
             set
@@ -312,8 +313,7 @@ namespace BioGTK
         {
             if (App.viewer == null || currentTool == null || ImageView.SelectedImage == null)
                 return;
-            if(buts.Event.Button == 2)
-                currentTool = GetTool(Tool.Type.pan.ToString());
+
             Plugins.MouseDown(ImageView.SelectedImage, e, buts);
             Scripting.UpdateState(Scripting.State.GetDown(e, buts.Event.Button));
 
@@ -492,7 +492,7 @@ namespace BioGTK
 
                 for (int i = 0; i < boxes.Length; i++)
                 {
-                    if (boxes[i].Contains(ann.coord,e))
+                    if (boxes[i].Contains(ann.coord, e))
                     {
                         selectedROI = ann;
                         if (ctrl)
@@ -514,7 +514,7 @@ namespace BioGTK
             // 2 — Click on body of already-selected ROI
             foreach (var ann in ImageView.SelectedImage.Annotations)
             {
-                if (ann != null && ann.Selected && ann.BoundingBox.Contains(ann.coord,e))
+                if (ann != null && ann.Selected && ann.BoundingBox.Contains(ann.coord, e))
                 {
                     selectedROI = ann;
                     UpdateView();
@@ -988,7 +988,7 @@ namespace BioGTK
                     }
                 }
 
-                
+
             }
             // Add new point to polygon
             selectedROI.AddPoint(new PointD(e.X, e.Y));
@@ -1067,13 +1067,13 @@ namespace BioGTK
 
         public void ToolMove_Freeform(PointD e, MotionNotifyEventArgs buts)
         {
-            if(selectedROI!=null)
-            if(currentTool.type == Tool.Type.freeform && buts.Event.State.HasFlag(ModifierType.Button1Mask))
-            {
-                selectedROI.AddPoint(new PointD(e.X, e.Y));
-                selectedROI.coord = App.viewer.GetCoordinate();
-                selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
-            }
+            if (selectedROI != null)
+                if (currentTool.type == Tool.Type.freeform && buts.Event.State.HasFlag(ModifierType.Button1Mask))
+                {
+                    selectedROI.AddPoint(new PointD(e.X, e.Y));
+                    selectedROI.coord = App.viewer.GetCoordinate();
+                    selectedROI.serie = ImageView.SelectedImage.isPyramidal ? App.viewer.Level : ImageView.SelectedImage.series;
+                }
         }
 
         public void ToolUp_Freeform(PointD e, ButtonReleaseEventArgs buts)
@@ -1279,67 +1279,174 @@ namespace BioGTK
         // ============================================================================
         // 14. PAN TOOL
         // ============================================================================
-        // Add these fields to store initial state
+        // --------------------------------------------------------------------
+        // PAN STATE
+        // --------------------------------------------------------------------
+        private bool isPanning;
         private double panStartX;
         private double panStartY;
+
         private PointD initialPanOrigin;
         private double initialPanScale;
 
+        // Velocity (world units / second)
+        private PointD panVelocity;
+        private DateTime lastMoveTime;
+
+        // Kinetic settings
+        private const double PanFriction = 50.0;   // world units / s²
+        private const double VelocityEpsilon = 0.0005;
+
+        // DPI normalization
+        private double dpiScale = 1.0;
+
+        // Animation
+        private bool kineticActive = false;
+        // --------------------------------------------------------------------
+        // Mouse Down
+        // --------------------------------------------------------------------
         public void ToolDown_Pan(PointD e, ButtonPressEventArgs buts)
         {
             if (buts.Event.Button != 1 && buts.Event.Button != 2)
                 return;
 
             currentTool = GetTool(Tool.Type.pan);
+            isPanning = true;
+            kineticActive = false;
 
-            // RAW widget coordinates — never transformed
+            panVelocity = new PointD(0, 0);
+
             panStartX = buts.Event.X;
             panStartY = buts.Event.Y;
 
-            // Freeze scale
             initialPanScale = App.viewer.Resolution;
-            initialPanOrigin = e;
-            
+
+            initialPanOrigin = ImageView.SelectedImage.isPyramidal
+                ? App.viewer.PyramidalOrigin
+                : App.viewer.Origin;
+
+            lastMoveTime = DateTime.UtcNow;
         }
+
+
+        // --------------------------------------------------------------------
+        // Mouse Move
+        // --------------------------------------------------------------------
         public void ToolMove_Pan(PointD e, MotionNotifyEventArgs buts)
         {
-            // Pan ONLY if pan tool is active and a button is held
-            if (currentTool.type != Tool.Type.pan)
+            if (!isPanning || currentTool.type != Tool.Type.pan)
                 return;
-            
-            if (!buts.Event.State.HasFlag(ModifierType.Button1Mask) &&
-                !buts.Event.State.HasFlag(ModifierType.Button2Mask))
+
+            if (!buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask) &&
+                !buts.Event.State.HasFlag(Gdk.ModifierType.Button2Mask))
                 return;
-            
-            // Delta from initial mouse-down (widget space)
-            // Use stored panStartX/panStartY to avoid jitter from potentially changing MouseDown reference
-            double dx = e.X - panStartX;
-            double dy = e.Y - panStartY;
 
-            // Convert using INITIAL scale only
-            double deltaX = dx / initialPanScale;
-            double deltaY = dy / initialPanScale;
+            double dxScreen = (buts.Event.X - panStartX) / dpiScale;
+            double dyScreen = (buts.Event.Y - panStartY) / dpiScale;
 
-            if (ImageView.SelectedImage.isPyramidal)
-            {
-                App.viewer.PyramidalOrigin = new PointD(
-                    initialPanOrigin.X - deltaX,
-                    initialPanOrigin.Y - deltaY);
-            }
-            else
-            {
-                App.viewer.Origin = new PointD(
-                    initialPanOrigin.X - deltaX,
-                    initialPanOrigin.Y - deltaY);
-            }
+            double dxWorld = dxScreen / initialPanScale;
+            double dyWorld = dyScreen / initialPanScale;
+
+            PointD newOrigin = new PointD(
+                initialPanOrigin.X - dxWorld,
+                initialPanOrigin.Y - dyWorld);
+
+            newOrigin = ClampOrigin(newOrigin);
+
+            SetOrigin(newOrigin);
+
         }
+
+
+        // --------------------------------------------------------------------
+        // Mouse Up
+        // --------------------------------------------------------------------
         public void ToolUp_Pan(PointD e, ButtonReleaseEventArgs buts)
         {
-            if (currentTool.type == Tool.Type.pan &&
-                (buts.Event.Button == 1 || buts.Event.Button == 2))
+            if (!isPanning)
+                return;
+
+            isPanning = false;
+
+            if (Math.Abs(panVelocity.X) > VelocityEpsilon ||
+                Math.Abs(panVelocity.Y) > VelocityEpsilon)
             {
-                currentTool = GetTool(Tool.Type.move);
+                kineticActive = true;
+                StartKineticLoop();
             }
+        }
+        private void StartKineticLoop()
+        {
+            DateTime last = DateTime.UtcNow;
+
+            GLib.Timeout.Add(16, () =>
+            {
+                if (!kineticActive)
+                    return false;
+
+                DateTime now = DateTime.UtcNow;
+                double dt = (now - last).TotalSeconds;
+                last = now;
+
+                double speed = Math.Sqrt(
+                    panVelocity.X * panVelocity.X +
+                    panVelocity.Y * panVelocity.Y);
+
+                if (speed < VelocityEpsilon)
+                {
+                    kineticActive = false;
+                    return false;
+                }
+
+                // Apply friction
+                double decel = PanFriction * dt;
+                double scale = Math.Max(0, (speed - decel) / speed);
+
+                panVelocity = new PointD(
+                    panVelocity.X * scale,
+                    panVelocity.Y * scale);
+
+                PointD origin = GetOrigin();
+                origin = new PointD(
+                    origin.X + panVelocity.X * dt,
+                    origin.Y + panVelocity.Y * dt);
+
+                origin = ClampOrigin(origin);
+                SetOrigin(origin);
+
+                return true;
+            });
+        }
+        private PointD ClampOrigin(PointD origin)
+        {
+            var img = ImageView.SelectedImage;
+            var res0 = img.Resolutions[0];
+
+            double viewW = App.viewer.ImageViewWidth / App.viewer.Resolution;
+            double viewH = App.viewer.ImageViewHeight / App.viewer.Resolution;
+
+            double minX = 0;
+            double minY = 0;
+            double maxX = res0.SizeX - viewW;
+            double maxY = res0.SizeY - viewH;
+
+            return new PointD(
+                Math.Clamp(origin.X, minX, maxX),
+                Math.Clamp(origin.Y, minY, maxY));
+        }
+        private PointD GetOrigin()
+        {
+            return ImageView.SelectedImage.isPyramidal
+                ? App.viewer.PyramidalOrigin
+                : App.viewer.Origin;
+        }
+
+        private void SetOrigin(PointD p)
+        {
+            if (ImageView.SelectedImage.isPyramidal)
+                App.viewer.PyramidalOrigin = p;
+            else
+                App.viewer.Origin = p;
         }
 
         // ============================================================================
@@ -1610,6 +1717,8 @@ namespace BioGTK
                 width = value;
             }
         }
+
+        public bool IsPanning { get; set; }
 
         public static RectangleD selectionRect;
         public static TextInput ti = null;
