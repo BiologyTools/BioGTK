@@ -762,7 +762,6 @@ namespace BioGTK
                 App.viewer.UpdateView();
             }
         }
-
         public void ToolUp_Move(PointD e, ButtonReleaseEventArgs buts)
         {
             if (currentTool.type != Tool.Type.move || buts.Event.Button != 1)
@@ -773,6 +772,7 @@ namespace BioGTK
             selectedROI?.UpdateBoundingBox();
             App.viewer.UpdateView();
         }
+
 
         // ============================================================================
         // 2. POINT TOOL
@@ -1301,7 +1301,7 @@ namespace BioGTK
         private double dpiScale = 1.0;
 
         // Animation
-        private bool kineticActive = false;
+        private bool kineticActive = true;
         // --------------------------------------------------------------------
         // Mouse Down
         // --------------------------------------------------------------------
@@ -1312,7 +1312,7 @@ namespace BioGTK
 
             currentTool = GetTool(Tool.Type.pan);
             isPanning = true;
-            kineticActive = false;
+            kineticActive = true;
 
             panVelocity = new PointD(0, 0);
 
