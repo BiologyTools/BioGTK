@@ -365,7 +365,7 @@ namespace BioGTK
                                 canvas.DrawImage(SKImages[i], 0, 0, paint);
 
                                 // Draw overview if enabled and available
-                                if (showOverview && overviewImage != null)
+                                if (showOverview && overviewSKImage != null)
                                 {
                                     // Step 1: Draw semi-transparent overview image
                                     using (var overviewPaint = new SKPaint())
@@ -387,7 +387,6 @@ namespace BioGTK
                                     paint.StrokeWidth = 2;
                                     paint.Color = SKColors.Gray;
                                     paint.IsAntialias = true;
-                                    //canvas.DrawRect(overview.X, overview.Y, overview.Width, overview.Height, paint);
                                     DrawViewportRectangle(canvas, paint);
                                   
                                 }
@@ -560,56 +559,165 @@ namespace BioGTK
 
             try
             {
-                BruTile.Resolution baseRes = SelectedImage.OpenSlideBase.Schema.Resolutions[Level];
-                double fullWidth = baseRes.UnitsPerPixel * SelectedImage.Resolutions[Level].SizeX;
-                double fullHeight = baseRes.UnitsPerPixel * SelectedImage.Resolutions[Level].SizeY;
-                double baseUPP, curUPP;
-                if (!openSlide)
+                if(openSlide)
                 {
-                    baseUPP = SelectedImage.SlideBase.Schema.Resolutions[0].UnitsPerPixel;
-                    curUPP = SelectedImage.SlideBase.Schema.Resolutions[Level].UnitsPerPixel;
+                    // --------------------------------------------------------------------
+                    // 1. Get resolutions and units per pixel
+                    // --------------------------------------------------------------------
+                    var baseRes = SelectedImage.OpenSlideBase.Schema.Resolutions[0];
+                    var curRes = SelectedImage.OpenSlideBase.Schema.Resolutions[Level];
+
+                    double baseUPP = baseRes.UnitsPerPixel;
+                    double curUPP = curRes.UnitsPerPixel;
+
+                    // How many BASE pixels correspond to ONE current-level pixel
+                    double basePixelsPerCurPixel = baseUPP / Resolution;
+
+                    // --------------------------------------------------------------------
+                    // 2. Convert PyramidalOrigin from microns → base pixels
+                    //    (OpenSlide origin is in physical units)
+                    // --------------------------------------------------------------------
+                    double viewXBase = PyramidalOrigin.X / baseUPP;
+                    double viewYBase = PyramidalOrigin.Y / baseUPP;
+
+                    // --------------------------------------------------------------------
+                    // 3. Viewport size in BASE pixels
+                    //    sk.AllocatedWidth/Height are screen pixels == current level pixels
+                    // --------------------------------------------------------------------
+                    double viewportWidthBase = sk.AllocatedWidth * basePixelsPerCurPixel;
+                    double viewportHeightBase = sk.AllocatedHeight * basePixelsPerCurPixel;
+
+                    // --------------------------------------------------------------------
+                    // 4. Base image dimensions in pixels
+                    // --------------------------------------------------------------------
+                    double baseWidthPx = SelectedImage.Resolutions[0].SizeX;
+                    double baseHeightPx = SelectedImage.Resolutions[0].SizeY;
+
+                    // --------------------------------------------------------------------
+                    // 5. Clamp viewport to image bounds (base pixel space)
+                    // --------------------------------------------------------------------
+                    if (viewportWidthBase > baseWidthPx) viewportWidthBase = baseWidthPx;
+                    if (viewportHeightBase > baseHeightPx) viewportHeightBase = baseHeightPx;
+
+                    viewXBase = Math.Max(0, Math.Min(viewXBase, baseWidthPx - viewportWidthBase));
+                    viewYBase = Math.Max(0, Math.Min(viewYBase, baseHeightPx - viewportHeightBase));
+
+                    // --------------------------------------------------------------------
+                    // 6. Calculate overview image rect (aspect-correct, letterboxed)
+                    // --------------------------------------------------------------------
+                    double overviewAspect = overview.Width / (double)overview.Height;
+                    double imageAspect = baseWidthPx / baseHeightPx;
+
+                    SKRect imgRect;
+                    float scale; // overview pixels per base pixel
+                    if (imageAspect > overviewAspect)
+                    {
+                        // Fit to width
+                        scale = (float)(overview.Width / baseWidthPx);
+                        float scaledHeight = (float)(baseHeightPx * scale);
+                        float yOffset = (overview.Height - scaledHeight) * 0.5f;
+
+                        imgRect = new SKRect(
+                            0,
+                            yOffset,
+                            overview.Width,
+                            yOffset + scaledHeight
+                        );
+                    }
+                    else
+                    {
+                        // Fit to height
+                        scale = (float)(overview.Height / baseHeightPx);
+                        float scaledWidth = (float)(baseWidthPx * scale);
+                        float xOffset = (overview.Width - scaledWidth) * 0.5f;
+
+                        imgRect = new SKRect(
+                            xOffset,
+                            0,
+                            xOffset + scaledWidth,
+                            overview.Height
+                        );
+                    }
+
+                    // --------------------------------------------------------------------
+                    // 7. Convert BASE pixels → overview pixels
+                    // --------------------------------------------------------------------
+                    float rectX = imgRect.Left + (float)(viewXBase * scale);
+                    float rectY = imgRect.Top + (float)(viewYBase * scale);
+                    float rectW = (float)(viewportWidthBase * scale) * (float)basePixelsPerCurPixel;
+                    float rectH = (float)(viewportHeightBase * scale) * (float)basePixelsPerCurPixel;
+
+                    // --------------------------------------------------------------------
+                    // 8. Draw viewport rectangle
+                    // --------------------------------------------------------------------
+                    paint.Style = SKPaintStyle.Stroke;
+                    paint.StrokeWidth = 2f;
+                    paint.Color = SKColors.Red;
+                    paint.IsAntialias = true;
+
+                    canvas.DrawRect(rectX, rectY, rectW, rectH, paint);
+
                 }
                 else
                 {
-                    baseUPP = SelectedImage.OpenSlideBase.Schema.Resolutions[0].UnitsPerPixel;
-                    curUPP = SelectedImage.OpenSlideBase.Schema.Resolutions[Level].UnitsPerPixel;
+                    // --------------------------------------------------------------------
+                    // 1. Base (level 0) image dimensions in pixels
+                    // --------------------------------------------------------------------
+                    var baseRes = SelectedImage.SlideBase.Schema.Resolutions[Level];
+
+                    double baseWidthPx = SelectedImage.SizeX;
+                    double baseHeightPx = SelectedImage.SizeY;
+
+                    // --------------------------------------------------------------------
+                    // 2. Current viewport size in base-resolution pixels
+                    // --------------------------------------------------------------------
+                    var curRes = SelectedImage.SlideBase.Schema.Resolutions[Level];
+                    double scaleToBase = curRes.UnitsPerPixel / baseRes.UnitsPerPixel;
+
+                    double viewportWidthPx = baseWidthPx * scaleToBase;
+                    double viewportHeightPx = baseHeightPx * scaleToBase;
+
+                    // --------------------------------------------------------------------
+                    // 3. PyramidalOrigin is already in base-resolution pixels
+                    // --------------------------------------------------------------------
+                    double viewXBase = PyramidalOrigin.X;
+                    double viewYBase = PyramidalOrigin.Y;
+
+                    // --------------------------------------------------------------------
+                    // 4. Normalize to [0–1] range
+                    // --------------------------------------------------------------------
+                    double normX = viewXBase / baseWidthPx;
+                    double normY = viewYBase / baseHeightPx;
+                    double normW = viewportWidthPx / baseWidthPx;
+                    double normH = viewportHeightPx / baseHeightPx;
+
+                    // --------------------------------------------------------------------
+                    // 5. Convert to overview pixel space
+                    //    (overview is anchored at top-left: 0,0)
+                    // --------------------------------------------------------------------
+                    float rectX = (float)(normX * overview.Width);
+                    float rectY = (float)(normY * overview.Height);
+                    float rectW = (float)(normW * overview.Width);
+                    float rectH = (float)(normH * overview.Height);
+
+                    // --------------------------------------------------------------------
+                    // 6. Draw rectangle
+                    // --------------------------------------------------------------------
+                    paint.Style = SKPaintStyle.Stroke;
+                    paint.StrokeWidth = 2f;
+                    paint.Color = SKColors.Red;
+                    paint.IsAntialias = true;
+
+                    canvas.DrawRect(rectX, rectY, rectW, rectH, paint);
                 }
-               
-                double viewX = PyramidalOrigin.X / baseUPP;
-                double viewY = PyramidalOrigin.Y / baseUPP;
-
-                double visibleWidth =
-                    viewStack.AllocatedWidth * curUPP / baseUPP;
-                double visibleHeight =
-                    viewStack.AllocatedHeight * curUPP / baseUPP;
-
-                double fracX = viewX / fullWidth;
-                double fracY = viewY / fullHeight;
-                double fracW = visibleWidth / fullWidth;
-                double fracH = visibleHeight / fullHeight;
-
-                double rectX = overview.X + fracX * overview.Width;
-                double rectY = overview.Y + fracY * overview.Height;
-                double rectW = fracW * overview.Width;
-                double rectH = fracH * overview.Height;
-
-                paint.Style = SKPaintStyle.Stroke;
-                paint.StrokeWidth = 2f;
-                paint.Color = SKColors.Red;
-                paint.IsAntialias = true;
-
-                canvas.DrawRect(
-                    (float)rectX,
-                    (float)rectY,
-                    (float)rectW,
-                    (float)rectH,
-                    paint);
+                
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error drawing viewport rectangle: {ex.Message}");
             }
         }
+
 
         private static SKImage Convert24bppBitmapToSKImage(Bitmap sourceBitmap)
         {
@@ -2008,168 +2116,23 @@ namespace BioGTK
             }
         }
 
-        // ============================================================================
-        // ZOOM TOOL - Zoom towards mouse pointer
-        // ============================================================================
-
-        public void ZoomToPointer(PointD mousePos, double zoomFactor)
-        {
-            if (ImageView.SelectedImage == null)
-                return;
-
-            if (ImageView.SelectedImage.isPyramidal)
-            {
-                ZoomToPointer_Pyramidal(mousePos, zoomFactor);
-            }
-            else
-            {
-                ZoomToPointer_NonPyramidal(mousePos, zoomFactor);
-            }
-        }
-
-        private void ZoomToPointer_Pyramidal(PointD mousePos, double zoomFactor)
-        {
-            // Get current resolution (units per screen pixel)
-            double oldUnitsPerScreenPixel = App.viewer.Resolution;
-
-            // Calculate new resolution after zoom
-            // zoomFactor > 1 means zoom in (fewer units per pixel)
-            // zoomFactor < 1 means zoom out (more units per pixel)
-            double newUnitsPerScreenPixel = oldUnitsPerScreenPixel / zoomFactor;
-
-            // Mouse position in screen coordinates (relative to top-left)
-            double mouseScreenX = mousePos.X;
-            double mouseScreenY = mousePos.Y;
-
-            // Convert mouse position to world coordinates BEFORE zoom
-            double mouseWorldX = App.viewer.PyramidalOrigin.X + (mouseScreenX * oldUnitsPerScreenPixel);
-            double mouseWorldY = App.viewer.PyramidalOrigin.Y + (mouseScreenY * oldUnitsPerScreenPixel);
-
-            // Apply new resolution
-            App.viewer.Resolution = newUnitsPerScreenPixel;
-
-            // Calculate new origin so the world point stays under the mouse
-            double newOriginX = mouseWorldX - (mouseScreenX * newUnitsPerScreenPixel);
-            double newOriginY = mouseWorldY - (mouseScreenY * newUnitsPerScreenPixel);
-
-            // Update origin to keep the point under the mouse cursor
-            App.viewer.PyramidalOrigin = new PointD(newOriginX, newOriginY);
-
-            UpdateView();
-        }
-        private void ZoomToPointer_NonPyramidal(PointD mousePos, double zoomFactor)
-        {
-            // Get current scale
-            double oldScaleX = App.viewer.Scale.Width;
-            double oldScaleY = App.viewer.Scale.Height;
-            double newScaleX = oldScaleX * zoomFactor;
-            double newScaleY = oldScaleY * zoomFactor;
-
-            // Clamp scale to reasonable limits
-            newScaleX = Math.Max(0.1, Math.Min(100.0, newScaleX));
-            newScaleY = Math.Max(0.1, Math.Min(100.0, newScaleY));
-
-            // Get mouse position in screen coordinates relative to center
-            double mouseScreenX = mousePos.X - (viewStack.AllocatedWidth / 2);
-            double mouseScreenY = mousePos.Y - (viewStack.AllocatedHeight / 2);
-
-            // Convert mouse position to world coordinates BEFORE zoom
-            double mouseWorldX = (mouseScreenX - App.viewer.Origin.X) / oldScaleX;
-            double mouseWorldY = (mouseScreenY - App.viewer.Origin.Y) / oldScaleY;
-
-            // Apply new scale
-            App.viewer.Scale = new SizeF((float)newScaleX, (float)newScaleY);
-
-            // Calculate new origin to keep the same world point under the mouse
-            double newOriginX = mouseScreenX - (mouseWorldX * newScaleX);
-            double newOriginY = mouseScreenY - (mouseWorldY * newScaleY);
-
-            // Update origin
-            App.viewer.Origin = new PointD(newOriginX, newOriginY);
-
-            UpdateView();
-        }
-
         // Mouse wheel handler
         public void OnMouseWheel(object sender, ScrollEventArgs e)
         {
             // Get mouse position
             RectangleD rd = ToScreenRect(e.Event.X, e.Event.Y, 1, 1);
             PointD p = new PointD(PyramidalOrigin.X + rd.X, PyramidalOrigin.Y + rd.Y);
-            if(e.Event.Direction.HasFlag(ScrollDirection.Up))
-                ZoomToPointer(p, 1.5);
-            if (e.Event.Direction.HasFlag(ScrollDirection.Down))
-                ZoomToPointer(p, 0.5);
-        }
-
-        // Alternative: Zoom with keyboard shortcuts (Ctrl + Plus/Minus)
-        public void ZoomIn()
-        {
-            // Zoom towards center of viewport
-            PointD center = new PointD(viewStack.AllocatedWidth / 2, viewStack.AllocatedHeight / 2);
-            ZoomToPointer(center, 1.2);
-        }
-
-        public void ZoomOut()
-        {
-            // Zoom towards center of viewport
-            PointD center = new PointD(viewStack.AllocatedWidth / 2, viewStack.AllocatedHeight / 2);
-            ZoomToPointer(center, 1.0 / 1.2);
-        }
-
-        // Zoom to fit entire image in viewport
-        public void ZoomToFit()
-        {
-            if (ImageView.SelectedImage == null)
-                return;
-
-            if (ImageView.SelectedImage.isPyramidal)
+            if (e.Event.Direction == ScrollDirection.Down)
             {
-                BioLib.Resolution baseRes = ImageView.SelectedImage.Resolutions[0];
-                double scaleX = viewStack.AllocatedWidth / (double)baseRes.SizeX;
-                double scaleY = viewStack.AllocatedHeight / (double)baseRes.SizeY;
-                double scale = Math.Min(scaleX, scaleY) * 0.95; // 95% to add padding
-
-                App.viewer.Scale = new SizeF((float)scale, (float)scale);
-                App.viewer.PyramidalOrigin = new PointD(0, 0);
+                Resolution *= 1.2f;
+                PyramidalOrigin = new PointD(PyramidalOrigin.X * 1.2f, PyramidalOrigin.X * 1.2f);
             }
-            else
+            if (e.Event.Direction == ScrollDirection.Up)
             {
-                double scaleX = viewStack.AllocatedWidth / ImageView.SelectedImage.Volume.Width;
-                double scaleY = viewStack.AllocatedHeight / ImageView.SelectedImage.Volume.Height;
-                double scale = Math.Min(scaleX, scaleY) * 0.95;
-
-                App.viewer.Scale = new SizeF((float)scale, (float)scale);
-                App.viewer.Origin = new PointD(0, 0);
+                Resolution *= 0.80f;
+                PyramidalOrigin = new PointD(PyramidalOrigin.X * 0.8f, PyramidalOrigin.X * 0.8f);
             }
-
-            UpdateView();
         }
-
-        // Zoom to 100% (1:1 pixel mapping)
-        public void ZoomToActualSize()
-        {
-            if (ImageView.SelectedImage == null)
-                return;
-
-            App.viewer.Scale = new SizeF(1.0f, 1.0f);
-
-            if (ImageView.SelectedImage.isPyramidal)
-            {
-                // Center the image
-                BioLib.Resolution baseRes = ImageView.SelectedImage.Resolutions[0];
-                App.viewer.PyramidalOrigin = new PointD(
-                    (baseRes.SizeX - viewStack.AllocatedWidth) / 2,
-                    (baseRes.SizeY - viewStack.AllocatedHeight) / 2);
-            }
-            else
-            {
-                App.viewer.Origin = new PointD(0, 0);
-            }
-
-            UpdateView();
-        }
-
         private double resolution = 0;
         public double Resolution
         {
@@ -2187,6 +2150,7 @@ namespace BioGTK
                     if (value < SelectedImage.OpenSlideBase.Schema.Resolutions.Last().Value.UnitsPerPixel)
                     {
                         SelectedImage.Resolution = value;
+                        resolution = value;
                     }
                 }
                 else
@@ -2194,12 +2158,12 @@ namespace BioGTK
                     if (value < SelectedImage.SlideBase.Schema.Resolutions.Last().Value.UnitsPerPixel)
                     {
                         SelectedImage.Resolution = value;
+                        resolution = value; 
                     }
                 }
                 UpdateLevel();
-                resolution = value; 
                 UpdateStatus();
-                UpdateImages();
+                UpdateView(false,true);
             }
         }
         private void UpdateLevel()
@@ -2220,7 +2184,7 @@ namespace BioGTK
                     else
                         for (int j = 0; j < ImageView.SelectedImage.OpenSlideBase.stitch.gpuTiles.Count; j++)
                         {
-                            var tile = ImageView.SelectedImage.OpenSlideBase.stitch.gpuTiles[j];
+                            var tile = ImageView.SelectedImage.SlideBase.stitch.gpuTiles[j];
                             if (tile.Item1.Index.Level != Level)
                             {
                                 tile.Item2.Dispose();
@@ -2452,6 +2416,8 @@ namespace BioGTK
             Modifiers = e.Event.State;
             MouseUpInt = new PointD((int)e.Event.X, (int)e.Event.Y);
 
+            if (Tools.currentTool.type == Tools.Tool.Type.pan && e.Event.Button == 2)
+                Tools.currentTool = Tools.GetTool("move");
             if (e.Event.Button == 1)
                 mouseLeftState = false;
 
@@ -2483,7 +2449,8 @@ namespace BioGTK
             MouseDownInt = new PointD(e.Event.X, e.Event.Y);
             pd = pointer;
             mouseDown = pd;
-
+            if (Tools.currentTool.type == Tools.Tool.Type.move && e.Event.Button == 2)
+                Tools.currentTool = Tools.GetTool("pan");
             if (SelectedImage == null)
                 return;
 
