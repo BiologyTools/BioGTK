@@ -2182,7 +2182,7 @@ namespace BioGTK
                             }
                         }
                     else
-                        for (int j = 0; j < ImageView.SelectedImage.OpenSlideBase.stitch.gpuTiles.Count; j++)
+                        for (int j = 0; j < ImageView.SelectedImage.SlideBase.stitch.gpuTiles.Count; j++)
                         {
                             var tile = ImageView.SelectedImage.SlideBase.stitch.gpuTiles[j];
                             if (tile.Item1.Index.Level != Level)
