@@ -1,23 +1,23 @@
-using Gtk;
-using Gdk;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using AForge;
 using AForge.Imaging.Filters;
-using OpenSlideGTK;
 using Bio;
-using Point = AForge.Point;
-using PointF = AForge.PointF;
-using SizeF = AForge.SizeF;
-using Color = AForge.Color;
-using Rectangle = AForge.Rectangle;
-using System.IO;
+using BruTile;
+using Gdk;
+using Gtk;
+using OpenSlideGTK;
 using SkiaSharp;
 using SkiaSharp.Views.Gtk;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using static NetVips.Enums;
-using BruTile;
+using Color = AForge.Color;
+using Point = AForge.Point;
+using PointF = AForge.PointF;
+using Rectangle = AForge.Rectangle;
+using SizeF = AForge.SizeF;
 
 namespace BioGTK
 {
@@ -2196,9 +2196,37 @@ namespace BioGTK
                         SelectedImage.Resolution = value;
                     }
                 }
+                UpdateLevel();
                 resolution = value; 
                 UpdateStatus();
                 UpdateImages();
+            }
+        }
+        private void UpdateLevel()
+        {
+            if (SelectedImage.isPyramidal)
+            {
+                if (l != ImageView.SelectedImage.Level)
+                {
+                    if(openSlide)
+                        for (int j = 0; j < ImageView.SelectedImage.OpenSlideBase.stitch.gpuTiles.Count; j++)
+                        {
+                            var tile = ImageView.SelectedImage.OpenSlideBase.stitch.gpuTiles[j];
+                            if (tile.Item1.Index.Level != Level)
+                            {
+                                tile.Item2.Dispose();
+                            }
+                        }
+                    else
+                        for (int j = 0; j < ImageView.SelectedImage.OpenSlideBase.stitch.gpuTiles.Count; j++)
+                        {
+                            var tile = ImageView.SelectedImage.OpenSlideBase.stitch.gpuTiles[j];
+                            if (tile.Item1.Index.Level != Level)
+                            {
+                                tile.Item2.Dispose();
+                            }
+                        }
+                }
             }
         }
         private int l;
@@ -2221,6 +2249,10 @@ namespace BioGTK
             {
                 if (value < 0)
                     return;
+                if(l != value)
+                {
+                    UpdateLevel();
+                }
                 l = value;
                 SelectedImage.Level = l;
                 if (SelectedImage.Type == BioImage.ImageType.well)
