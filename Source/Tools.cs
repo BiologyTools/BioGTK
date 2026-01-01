@@ -7,6 +7,7 @@ using Cairo;
 using CSScripting;
 using Gdk;
 using Gtk;
+using ScottPlot.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -1302,6 +1303,14 @@ namespace BioGTK
 
         // Animation
         private bool kineticActive = true;
+
+        private void UpdateView_Fast()
+        {
+            // Skip expensive UpdateImages() - just redraw with current state
+            App.viewer.UpdateView(false,false);
+        }
+
+
         // --------------------------------------------------------------------
         // Mouse Down
         // --------------------------------------------------------------------
@@ -1309,6 +1318,10 @@ namespace BioGTK
         {
             if (buts.Event.Button != 1 && buts.Event.Button != 2)
                 return;
+            if (ImageView.SelectedImage.isPyramidal)
+            {
+               App.viewer.renderManager.BeginInteraction();
+            }
 
             currentTool = GetTool(Tool.Type.pan);
             isPanning = true;
@@ -1354,6 +1367,15 @@ namespace BioGTK
             newOrigin = ClampOrigin(newOrigin);
 
             SetOrigin(newOrigin);
+            if (ImageView.SelectedImage.isPyramidal)
+            {
+                App.viewer.renderManager.ContinueInteraction();
+                UpdateView_Fast();  // Lightweight update, no tile fetching
+            }
+            else
+            {
+                UpdateView();  // Normal path for non-pyramidal
+            }
 
         }
 
@@ -1431,8 +1453,8 @@ namespace BioGTK
             double maxY = res0.SizeY - viewH;
 
             return new PointD(
-                Math.Clamp(origin.X, minX, maxX),
-                Math.Clamp(origin.Y, minY, maxY));
+                Math.Clamp(origin.X, minX, Math.Abs(maxX)),
+                Math.Clamp(origin.Y, minY, Math.Abs(maxY)));
         }
         private PointD GetOrigin()
         {

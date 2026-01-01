@@ -169,7 +169,11 @@ namespace BioGTK
                 return rois;
             }
         }
-
+        public PyramidalRenderManager renderManager = new PyramidalRenderManager();
+        public PyramidalRenderManager GetRenderManager()
+        {
+            return renderManager;
+        }
 #pragma warning disable 649
         [Builder.Object]
         private Gtk.Scale zBar;
@@ -301,6 +305,12 @@ namespace BioGTK
                 WidthRequest = 800;
                 HeightRequest = 600;
             }
+            renderManager.OnFinalUpdateNeeded += () => {
+                Gtk.Application.Invoke(delegate {
+                    UpdateView();  // Full update after pan completes
+                });
+            };
+
         }
         private static SkiaSharp.SKRect ToRectangle(float x1, float y1, float x2, float y2)
         {
@@ -717,7 +727,45 @@ namespace BioGTK
                 Console.WriteLine($"Error drawing viewport rectangle: {ex.Message}");
             }
         }
+        private void SetResolution(double newResolution, PointD mouseScreenPos)
+        {
+            if (newResolution <= 0 || newResolution == resolution)
+                return;
 
+            double oldResolution = resolution;
+
+            // 1. Compute image pixel under cursor BEFORE zoom
+            PointD imagePixel = new PointD(
+                PyramidalOrigin.X + mouseScreenPos.X * oldResolution,
+                PyramidalOrigin.Y + mouseScreenPos.Y * oldResolution
+            );
+
+            // 2. Apply zoom
+            resolution = newResolution;
+
+            // 3. Recompute origin so the same image pixel stays under cursor
+            PyramidalOrigin = new PointD(
+                imagePixel.X - mouseScreenPos.X * resolution,
+                imagePixel.Y - mouseScreenPos.Y * resolution
+            );
+
+            ClampPyramidalOrigin();
+        }
+        private void ClampPyramidalOrigin()
+        {
+            if (SelectedImage == null || !SelectedImage.isPyramidal)
+                return;
+
+            var baseRes = SelectedImage.Resolutions[0];
+
+            double maxX = baseRes.SizeX - sk.AllocatedWidth * resolution;
+            double maxY = baseRes.SizeY - sk.AllocatedHeight * resolution;
+
+            PyramidalOrigin = new PointD(
+                Math.Max(0, Math.Min(PyramidalOrigin.X, maxX)),
+                Math.Max(0, Math.Min(PyramidalOrigin.Y, maxY))
+            );
+        }
 
         private static SKImage Convert24bppBitmapToSKImage(Bitmap sourceBitmap)
         {
@@ -889,7 +937,7 @@ namespace BioGTK
         }
 
         /// It updates the images.
-        public void UpdateImages()
+        public async void UpdateImages()
         {
             if (SelectedImage == null)
                 return;
@@ -900,12 +948,38 @@ namespace BioGTK
             int bi = 0;
             if (SelectedImage.isPyramidal && sk.AllocatedHeight <= 1 || sk.AllocatedWidth <= 1)
                 return;
+            /*
             if (SelectedImage.isPyramidal)
             {
                 SelectedImage.Coordinate = GetCoordinate();
                 SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
                 SelectedImage.UpdateBuffersPyramidal().Wait();
             }
+            */
+            if (SelectedImage.isPyramidal)
+            {
+                // Check if we should defer tile fetching during interaction
+                if (pyramidalRenderManager != null &&
+                    pyramidalRenderManager.ShouldDeferTileFetch())
+                {
+                    // During pan - skip tile fetch, Render() will use cached frame
+                    return;
+                }
+
+                SelectedImage.Coordinate = GetCoordinate();
+                SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
+                await SelectedImage.UpdateBuffersPyramidal();
+
+                // Cache the rendered frame for next pan operation
+                if (Bitmaps.Count > 0 && Bitmaps[0].Bytes != null)
+                {
+                    GetRenderManager().CacheCurrentFrame(
+                        Bitmaps[0].Bytes,
+                        PyramidalOrigin,
+                        Resolution);
+                }
+            }
+
             SKImages.Clear();
             Bitmaps.Clear();
             foreach (BioImage b in Images)
@@ -2122,17 +2196,23 @@ namespace BioGTK
             // Get mouse position
             RectangleD rd = ToScreenRect(e.Event.X, e.Event.Y, 1, 1);
             PointD p = new PointD(PyramidalOrigin.X + rd.X, PyramidalOrigin.Y + rd.Y);
-            if (e.Event.Direction == ScrollDirection.Down)
-            {
-                Resolution *= 1.2f;
-                PyramidalOrigin = new PointD(PyramidalOrigin.X * 1.2f, PyramidalOrigin.X * 1.2f);
-            }
-            if (e.Event.Direction == ScrollDirection.Up)
-            {
-                Resolution *= 0.80f;
-                PyramidalOrigin = new PointD(PyramidalOrigin.X * 0.8f, PyramidalOrigin.X * 0.8f);
-            }
+            double d = 1;
+            if(e.Event.Direction == ScrollDirection.Up)
+                OnScroll(p, 1);
+            else if (e.Event.Direction == ScrollDirection.Down)
+                OnScroll(p, -1);
         }
+        private void OnScroll(PointD mousePos, double delta)
+        {
+            const double zoomSpeed = 1.15;
+
+            double newRes = delta > 0
+                ? Resolution / zoomSpeed
+                : Resolution * zoomSpeed;
+
+            SetResolution(newRes, mousePos);
+        }
+
         private double resolution = 0;
         public double Resolution
         {
@@ -2161,9 +2241,7 @@ namespace BioGTK
                         resolution = value; 
                     }
                 }
-                UpdateLevel();
-                UpdateStatus();
-                UpdateView(false,true);
+
             }
         }
         private void UpdateLevel()
@@ -2190,9 +2268,11 @@ namespace BioGTK
                                 tile.Item2.Dispose();
                             }
                         }
+                   l = ImageView.SelectedImage.Level;
                 }
             }
         }
+
         private int l;
         public int Level
         {
@@ -2258,7 +2338,7 @@ namespace BioGTK
                 + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2") + ", Res:" + Resolution + " Level:" + Level;
         }
         /// It updates the view.
-        public void UpdateView(bool update = false, bool updateImages = false)
+        public void UpdateView(bool update = true, bool updateImages = true)
         {
             if(updateImages)
             UpdateImages();
@@ -2384,21 +2464,7 @@ namespace BioGTK
                 // Convert to base resolution coordinates
                 double targetX = fracX * fullWidth;
                 double targetY = fracY * fullHeight;
-                
-                // Calculate current viewport size in base resolution pixels
-                double viewportWidth = viewStack.AllocatedWidth / Resolution;
-                double viewportHeight = viewStack.AllocatedHeight / Resolution;
-                
-                // Center the viewport on the clicked position
-                // PyramidalOrigin is the top-left corner of viewport in base resolution
-                double newOriginX = targetX - (viewportWidth / 2.0);
-                double newOriginY = targetY - (viewportHeight / 2.0);
-                
-                // Clamp to image bounds
-                newOriginX = Math.Max(0, Math.Min(newOriginX, fullWidth - viewportWidth));
-                newOriginY = Math.Max(0, Math.Min(newOriginY, fullHeight - viewportHeight));
-                
-                PyramidalOrigin = new PointD(newOriginX, newOriginY);
+                PyramidalOrigin = new PointD(targetX, targetY);
             }
 
             // Delegate all tool logic to Tools.cs
@@ -2589,6 +2655,12 @@ namespace BioGTK
             App.tools.ToolDown(pointer, e);
             UpdateView();
         }
+        protected override void OnDestroyed()
+        {
+            pyramidalRenderManager?.Dispose();
+            base.OnDestroyed();
+        }
+
 
         #region Conversion
         private int Width
@@ -2631,7 +2703,7 @@ namespace BioGTK
         { 
             get 
             {
-                double d = sk.AllocatedWidth / Resolution;
+                double d = sk.AllocatedHeight / Resolution;
                 return d;
             }
         }
@@ -3021,6 +3093,8 @@ namespace BioGTK
         private OpenSlideGTK.ISlideSource _openSlideSource;
         private BioLib.ISlideSource _slideSource;
         private SlideBase _slideBase;
+        private PyramidalRenderManager pyramidalRenderManager;
+
         /// <summary>
         /// Open slide file
         /// </summary>
