@@ -5,6 +5,7 @@ using BruTile;
 using Gdk;
 using Gtk;
 using OpenSlideGTK;
+using org.springframework.security.access.method;
 using SkiaSharp;
 using SkiaSharp.Views.Gtk;
 using System;
@@ -78,6 +79,8 @@ namespace BioGTK
             UpdateGUI();
             UpdateImages();
             GoToImage(Images.Count - 1);
+            pyramidalRenderManager = new PyramidalRenderManager();
+
         }
         double pxWmicron = 5;
         double pxHmicron = 5;
@@ -273,6 +276,7 @@ namespace BioGTK
             ShowMasks = true;
             pxWmicron = SelectedImage.PhysicalSizeX;
             pxHmicron = SelectedImage.PhysicalSizeY;
+
             SetupHandlers();
             //pictureBox.WidthRequest = im.SizeX;
             //pictureBox.HeightRequest = im.SizeY;
@@ -373,7 +377,7 @@ namespace BioGTK
                                 paint.Style = SKPaintStyle.Fill;
                                 paint.BlendMode = SKBlendMode.SrcOver;
                                 canvas.DrawImage(SKImages[i], 0, 0, paint);
-
+                                
                                 // Draw overview if enabled and available
                                 if (showOverview && overviewSKImage != null)
                                 {
@@ -941,43 +945,30 @@ namespace BioGTK
         {
             if (SelectedImage == null)
                 return;
-            if (zBar.Adjustment.Upper != SelectedImage.SizeZ - 1 || tBar.Adjustment.Upper != SelectedImage.SizeT - 1)
+
+            if (zBar.Adjustment.Upper != SelectedImage.SizeZ - 1 ||
+                tBar.Adjustment.Upper != SelectedImage.SizeT - 1)
             {
                 UpdateGUI();
             }
+
             int bi = 0;
             if (SelectedImage.isPyramidal && sk.AllocatedHeight <= 1 || sk.AllocatedWidth <= 1)
                 return;
-            /*
+
             if (SelectedImage.isPyramidal)
             {
-                SelectedImage.Coordinate = GetCoordinate();
-                SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
-                SelectedImage.UpdateBuffersPyramidal().Wait();
-            }
-            */
-            if (SelectedImage.isPyramidal)
-            {
-                // Check if we should defer tile fetching during interaction
+                // ✅ ADDED: Check if we should defer tile fetching
                 if (pyramidalRenderManager != null &&
                     pyramidalRenderManager.ShouldDeferTileFetch())
                 {
-                    // During pan - skip tile fetch, Render() will use cached frame
+                    // During interaction - skip tile fetch
                     return;
                 }
 
                 SelectedImage.Coordinate = GetCoordinate();
                 SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
-                await SelectedImage.UpdateBuffersPyramidal();
-
-                // Cache the rendered frame for next pan operation
-                if (Bitmaps.Count > 0 && Bitmaps[0].Bytes != null)
-                {
-                    GetRenderManager().CacheCurrentFrame(
-                        Bitmaps[0].Bytes,
-                        PyramidalOrigin,
-                        Resolution);
-                }
+                SelectedImage.UpdateBuffersPyramidal().Wait();
             }
 
             SKImages.Clear();
@@ -1110,15 +1101,14 @@ namespace BioGTK
                     overview = new Rectangle(0, 0, overviewWidth, overviewHeight);
                     
                     // Get the tile for the entire resolution level
-                    sourceBitmap = BioImage.GetTile(
+                    sourceBitmap = SelectedImage.GetTile(
                         SelectedImage,
                         SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T),
                         resolutionLevel,
                         0,
                         0,
                         SelectedImage.Resolutions[resolutionLevel].SizeX,
-                        SelectedImage.Resolutions[resolutionLevel].SizeY
-                    );
+                        SelectedImage.Resolutions[resolutionLevel].SizeY);
                 }
                 
 
@@ -1168,7 +1158,6 @@ namespace BioGTK
             sk.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
             sk.ScrollEvent += ImageView_ScrollEvent;
             sk.ScrollEvent += OnMouseWheel;
-
             sk.PaintSurface += Render;
             sk.SizeAllocated += PictureBox_SizeAllocated;
             sk.AddEvents((int)
@@ -2174,6 +2163,7 @@ namespace BioGTK
             get { return new PointD(PyramidalOrigin.X * Resolution, PyramidalOrigin.Y * Resolution); }
             set { PyramidalOrigin = new PointD(value.X / Resolution, value.Y / Resolution); }
         }
+
         /* Setting the origin of a pyramidal image. */
         public PointD PyramidalOrigin
         {
@@ -2186,7 +2176,6 @@ namespace BioGTK
                 if (!AllowNavigation)
                     return;
                 SelectedImage.PyramidalOrigin = value;
-                UpdateView(true, true);
             }
         }
 

@@ -1303,7 +1303,23 @@ namespace BioGTK
 
         // Animation
         private bool kineticActive = true;
+        private PyramidalRenderManager renderManager;
+        private void InitializePanOptimizations()
+        {
+            if (App.viewer != null)
+            {
+                renderManager = App.viewer.GetRenderManager();
 
+                // Wire up final update callback
+                renderManager.OnFinalUpdateNeeded += () =>
+                {
+                    Gtk.Application.Invoke(delegate
+                    {
+                        UpdateView();
+                    });
+                };
+            }
+        }
         private void UpdateView_Fast()
         {
             // Skip expensive UpdateImages() - just redraw with current state
@@ -1318,65 +1334,72 @@ namespace BioGTK
         {
             if (buts.Event.Button != 1 && buts.Event.Button != 2)
                 return;
-            if (ImageView.SelectedImage.isPyramidal)
-            {
-               App.viewer.renderManager.BeginInteraction();
-            }
 
             currentTool = GetTool(Tool.Type.pan);
-            isPanning = true;
-            kineticActive = true;
 
-            panVelocity = new PointD(0, 0);
+            //Signal interaction start
+            if (ImageView.SelectedImage.isPyramidal && renderManager != null)
+            {
+                renderManager.BeginInteraction();
+            }
 
             panStartX = buts.Event.X;
             panStartY = buts.Event.Y;
-
             initialPanScale = App.viewer.Resolution;
 
-            initialPanOrigin = ImageView.SelectedImage.isPyramidal
-                ? App.viewer.PyramidalOrigin
-                : App.viewer.Origin;
-
-            lastMoveTime = DateTime.UtcNow;
+            if (ImageView.SelectedImage.isPyramidal)
+            {
+                initialPanOrigin = new PointD(
+                    App.viewer.PyramidalOrigin.X,
+                    App.viewer.PyramidalOrigin.Y);
+            }
+            else
+            {
+                initialPanOrigin = new PointD(
+                    App.viewer.Origin.X,
+                    App.viewer.Origin.Y);
+            }
         }
-
 
         // --------------------------------------------------------------------
         // Mouse Move
         // --------------------------------------------------------------------
         public void ToolMove_Pan(PointD e, MotionNotifyEventArgs buts)
         {
-            if (!isPanning || currentTool.type != Tool.Type.pan)
+            if (currentTool.type != Tool.Type.pan)
                 return;
 
-            if (!buts.Event.State.HasFlag(Gdk.ModifierType.Button1Mask) &&
-                !buts.Event.State.HasFlag(Gdk.ModifierType.Button2Mask))
+            if (!buts.Event.State.HasFlag(ModifierType.Button1Mask) &&
+                !buts.Event.State.HasFlag(ModifierType.Button2Mask))
                 return;
 
-            double dxScreen = (buts.Event.X - panStartX) / dpiScale;
-            double dyScreen = (buts.Event.Y - panStartY) / dpiScale;
+            double dx = e.X - App.viewer.MouseDown.X;
+            double dy = e.Y - App.viewer.MouseDown.Y;
+            double deltaX = dx / initialPanScale;
+            double deltaY = dy / initialPanScale;
 
-            double dxWorld = dxScreen / initialPanScale;
-            double dyWorld = dyScreen / initialPanScale;
-
-            PointD newOrigin = new PointD(
-                initialPanOrigin.X - dxWorld,
-                initialPanOrigin.Y - dyWorld);
-
-            newOrigin = ClampOrigin(newOrigin);
-
-            SetOrigin(newOrigin);
             if (ImageView.SelectedImage.isPyramidal)
             {
-                App.viewer.renderManager.ContinueInteraction();
-                UpdateView_Fast();  // Lightweight update, no tile fetching
+                App.viewer.PyramidalOrigin = new PointD(
+                    initialPanOrigin.X - deltaX,
+                    initialPanOrigin.Y - deltaY);
+
+                // ✅ ADDED: Signal continued interaction
+                if (renderManager != null)
+                {
+                    renderManager.ContinueInteraction();
+                }
+
+                // ✅ CHANGED: Use fast update (no tile fetching)
+                // DON'T call UpdateView() - let sk_OnMotion handle it
             }
             else
             {
-                UpdateView();  // Normal path for non-pyramidal
+                App.viewer.Origin = new PointD(
+                    initialPanOrigin.X - deltaX,
+                    initialPanOrigin.Y - deltaY);
+                // Non-pyramidal can still use normal update
             }
-
         }
 
 
@@ -1385,16 +1408,15 @@ namespace BioGTK
         // --------------------------------------------------------------------
         public void ToolUp_Pan(PointD e, ButtonReleaseEventArgs buts)
         {
-            if (!isPanning)
-                return;
-
-            isPanning = false;
-
-            if (Math.Abs(panVelocity.X) > VelocityEpsilon ||
-                Math.Abs(panVelocity.Y) > VelocityEpsilon)
+            if (currentTool.type == Tool.Type.pan &&
+                (buts.Event.Button == 1 || buts.Event.Button == 2))
             {
-                kineticActive = true;
-                StartKineticLoop();
+                if (ImageView.SelectedImage.isPyramidal && renderManager != null)
+                {
+                    renderManager.EndInteraction();
+                }
+
+                currentTool = GetTool(Tool.Type.pan);
             }
         }
         private void StartKineticLoop()
