@@ -52,6 +52,7 @@ namespace BioGTK
             currentTool = GetTool(Tool.Type.move.ToString());
             floodFiller = new QueueLinearFloodFiller(floodFiller);
             magicSelect = MagicSelect.Create(0);
+            InitializePanOptimizations();
             App.ApplyStyles(this);
         }
         public static bool applyToStack = false;
@@ -1303,15 +1304,19 @@ namespace BioGTK
 
         // Animation
         private bool kineticActive = true;
-        private PyramidalRenderManager renderManager;
+        private PyramidalRenderManager RenderManager
+        {
+            get { return App.viewer.renderManager; }
+            set { App.viewer.renderManager = value; }
+        }
         private void InitializePanOptimizations()
         {
             if (App.viewer != null)
             {
-                renderManager = App.viewer.GetRenderManager();
+                RenderManager = App.viewer.GetRenderManager();
 
                 // Wire up final update callback
-                renderManager.OnFinalUpdateNeeded += () =>
+                RenderManager.OnFinalUpdateNeeded += () =>
                 {
                     Gtk.Application.Invoke(delegate
                     {
@@ -1320,13 +1325,6 @@ namespace BioGTK
                 };
             }
         }
-        private void UpdateView_Fast()
-        {
-            // Skip expensive UpdateImages() - just redraw with current state
-            App.viewer.UpdateView(false,false);
-        }
-
-
         // --------------------------------------------------------------------
         // Mouse Down
         // --------------------------------------------------------------------
@@ -1338,9 +1336,9 @@ namespace BioGTK
             currentTool = GetTool(Tool.Type.pan);
 
             //Signal interaction start
-            if (ImageView.SelectedImage.isPyramidal && renderManager != null)
+            if (ImageView.SelectedImage.isPyramidal && RenderManager != null)
             {
-                renderManager.BeginInteraction();
+                RenderManager.BeginInteraction();
             }
 
             panStartX = buts.Event.X;
@@ -1385,13 +1383,11 @@ namespace BioGTK
                     initialPanOrigin.Y - deltaY);
 
                 // ✅ ADDED: Signal continued interaction
-                if (renderManager != null)
+                if (RenderManager != null)
                 {
-                    renderManager.ContinueInteraction();
+                    RenderManager.ContinueInteraction();
                 }
-
-                // ✅ CHANGED: Use fast update (no tile fetching)
-                // DON'T call UpdateView() - let sk_OnMotion handle it
+                App.viewer.UpdateImages(true);
             }
             else
             {
@@ -1411,9 +1407,9 @@ namespace BioGTK
             if (currentTool.type == Tool.Type.pan &&
                 (buts.Event.Button == 1 || buts.Event.Button == 2))
             {
-                if (ImageView.SelectedImage.isPyramidal && renderManager != null)
+                if (ImageView.SelectedImage.isPyramidal && RenderManager != null)
                 {
-                    renderManager.EndInteraction();
+                    RenderManager.EndInteraction();
                 }
 
                 currentTool = GetTool(Tool.Type.pan);

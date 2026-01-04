@@ -30,7 +30,6 @@ namespace BioGTK
         private Builder _builder;
         public List<BioImage> Images = new List<BioImage>();
         public List<SKImage> SKImages = new List<SKImage>();
-        public List<Bitmap> Bitmaps = new List<Bitmap>();
         public void SetCoordinate(int z, int c, int t)
         {
             if (SelectedImage == null)
@@ -77,7 +76,7 @@ namespace BioGTK
             InitPreview();
             
             UpdateGUI();
-            UpdateImages();
+            UpdateImages(true);
             GoToImage(Images.Count - 1);
             pyramidalRenderManager = new PyramidalRenderManager();
 
@@ -293,6 +292,9 @@ namespace BioGTK
             bBox.PackStart(rendererb, false);
             bBox.AddAttribute(rendererb, "text", 0);
             App.ApplyStyles(this);
+
+
+
             if(im.Type == BioImage.ImageType.well)
             {
                 Resolution = 0;
@@ -342,8 +344,8 @@ namespace BioGTK
                 paint.IsAntialias = true;
                 paint.Style = SKPaintStyle.Fill;
 
-                if ((SKImages.Count == 0 || Bitmaps.Count != Images.Count))
-                    UpdateImages();
+                if (SKImages.Count == 0)
+                    UpdateImages(true);
 
                 if (SelectedImage == null)
                     return;
@@ -941,7 +943,7 @@ namespace BioGTK
         }
 
         /// It updates the images.
-        public async void UpdateImages()
+        public async void UpdateImages(bool force = false)
         {
             if (SelectedImage == null)
                 return;
@@ -951,13 +953,15 @@ namespace BioGTK
             {
                 UpdateGUI();
             }
-
+            
             int bi = 0;
             if (SelectedImage.isPyramidal && sk.AllocatedHeight <= 1 || sk.AllocatedWidth <= 1)
                 return;
 
             if (SelectedImage.isPyramidal)
             {
+                SelectedImage.Coordinate = GetCoordinate();
+                SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
                 // ✅ ADDED: Check if we should defer tile fetching
                 if (pyramidalRenderManager != null &&
                     pyramidalRenderManager.ShouldDeferTileFetch())
@@ -965,14 +969,10 @@ namespace BioGTK
                     // During interaction - skip tile fetch
                     return;
                 }
-
-                SelectedImage.Coordinate = GetCoordinate();
-                SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
-                SelectedImage.UpdateBuffersPyramidal().Wait();
+                if (force)
+                await SelectedImage.UpdateBuffersPyramidal();
             }
-
             SKImages.Clear();
-            Bitmaps.Clear();
             foreach (BioImage b in Images)
             {
                 ZCT c = GetCoordinate();
@@ -996,7 +996,6 @@ namespace BioGTK
                 }
                 if (bitmap == null)
                     return;
-                Bitmaps.Add(bitmap);
                 SKImage skim = BitmapToSKImage(bitmap);
                 SKImages.Add(skim);
                 bi++;
@@ -1124,7 +1123,9 @@ namespace BioGTK
                
                 overviewImage = resizer.Apply(sourceBitmap.GetImageRGB());
                 overviewSKImage = BitmapToSKImage(overviewImage);
-                overviewImage.Dispose();
+                
+                //pyramidalRenderManager.CacheCurrentFrame(overviewImage.Bytes, new PointD(0, 0), Resolution);
+                //overviewImage.Dispose();
                 sourceBitmap.Dispose();
                 sourceBitmap = null;
                 ShowOverview = true;
@@ -2291,7 +2292,7 @@ namespace BioGTK
                 if (SelectedImage.Type == BioImage.ImageType.well)
                 {
                     SelectedImage.UpdateBuffersWells();
-                    UpdateImages();
+                    UpdateImages(true);
                     UpdateView();
                 }
             }
@@ -2327,12 +2328,12 @@ namespace BioGTK
                 + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2") + ", Res:" + Resolution + " Level:" + Level;
         }
         /// It updates the view.
-        public void UpdateView(bool update = true, bool updateImages = true)
+        public void UpdateView(bool QueueDraw = true, bool updateImages = true)
         {
             if(updateImages)
             UpdateImages();
             refresh = true;
-            if(update)
+            if(QueueDraw)
             sk.QueueDraw();
         }
         private string mousePoint = "";
