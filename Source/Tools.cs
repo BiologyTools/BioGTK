@@ -52,7 +52,6 @@ namespace BioGTK
             currentTool = GetTool(Tool.Type.move.ToString());
             floodFiller = new QueueLinearFloodFiller(floodFiller);
             magicSelect = MagicSelect.Create(0);
-            InitializePanOptimizations();
             App.ApplyStyles(this);
         }
         public static bool applyToStack = false;
@@ -1304,27 +1303,7 @@ namespace BioGTK
 
         // Animation
         private bool kineticActive = true;
-        private PyramidalRenderManager RenderManager
-        {
-            get { return App.viewer.renderManager; }
-            set { App.viewer.renderManager = value; }
-        }
-        private void InitializePanOptimizations()
-        {
-            if (App.viewer != null)
-            {
-                RenderManager = App.viewer.GetRenderManager();
 
-                // Wire up final update callback
-                RenderManager.OnFinalUpdateNeeded += () =>
-                {
-                    Gtk.Application.Invoke(delegate
-                    {
-                        UpdateView();
-                    });
-                };
-            }
-        }
         // --------------------------------------------------------------------
         // Mouse Down
         // --------------------------------------------------------------------
@@ -1334,13 +1313,6 @@ namespace BioGTK
                 return;
 
             currentTool = GetTool(Tool.Type.pan);
-
-            //Signal interaction start
-            if (ImageView.SelectedImage.isPyramidal && RenderManager != null)
-            {
-                RenderManager.BeginInteraction();
-            }
-
             panStartX = buts.Event.X;
             panStartY = buts.Event.Y;
             initialPanScale = App.viewer.Resolution;
@@ -1381,13 +1353,7 @@ namespace BioGTK
                 App.viewer.PyramidalOrigin = new PointD(
                     initialPanOrigin.X - deltaX,
                     initialPanOrigin.Y - deltaY);
-
-                // ✅ ADDED: Signal continued interaction
-                if (RenderManager != null)
-                {
-                    RenderManager.ContinueInteraction();
-                }
-                App.viewer.UpdateImages(true);
+                UpdateView();
             }
             else
             {
@@ -1407,12 +1373,7 @@ namespace BioGTK
             if (currentTool.type == Tool.Type.pan &&
                 (buts.Event.Button == 1 || buts.Event.Button == 2))
             {
-                if (ImageView.SelectedImage.isPyramidal && RenderManager != null)
-                {
-                    RenderManager.EndInteraction();
-                }
-
-                currentTool = GetTool(Tool.Type.pan);
+                currentTool = GetTool(Tool.Type.move);
             }
         }
         private void StartKineticLoop()

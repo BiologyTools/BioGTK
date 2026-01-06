@@ -76,10 +76,8 @@ namespace BioGTK
             InitPreview();
             
             UpdateGUI();
-            UpdateImages(true);
+            UpdateImages();
             GoToImage(Images.Count - 1);
-            pyramidalRenderManager = new PyramidalRenderManager();
-
         }
         double pxWmicron = 5;
         double pxHmicron = 5;
@@ -170,11 +168,6 @@ namespace BioGTK
                 }
                 return rois;
             }
-        }
-        public PyramidalRenderManager renderManager = new PyramidalRenderManager();
-        public PyramidalRenderManager GetRenderManager()
-        {
-            return renderManager;
         }
 #pragma warning disable 649
         [Builder.Object]
@@ -311,12 +304,6 @@ namespace BioGTK
                 WidthRequest = 800;
                 HeightRequest = 600;
             }
-            renderManager.OnFinalUpdateNeeded += () => {
-                Gtk.Application.Invoke(delegate {
-                    UpdateView();  // Full update after pan completes
-                });
-            };
-
         }
         private static SkiaSharp.SKRect ToRectangle(float x1, float y1, float x2, float y2)
         {
@@ -345,7 +332,7 @@ namespace BioGTK
                 paint.Style = SKPaintStyle.Fill;
 
                 if (SKImages.Count == 0)
-                    UpdateImages(true);
+                    UpdateImages();
 
                 if (SelectedImage == null)
                     return;
@@ -943,7 +930,7 @@ namespace BioGTK
         }
 
         /// It updates the images.
-        public async void UpdateImages(bool force = false)
+        public async void UpdateImages()
         {
             if (SelectedImage == null)
                 return;
@@ -962,14 +949,6 @@ namespace BioGTK
             {
                 SelectedImage.Coordinate = GetCoordinate();
                 SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
-                // ✅ ADDED: Check if we should defer tile fetching
-                if (pyramidalRenderManager != null &&
-                    pyramidalRenderManager.ShouldDeferTileFetch())
-                {
-                    // During interaction - skip tile fetch
-                    return;
-                }
-                if (force)
                 await SelectedImage.UpdateBuffersPyramidal();
             }
             SKImages.Clear();
@@ -2292,7 +2271,7 @@ namespace BioGTK
                 if (SelectedImage.Type == BioImage.ImageType.well)
                 {
                     SelectedImage.UpdateBuffersWells();
-                    UpdateImages(true);
+                    UpdateImages();
                     UpdateView();
                 }
             }
@@ -2647,7 +2626,6 @@ namespace BioGTK
         }
         protected override void OnDestroyed()
         {
-            pyramidalRenderManager?.Dispose();
             base.OnDestroyed();
         }
 
@@ -3083,8 +3061,6 @@ namespace BioGTK
         private OpenSlideGTK.ISlideSource _openSlideSource;
         private BioLib.ISlideSource _slideSource;
         private SlideBase _slideBase;
-        private PyramidalRenderManager pyramidalRenderManager;
-
         /// <summary>
         /// Open slide file
         /// </summary>
