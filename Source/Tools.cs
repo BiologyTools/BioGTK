@@ -1353,7 +1353,7 @@ namespace BioGTK
                 App.viewer.PyramidalOrigin = new PointD(
                     initialPanOrigin.X - deltaX,
                     initialPanOrigin.Y - deltaY);
-                UpdateView();
+                App.viewer.RequestDeferredRender();
             }
             else
             {
@@ -1361,6 +1361,7 @@ namespace BioGTK
                     initialPanOrigin.X - deltaX,
                     initialPanOrigin.Y - deltaY);
                 // Non-pyramidal can still use normal update
+                App.viewer.UpdateView();
             }
         }
 

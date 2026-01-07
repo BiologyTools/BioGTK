@@ -50,7 +50,6 @@ namespace BioGTK
                 SelectedImage.Coordinate = new ZCT(0, (int)cBar.Value, (int)tBar.Value);
             else
                 SelectedImage.Coordinate = new ZCT((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
-            UpdateView(true, true);
         }
         /// It returns the coordinate of the selected image
         /// 
@@ -76,7 +75,7 @@ namespace BioGTK
             InitPreview();
             
             UpdateGUI();
-            UpdateImages();
+            UpdateImages(true);
             GoToImage(Images.Count - 1);
         }
         double pxWmicron = 5;
@@ -103,7 +102,6 @@ namespace BioGTK
             set
             {
                 pxWmicron = value;
-                UpdateView(true,false);
             }
         }
         public double PxHmicron
@@ -126,7 +124,6 @@ namespace BioGTK
             set
             {
                 pxHmicron = value;
-                UpdateView(true, false);
             }
         }
         bool allowNavigation = true;
@@ -315,6 +312,126 @@ namespace BioGTK
         }
         private bool refresh = false;
         SKImage overviewSKImage;
+        private async Task PrefetchSurroundingTiles(Extent viewportExtent, int level)
+        {
+            // Cancel any pending prefetch operations
+            _tileFetchCancellation?.Cancel();
+            _tileFetchCancellation = new CancellationTokenSource();
+            var token = _tileFetchCancellation.Token;
+    
+            // Expand viewport by 1 tile in each direction for prefetching
+            var expandedExtent = new Extent(
+                viewportExtent.MinX - 256,
+                viewportExtent.MinY - 256,
+                viewportExtent.MaxX + 256,
+                viewportExtent.MaxY + 256
+            );
+            IEnumerable<TileInfo> tileInfos;
+            if(SelectedImage.OpenSlideBase!=null)
+                tileInfos = SelectedImage.OpenSlideBase.Schema.GetTileInfos(expandedExtent, level);
+            else
+                tileInfos = SelectedImage.SlideBase.Schema.GetTileInfos(expandedExtent, level);
+            // Start fetching tiles asynchronously
+            var fetchTasks = new List<Task>();
+            foreach (var tileInfo in tileInfos)
+            {
+                if (token.IsCancellationRequested) break;
+        
+                var info = new Info(SelectedImage.Coordinate, tileInfo.Index, tileInfo.Extent, level);
+                // Check if tile is already in cache
+
+                if (_openSlideBase != null)
+                {
+                    if (_openSlideBase.cache.GetTile(info) != null) continue;
+                }
+                else
+                {
+                    BioLib.TileInformation tf = new TileInformation(tileInfo.Index, tileInfo.Extent,SelectedImage.Coordinate);
+                    if (_slideBase.cache.GetTile(tf) != null) continue;
+                }
+                // Start async fetch if not already pending
+                if (!_pendingTileFetches.ContainsKey(tileInfo.Index))
+                {
+                    var fetchTask = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            if(_openSlideBase==null)
+                            {
+                                Info inf = new Info(SelectedImage.Coordinate, tileInfo.Index, tileInfo.Extent, tileInfo.Index.Level);
+                                var tile = await _openSlideBase.cache.GetTile(inf);
+                                return tile;
+                            }
+                            else
+                            {
+                                TileInformation tf = new TileInformation(tileInfo.Index, tileInfo.Extent, SelectedImage.Coordinate);
+                                var tile = await _slideBase.cache.GetTile(tf);
+                                return tile;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Prefetch error for tile {tileInfo.Index}: {ex.Message}");
+                            return null;
+                        }
+                    }, token);
+
+                    _pendingTileFetches[tileInfo.Index] = fetchTask;
+                    fetchTasks.Add(fetchTask);
+                }
+            }
+    
+            // Don't await - let prefetching happen in background
+            _ = Task.WhenAll(fetchTasks).ContinueWith(t => 
+            {
+                // Clean up completed fetches
+                lock (_pendingTileFetches)
+                {
+                    var completed = _pendingTileFetches
+                        .Where(kvp => kvp.Value.IsCompleted)
+                        .Select(kvp => kvp.Key)
+                        .ToList();
+            
+                    foreach (var key in completed)
+                        _pendingTileFetches.Remove(key);
+                }
+        
+                // Request a render update if we prefetched any tiles
+                if (fetchTasks.Count > 0 && !token.IsCancellationRequested)
+                    RequestDeferredRender();
+            }, token);
+        }
+        public void RequestDeferredRender()
+        {
+            lock (_renderLock)
+            {
+                _pendingRender = true;
+
+                // Reset timer - only render after 50ms of no requests
+                _renderTimer?.Dispose();
+                _renderTimer = new System.Threading.Timer(
+                    _ => ExecuteDeferredRender(),
+                    null,
+                    50,  // Delay in milliseconds
+                    Timeout.Infinite
+                );
+            }
+        }
+
+        private void ExecuteDeferredRender()
+        {
+            lock (_renderLock)
+            {
+                if (!_pendingRender) return;
+                _pendingRender = false;
+            }
+
+            // Execute on UI thread
+            Gtk.Application.Invoke((sender, args) =>
+            {
+                UpdateView(true, true);
+            });
+        }
         private async void Render(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e)
         {
 
@@ -929,8 +1046,17 @@ namespace BioGTK
             this.Title = s;
         }
 
+
+        // Add these fields to ImageView class
+        private System.Threading.Timer _renderTimer;
+        private volatile bool _pendingRender = false;
+        private readonly object _renderLock = new object();
+        private CancellationTokenSource _tileFetchCancellation;
+        private Dictionary<TileIndex, Task<byte[]>> _pendingTileFetches = new Dictionary<TileIndex, Task<byte[]>>();
+       
+
         /// It updates the images.
-        public async void UpdateImages()
+        public async void UpdateImages(bool force = false)
         {
             if (SelectedImage == null)
                 return;
@@ -949,7 +1075,9 @@ namespace BioGTK
             {
                 SelectedImage.Coordinate = GetCoordinate();
                 SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
+                if(force)
                 await SelectedImage.UpdateBuffersPyramidal();
+                Mode = ViewMode.Raw;
             }
             SKImages.Clear();
             foreach (BioImage b in Images)
@@ -1877,10 +2005,7 @@ namespace BioGTK
             st.p = mouseDown;
             st.type = Scripting.Event.Down;
             Scripting.UpdateState(st);
-            if(SelectedImage.isPyramidal)
-                UpdateView(true,true);
-            else
-                UpdateView(true,false);
+            UpdateView(true,true);
         }
         /// The function is called when the user presses a key on the keyboard
         /// 
@@ -2090,8 +2215,6 @@ namespace BioGTK
                 {
                     rgbStack.VisibleChild = rgbStack.Children[0];
                 }
-                UpdateImage();
-                UpdateView();
             }
         }
         /* A property that returns the R channel of the selected image. */
@@ -2271,7 +2394,6 @@ namespace BioGTK
                 if (SelectedImage.Type == BioImage.ImageType.well)
                 {
                     SelectedImage.UpdateBuffersWells();
-                    UpdateImages();
                     UpdateView();
                 }
             }
@@ -2307,10 +2429,10 @@ namespace BioGTK
                 + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2") + ", Res:" + Resolution + " Level:" + Level;
         }
         /// It updates the view.
-        public void UpdateView(bool QueueDraw = true, bool updateImages = true)
+        public void UpdateView(bool QueueDraw = true, bool updateImages = false)
         {
             if(updateImages)
-            UpdateImages();
+            UpdateImages(updateImages);
             refresh = true;
             if(QueueDraw)
             sk.QueueDraw();
