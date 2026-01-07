@@ -1343,8 +1343,8 @@ namespace BioGTK
                 !buts.Event.State.HasFlag(ModifierType.Button2Mask))
                 return;
 
-            double dx = e.X - App.viewer.MouseDown.X;
-            double dy = e.Y - App.viewer.MouseDown.Y;
+            double dx = buts.Event.X - panStartX;
+            double dy = buts.Event.Y - panStartY;
             double deltaX = dx / initialPanScale;
             double deltaY = dy / initialPanScale;
 
