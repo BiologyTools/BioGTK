@@ -412,7 +412,7 @@ namespace BioGTK
                 _renderTimer = new System.Threading.Timer(
                     _ => ExecuteDeferredRender(),
                     null,
-                    50,  // Delay in milliseconds
+                    20,  // Delay in milliseconds
                     Timeout.Infinite
                 );
             }
@@ -2517,7 +2517,6 @@ namespace BioGTK
         /// </summary>
         private void ImageView_MotionNotifyEvent(object o, MotionNotifyEventArgs e)
         {
-            
             App.viewer = this;
             Modifiers = e.Event.State;
             MouseMove = new PointD(e.Event.X, e.Event.Y);
@@ -2531,36 +2530,27 @@ namespace BioGTK
             if (SelectedImage.isPyramidal && overview.IntersectsWith(e.Event.X, e.Event.Y) &&
                 e.Event.State.HasFlag(ModifierType.Button1Mask))
             {
-                // Get click position relative to overview rectangle
-                double clickX = e.Event.X - overview.X;
-                double clickY = e.Event.Y - overview.Y;
-                
-                // Get base resolution dimensions (level 0)
-                BioLib.Resolution baseRes = SelectedImage.Resolutions[Level];
-                double fullWidth, fullHeight;
-                if (SelectedImage.SlideBase != null)
+                if (!OpenSlide)
                 {
-                    fullWidth = baseRes.SizeX * SelectedImage.SlideBase.Schema.Resolutions[Level].UnitsPerPixel;
-                    fullHeight = baseRes.SizeY * SelectedImage.SlideBase.Schema.Resolutions[Level].UnitsPerPixel;
+                    double dsx = SelectedImage.SlideBase.Schema.Resolutions[0].UnitsPerPixel / Resolution;
+                    BioLib.Resolution rs = SelectedImage.Resolutions[Level];
+                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX);
+                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY);
+                    PyramidalOrigin = new PointD(dx, dy);
                 }
                 else
                 {
-                    fullWidth = baseRes.SizeX * SelectedImage.OpenSlideBase.Schema.Resolutions[Level].UnitsPerPixel;
-                    fullHeight = baseRes.SizeY * SelectedImage.OpenSlideBase.Schema.Resolutions[Level].UnitsPerPixel;
+                    double dsx = SelectedImage.OpenSlideBase.Schema.Resolutions[0].UnitsPerPixel / Resolution;
+                    BioLib.Resolution rs = SelectedImage.Resolutions[Level];
+                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX);
+                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY);
+                    PyramidalOrigin = new PointD(dx, dy);
                 }
-                // Calculate clicked position as fraction of overview
-                double fracX = clickX / overview.Width;
-                double fracY = clickY / overview.Height;
-                
-                // Convert to base resolution coordinates
-                double targetX = fracX * fullWidth;
-                double targetY = fracY * fullHeight;
-                PyramidalOrigin = new PointD(targetX, targetY);
+                RequestDeferredRender();
+                return;
             }
-
             // Delegate all tool logic to Tools.cs
             App.tools.ToolMove(p, e);
-
             UpdateStatus();
             pd = p;
         }
@@ -2584,7 +2574,6 @@ namespace BioGTK
 
             if (SelectedImage == null)
                 return;
-
             // Delegate all tool logic to Tools.cs
             App.tools.ToolUp(pointer, e);
         }

@@ -1296,14 +1296,16 @@ namespace BioGTK
 
         // Kinetic settings
         private const double PanFriction = 50.0;   // world units / s²
-        private const double VelocityEpsilon = 0.0005;
+        private const double VelocityEpsilon = 0.0001;
 
         // DPI normalization
         private double dpiScale = 1.0;
 
         // Animation
         private bool kineticActive = true;
+        // Pan speed multiplier (user configurable)
 
+        public static double PanSpeed = 0.75;  // Default to 0.75 for more controlled panning
         // --------------------------------------------------------------------
         // Mouse Down
         // --------------------------------------------------------------------
@@ -1345,15 +1347,17 @@ namespace BioGTK
 
             double dx = buts.Event.X - panStartX;
             double dy = buts.Event.Y - panStartY;
-            double deltaX = dx / initialPanScale;
-            double deltaY = dy / initialPanScale;
+            // Apply pan speed multiplier for user-controlled panning sensitivity
+
+            double deltaX = (dx / initialPanScale) * PanSpeed;
+            double deltaY = (dy / initialPanScale) * PanSpeed;
 
             if (ImageView.SelectedImage.isPyramidal)
             {
                 App.viewer.PyramidalOrigin = new PointD(
                     initialPanOrigin.X - deltaX,
                     initialPanOrigin.Y - deltaY);
-                App.viewer.RequestDeferredRender();
+                App.viewer.UpdateView(true,true);
             }
             else
             {
