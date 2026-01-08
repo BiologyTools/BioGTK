@@ -302,6 +302,13 @@ namespace BioGTK
                 HeightRequest = 600;
             }
         }
+
+        // Immediate render for interactive operations like panning
+        public void RequestImmediateRender()
+        {
+            UpdateView(true, false);
+        }
+
         private static SkiaSharp.SKRect ToRectangle(float x1, float y1, float x2, float y2)
         {
             return new SkiaSharp.SKRect()
@@ -530,13 +537,8 @@ namespace BioGTK
                     // Render ROIs
                     List<ROI> rois = new List<ROI>();
                     rois.AddRange(im.Annotations);
-
                     foreach (ROI an in rois)
                     {
-                        ZCT co = GetCoordinate();
-                        if (!(an.coord.Z == co.Z && an.coord.C == co.C && an.coord.T == co.T))
-                            continue;
-
                         if (Mode == ViewMode.RGBImage)
                         {
                             if (!showRROIs && an.coord.C == 0)
@@ -546,116 +548,145 @@ namespace BioGTK
                             if (!showBROIs && an.coord.C == 2)
                                 continue;
                         }
-
-                        // Set ROI color
-                        paint.Style = SKPaintStyle.Stroke;
                         if (an.Selected)
                         {
                             paint.Color = SKColors.Magenta;
                         }
                         else
-                        {
                             paint.Color = new SKColor(an.strokeColor.R, an.strokeColor.G, an.strokeColor.B);
-                        }
                         paint.StrokeWidth = (float)an.strokeWidth;
+                        PointF pc = new PointF((float)(an.BoundingBox.X + (an.BoundingBox.W / 2)), (float)(an.BoundingBox.Y + (an.BoundingBox.H / 2)));
+                        float width = ROI.selectBoxSize;
 
-                        // Draw ROI based on type
-                        switch (an.type)
+                        if (an.type == ROI.Type.Mask && an.coord == App.viewer.GetCoordinate() && ShowMasks)
                         {
-                            case ROI.Type.Point:
-                                RectangleD p = ToScreenRect(an.X, an.Y, an.W, an.H);
-                                float f = (ROI.selectBoxSize * (float)SelectedImage.PhysicalSizeX) / 2;
-                                canvas.DrawRect((float)p.X - f, (float)p.Y - f, 2 * f, 2 * f, paint);
-                                break;
-
-                            case ROI.Type.Rectangle:
-                                RectangleD rect = ToScreenRect(an.X, an.Y, an.W, an.H);
-                                canvas.DrawRect((float)rect.X, (float)rect.Y, (float)rect.W, (float)rect.H, paint);
-                                break;
-
-                            case ROI.Type.Polygon:
-                            case ROI.Type.Freeform:
-                                // Draw lines between consecutive points
-                                for (int ptIdx = 0; ptIdx < an.Points.Count - 1; ptIdx++)
-                                {
-                                    RectangleD p1 = ToScreenRect(an.Points[ptIdx].X, an.Points[ptIdx].Y, 1, 1);
-                                    RectangleD p2 = ToScreenRect(an.Points[ptIdx + 1].X, an.Points[ptIdx + 1].Y, 1, 1);
-                                    canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y),
-                                                  new SKPoint((float)p2.X, (float)p2.Y), paint);
-                                }
-                                // Close the shape
-                                RectangleD pp1 = ToScreenRect(an.Points[0].X, an.Points[0].Y, 1, 1);
-                                RectangleD pp2 = ToScreenRect(an.Points[an.Points.Count - 1].X,
-                                                             an.Points[an.Points.Count - 1].Y, 1, 1);
-                                canvas.DrawLine(new SKPoint((float)pp1.X, (float)pp1.Y),
-                                              new SKPoint((float)pp2.X, (float)pp2.Y), paint);
-                                break;
-
-                            case ROI.Type.Polyline:
-                                // Draw lines between consecutive points (don't close)
-                                for (int ptIdx = 0; ptIdx < an.Points.Count - 1; ptIdx++)
-                                {
-                                    RectangleD p1 = ToScreenRect(an.Points[ptIdx].X, an.Points[ptIdx].Y, 1, 1);
-                                    RectangleD p2 = ToScreenRect(an.Points[ptIdx + 1].X, an.Points[ptIdx + 1].Y, 1, 1);
-                                    canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y),
-                                                  new SKPoint((float)p2.X, (float)p2.Y), paint);
-                                }
-                                break;
-
-                            case ROI.Type.Label:
-                                RectangleD labelPos = ToScreenRect((float)an.Points[0].X, (float)an.Points[0].Y, 1, 1);
-                                canvas.DrawText(an.Text, (float)labelPos.X, (float)labelPos.Y,
-                                              new SKFont(SKTypeface.Default, an.fontSize, 1, 0), paint);
-                                break;
-
-                            case ROI.Type.Line:
-                                RectangleD lineP1 = ToScreenRect((float)an.Points[0].X, (float)an.Points[0].Y, 0, 0);
-                                RectangleD lineP2 = ToScreenRect((float)an.Points[1].X, (float)an.Points[1].Y, 0, 0);
-                                canvas.DrawLine(new SKPoint((float)lineP1.X, (float)lineP1.Y),
-                                              new SKPoint((float)lineP2.X, (float)lineP2.Y), paint);
-                                break;
-
-                            case ROI.Type.Ellipse:
-                                RectangleD ellipse = ToScreenRect((float)an.Points[0].X, (float)an.Points[0].Y, an.W, an.H);
-                                canvas.DrawOval(new SKPoint((float)ellipse.X + (float)(ellipse.W / 2),
-                                                           (float)ellipse.Y + (float)ellipse.H / 2),
-                                              new SKSize((float)ellipse.W / 2, (float)ellipse.H / 2), paint);
-                                break;
+                            //paint.BlendMode = SKBlendMode.Modulate;
+                            SKImage sim;
+                            if (an.Selected)
+                                sim = an.roiMask.GetColored(Color.Blue, 10, true).ToSKImage();
+                            else
+                                sim = an.roiMask.GetColored(Color.FromArgb(1, an.fillColor.R, an.fillColor.G, an.fillColor.B), 1, true).ToSKImage();
+                            RectangleD p = ToScreenSpace(new RectangleD(an.roiMask.X * an.roiMask.PhysicalSizeX, an.roiMask.Y * an.roiMask.PhysicalSizeY, an.W, an.H));
+                            canvas.DrawImage(sim, ToRectangle((float)p.X, (float)p.Y, (float)p.W, (float)p.H), paint);
+                            sim.Dispose();
+                            continue;
                         }
-
-                        // Draw ROI text if enabled
-                        if (ROIManager.showText && an.type != ROI.Type.Label)
+                        else
+                        if (an.type == ROI.Type.Point)
                         {
-                            RectangleD textPos = ToScreenRect(an.X, an.Y, 1, 1);
-                            canvas.DrawText(an.Text, (float)textPos.X, (float)textPos.Y,
-                                          new SKFont(SKTypeface.Default, an.fontSize, 1, 0), paint);
+                            RectangleD r1 = ToScreenRect(an.Points[0].X, an.Points[0].Y, ToViewW(3), ToViewH(3));
+                            canvas.DrawCircle((float)r1.X, (float)r1.Y, 3, paint);
                         }
-
-                        // Draw bounding box if enabled
-                        if (ROIManager.showBounds && an.type != ROI.Type.Rectangle &&
-                            an.type != ROI.Type.Mask && an.type != ROI.Type.Label)
+                        else
+                        if (an.type == ROI.Type.Line)
                         {
-                            RectangleD bounds = ToScreenRect(an.BoundingBox.X, an.BoundingBox.Y,
-                                                            an.BoundingBox.W, an.BoundingBox.H);
-                            canvas.DrawRect((float)bounds.X, (float)bounds.Y, (float)bounds.W, (float)bounds.H, paint);
-                        }
-
-                        // Draw selection boxes
-                        if (an.type != ROI.Type.Mask && !(an.type == ROI.Type.Freeform && !an.Selected))
-                        {
-                            RectangleD[] sels = an.GetSelectBoxes(ROI.selectBoxSize * SelectedImage.PhysicalSizeX);
-                            paint.Style = SKPaintStyle.Stroke;
-
-                            for (int ptIdx = 0; ptIdx < sels.Length; ptIdx++)
+                            for (int p = 0; p < an.Points.Count - 1; p++)
                             {
-                                RectangleD selBox = ToScreenRect(sels[ptIdx].X, sels[ptIdx].Y,
-                                                                sels[ptIdx].W, sels[ptIdx].H);
-
-                                // Color code selection boxes
-                                paint.Color = an.selectedPoints.Contains(ptIdx) ? SKColors.Blue : SKColors.Red;
-                                canvas.DrawRect((float)selBox.X, (float)selBox.Y,
-                                              (float)selBox.W, (float)selBox.H, paint);
+                                PointD p1 = ToScreenSpace(an.Points[p].X, an.Points[p].Y);
+                                PointD p2 = ToScreenSpace(an.Points[p + 1].X, an.Points[p + 1].Y);
+                                canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
                             }
+                        }
+                        else
+                        if (an.type == ROI.Type.Rectangle)
+                        {
+                            RectangleD rectt = ToScreenRect(an.Points[0].X, an.Points[0].Y, Math.Abs(an.Points[0].X - an.Points[1].X), Math.Abs(an.Points[0].Y - an.Points[2].Y));
+                            canvas.DrawRect((float)rectt.X, (float)rectt.Y, (float)rectt.W, (float)rectt.H, paint);
+                        }
+                        else
+                        if (an.type == ROI.Type.Ellipse)
+                        {
+                            RectangleD rect = ToScreenRect(an.X + (an.W / 2), an.Y + (an.H / 2), an.W, an.H);
+                            canvas.DrawOval((float)rect.X, (float)rect.Y, (float)rect.W / 2, (float)rect.H / 2, paint);
+                        }
+                        else
+                        if ((an.type == ROI.Type.Polygon && an.closed))
+                        {
+                            for (int p = 0; p < an.Points.Count - 1; p++)
+                            {
+                                RectangleD p1 = ToScreenRect(an.Points[p].X, an.Points[p].Y, 1, 1);
+                                RectangleD p2 = ToScreenRect(an.Points[p + 1].X, an.Points[p + 1].Y, 1, 1);
+                                canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
+                            }
+                            RectangleD pp1 = ToScreenRect(an.Points[0].X, an.Points[0].Y, 1, 1);
+                            RectangleD pp2 = ToScreenRect(an.Points[an.Points.Count - 1].X, an.Points[an.Points.Count - 1].Y, 1, 1);
+                            canvas.DrawLine(new SKPoint((float)pp1.X, (float)pp1.Y), new SKPoint((float)pp2.X, (float)pp2.Y), paint);
+                        }
+                        else
+                        if ((an.type == ROI.Type.Polygon && !an.closed) || an.type == ROI.Type.Polyline)
+                        {
+                            for (int p = 0; p < an.Points.Count - 1; p++)
+                            {
+                                RectangleD p1 = ToScreenRect(an.Points[p].X, an.Points[p].Y, 1, 1);
+                                RectangleD p2 = ToScreenRect(an.Points[p + 1].X, an.Points[p + 1].Y, 1, 1);
+                                canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
+                            }
+                        }
+                        else
+                        if (an.type == ROI.Type.Freeform)
+                        {
+                            for (int p = 0; p < an.Points.Count - 1; p++)
+                            {
+                                RectangleD p1 = ToScreenRect(an.Points[p].X, an.Points[p].Y, 1, 1);
+                                RectangleD p2 = ToScreenRect(an.Points[p + 1].X, an.Points[p + 1].Y, 1, 1);
+                                canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
+                            }
+                            RectangleD pp1 = ToScreenRect(an.Points[0].X, an.Points[0].Y, 1, 1);
+                            RectangleD pp2 = ToScreenRect(an.Points[an.Points.Count - 1].X, an.Points[an.Points.Count - 1].Y, 1, 1);
+                            canvas.DrawLine(new SKPoint((float)pp1.X, (float)pp1.Y), new SKPoint((float)pp2.X, (float)pp2.Y), paint);
+                        }
+                        else
+                        if (an.type == ROI.Type.Label)
+                        {
+                            RectangleD p = ToScreenRect(an.Points[0].X, an.Points[0].Y, 1, 1);
+                            canvas.DrawText(an.Text, (float)p.X, (float)p.Y, new SKFont(SKTypeface.Default, an.fontSize, 1, 0), paint);
+                        }
+
+                        if (ROIManager.showText)
+                        {
+                            RectangleD p = ToScreenRect(an.Points[0].X, an.Points[0].Y, 1, 1);
+                            canvas.DrawText(an.Text, (float)p.X, (float)p.Y, new SKFont(SKTypeface.Default, an.fontSize, 1, 0), paint);
+                        }
+                        if (ROIManager.showBounds && an.type != ROI.Type.Rectangle && an.type != ROI.Type.Mask && an.type != ROI.Type.Label)
+                        {
+                            RectangleD rrf = ToScreenRect(an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
+                            canvas.DrawRect((float)rrf.X, (float)rrf.Y, (float)rrf.W, (float)rrf.H, paint);
+                        }
+                        paint.Color = SKColors.Red;
+                        if (!(an.type == ROI.Type.Freeform && !an.Selected) && an.type != ROI.Type.Mask)
+                            foreach (RectangleD re in an.GetSelectBoxes(1))
+                            {
+                                RectangleD recd = ToScreenRect(re.X, re.Y, re.W, re.H);
+                                canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
+                            }
+                        if (an.type != ROI.Type.Mask)
+                        {
+                            //Lets draw the selection Boxes.
+                            List<RectangleD> rects = new List<RectangleD>();
+                            RectangleD[] sels = an.GetSelectBoxes(width);
+                            for (int p = 0; p < an.selectedPoints.Count; p++)
+                            {
+                                if (an.selectedPoints[p] < an.GetPointCount())
+                                {
+                                    rects.Add(sels[an.selectedPoints[p]]);
+                                }
+                            }
+                            //Lets draw selected selection boxes.
+                            paint.Color = SKColors.Blue;
+                            if (rects.Count > 0)
+                            {
+                                int ind = 0;
+                                foreach (RectangleD re in an.GetSelectBoxes(1))
+                                {
+                                    RectangleD recd = ToScreenRect(re.X, re.Y, re.W, re.H);
+                                    if (an.selectedPoints.Contains(ind))
+                                    {
+                                        canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
+                                    }
+                                    ind++;
+                                }
+                            }
+                            rects.Clear();
                         }
                     }
                     i++;
@@ -2824,50 +2855,25 @@ namespace BioGTK
         }
         public PointD ToViewSpace(double x, double y)
         {
-            // Screen → centered screen coordinates
-            double sx = x - (viewStack.AllocatedWidth * 0.5);
-            double sy = y - (viewStack.AllocatedHeight * 0.5);
-
-            // Screen pixels → image pixels (zoom corrected)
-            double px = sx / Scale.Width;
-            double py = sy / Scale.Height;
-
-            // No image loaded: fall back to legacy behavior
             if (SelectedImage == null)
             {
-                return new PointD(
-                    ToViewSizeW(px) - Origin.X,
-                    ToViewSizeH(py) - Origin.Y
-                );
+                double dx = (ToViewSizeW(x - (viewStack.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
+                double dy = (ToViewSizeH(y - (viewStack.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
+                return new PointD(dx, dy);
             }
 
-            // ------------------------------------------------------------------------
-            // PYRAMIDAL IMAGE PATH (CORRECT)
-            // ------------------------------------------------------------------------
             if (SelectedImage.isPyramidal)
             {
-                var levelRes = !openSlide
-                    ? _slideBase.Schema.Resolutions[Level]
-                    : _openSlideBase.Schema.Resolutions[Level];
-
-                // Image pixels → WORLD UNITS (current level)
-                double wx = px * levelRes.UnitsPerPixel;
-                double wy = py * levelRes.UnitsPerPixel;
-
-                // Subtract WORLD-UNIT origin (base resolution space)
-                return new PointD(
-                    wx - PyramidalOrigin.X,
-                    wy - PyramidalOrigin.Y
-                );
+                PointD p = new PointD(x / Resolution, y / Resolution);
+                return new PointD(p.X - PyramidalOrigin.X, p.Y - PyramidalOrigin.Y);
             }
-
-            // ------------------------------------------------------------------------
-            // NON-PYRAMIDAL IMAGE PATH
-            // ------------------------------------------------------------------------
-            return new PointD(
-                ToViewSizeW(px) - Origin.X,
-                ToViewSizeH(py) - Origin.Y
-            );
+            else
+            {
+                // Handle non-pyramidal case
+                double dx = (ToViewSizeW(x - (viewStack.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
+                double dy = (ToViewSizeH(y - (viewStack.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
+                return new PointD(dx, dy);
+            }
         }
 
         /// Convert a value in microns to a value in pixels
@@ -3042,10 +3048,10 @@ namespace BioGTK
                 double dx = (pxWmicron * (Origin.X)) * Scale.Width;
                 double dy = (pxHmicron * (Origin.Y)) * Scale.Height;
                 RectangleD rf = new RectangleD((PxWmicron * x * Scale.Width + dx), (PxHmicron * y * Scale.Height + dy), (PxWmicron * w * Scale.Width), (PxHmicron * h * Scale.Height));
-                return rf;              
+                return rf;
             }
         }
-       
+
         /// > It converts a rectangle from world space to screen space
         /// 
         /// @param RectangleD The rectangle to convert.
