@@ -246,6 +246,7 @@ namespace BioGTK
             Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ImageView.glade", FileMode.Open));
             ImageView v = new ImageView(builder, builder.GetObject("imageView").Handle, bm);
             v.Title = bm.Filename;
+            
             return v;
         }
 
@@ -282,10 +283,7 @@ namespace BioGTK
             bBox.PackStart(rendererb, false);
             bBox.AddAttribute(rendererb, "text", 0);
             App.ApplyStyles(this);
-
-
-
-            if(im.Type == BioImage.ImageType.well)
+            if (im.Type == BioImage.ImageType.well)
             {
                 Resolution = 0;
             }
@@ -306,7 +304,7 @@ namespace BioGTK
         // Immediate render for interactive operations like panning
         public void RequestImmediateRender()
         {
-            UpdateView(true, false);
+            UpdateView(true, true);
         }
 
         private static SkiaSharp.SKRect ToRectangle(float x1, float y1, float x2, float y2)
@@ -422,6 +420,7 @@ namespace BioGTK
                     20,  // Delay in milliseconds
                     Timeout.Infinite
                 );
+                refresh = true;
             }
         }
 
@@ -444,8 +443,8 @@ namespace BioGTK
 
             try
             {
-                //if (!refresh)
-                //    return;
+                if (!refresh)
+                    return;
 
                 var canvas = e.Surface.Canvas;
                 canvas.Clear(SKColors.Transparent);
@@ -489,8 +488,28 @@ namespace BioGTK
                                 // Draw main pyramidal image
                                 paint.Style = SKPaintStyle.Fill;
                                 paint.BlendMode = SKBlendMode.SrcOver;
-                                canvas.DrawImage(SKImages[i], 0, 0, paint);
-                                
+                                // Calculate the destination rectangle for the image
+                                // This accounts for when the viewport extends beyond image boundaries
+                                var baseRes = SelectedImage.Resolutions[0];
+                                double viewportWidthInImagePixels = sk.AllocatedWidth * resolution;
+                                double viewportHeightInImagePixels = sk.AllocatedHeight * resolution;
+
+                                // Calculate how much of the viewport is actually within the image
+                                double imageStartX = Math.Max(0, -PyramidalOrigin.X / resolution);
+                                double imageStartY = Math.Max(0, -PyramidalOrigin.Y / resolution);
+                                double imageEndX = Math.Min(sk.AllocatedWidth, (baseRes.SizeX - PyramidalOrigin.X) / resolution);
+                                double imageEndY = Math.Min(sk.AllocatedHeight, (baseRes.SizeY - PyramidalOrigin.Y) / resolution);
+
+                                // Create destination rectangle
+                                SKRect destRect = new SKRect(
+                                    (float)imageStartX,
+                                    (float)imageStartY,
+                                    (float)imageEndX,
+                                    (float)imageEndY
+                                );
+                                // Draw the image, scaling it to fit the valid region.
+                                canvas.DrawImage(SKImages[i], destRect, paint);
+
                                 // Draw overview if enabled and available
                                 if (showOverview && overviewSKImage != null)
                                 {
@@ -501,12 +520,12 @@ namespace BioGTK
                                         overviewPaint.BlendMode = SKBlendMode.SrcOver;
                                         overviewPaint.IsAntialias = true;
                                         // Draw overview scaled to fit the overview rectangle
-                                        SKRect destRect = new SKRect(
+                                        SKRect destRect2 = new SKRect(
                                             overview.X,
                                             overview.Y,
                                             overview.X + overview.Width,
                                             overview.Y + overview.Height);
-                                        canvas.DrawImage(overviewSKImage, destRect, overviewPaint);
+                                        canvas.DrawImage(overviewSKImage, destRect2, overviewPaint);
                                     }
 
                                     // Step 2: Draw gray border around overview
@@ -896,16 +915,15 @@ namespace BioGTK
         {
             if (SelectedImage == null || !SelectedImage.isPyramidal)
                 return;
-
             var baseRes = SelectedImage.Resolutions[0];
-
-            double maxX = baseRes.SizeX - sk.AllocatedWidth * resolution;
-            double maxY = baseRes.SizeY - sk.AllocatedHeight * resolution;
-
-            PyramidalOrigin = new PointD(
-                Math.Max(0, Math.Min(PyramidalOrigin.X, maxX)),
-                Math.Max(0, Math.Min(PyramidalOrigin.Y, maxY))
-            );
+            // Calculate the maximum valid origin position
+            // When zoomed out, the viewport (screen size * resolution) may be larger than the image
+            // In this case, we need to ensure maxX/maxY don't become negative
+            double viewportWidthInImagePixels = sk.AllocatedWidth * resolution;
+            double viewportHeightInImagePixels = sk.AllocatedHeight * resolution;
+            double maxX = Math.Max(0, baseRes.SizeX - viewportWidthInImagePixels);
+            double maxY = Math.Max(0, baseRes.SizeY - viewportHeightInImagePixels);
+            Math.Max(0, Math.Min(PyramidalOrigin.Y, maxY));
         }
 
         private static SKImage Convert24bppBitmapToSKImage(Bitmap sourceBitmap)
@@ -1091,7 +1109,7 @@ namespace BioGTK
         {
             if (SelectedImage == null)
                 return;
-
+            
             if (zBar.Adjustment.Upper != SelectedImage.SizeZ - 1 ||
                 tBar.Adjustment.Upper != SelectedImage.SizeT - 1)
             {
@@ -1106,8 +1124,10 @@ namespace BioGTK
             {
                 SelectedImage.Coordinate = GetCoordinate();
                 SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
-                if(force)
-                await SelectedImage.UpdateBuffersPyramidal();
+                if (force)
+                {
+                    await SelectedImage.UpdateBuffersPyramidal();
+                }
                 Mode = ViewMode.Raw;
             }
             SKImages.Clear();
@@ -1126,6 +1146,7 @@ namespace BioGTK
                 }
                 else if (Mode == ViewMode.Raw)
                 {
+                    if(index < b.Buffers.Count)
                     bitmap = b.Buffers[index];
                 }
                 else
@@ -2064,9 +2085,9 @@ namespace BioGTK
         {
             Plugins.ScrollEvent(o, e);
             if (e.Event.Direction == ScrollDirection.Up)
-                SelectedImage.Resolution *= 1.1;
+                Resolution *= 1.1;
             if (e.Event.Direction == ScrollDirection.Down)
-                SelectedImage.Resolution *= 0.9;
+                Resolution *= 0.9;
         }
 
         /// The function ValueChanged is called when the value of the trackbar is changed.
@@ -2345,26 +2366,8 @@ namespace BioGTK
             }
             set
             {
-                
-                if (value <= 0 || value == resolution)
-                    return;
-                if (SelectedImage.OpenSlideBase != null)
-                { 
-                    if (value < SelectedImage.OpenSlideBase.Schema.Resolutions.Last().Value.UnitsPerPixel)
-                    {
-                        SelectedImage.Resolution = value;
-                        resolution = value;
-                    }
-                }
-                else
-                {
-                    if (value < SelectedImage.SlideBase.Schema.Resolutions.Last().Value.UnitsPerPixel)
-                    {
-                        SelectedImage.Resolution = value;
-                        resolution = value; 
-                    }
-                }
-
+                SelectedImage.Resolution = value;
+                resolution = value;
             }
         }
         private void UpdateLevel()
@@ -2563,7 +2566,8 @@ namespace BioGTK
             {
                 if (!OpenSlide)
                 {
-                    double dsx = SelectedImage.SlideBase.Schema.Resolutions[0].UnitsPerPixel / Resolution;
+                    double dsx = SelectedImage.Resolutions[0].SizeX / SelectedImage.Resolutions[Level].SizeX;
+                    double dsy = SelectedImage.Resolutions[Level].SizeY * Resolution;
                     BioLib.Resolution rs = SelectedImage.Resolutions[Level];
                     double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX);
                     double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY);
@@ -2571,14 +2575,14 @@ namespace BioGTK
                 }
                 else
                 {
-                    double dsx = SelectedImage.OpenSlideBase.Schema.Resolutions[0].UnitsPerPixel / Resolution;
+                    double dsx = SelectedImage.Resolutions[0].SizeX / SelectedImage.Resolutions[Level].SizeX;
+                    double dsy = SelectedImage.Resolutions[0].SizeY / SelectedImage.Resolutions[Level].SizeY;
                     BioLib.Resolution rs = SelectedImage.Resolutions[Level];
-                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX);
-                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY);
+                    double dx = rs.SizeX * ((double)e.Event.X / overview.Width) * dsx;
+                    double dy = rs.SizeY * ((double)e.Event.Y / overview.Height) * dsy;
                     PyramidalOrigin = new PointD(dx, dy);
                 }
                 RequestDeferredRender();
-                return;
             }
             // Delegate all tool logic to Tools.cs
             App.tools.ToolMove(p, e);
@@ -2864,8 +2868,7 @@ namespace BioGTK
 
             if (SelectedImage.isPyramidal)
             {
-                PointD p = new PointD(x / Resolution, y / Resolution);
-                return new PointD(p.X - PyramidalOrigin.X, p.Y - PyramidalOrigin.Y);
+                return new PointD(PyramidalOrigin.X + x / Resolution, PyramidalOrigin.Y + y / Resolution);
             }
             else
             {
@@ -3038,10 +3041,9 @@ namespace BioGTK
             }
             if (SelectedImage.isPyramidal)
             {
-                PointD d = ToViewSpace(x, y);
-                double dw = ToViewSizeW(w);
-                double dh = ToViewSizeH(h);
-                return new RectangleD(d.X, d.Y, dw, dh);
+                double dx = (pxWmicron * (Origin.X)) * Scale.Width;
+                double dy = (pxHmicron * (Origin.Y)) * Scale.Height;
+                return new RectangleD((PxWmicron * x * Scale.Width + dx), (PxHmicron * y * Scale.Height + dy), (PxWmicron * w * Scale.Width), (PxHmicron * h * Scale.Height));
             }
             else
             {

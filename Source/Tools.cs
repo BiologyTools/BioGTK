@@ -1305,7 +1305,7 @@ namespace BioGTK
         private bool kineticActive = true;
         // Pan speed multiplier (user configurable)
 
-        public static double PanSpeed = 0.75;  // Default to 0.75 for more controlled panning
+        public static double PanSpeed = 0.50;  // Default to 0.50 for more controlled panning
         // --------------------------------------------------------------------
         // Mouse Down
         // --------------------------------------------------------------------
@@ -1357,7 +1357,7 @@ namespace BioGTK
                 App.viewer.PyramidalOrigin = new PointD(
                     initialPanOrigin.X - deltaX,
                     initialPanOrigin.Y - deltaY);
-                App.viewer.UpdateView(true,true);
+                App.viewer.RequestImmediateRender();
             }
             else
             {
@@ -1367,6 +1367,7 @@ namespace BioGTK
                 // Non-pyramidal can still use normal update
                 App.viewer.UpdateView();
             }
+
         }
 
 
