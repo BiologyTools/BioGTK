@@ -1040,7 +1040,7 @@ namespace BioGTK
         }
         public static SKImage Convert16bppBitmapToSKImage(Bitmap sourceBitmap)
         {
-            Bitmap bm = sourceBitmap.GetImageRGB();
+            Bitmap bm = sourceBitmap.GetImageRGBA();
             int width = bm.Width;
             int height = bm.Height;
 
@@ -1071,23 +1071,6 @@ namespace BioGTK
             sourceBitmap.UnlockBits(bitmapData);
 
             return SKImage.FromBitmap(skBitmap);
-        }
-        public static SKImage BitmapToSKImage(AForge.Bitmap bitm)
-        {
-            if(bitm.PixelFormat == PixelFormat.Format24bppRgb)
-                return Convert24bppBitmapToSKImage(bitm);
-            if (bitm.PixelFormat == PixelFormat.Format32bppArgb)
-                return Convert32bppBitmapToSKImage(bitm);
-            if (bitm.PixelFormat == PixelFormat.Float)
-                return Convert32bppBitmapToSKImage(bitm.GetImageRGBA());
-            if (bitm.PixelFormat == PixelFormat.Format16bppGrayScale)
-                return Convert16bppBitmapToSKImage(bitm.GetImageRGB());
-            if (bitm.PixelFormat == PixelFormat.Format48bppRgb)
-                return Convert16bppBitmapToSKImage(bitm.GetImageRGB());
-            if (bitm.PixelFormat == PixelFormat.Format8bppIndexed)
-                return Convert8bppBitmapToSKImage(bitm);
-            else
-                throw new NotSupportedException("PixelFormat " + bitm.PixelFormat + " is not supported for SKImage.");
         }
 
         public void SetTitle(string s)
@@ -1280,7 +1263,7 @@ namespace BioGTK
                 // Resize to overview dimensions
                 AForge.Imaging.Filters.ResizeBicubic resizer = new ResizeBicubic(overviewWidth, overviewHeight);
                
-                overviewImage = resizer.Apply(sourceBitmap.GetImageRGB());
+                overviewImage = resizer.Apply(sourceBitmap.GetImageRGBA());
                 overviewSKImage = BitmapToSKImage(overviewImage);
                 
                 //pyramidalRenderManager.CacheCurrentFrame(overviewImage.Bytes, new PointD(0, 0), Resolution);
@@ -1303,6 +1286,38 @@ namespace BioGTK
         }
 
         #region Handlers
+        private static SKImage BitmapToSKImage(Bitmap bitmap)
+        {
+            var b = bitmap;
+            if (bitmap.PixelFormat != PixelFormat.Format32bppArgb)
+            {
+                b = bitmap.GetImageRGBA();
+            }
+            PixelFormat pf = PixelFormat.Format32bppArgb;
+            int width = b.Width;
+            int height = b.Height;
+            var rect = new Rectangle(0, 0, width, height);
+            BitmapData data = b.LockBits(
+                rect,
+                ImageLockMode.ReadOnly,
+                pf);
+            try
+            {
+                var imageInfo = new SKImageInfo(
+                    width,
+                    height,
+                    SKColorType.Rgba8888,
+                    pf == PixelFormat.Format32bppArgb
+                        ? SKAlphaType.Opaque
+                        : SKAlphaType.Premul);
+                return SKImage.FromPixels(imageInfo, data.Scan0, data.Stride);
+            }
+            catch
+            {
+                b.UnlockBits(data);
+                throw;
+            }
+        }
 
         /// <summary> Sets up the handlers. </summary>
         protected void SetupHandlers()
@@ -2368,6 +2383,7 @@ namespace BioGTK
             {
                 SelectedImage.Resolution = value;
                 resolution = value;
+                RequestDeferredRender();
             }
         }
         private void UpdateLevel()
