@@ -484,13 +484,30 @@ namespace BioGTK
                     {
                         try
                         {
-                            if (SelectedImage.Buffers.Count > 0)
+                            if (SelectedImage.Buffers.Count > 0 && SKImages.Count > i)
                             {
                                 // Draw main pyramidal image
                                 paint.Style = SKPaintStyle.Fill;
                                 paint.BlendMode = SKBlendMode.SrcOver;
-                                canvas.DrawImage(SKImages[i], 0, 0, paint);
-                                
+
+                                // Calculate the valid image region within the viewport
+                                var baseRes = SelectedImage.Resolutions[0];
+
+                                // How much of the viewport contains actual image data (in screen pixels)
+                                float imageWidthInViewport = (float)Math.Min(sk.AllocatedWidth,
+                                    (baseRes.SizeX - PyramidalOrigin.X) / resolution);
+                                float imageHeightInViewport = (float)Math.Min(sk.AllocatedHeight,
+                                    (baseRes.SizeY - PyramidalOrigin.Y) / resolution);
+
+                                // Create a source rectangle (what part of the SKImage to draw)
+                                SKRect srcRect = new SKRect(0, 0, imageWidthInViewport, imageHeightInViewport);
+
+                                // Create a destination rectangle (where to draw it on canvas)
+                                SKRect destRect = new SKRect(0, 0, imageWidthInViewport, imageHeightInViewport);
+
+                                // Draw only the valid image region, clipping out the black borders
+                                canvas.DrawImage(SKImages[i], srcRect, destRect, paint);
+
                                 // Draw overview if enabled and available
                                 if (showOverview && overviewSKImage != null)
                                 {
@@ -899,8 +916,14 @@ namespace BioGTK
 
             var baseRes = SelectedImage.Resolutions[0];
 
-            double maxX = baseRes.SizeX - sk.AllocatedWidth * resolution;
-            double maxY = baseRes.SizeY - sk.AllocatedHeight * resolution;
+            // Calculate the maximum valid origin position
+            // When zoomed out, the viewport (screen size * resolution) may be larger than the image
+            // In this case, we need to ensure maxX/maxY don't become negative
+            double viewportWidthInImagePixels = sk.AllocatedWidth * resolution;
+            double viewportHeightInImagePixels = sk.AllocatedHeight * resolution;
+
+            double maxX = Math.Max(0, baseRes.SizeX - viewportWidthInImagePixels);
+            double maxY = Math.Max(0, baseRes.SizeY - viewportHeightInImagePixels);
 
             PyramidalOrigin = new PointD(
                 Math.Max(0, Math.Min(PyramidalOrigin.X, maxX)),
