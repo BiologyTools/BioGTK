@@ -5,7 +5,7 @@ using BruTile;
 using Gdk;
 using Gtk;
 using OpenSlideGTK;
-using org.springframework.security.access.method;
+using OpenTK.Graphics.OpenGL4;
 using SkiaSharp;
 using SkiaSharp.Views.Gtk;
 using System;
@@ -15,6 +15,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using static NetVips.Enums;
 using Color = AForge.Color;
+using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
 using Point = AForge.Point;
 using PointF = AForge.PointF;
 using Rectangle = AForge.Rectangle;
@@ -30,6 +31,7 @@ namespace BioGTK
         private Builder _builder;
         public List<BioImage> Images = new List<BioImage>();
         public List<SKImage> SKImages = new List<SKImage>();
+        public TileCopyGL tileCopy;
         public void SetCoordinate(int z, int c, int t)
         {
             if (SelectedImage == null)
@@ -58,6 +60,9 @@ namespace BioGTK
         {
             return SelectedImage.Coordinate;
         }
+
+
+
         /// It adds an image to the list of images, and then updates the GUI and the images
         /// 
         /// @param BioImage a class that contains the image data and metadata
@@ -244,9 +249,20 @@ namespace BioGTK
         {
             Console.WriteLine("Creating ImageView for " + bm.file);
             Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ImageView.glade", FileMode.Open));
+            
             ImageView v = new ImageView(builder, builder.GetObject("imageView").Handle, bm);
             v.Title = bm.Filename;
+
             return v;
+        }
+
+        public static GLContext GetCurrentGLContext()
+        {
+            nint ptr = Native.GetCurrentGLContext().Handle;
+            if (ptr == IntPtr.Zero)
+                return null;
+            // Wrap native GdkGLContext* into managed Gdk.GLContext
+            return GLib.Object.GetObject(ptr) as GLContext;
         }
 
         /* The above code is a constructor for the ImageView class in C#. It takes in a Builder object,
@@ -301,6 +317,35 @@ namespace BioGTK
                 WidthRequest = 800;
                 HeightRequest = 600;
             }
+
+            if(tileCopy == null)
+            {
+                IntPtr ctx = Native.GetCurrentGLContextPointer();
+                tileCopy = new TileCopyGL(new GLContext(ctx));
+                //GL.GtkGlBindings
+            }
+
+            // Create canvas texture
+            int canvasTexture = tileCopy.CreateCanvasTexture(WidthRequest, HeightRequest);
+
+            // Copy tiles to canvas
+            foreach (var tile in im.OpenSlideBase.cache.cache.cacheMap)
+            {
+                tileCopy.CopyTileToCanvas(
+                    canvasTexture,
+                    WidthRequest, HeightRequest, // Canvas size
+                    tile.Value.Value.value,
+                    (int)tile.Key.Extent.Width, (int)tile.Key.Extent.Height,  // Tile size
+                    (int)tile.Key.Extent.MinX, (int)tile.Key.Extent.MinY,  // Offset in canvas
+                    (int)(tile.Key.Extent.Width * Resolution), (int)(tile.Key.Extent.Height * Resolution)     // Scaled tile size
+                );
+            }
+
+            // Read result back to CPU
+            byte[] result = tileCopy.ReadCanvasTexture(canvasTexture, sk.AllocatedWidth, sk.AllocatedHeight);
+
+            // Cleanup
+            GL.DeleteTexture(canvasTexture);
         }
 
         // Immediate render for interactive operations like panning
@@ -484,30 +529,14 @@ namespace BioGTK
                     {
                         try
                         {
-                            if (SelectedImage.Buffers.Count > 0 && SKImages.Count > i)
+                            UpdateImages();
+                            if (SelectedImage.Buffers.Count > 0)
                             {
                                 // Draw main pyramidal image
                                 paint.Style = SKPaintStyle.Fill;
                                 paint.BlendMode = SKBlendMode.SrcOver;
-
-                                // Calculate the valid image region within the viewport
-                                var baseRes = SelectedImage.Resolutions[0];
-
-                                // How much of the viewport contains actual image data (in screen pixels)
-                                float imageWidthInViewport = (float)Math.Min(sk.AllocatedWidth,
-                                    (baseRes.SizeX - PyramidalOrigin.X) / resolution);
-                                float imageHeightInViewport = (float)Math.Min(sk.AllocatedHeight,
-                                    (baseRes.SizeY - PyramidalOrigin.Y) / resolution);
-
-                                // Create a source rectangle (what part of the SKImage to draw)
-                                SKRect srcRect = new SKRect(0, 0, imageWidthInViewport, imageHeightInViewport);
-
-                                // Create a destination rectangle (where to draw it on canvas)
-                                SKRect destRect = new SKRect(0, 0, imageWidthInViewport, imageHeightInViewport);
-
-                                // Draw only the valid image region, clipping out the black borders
-                                canvas.DrawImage(SKImages[i], srcRect, destRect, paint);
-
+                                canvas.DrawImage(SKImages[i], 0, 0, paint);
+                                
                                 // Draw overview if enabled and available
                                 if (showOverview && overviewSKImage != null)
                                 {
@@ -916,14 +945,8 @@ namespace BioGTK
 
             var baseRes = SelectedImage.Resolutions[0];
 
-            // Calculate the maximum valid origin position
-            // When zoomed out, the viewport (screen size * resolution) may be larger than the image
-            // In this case, we need to ensure maxX/maxY don't become negative
-            double viewportWidthInImagePixels = sk.AllocatedWidth * resolution;
-            double viewportHeightInImagePixels = sk.AllocatedHeight * resolution;
-
-            double maxX = Math.Max(0, baseRes.SizeX - viewportWidthInImagePixels);
-            double maxY = Math.Max(0, baseRes.SizeY - viewportHeightInImagePixels);
+            double maxX = baseRes.SizeX - sk.AllocatedWidth * resolution;
+            double maxY = baseRes.SizeY - sk.AllocatedHeight * resolution;
 
             PyramidalOrigin = new PointD(
                 Math.Max(0, Math.Min(PyramidalOrigin.X, maxX)),
@@ -1000,9 +1023,9 @@ namespace BioGTK
         private static SKImage Convert8bppBitmapToSKImage(Bitmap sourceBitmap)
         {
             // Ensure the input bitmap is 8bpp indexed
-            if (sourceBitmap.PixelFormat != PixelFormat.Format8bppIndexed)
-                throw new ArgumentException("Bitmap must be 8bpp indexed.", nameof(sourceBitmap));
-
+            //if (sourceBitmap.PixelFormat != PixelFormat.)
+            //   throw new ArgumentException("Bitmap must be 8bpp indexed.", nameof(sourceBitmap));
+            
             // Lock the bitmap for reading pixel data
             BitmapData bitmapData = sourceBitmap.LockBits(
                 new Rectangle(0, 0, sourceBitmap.Width, sourceBitmap.Height),
@@ -1079,17 +1102,17 @@ namespace BioGTK
         }
         public static SKImage BitmapToSKImage(AForge.Bitmap bitm)
         {
-            if(bitm.PixelFormat == PixelFormat.Format24bppRgb)
+            if(bitm.PixelFormat == AForge.PixelFormat.Format24bppRgb)
                 return Convert24bppBitmapToSKImage(bitm);
-            if (bitm.PixelFormat == PixelFormat.Format32bppArgb)
+            if (bitm.PixelFormat == AForge.PixelFormat.Format32bppArgb)
                 return Convert32bppBitmapToSKImage(bitm);
-            if (bitm.PixelFormat == PixelFormat.Float)
+            if (bitm.PixelFormat == AForge.PixelFormat.Float)
                 return Convert32bppBitmapToSKImage(bitm.GetImageRGBA());
-            if (bitm.PixelFormat == PixelFormat.Format16bppGrayScale)
+            if (bitm.PixelFormat == AForge.PixelFormat.Format16bppGrayScale)
                 return Convert16bppBitmapToSKImage(bitm.GetImageRGB());
-            if (bitm.PixelFormat == PixelFormat.Format48bppRgb)
+            if (bitm.PixelFormat == AForge.PixelFormat.Format48bppRgb)
                 return Convert16bppBitmapToSKImage(bitm.GetImageRGB());
-            if (bitm.PixelFormat == PixelFormat.Format8bppIndexed)
+            if (bitm.PixelFormat == AForge.PixelFormat.Format8bppIndexed)
                 return Convert8bppBitmapToSKImage(bitm);
             else
                 throw new NotSupportedException("PixelFormat " + bitm.PixelFormat + " is not supported for SKImage.");
@@ -1129,7 +1152,6 @@ namespace BioGTK
             {
                 SelectedImage.Coordinate = GetCoordinate();
                 SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
-                if(force)
                 await SelectedImage.UpdateBuffersPyramidal();
                 Mode = ViewMode.Raw;
             }
@@ -1280,9 +1302,9 @@ namespace BioGTK
                     return;
                 }
                 // Resize to overview dimensions
-                AForge.Imaging.Filters.ResizeBicubic resizer = new ResizeBicubic(overviewWidth, overviewHeight);
+                AForge.Imaging.Filters.ResizeBilinear resizer = new ResizeBilinear(overviewWidth, overviewHeight);
                
-                overviewImage = resizer.Apply(sourceBitmap.GetImageRGB());
+                overviewImage = resizer.Apply(sourceBitmap.GetImageRGBA());
                 overviewSKImage = BitmapToSKImage(overviewImage);
                 
                 //pyramidalRenderManager.CacheCurrentFrame(overviewImage.Bytes, new PointD(0, 0), Resolution);
