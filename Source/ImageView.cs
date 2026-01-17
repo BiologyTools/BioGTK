@@ -232,8 +232,10 @@ namespace BioGTK
         private MenuItem setValueRange;
         [Builder.Object]
         private MenuItem loop;
+        [Builder.Object]
+        public Gtk.GLArea sk = new GLArea();
 #pragma warning restore 649
-        private SKDrawingArea sk = new SKDrawingArea();
+        //private SKDrawingArea sk = new SKDrawingArea();
         #endregion
 
         #region Constructors / Destructors
@@ -300,25 +302,29 @@ namespace BioGTK
             App.ApplyStyles(this);
 
 
+        }
 
-            if(im.Type == BioImage.ImageType.well)
+        public void InitializeRendering()
+        {
+            BioImage im = SelectedImage;
+            if (im.Type == BioImage.ImageType.well)
             {
                 Resolution = 0;
             }
-            if(im.Type == BioImage.ImageType.pyramidal)
+            if (im.Type == BioImage.ImageType.pyramidal)
             {
                 WidthRequest = 800;
                 HeightRequest = 600;
                 im.PyramidalSize = new AForge.Size(800, 600);
             }
             else
-            if(im.SizeX > 1920 || im.SizeY > 1080)
+            if (im.SizeX > 1920 || im.SizeY > 1080)
             {
                 WidthRequest = 800;
                 HeightRequest = 600;
             }
 
-            if(tileCopy == null)
+            if (tileCopy == null)
             {
                 IntPtr ctx = Native.GetCurrentGLContextPointer();
                 tileCopy = new TileCopyGL(new GLContext(ctx));
@@ -484,6 +490,7 @@ namespace BioGTK
                 UpdateView(true, true);
             });
         }
+        bool initrend = false;
         private async void Render(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e)
         {
 
@@ -491,6 +498,11 @@ namespace BioGTK
             {
                 //if (!refresh)
                 //    return;
+                if (!initrend)
+                {
+                    InitializeRendering();
+                    initrend = true;
+                }
 
                 var canvas = e.Surface.Canvas;
                 canvas.Clear(SKColors.Transparent);
@@ -1342,7 +1354,7 @@ namespace BioGTK
             sk.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
             sk.ScrollEvent += ImageView_ScrollEvent;
             sk.ScrollEvent += OnMouseWheel;
-            sk.PaintSurface += Render;
+            sk.Render += Sk_Render;
             sk.SizeAllocated += PictureBox_SizeAllocated;
             sk.AddEvents((int)
             (EventMask.ButtonPressMask
@@ -1377,6 +1389,12 @@ namespace BioGTK
             tBar.ButtonPressEvent += TBar_ButtonPressEvent;
             cBar.ButtonPressEvent += CBar_ButtonPressEvent;
             
+        }
+
+        private void Sk_Render(object o, RenderArgs args)
+        {
+            if (args.Context.Handle == null)
+                return;
         }
 
         private void ImageView_FocusInEvent(object o, FocusInEventArgs args)

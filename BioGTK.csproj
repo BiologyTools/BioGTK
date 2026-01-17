@@ -449,6 +449,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="OpenTK" Version="4.9.4" />
+    <PackageReference Include="OpenTK.Graphics" Version="4.9.4" />
     <PackageReference Include="ScottPlot" Version="5.1.57" />
     <PackageReference Include="SkiaSharp" Version="3.119.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.1" />

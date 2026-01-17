@@ -1,11 +1,10 @@
 ﻿using AForge;
-using com.sun.tools.@internal.jxc.ap;
 using Gdk;
+using GLib;
 using Gtk;
 using ome.xml.model.enums;
 using OpenTK;
 using OpenTK.Graphics.OpenGL4;
-using OpenTK.Mathematics;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -30,29 +29,28 @@ namespace BioGTK
 
         public TileCopyGL(GLContext gL)
         {
+            
             InitializeShaders(gL);
         }
 
-        private void InitializeShaders(GLContext gL)
+        private void InitializeShaders(GLContext gl)
         {
-            var glArea = new Gtk.GLArea()
-            {
-                HasDepthBuffer = true,
-                HasStencilBuffer = false,
-                AutoRender = true,
-                WidthRequest = 800,
-                HeightRequest = 600,
-            };
+            var glArea = App.viewer.sk;
             glArea.ShowAll();
             glArea.Show();
             glArea.MakeCurrent();
-            // IMPORTANT: Load bindings here
-            Native.LoadBindings(gL);
-            // Create compute shader
-            glArea.MakeCurrent();
-            if (glArea.Error != null)
-                throw new Exception("OpenGL context creation failed");
+            glArea.ShowNow();
 
+            if(glArea.AllocatedWidth == 1 || glArea.AllocatedHeight == 1)
+            {
+                return;
+            }
+
+            // IMPORTANT: Load bindings here
+            Native.LoadBindings(glArea.Context);
+            // Create compute shader
+            //if (glArea.Error != null)
+            //    throw new Exception("OpenGL context creation failed");
             computeShader = GL.CreateShader(ShaderType.ComputeShader);
 
             // Load shader source
@@ -420,19 +418,31 @@ void main()
 
         public static GLContext GetCurrentGLContext()
         {
-            IntPtr ptr = GetCurrentGLContextPointer();
-            if (ptr == IntPtr.Zero)
-                return null;
-
-            return GLib.Object.GetObject(ptr) as GLContext;
+            
+            if (IsWindows)
+            {
+                IntPtr ptr = WglNative.LoadLibrary(GdkLibWin);
+                IntPtr ptr2 = WglNative.wglGetProcAddress("");
+                if (ptr2 == IntPtr.Zero)
+                    return null;
+                return GLib.Object.GetObject(ptr) as GLContext;
+            }
+            else
+            {
+                IntPtr ptr = Native.GetCurrentGLContextPointer();
+                if (ptr == IntPtr.Zero)
+                    return null;
+                return GLib.Object.GetObject(ptr) as GLContext;
+            }
         }
 
         public static void LoadBindings(GLContext context)
         {
-            if (context == null)
-                throw new ArgumentNullException(nameof(context));
-
-            GL.LoadBindings(new GtkBindingsContext(context.Handle));
+            if (context != null)
+            {
+                var v = new GtkBindingsContext(context.Handle);
+                GL.LoadBindings(v);
+            }
         }
         static class WglNative
         {
