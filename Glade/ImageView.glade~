@@ -109,18 +109,10 @@
             <property name="can-focus">False</property>
             <property name="transition-duration">0</property>
             <child>
-              <object class="GtkGLArea" id="Viewport">
-                <property name="visible">True</property>
-                <property name="app-paintable">True</property>
-                <property name="can-focus">False</property>
-                <property name="has-alpha">True</property>
-                <property name="has-depth-buffer">True</property>
-                <property name="has-stencil-buffer">True</property>
-              </object>
-              <packing>
-                <property name="name">page0</property>
-                <property name="title" translatable="yes">page0</property>
-              </packing>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
             </child>
           </object>
           <packing>

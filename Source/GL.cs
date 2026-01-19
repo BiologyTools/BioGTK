@@ -38,7 +38,6 @@ namespace BioGTK
             var glArea = App.viewer.sk;
             glArea.ShowAll();
             glArea.Show();
-            glArea.MakeCurrent();
             glArea.ShowNow();
 
             if(glArea.AllocatedWidth == 1 || glArea.AllocatedHeight == 1)
@@ -47,7 +46,7 @@ namespace BioGTK
             }
 
             // IMPORTANT: Load bindings here
-            Native.LoadBindings(glArea.Context);
+            //Native.LoadBindings(glArea.Context);
             // Create compute shader
             //if (glArea.Error != null)
             //    throw new Exception("OpenGL context creation failed");
@@ -314,7 +313,6 @@ void main()
             private bool OnRender(object sender, RenderArgs args)
             {
                 MakeCurrent();
-
                 GL.Viewport(0, 0, AllocatedWidth, AllocatedHeight);
                 GL.ClearColor(0f, 0f, 0f, 1f);
                 GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
