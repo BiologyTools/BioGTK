@@ -258,15 +258,6 @@ namespace BioGTK
             return v;
         }
 
-        public static GLContext GetCurrentGLContext()
-        {
-            nint ptr = Native.GetCurrentGLContext().Handle;
-            if (ptr == IntPtr.Zero)
-                return null;
-            // Wrap native GdkGLContext* into managed Gdk.GLContext
-            return GLib.Object.GetObject(ptr) as GLContext;
-        }
-
         /* The above code is a constructor for the ImageView class in C#. It takes in a Builder object,
         a handle, and a BioImage object as parameters. */
         protected ImageView(Builder builder, IntPtr handle, BioImage im) : base(handle)
@@ -325,8 +316,7 @@ namespace BioGTK
 
             if (tileCopy == null)
             {
-                IntPtr ctx = Native.GetCurrentGLContextPointer();
-                tileCopy = new TileCopyGL(new GLContext(ctx));
+                tileCopy = new TileCopyGL(new GLContext(IntPtr.Zero));
                 //GL.GtkGlBindings
             }
 
@@ -842,11 +832,11 @@ namespace BioGTK
         {
             if(!initrend && viewport.Context != null)
             {
-                Native.LoadBindings(viewport.Context);
+                //Native.LoadBindings(viewport.Context);
+                InitializeRendering();
                 GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
                 GL.Disable(EnableCap.DepthTest);
                 GL.ClearColor(0f, 0f, 0f, 0f);
-                InitializeRendering();
                 initrend = true;
             }
             int ri = 0;
@@ -893,7 +883,7 @@ namespace BioGTK
                                 canvas.DrawImage(SKImages[i], 0, 0, paint);
                                 if (overviewImage != null)
                                 {
-                                    var ims = BitmapToSKImage(overviewImage.GetImageRGB());
+                                    var ims = BitmapToSKImage(overviewImage.GetImageRGBA());
                                     paint.Style = SKPaintStyle.Fill;
                                     // Draw the overview image at the top-left corner
                                     canvas.DrawImage(ims, 0, 0, paint);
@@ -1420,7 +1410,7 @@ namespace BioGTK
         }
         public static SKImage Convert16bppBitmapToSKImage(Bitmap sourceBitmap)
         {
-            Bitmap bm = sourceBitmap.GetImageRGB();
+            Bitmap bm = sourceBitmap.GetImageRGBA();
             int width = bm.Width;
             int height = bm.Height;
 
@@ -1461,9 +1451,9 @@ namespace BioGTK
             if (bitm.PixelFormat == AForge.PixelFormat.Float)
                 return Convert32bppBitmapToSKImage(bitm.GetImageRGBA());
             if (bitm.PixelFormat == AForge.PixelFormat.Format16bppGrayScale)
-                return Convert16bppBitmapToSKImage(bitm.GetImageRGB());
+                return Convert16bppBitmapToSKImage(bitm.GetImageRGBA());
             if (bitm.PixelFormat == AForge.PixelFormat.Format48bppRgb)
-                return Convert16bppBitmapToSKImage(bitm.GetImageRGB());
+                return Convert16bppBitmapToSKImage(bitm.GetImageRGBA());
             if (bitm.PixelFormat == AForge.PixelFormat.Format8bppIndexed)
                 return Convert8bppBitmapToSKImage(bitm);
             else
