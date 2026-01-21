@@ -626,7 +626,7 @@ namespace BioGTK
             String name = System.IO.Path.GetFileNameWithoutExtension(ImageView.SelectedImage.Filename).Replace(".ome","");
             int c = Images.GetImageCountByName(name);
             b.ID = name + "-" + c + ".ome.tif";
-            var bms = await b.GetSlice((int)b.PyramidalOrigin.X, (int)b.PyramidalOrigin.Y, b.PyramidalSize.Width, b.PyramidalSize.Height, b.Resolution);
+            var bms = await b.GetSlice((int)b.PyramidalOrigin.X, (int)b.PyramidalOrigin.Y, b.PyramidalSize.Width, b.PyramidalSize.Height, b.Resolution, BioImage.Context);
             Point3D loc = b.Volume.Location;
             Point3D p = new Point3D(b.StageSizeX + b.PyramidalOrigin.X, b.StageSizeY + b.PyramidalOrigin.Y, b.StageSizeZ + b.SizeZ);
             Resolution res = new Resolution(b.PyramidalSize.Width, b.PyramidalSize.Height, b.Buffers[0].PixelFormat,b.PhysicalSizeX,b.PhysicalSizeY,b.PhysicalSizeZ,p.X,p.Y,p.Z);
