@@ -20,6 +20,7 @@ namespace BioGTK
 
             CompileShaders();
             SetupGeometry();
+            
         }
 
         protected override void OnResize(ResizeEventArgs e)

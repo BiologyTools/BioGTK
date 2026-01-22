@@ -294,18 +294,31 @@ namespace BioGTK
             bBox.AddAttribute(rendererb, "text", 0);
             App.ApplyStyles(this);
 
-            var gwSettings = GameWindowSettings.Default;
+            var gameWindowSettings = new GameWindowSettings()
+            {
+                UpdateFrequency = 0
+            };
             var nativeSettings = new NativeWindowSettings()
             {
-                Title = "BioGTK",
-                ClientSize = new Vector2i(1024, 768),
+                ClientSize = new Vector2i(sk.AllocatedWidth, sk.AllocatedHeight),
+                Title = "OpenGL Context",
+                StartVisible = false,  // Window starts hidden
+                StartFocused = false,  // Don't grab focus
+                WindowBorder = WindowBorder.Hidden,  // No border
+                WindowState = OpenTK.Windowing.Common.WindowState.Minimized,  // Start minimized
+                IsEventDriven = false,  // Don't process window events
+                Flags = ContextFlags.Offscreen,  // Offscreen rendering context
                 API = ContextAPI.OpenGL,
                 Profile = ContextProfile.Core,
                 APIVersion = new Version(3, 3)
             };
 
-            window = new GLWindow(gwSettings, nativeSettings);
-            //window.Run();
+            window = new GLWindow(gameWindowSettings, nativeSettings);
+            window.IsVisible = false;
+            Thread glThread = new Thread(() =>
+            {
+                window.Run();
+            });
         }
         public GLWindow window;
         // Immediate render for interactive operations like panning
@@ -3184,6 +3197,7 @@ namespace BioGTK
         /// <param name="e"></param>
         private void Initialize()
         {
+            
             if(SelectedImage.OpenSlideBase != null)
             {
                 _openSlideSource = SelectedImage.OpenSlideBase;
