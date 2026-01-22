@@ -8,6 +8,8 @@ using OpenSlideGTK;
 using OpenTK;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
+using OpenTK.Windowing.Common;
+using OpenTK.Windowing.Desktop;
 using SkiaSharp;
 using SkiaSharp.Views.Gtk;
 using System;
@@ -232,8 +234,6 @@ namespace BioGTK
         private MenuItem setValueRange;
         [Builder.Object]
         private MenuItem loop;
-        [Builder.Object]
-        public GLArea viewport;
         public SKDrawingArea sk = new SKDrawingArea();
 #pragma warning restore 649
         //private SKDrawingArea sk = new SKDrawingArea();
@@ -294,34 +294,20 @@ namespace BioGTK
             bBox.AddAttribute(rendererb, "text", 0);
             App.ApplyStyles(this);
 
+            var gwSettings = GameWindowSettings.Default;
+            var nativeSettings = new NativeWindowSettings()
+            {
+                Title = "BioGTK",
+                ClientSize = new Vector2i(1024, 768),
+                API = ContextAPI.OpenGL,
+                Profile = ContextProfile.Core,
+                APIVersion = new Version(3, 3)
+            };
+
+            window = new GLWindow(gwSettings, nativeSettings);
+            //window.Run();
         }
-
-        public void InitializeRendering(GLContext con)
-        {
-
-            BioImage im = SelectedImage;
-            if (im.Type == BioImage.ImageType.well)
-            {
-                Resolution = 0;
-            }
-            if (im.Type == BioImage.ImageType.pyramidal)
-            {
-                WidthRequest = 800;
-                HeightRequest = 600;
-                im.PyramidalSize = new AForge.Size(800, 600);
-            }
-            else
-            if (im.SizeX > 1920 || im.SizeY > 1080)
-            {
-                WidthRequest = 800;
-                HeightRequest = 600;
-            }
-            if (tileCopy == null)
-            {
-                tileCopy = new TileCopyGL(con);
-            }
-        }
-
+        public GLWindow window;
         // Immediate render for interactive operations like panning
         public void RequestImmediateRender()
         {
@@ -467,47 +453,6 @@ namespace BioGTK
             {
                 if (!refresh)
                     return;
-                if (viewport.Context != null)
-                {
-                    BioImage.Context = viewport.Context;
-                    viewport.Show();
-                    InitializeRendering(viewport.Context);
-
-                    // Create canvas texture
-                    int canvasTexture = tileCopy.CreateCanvasTexture(AllocatedWidth, AllocatedHeight);
-
-                    // Copy tiles to canvas
-                    if (SelectedImage.OpenSlideBase.cache != null)
-                        foreach (var tile in SelectedImage.OpenSlideBase.cache.cache.cacheMap)
-                        {
-                            tileCopy.CopyTileToCanvas(
-                                canvasTexture,
-                                WidthRequest, HeightRequest, // Canvas size
-                                tile.Value.Value.value,
-                                (int)tile.Key.Extent.Width, (int)tile.Key.Extent.Height,  // Tile size
-                                (int)tile.Key.Extent.MinX, (int)tile.Key.Extent.MinY,  // Offset in canvas
-                                (int)(tile.Key.Extent.Width * Resolution), (int)(tile.Key.Extent.Height * Resolution)     // Scaled tile size
-                            );
-                        }
-                    else if (SelectedImage.SlideBase != null)
-                        foreach (var tile in SelectedImage.SlideBase.stitch.gpuTiles)
-                        {
-                            tileCopy.CopyTileToCanvas(
-                                canvasTexture,
-                                WidthRequest, HeightRequest, // Canvas size
-                                tile.Bytes,
-                                (int)tile.Extent.Width, (int)tile.Extent.Height,  // Tile size
-                                (int)tile.Extent.MinX, (int)tile.Extent.MinY,  // Offset in canvas
-                                (int)(tile.Extent.Width * Resolution), (int)(tile.Extent.Height * Resolution)     // Scaled tile size
-                            );
-                        }
-            
-                    // Read result back to CPU
-                    byte[] result = tileCopy.ReadCanvasTexture(canvasTexture, viewport.AllocatedWidth, viewport.AllocatedHeight);
-                    SelectedImage.Buffers.Add(new Bitmap(viewport.AllocatedWidth,viewport.AllocatedHeight, SelectedImage.Resolutions[0].PixelFormat,result,GetCoordinate(),""));
-                    // Cleanup
-                    GL.DeleteTexture(canvasTexture);
-                }
                 var canvas = e.Surface.Canvas;
                 canvas.Clear(SKColors.Transparent);
                 var paint = new SKPaint();
@@ -1137,152 +1082,13 @@ namespace BioGTK
         private CancellationTokenSource _tileFetchCancellation;
         private Dictionary<TileIndex, Task<byte[]>> _pendingTileFetches = new Dictionary<TileIndex, Task<byte[]>>();
 
-        public static class Native
-        {
-            // ------------------------------------------------------------------
-            // Platform detection
-            // ------------------------------------------------------------------
-
-            public static readonly bool IsWindows =
-                RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-
-            public static readonly bool IsLinux =
-                RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
-
-            public static readonly bool IsOSX =
-                RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
-
-            // ------------------------------------------------------------------
-            // Native library names
-            // ------------------------------------------------------------------
-
-            private const string GdkLibWin = "libgdk-3-0.dll";
-            private const string GdkLibLin = "libgdk-3.so.0";
-            private const string GdkLibOSX = "libgdk-3.dylib";
-
-            // ------------------------------------------------------------------
-            // Windows imports
-            // ------------------------------------------------------------------
-
-            [DllImport(GdkLibWin, EntryPoint = "gdk_gl_context_get_current")]
-            private static extern IntPtr gdk_gl_context_get_current();
-
-            [DllImport(GdkLibWin, EntryPoint = "gdk_gl_context_get_proc_address")]
-            private static extern IntPtr gdk_gl_context_get_proc_address_w(
-                IntPtr context,
-                string procName
-            );
-
-            // ------------------------------------------------------------------
-            // Linux imports
-            // ------------------------------------------------------------------
-
-            [DllImport(GdkLibLin, EntryPoint = "gdk_gl_context_get_current")]
-            private static extern IntPtr linux_gdk_gl_context_get_current();
-
-            [DllImport(GdkLibLin, EntryPoint = "gdk_gl_context_get_proc_address")]
-            private static extern IntPtr linux_gdk_gl_context_get_proc_address(
-                IntPtr context,
-                string procName
-            );
-
-            // ------------------------------------------------------------------
-            // macOS imports
-            // ------------------------------------------------------------------
-
-            [DllImport(GdkLibOSX, EntryPoint = "gdk_gl_context_get_current")]
-            private static extern IntPtr osx_gdk_gl_context_get_current();
-
-            [DllImport(GdkLibOSX, EntryPoint = "gdk_gl_context_get_proc_address")]
-            private static extern IntPtr osx_gdk_gl_context_get_proc_address(
-                IntPtr context,
-                string procName
-            );
-
-            // ------------------------------------------------------------------
-            // Public API
-            // ------------------------------------------------------------------
-
-            public static IntPtr GetCurrentGLContextPointer()
-            {
-                if (IsWindows) return gdk_gl_context_get_current();
-                if (IsLinux) return linux_gdk_gl_context_get_current();
-                if (IsOSX) return osx_gdk_gl_context_get_current();
-
-                return IntPtr.Zero;
-            }
-
-            public static GLContext GetCurrentGLContext()
-            {
-                IntPtr ptr = GetCurrentGLContextPointer();
-                if (ptr == IntPtr.Zero)
-                    return null;
-
-                return GLib.Object.GetObject(ptr) as GLContext;
-            }
-
-            public static void LoadBindings(GLContext context)
-            {
-                if (context == null)
-                    throw new ArgumentNullException(nameof(context));
-                GL.LoadBindings(new GtkBindingsContext(context.Handle));
-            }
-            static class WglNative
-            {
-                [DllImport("opengl32.dll", CharSet = CharSet.Ansi)]
-                public static extern IntPtr wglGetProcAddress(string procName);
-
-                [DllImport("kernel32.dll", CharSet = CharSet.Ansi)]
-                public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
-
-                [DllImport("kernel32.dll")]
-                public static extern IntPtr LoadLibrary(string lpFileName);
-            }
-            private sealed class GtkBindingsContext : IBindingsContext
-            {
-                private readonly IntPtr gdkContext;
-                private static readonly IntPtr OpenGl32 =
-                    WglNative.LoadLibrary("opengl32.dll");
-
-                public GtkBindingsContext(IntPtr context)
-                {
-                    gdkContext = context;
-                }
-
-                public IntPtr GetProcAddress(string procName)
-                {
-                    // ---------------- Windows ----------------
-                    if (Native.IsWindows)
-                    {
-                        // Try WGL first
-                        IntPtr addr = WglNative.wglGetProcAddress(procName);
-                        if (addr != IntPtr.Zero)
-                            return addr;
-
-                        // Fallback to opengl32.dll
-                        return WglNative.GetProcAddress(OpenGl32, procName);
-                    }
-
-                    // ---------------- Linux ----------------
-                    if (Native.IsLinux)
-                        return Native.linux_gdk_gl_context_get_proc_address(gdkContext, procName);
-
-                    // ---------------- macOS ----------------
-                    if (Native.IsOSX)
-                        return Native.osx_gdk_gl_context_get_proc_address(gdkContext, procName);
-
-                    return IntPtr.Zero;
-                }
-            }
-
-        }
 
         /// It updates the images.
         public async void UpdateImages(bool force = false)
         {
             if (SelectedImage == null)
                 return;
-
+            GLContext con = GLContext.Current;
             if (zBar.Adjustment.Upper != SelectedImage.SizeZ - 1 ||
                 tBar.Adjustment.Upper != SelectedImage.SizeT - 1)
             {
@@ -1490,7 +1296,6 @@ namespace BioGTK
             sk.ScrollEvent += ImageView_ScrollEvent;
             sk.ScrollEvent += OnMouseWheel;
             sk.PaintSurface += Render;
-            viewport.Render += Viewport_Render;
             sk.SizeAllocated += PictureBox_SizeAllocated;
             sk.AddEvents((int)
             (EventMask.ButtonPressMask
@@ -1525,22 +1330,6 @@ namespace BioGTK
             tBar.ButtonPressEvent += TBar_ButtonPressEvent;
             cBar.ButtonPressEvent += CBar_ButtonPressEvent;
             
-        }
-
-        private void Viewport_Render(object o, RenderArgs args)
-        {
-            if (viewport.Context != null && !initrend)
-            {
-                InitializeRendering(viewport.Context);
-                GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-                GL.Disable(EnableCap.DepthTest);
-                GL.ClearColor(0f, 0f, 0f, 0f);
-                BioImage.Context = viewport.Context;
-                viewStack.VisibleChild = sk;
-                Native.LoadBindings(viewport.Context);
-                initrend = true;
-                initialized = true;
-            }
         }
 
         private void ImageView_FocusInEvent(object o, FocusInEventArgs args)

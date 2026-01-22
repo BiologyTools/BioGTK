@@ -111,18 +111,7 @@
             <property name="can-focus">False</property>
             <property name="transition-duration">0</property>
             <child>
-              <object class="GtkGLArea" id="viewport">
-                <property name="width-request">600</property>
-                <property name="height-request">400</property>
-                <property name="visible">True</property>
-                <property name="app-paintable">True</property>
-                <property name="can-focus">False</property>
-                <property name="has-alpha">True</property>
-              </object>
-              <packing>
-                <property name="name">page0</property>
-                <property name="title" translatable="yes">page0</property>
-              </packing>
+              <placeholder/>
             </child>
           </object>
           <packing>
