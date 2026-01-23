@@ -18,6 +18,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using static NetVips.Enums;
+using static OpenSlideGTK.Stitch;
 using Color = AForge.Color;
 using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
 using Point = AForge.Point;
@@ -296,7 +297,7 @@ namespace BioGTK
 
             var gameWindowSettings = new GameWindowSettings()
             {
-                UpdateFrequency = 0
+                UpdateFrequency = 0,
             };
             var nativeSettings = new NativeWindowSettings()
             {
@@ -312,14 +313,11 @@ namespace BioGTK
                 Profile = ContextProfile.Core,
                 APIVersion = new Version(3, 3)
             };
-
+            tilecopy = new TileCopyGL(gameWindowSettings, nativeSettings);
             window = new GLWindow(gameWindowSettings, nativeSettings);
             window.IsVisible = false;
-            Thread glThread = new Thread(() =>
-            {
-                window.Run();
-            });
         }
+        public TileCopyGL tilecopy;
         public GLWindow window;
         // Immediate render for interactive operations like panning
         public void RequestImmediateRender()
