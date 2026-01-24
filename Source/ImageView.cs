@@ -10,6 +10,7 @@ using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
+using org.checkerframework.common.returnsreceiver.qual;
 using SkiaSharp;
 using SkiaSharp.Views.Gtk;
 using System;
@@ -252,6 +253,7 @@ namespace BioGTK
         public static ImageView Create(BioImage bm)
         {
             Console.WriteLine("Creating ImageView for " + bm.file);
+            
             Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ImageView.glade", FileMode.Open));
             
             ImageView v = new ImageView(builder, builder.GetObject("imageView").Handle, bm);
@@ -267,17 +269,50 @@ namespace BioGTK
             _builder = builder;
             App.viewer = this;
             builder.Autoconnect(this);
+
+            var gameWindowSettings = new GameWindowSettings()
+            {
+                UpdateFrequency = 0,
+            };
+            var nativeSettings = new NativeWindowSettings()
+            {
+                ClientSize = new Vector2i(600, 400),
+                Title = "OpenGL Context",
+                StartVisible = false,  // Window starts hidden
+                StartFocused = false,  // Don't grab focus
+                WindowBorder = WindowBorder.Hidden,  // No border
+                WindowState = OpenTK.Windowing.Common.WindowState.Minimized,  // Start minimized
+                IsEventDriven = false,  // Don't process window events
+                Flags = ContextFlags.Offscreen,  // Offscreen rendering context
+                API = ContextAPI.OpenGL,
+                Profile = ContextProfile.Core,
+                APIVersion = new Version(3, 3)
+            };
+            tileCopy = new TileCopyGL(gameWindowSettings, nativeSettings);
+            if (im.OpenSlideBase != null)
+            {
+                im.OpenSlideBase.stitch = new Stitch();
+                im.OpenSlideBase.stitch.tileCopy = tileCopy;
+            }
+            else
+            {
+                im.SlideBase.stitch = new Stitch();
+                im.SlideBase.stitch.tileCopy = tileCopy;
+            }
+            window = new GLWindow(gameWindowSettings, nativeSettings);
+            window.IsVisible = false;
+            this.WidthRequest = 600;
+            this.HeightRequest = 400;
             viewStack.Add(sk);
             viewStack.ShowAll();
             sk.Show();
             roi.Submenu = roiMenu;
             roi.ShowAll();
             AddImage(im);
-
             ShowMasks = true;
             pxWmicron = SelectedImage.PhysicalSizeX;
             pxHmicron = SelectedImage.PhysicalSizeY;
-
+            this.tileCopy = tileCopy;
             SetupHandlers();
             //pictureBox.WidthRequest = im.SizeX;
             //pictureBox.HeightRequest = im.SizeY;
@@ -295,29 +330,7 @@ namespace BioGTK
             bBox.AddAttribute(rendererb, "text", 0);
             App.ApplyStyles(this);
 
-            var gameWindowSettings = new GameWindowSettings()
-            {
-                UpdateFrequency = 0,
-            };
-            var nativeSettings = new NativeWindowSettings()
-            {
-                ClientSize = new Vector2i(sk.AllocatedWidth, sk.AllocatedHeight),
-                Title = "OpenGL Context",
-                StartVisible = false,  // Window starts hidden
-                StartFocused = false,  // Don't grab focus
-                WindowBorder = WindowBorder.Hidden,  // No border
-                WindowState = OpenTK.Windowing.Common.WindowState.Minimized,  // Start minimized
-                IsEventDriven = false,  // Don't process window events
-                Flags = ContextFlags.Offscreen,  // Offscreen rendering context
-                API = ContextAPI.OpenGL,
-                Profile = ContextProfile.Core,
-                APIVersion = new Version(3, 3)
-            };
-            tilecopy = new TileCopyGL(gameWindowSettings, nativeSettings);
-            window = new GLWindow(gameWindowSettings, nativeSettings);
-            window.IsVisible = false;
         }
-        public TileCopyGL tilecopy;
         public GLWindow window;
         // Immediate render for interactive operations like panning
         public void RequestImmediateRender()
@@ -496,6 +509,7 @@ namespace BioGTK
                     paint.StrokeWidth = 1;
                     if (SelectedImage.isPyramidal)
                     {
+                        //UpdateImages(true);
                         try
                         {
                             if (SelectedImage.Buffers.Count > 0)
@@ -1095,11 +1109,10 @@ namespace BioGTK
 
 
         /// It updates the images.
-        public async void UpdateImages(bool force = false)
+        public void UpdateImages(bool force = false)
         {
             if (SelectedImage == null)
                 return;
-            GLContext con = GLContext.Current;
             if (zBar.Adjustment.Upper != SelectedImage.SizeZ - 1 ||
                 tBar.Adjustment.Upper != SelectedImage.SizeT - 1)
             {
@@ -1114,7 +1127,8 @@ namespace BioGTK
             {
                 SelectedImage.Coordinate = GetCoordinate();
                 SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
-                await SelectedImage.UpdateBuffersPyramidal();
+                //SelectedImage.UpdateBuffersPyramidal(tileCopy);
+                byte[] bts = tileCopy.ReadCanvasTexture(tileCopy.canvasTexture, sk.AllocatedWidth, sk.AllocatedHeight);
                 Mode = ViewMode.Raw;
             }
             SKImages.Clear();
