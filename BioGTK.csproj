@@ -461,7 +461,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\BioLib\BioLib.csproj" />
+    <ProjectReference Include="..\BioLib\BioLib.csproj" />
   </ItemGroup>
 
   <ItemGroup>

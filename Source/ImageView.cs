@@ -10,7 +10,6 @@ using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
-using org.checkerframework.common.returnsreceiver.qual;
 using SkiaSharp;
 using SkiaSharp.Views.Gtk;
 using System;
@@ -509,7 +508,7 @@ namespace BioGTK
                     paint.StrokeWidth = 1;
                     if (SelectedImage.isPyramidal)
                     {
-                        //UpdateImages(true);
+                        UpdateImages(true);
                         try
                         {
                             if (SelectedImage.Buffers.Count > 0)
@@ -1127,8 +1126,7 @@ namespace BioGTK
             {
                 SelectedImage.Coordinate = GetCoordinate();
                 SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
-                //SelectedImage.UpdateBuffersPyramidal(tileCopy);
-                byte[] bts = tileCopy.ReadCanvasTexture(tileCopy.canvasTexture, sk.AllocatedWidth, sk.AllocatedHeight);
+                SelectedImage.UpdateBuffersPyramidal(tileCopy);
                 Mode = ViewMode.Raw;
             }
             SKImages.Clear();
@@ -1137,7 +1135,8 @@ namespace BioGTK
                 ZCT c = GetCoordinate();
                 AForge.Bitmap bitmap = null;
                 int index = b.GetFrameIndex(c.Z, c.C, c.T);
-                
+                byte[] bts = tileCopy.ReadCanvasTexture(tileCopy.canvasTexture, sk.AllocatedWidth, sk.AllocatedHeight);
+
                 if (Mode == ViewMode.Filtered)
                 {
                     bitmap = b.GetFiltered(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
@@ -1149,7 +1148,7 @@ namespace BioGTK
                 else if (Mode == ViewMode.Raw)
                 {
                     if (b.Buffers.Count > 0)
-                        bitmap = b.Buffers[index];
+                        bitmap = new Bitmap(sk.AllocatedWidth, sk.AllocatedHeight, AForge.PixelFormat.Format32bppArgb, bts, GetCoordinate(),"");
                 }
                 else
                 {
