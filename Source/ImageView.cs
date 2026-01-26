@@ -141,9 +141,9 @@ namespace BioGTK
             set { allowNavigation = value; }
         }
 
-        public bool ShowMasks { get; set; }
-
-       /* Getting the selected buffer from the selected image. */
+        public bool ShowMasks { get; set; } = true;
+        public bool ShowOverview { get; set; } = false;
+        /* Getting the selected buffer from the selected image. */
         public static AForge.Bitmap SelectedBuffer
         {
             get
@@ -514,30 +514,30 @@ namespace BioGTK
                             if (SelectedImage.Buffers.Count > 0)
                             {
                                 canvas.DrawImage(SKImages[i], 0, 0, paint);
-                                if (overviewImage != null)
+                                if (overviewImage != null && ShowOverview)
                                 {
                                     var ims = BitmapToSKImage(overviewImage.GetImageRGBA());
                                     paint.Style = SKPaintStyle.Fill;
                                     // Draw the overview image at the top-left corner
                                     canvas.DrawImage(ims, 0, 0, paint);
+                                    // Set the paint style to stroke for drawing rectangles
+                                    paint.Style = SKPaintStyle.Stroke;
+                                    // Draw the gray rectangle representing the overview's entire visible region
+                                    paint.Color = SKColors.Gray;
+                                    canvas.DrawRect(overview.X, overview.Y, overview.Width, overview.Height, paint);
+                                    paint.Color = SKColors.Red;
+                                    double dsx;
+                                    if (!openSlide)
+                                        dsx = _slideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
+                                    else
+                                        dsx = _openSlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
+                                    BioLib.Resolution rs = SelectedImage.Resolutions[Level];
+                                    double dx = ((double)PyramidalOrigin.X / (rs.SizeX * dsx)) * overview.Width;
+                                    double dy = ((double)PyramidalOrigin.Y / (rs.SizeY * dsx)) * overview.Height;
+                                    double dw = ((double)viewStack.AllocatedWidth / (rs.SizeX)) * overview.Width * dsx;
+                                    double dh = ((double)viewStack.AllocatedHeight / (rs.SizeY)) * overview.Height * dsx;
+                                    canvas.DrawRect((int)dx, (int)dy, (int)dw, (int)dh, paint);
                                 }
-                                // Set the paint style to stroke for drawing rectangles
-                                paint.Style = SKPaintStyle.Stroke;
-                                // Draw the gray rectangle representing the overview's entire visible region
-                                paint.Color = SKColors.Gray;
-                                canvas.DrawRect(overview.X, overview.Y, overview.Width, overview.Height, paint);
-                                paint.Color = SKColors.Red;
-                                double dsx;
-                                if (!openSlide)
-                                    dsx = _slideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
-                                else
-                                    dsx = _openSlideBase.Schema.Resolutions[Level].UnitsPerPixel / Resolution;
-                                BioLib.Resolution rs = SelectedImage.Resolutions[Level];
-                                double dx = ((double)PyramidalOrigin.X / (rs.SizeX * dsx)) * overview.Width;
-                                double dy = ((double)PyramidalOrigin.Y / (rs.SizeY * dsx)) * overview.Height;
-                                double dw = ((double)viewStack.AllocatedWidth / (rs.SizeX)) * overview.Width * dsx;
-                                double dh = ((double)viewStack.AllocatedHeight / (rs.SizeY)) * overview.Height * dsx;
-                                canvas.DrawRect((int)dx, (int)dy, (int)dw, (int)dh, paint);
                             }
                         }
                         catch (Exception ex)
@@ -962,39 +962,50 @@ namespace BioGTK
 
             return SKImage.FromBitmap(skBitmap);
         }
-        private static SKImage Convert32bppBitmapToSKImage(Bitmap sourceBitmap)
+        private static unsafe SKImage Convert32bppBitmapToSKImage(Bitmap sourceBitmap)
         {
-            int width = sourceBitmap.Width;
-            int height = sourceBitmap.Height;
+            if (sourceBitmap.PixelFormat != AForge.PixelFormat.Format32bppArgb &&
+                sourceBitmap.PixelFormat != AForge.PixelFormat.Format32bppPArgb)
+                throw new ArgumentException("Bitmap must be 32bpp ARGB or PARGB");
 
-            SKBitmap skBitmap = new SKBitmap(width, height, SKColorType.Bgra8888, SKAlphaType.Opaque);
+            var rect = new Rectangle(0, 0, sourceBitmap.Width, sourceBitmap.Height);
 
-            BitmapData bitmapData = sourceBitmap.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, sourceBitmap.PixelFormat);
+            BitmapData data = sourceBitmap.LockBits(
+                rect,
+                ImageLockMode.ReadOnly,
+                sourceBitmap.PixelFormat);
 
-            unsafe
-            {
-                byte* sourcePtr = (byte*)bitmapData.Scan0.ToPointer();
-                byte* destPtr = (byte*)skBitmap.GetPixels().ToPointer();
+            var alphaType = sourceBitmap.PixelFormat == AForge.PixelFormat.Format32bppArgb
+                ? SKAlphaType.Premul
+                : SKAlphaType.Unpremul;
 
-                for (int y = 0; y < height; y++)
+            var info = new SKImageInfo(
+                data.Width,
+                data.Height,
+                SKColorType.Bgra8888,   // matches GDI+ memory layout
+                alphaType);
+
+            var skBitmap = new SKBitmap();
+
+            bool installed = skBitmap.InstallPixels(
+                info,
+                (IntPtr)data.Scan0,
+                data.Stride,
+                (addr, ctx) =>
                 {
-                    for (int x = 0; x < width; x++)
-                    {
-                        destPtr[0] = sourcePtr[0]; // Blue
-                        destPtr[1] = sourcePtr[1]; // Green
-                        destPtr[2] = sourcePtr[2]; // Red
-                        destPtr[3] = 255;          // Alpha (fully opaque)
+                    // Called when Skia releases the pixels
+                    sourceBitmap.UnlockBits(data);
+                });
 
-                        sourcePtr += 4;
-                        destPtr += 4;
-                    }
-                }
+            if (!installed)
+            {
+                sourceBitmap.UnlockBits(data);
+                throw new InvalidOperationException("Failed to install pixels into SKBitmap.");
             }
-
-            sourceBitmap.UnlockBits(bitmapData);
 
             return SKImage.FromBitmap(skBitmap);
         }
+
         private static SKImage Convert8bppBitmapToSKImage(Bitmap sourceBitmap)
         {
             // Ensure the input bitmap is 8bpp indexed
@@ -1135,8 +1146,6 @@ namespace BioGTK
                 ZCT c = GetCoordinate();
                 AForge.Bitmap bitmap = null;
                 int index = b.GetFrameIndex(c.Z, c.C, c.T);
-                byte[] bts = tileCopy.ReadCanvasTexture(tileCopy.canvasTexture, sk.AllocatedWidth, sk.AllocatedHeight);
-
                 if (Mode == ViewMode.Filtered)
                 {
                     bitmap = b.GetFiltered(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
@@ -1148,7 +1157,7 @@ namespace BioGTK
                 else if (Mode == ViewMode.Raw)
                 {
                     if (b.Buffers.Count > 0)
-                        bitmap = new Bitmap(sk.AllocatedWidth, sk.AllocatedHeight, AForge.PixelFormat.Format32bppArgb, bts, GetCoordinate(),"");
+                        bitmap = b.Buffers[0];
                 }
                 else
                 {
@@ -1169,17 +1178,6 @@ namespace BioGTK
         bool showOverview = false;
         Rectangle overview;
         Bitmap overviewImage;
-        /* A property that is used to set the value of the showOverview variable. */
-        public bool ShowOverview
-        {
-            get { return showOverview; }
-            set
-            {
-                showOverview = value;
-                UpdateView();
-            }
-        }
-        
         public int? MacroResolution { get { return SelectedImage.MacroResolution; } }
         public int? LabelResolution { get { return SelectedImage.LabelResolution; } }
 
