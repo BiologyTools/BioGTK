@@ -452,7 +452,6 @@ namespace BioGTK
                 );
             }
         }
-
         private void ExecuteDeferredRender()
         {
             lock (_renderLock)
@@ -1137,7 +1136,7 @@ namespace BioGTK
             {
                 SelectedImage.Coordinate = GetCoordinate();
                 SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
-                SelectedImage.UpdateBuffersPyramidal(tileCopy);
+                SelectedImage.UpdateBuffersPyramidal(tileCopy).Wait();
                 Mode = ViewMode.Raw;
             }
             SKImages.Clear();

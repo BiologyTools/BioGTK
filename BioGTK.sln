@@ -3,15 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.0.11217.181
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BioGTK", "BioGTK.csproj", "{F1EB355D-93D5-4B99-23EF-C9F615D01BD2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BioGTKApp", "..\..\BioGTKApp\BioGTKApp\BioGTKApp\BioGTKApp.csproj", "{BEE8A4D1-D729-D480-FBF4-EA8C600E36C7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AForgeBio", "..\..\AForgeBio\AForgeBio\AForgeBio.csproj", "{3A6C4144-82B3-D087-189D-68CD8AB00502}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSlideGTK", "..\..\OpenSlideSharp\src\OpenSlideSharp\OpenSlideGTK.csproj", "{1B01289B-A39A-44A4-2652-5F7756993F65}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BioLib", "..\..\BioLib\BioLib.csproj", "{4D92BD46-54DA-A38F-B00C-F3650D64DFE2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BioGTK", "BioGTK.csproj", "{B80D9A43-3E38-0CC8-6E6A-49BEF9960942}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BioGTKApp", "..\..\BioGTKApp\BioGTKApp\BioGTKApp\BioGTKApp.csproj", "{BEE8A4D1-D729-D480-FBF4-EA8C600E36C7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BioLib", "..\..\BioLib\BioLib.csproj", "{4D92BD46-54DA-A38F-B00C-F3650D64DFE2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,10 +19,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{F1EB355D-93D5-4B99-23EF-C9F615D01BD2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F1EB355D-93D5-4B99-23EF-C9F615D01BD2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F1EB355D-93D5-4B99-23EF-C9F615D01BD2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F1EB355D-93D5-4B99-23EF-C9F615D01BD2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BEE8A4D1-D729-D480-FBF4-EA8C600E36C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BEE8A4D1-D729-D480-FBF4-EA8C600E36C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BEE8A4D1-D729-D480-FBF4-EA8C600E36C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BEE8A4D1-D729-D480-FBF4-EA8C600E36C7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{3A6C4144-82B3-D087-189D-68CD8AB00502}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{3A6C4144-82B3-D087-189D-68CD8AB00502}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3A6C4144-82B3-D087-189D-68CD8AB00502}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -31,14 +31,14 @@ Global
 		{1B01289B-A39A-44A4-2652-5F7756993F65}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1B01289B-A39A-44A4-2652-5F7756993F65}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1B01289B-A39A-44A4-2652-5F7756993F65}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B80D9A43-3E38-0CC8-6E6A-49BEF9960942}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B80D9A43-3E38-0CC8-6E6A-49BEF9960942}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B80D9A43-3E38-0CC8-6E6A-49BEF9960942}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B80D9A43-3E38-0CC8-6E6A-49BEF9960942}.Release|Any CPU.Build.0 = Release|Any CPU
 		{4D92BD46-54DA-A38F-B00C-F3650D64DFE2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{4D92BD46-54DA-A38F-B00C-F3650D64DFE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4D92BD46-54DA-A38F-B00C-F3650D64DFE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4D92BD46-54DA-A38F-B00C-F3650D64DFE2}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BEE8A4D1-D729-D480-FBF4-EA8C600E36C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BEE8A4D1-D729-D480-FBF4-EA8C600E36C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BEE8A4D1-D729-D480-FBF4-EA8C600E36C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BEE8A4D1-D729-D480-FBF4-EA8C600E36C7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
