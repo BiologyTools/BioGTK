@@ -1136,7 +1136,7 @@ namespace BioGTK
             {
                 SelectedImage.Coordinate = GetCoordinate();
                 SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
-                SelectedImage.UpdateBuffersPyramidal(tileCopy).Wait();
+                SelectedImage.UpdateBuffersPyramidal(tileCopy, SelectedImage.Level).Wait();
                 Mode = ViewMode.Raw;
             }
             SKImages.Clear();
