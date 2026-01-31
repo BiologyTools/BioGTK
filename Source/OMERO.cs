@@ -178,7 +178,7 @@ namespace BioGTK
             {
                 if (item.name.Contains(sts[0]))
                 {
-                    BioImage bm = BioLib.OMERO.GetImage(sts[0], item.dataset);
+                    BioImage bm = BioLib.OMERO.GetImage(selectedItem, item.dataset);
                     App.tabsView.AddTab(bm);
                 }
             }
@@ -298,7 +298,6 @@ namespace BioGTK
             }
             view.Model = listStore;
         }
-
         private void SearchBox_Changed(object sender, EventArgs e)
         {
             UpdateItems(searchBox.Buffer.Text);

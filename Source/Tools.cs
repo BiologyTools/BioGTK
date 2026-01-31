@@ -1357,7 +1357,7 @@ namespace BioGTK
                 App.viewer.PyramidalOrigin = new PointD(
                     initialPanOrigin.X - deltaX,
                     initialPanOrigin.Y - deltaY);
-                App.viewer.UpdateView(true,true);
+                App.viewer.UpdateView(true);
             }
             else
             {

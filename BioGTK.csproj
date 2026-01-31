@@ -21,7 +21,7 @@
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>Bug fixes and dependency updates.</PackageReleaseNotes>
+    <PackageReleaseNotes>OpenGL hardware accelerated stitching.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
@@ -79,6 +79,11 @@
       <Pack>True</Pack>
       <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
+	<Content Include="Glade\AI.glade">
+		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		<Pack>True</Pack>
+		<PackageCopyToOutput>true</PackageCopyToOutput>
+	</Content>
     <Content Include="Glade\omero.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		<PackageCopyToOutput>true</PackageCopyToOutput>

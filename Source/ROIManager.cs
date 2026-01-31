@@ -344,7 +344,7 @@ namespace Bio
                         if (ImageView.SelectedImage.isPyramidal)
                         {
                             App.viewer.PyramidalOrigin = new PointD((int)(anno.X), (int)(anno.Y));
-                            App.viewer.UpdateView(true, true);
+                            App.viewer.UpdateView(true);
                         }
                     }
                     else return;
