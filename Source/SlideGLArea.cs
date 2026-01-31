@@ -116,7 +116,7 @@ void main()
         {
             HasDepthBuffer = false;
             HasStencilBuffer = false;
-            AutoRender = true;  // We control when to render
+            AutoRender = false;  // We control when to render
 
             Realized += OnRealized;
             //Unrealize += OnUnrealize;
@@ -141,16 +141,6 @@ void main()
             InitializeSkia();
 
             _glInitialized = true;
-        }
-
-        private void OnUnrealize(object sender, EventArgs e)
-        {
-            MakeCurrent();
-
-            CleanupSkia();
-            CleanupGL();
-
-            _glInitialized = false;
         }
 
         private void OnResized(object sender, EventArgs e)
@@ -274,26 +264,18 @@ void main()
 
         private void InitializeSkia()
         {
-            int width = AllocatedWidth;
-            int height = AllocatedHeight;
+            _grContext = GRContext.CreateGl();
+            // Get the current FBO ID (usually 0 in GLArea, but not always)
+            GL.GetInteger(GetPName.FramebufferBinding, out int fbo);
 
-            if (width <= 0 || height <= 0) return;
-
-            // Get framebuffer info
-            GL.GetInteger(GetPName.FramebufferBinding, out int framebufferId);
-            GL.GetInteger(GetPName.Samples, out int samples);
-            GL.GetInteger(GetPName.StencilBits, out int stencil);
-
-            var glInfo = new GRGlFramebufferInfo(
-                fboId: (uint)framebufferId,
-                format: 0x8058); // GL_RGBA8
+            // Ensure the format matches what Gtk.GLArea provides (usually GL_RGBA8)
+            var framebufferInfo = new GRGlFramebufferInfo((uint)fbo, 0x8058); // GL_RGBA8
 
             _renderTarget = new GRBackendRenderTarget(
-                width, height,
-                samples, stencil,
-                glInfo);
+                AllocatedWidth * ScaleFactor,
+                AllocatedHeight * ScaleFactor,
+                0, 8, framebufferInfo);
 
-            _grContext = GRContext.CreateGl();
             _skSurface = SKSurface.Create(_grContext, _renderTarget, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888);
         }
 
@@ -328,7 +310,7 @@ void main()
             RenderTiles(width, height);
 
             // Phase 2: Render annotations with Skia
-            //RenderSkiaOverlay(width, height);
+            RenderSkiaOverlay(width, height);
 
             // Flush Skia to ensure all drawing is done
             _grContext?.Flush();
@@ -391,16 +373,11 @@ void main()
         private void RenderSkiaOverlay(int width, int height)
         {
             if (_skSurface == null || OnSkiaRender == null) return;
-
+            InitializeSkia();
             var canvas = _skSurface.Canvas;
-
-            // Don't clear - we're drawing on top of GL content
-            // canvas.Clear(SKColors.Transparent);
-
             // Fire event for annotation drawing
             OnSkiaRender?.Invoke(canvas, width, height);
-
-            canvas.Flush();
+            _grContext.Flush();
         }
 
         // ============================================================================

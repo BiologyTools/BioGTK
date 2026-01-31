@@ -339,9 +339,8 @@ namespace BioGTK
             bBox.PackStart(rendererb, false);
             bBox.AddAttribute(rendererb, "text", 0);
             App.ApplyStyles(this);
-            InitializeSkia();
         }
-
+        /*
         GRBackendRenderTarget _renderTarget;
         GRContext _grContext;
         SKSurface _skSurface;
@@ -385,7 +384,7 @@ namespace BioGTK
             _grContext = GRContext.CreateGl();
             _skSurface = SKSurface.Create(_grContext, _renderTarget, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888);
         }
-
+        */
         /// <summary>
         /// Called by SlideGLArea during the Skia rendering phase.
         /// Draws annotations on top of the GL-rendered tiles.
@@ -586,12 +585,11 @@ namespace BioGTK
                 // Plugin rendering hook
                 Plugins.Render(this, new SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs(canvas.Surface,inf));
                 paint.Dispose();
-                refresh = false;
+                canvas.Restore();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Annotation render error: {ex.Message}");
-                refresh = false;
             }
         }
         private static SKImage Convert24bppBitmapToSKImage(Bitmap sourceBitmap)
@@ -1353,7 +1351,6 @@ namespace BioGTK
 
         private void GlArea_Render(object o, RenderArgs args)
         {
-
             glArea.MakeCurrent();
 
             if (glArea.Error != 0)
@@ -1365,8 +1362,7 @@ namespace BioGTK
                 Resolution,
                 GetCoordinate()
             ).Wait();
-
-            RenderAnnotations(_skSurface.Canvas, glArea.AllocatedWidth, glArea.AllocatedHeight);
+            
         }
 
         private void ImageView_FocusInEvent(object o, FocusInEventArgs args)
