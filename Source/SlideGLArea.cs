@@ -336,8 +336,10 @@ void main()
 
         private void RenderTiles(int width, int height)
         {
-            GL.Viewport(0, 0, width, height);
-            GL.ClearColor(0.2f, 0.2f, 0.2f, 1f); // Changed to gray to see if rendering is working
+            // Multiply by ScaleFactor to handle High-DPI screens correctly
+            int scale = ScaleFactor;
+            GL.Viewport(0, 0, width * scale, height * scale);
+            GL.ClearColor(0.2f, 0.2f, 0.2f, 1f);
             GL.Clear(ClearBufferMask.ColorBufferBit);
 
             if (TilesToRender.Count == 0)
