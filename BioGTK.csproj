@@ -21,7 +21,7 @@
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>OpenGL hardware accelerated stitching.</PackageReleaseNotes>
+    <PackageReleaseNotes>OpenGL hardware accelerated stitching. OMERO pyramidal and stack support.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
@@ -466,8 +466,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\AForgeBio\AForgeBio\AForgeBio.csproj" />
-    <ProjectReference Include="..\..\BioLib\BioLib.csproj" />
+    <ProjectReference Include="..\AForgeBio\AForgeBio.csproj" />
+    <ProjectReference Include="..\BioLib\BioLib.csproj" />
   </ItemGroup>
 
   <ItemGroup>
