@@ -2,7 +2,12 @@
 
 - Clone the BioGTK repository then create a new .NET10 project named "BioGTKApp"
 	- Add the following code to Program.cs
- - Then install NuGet package https://github.com/egramtel/dotnet-bundle <PackageReference Include="Dotnet.Bundle" Version="*" />
+ - Then install NuGet package https://github.com/egramtel/dotnet-bundle ```<PackageReference Include="Dotnet.Bundle" Version="*" />```
+ - Then add this to the project file.
+```
+<PropertyGroup>
+ <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
+</PropertyGroup>```
 ```
 using Gtk;
 using BioGTK;
