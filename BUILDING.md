@@ -7,7 +7,7 @@
 ```
 <PropertyGroup>
  <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
-</PropertyGroup>```
+</PropertyGroup>
 ```
 using Gtk;
 using BioGTK;
