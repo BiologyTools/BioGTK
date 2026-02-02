@@ -87,6 +87,8 @@ namespace BioGTK
             UpdateImages(true);
             UpdateGUI();
             GoToImage(Images.Count - 1);
+            if(im.SlideBase != null)
+            im.SlideBase.stitch.tileCopy = tileCopy;
         }
         double pxWmicron = 5;
         double pxHmicron = 5;
@@ -593,8 +595,14 @@ namespace BioGTK
                     // Draw the overview image at the top-left corner
                     canvas.DrawImage(ims, 0, 0, paint);
                 }
-
-                SKImageInfo inf = new SKImageInfo(width, height);
+                else if(overviewImage == null && ShowOverview)
+                {
+                    paint.Style = SKPaintStyle.Stroke;
+                    paint.Color = SKColors.Gray;
+                    paint.StrokeWidth = 2;
+                    canvas.DrawRect(0, 0, overview.Width, overview.Height, paint);
+                }
+                    SKImageInfo inf = new SKImageInfo(width, height);
                 if (SelectedImage.isPyramidal)
                     DrawViewportRectangle(canvas, paint);
 
@@ -1041,6 +1049,7 @@ namespace BioGTK
                     Resolution,
                     GetCoordinate()
                 );
+
             }
             else if (!SelectedImage.isPyramidal)
             {
@@ -1104,13 +1113,6 @@ namespace BioGTK
                 const int OVERVIEW_SIZE = 160;
                 const long MAX_SIZE_BYTES = 1500000000; // 1.5GB limit
 
-                // Disable overview if there's only one resolution level
-                if (SelectedImage.Resolutions == null || SelectedImage.Resolutions.Count <= 1)
-                {
-                    ShowOverview = false;
-                    return;
-                }
-
                 int resolutionLevel;
                 BioLib.Resolution targetResolution;
 
@@ -1133,16 +1135,9 @@ namespace BioGTK
                 // Check if resolution level is too large to process
                 if (targetResolution.SizeInBytes > MAX_SIZE_BYTES)
                 {
-                    ShowOverview = false;
                     Console.WriteLine($"Preview disabled: Resolution level {resolutionLevel} is too large ({targetResolution.SizeInBytes} bytes)");
-                }
-                else
-                {
-                    ShowOverview = true;
                     // Calculate aspect ratio and overview dimensions
                     double aspectRatio = (double)targetResolution.SizeX / (double)targetResolution.SizeY;
-
-
                     if (aspectRatio >= 1.0)
                     {
                         // Landscape or square - width is OVERVIEW_SIZE
@@ -1162,47 +1157,61 @@ namespace BioGTK
 
                     overview = new Rectangle(0, 0, overviewWidth, overviewHeight);
 
-                    // Get the tile for the entire resolution level
-                    sourceBitmap = SelectedImage.GetTile(
-                        SelectedImage,
-                        SelectedImage.GetFrameIndex(GetCoordinate().Z, GetCoordinate().C, GetCoordinate().T),
-                        resolutionLevel,
-                        0,
-                        0,
-                        SelectedImage.Resolutions[resolutionLevel].SizeX,
-                        SelectedImage.Resolutions[resolutionLevel].SizeY);
                 }
-
-
-
-                if (sourceBitmap == null)
+                else
                 {
-                    ShowOverview = false;
-                    Console.WriteLine("Preview disabled: Failed to get source bitmap");
-                    return;
+                    ShowOverview = true;
+                    // Calculate aspect ratio and overview dimensions
+                    double aspectRatio = (double)targetResolution.SizeX / (double)targetResolution.SizeY;
+                    if (aspectRatio >= 1.0)
+                    {
+                        // Landscape or square - width is OVERVIEW_SIZE
+                        overviewWidth = OVERVIEW_SIZE;
+                        overviewHeight = (int)(OVERVIEW_SIZE / aspectRatio);
+                    }
+                    else
+                    {
+                        // Portrait - height is OVERVIEW_SIZE
+                        overviewHeight = OVERVIEW_SIZE;
+                        overviewWidth = (int)(OVERVIEW_SIZE * aspectRatio);
+                    }
+
+                    // Ensure minimum size
+                    overviewWidth = Math.Max(overviewWidth, 20);
+                    overviewHeight = Math.Max(overviewHeight, 20);
+
+                    overview = new Rectangle(0, 0, overviewWidth, overviewHeight);
+
+                    if (openSlide)
+                    {
+                        var sl = new OpenSlideGTK.SliceInfo(0,0, overviewWidth,overviewHeight,Resolution);
+                        // Get the tile for the entire resolution level
+                        sourceBitmap = new Bitmap(overviewWidth,overviewHeight,AForge.PixelFormat.Format32bppArgb,
+                            SelectedImage.OpenSlideBase.GetSlice(sl, new ZCT(0, 0, 0), Level),GetCoordinate(),"");
+                    }
+                    else
+                    {
+                        var sl = new BioLib.SliceInfo(0, 0, SelectedImage.Resolutions.Last().SizeX, SelectedImage.Resolutions.Last().SizeY,
+                            Resolution,GetCoordinate());
+                        byte[] bt = SelectedImage.SlideBase.GetSlice(sl, new PointD(0,0), new AForge.Size(overviewWidth, overviewHeight)).Result;
+                        // Get the tile for the entire resolution level
+                        sourceBitmap = new Bitmap(overviewWidth, overviewHeight, AForge.PixelFormat.Format32bppArgb,
+                            bt, GetCoordinate(), "");
+                    }
+                    // Resize to overview dimensions
+                    AForge.Imaging.Filters.ResizeBilinear resizer = new ResizeBilinear(overviewWidth, overviewHeight);
+                    overviewImage = resizer.Apply(sourceBitmap.GetImageRGBA());
+                    sourceBitmap.Dispose();
+                    sourceBitmap = null;
+                    ShowOverview = true;
+                    Console.WriteLine($"Preview initialized: {overviewWidth}x{overviewHeight} from resolution level {resolutionLevel} ({targetResolution.SizeX}x{targetResolution.SizeY})");
                 }
-                // Resize to overview dimensions
-                AForge.Imaging.Filters.ResizeBilinear resizer = new ResizeBilinear(overviewWidth, overviewHeight);
-
-                overviewImage = resizer.Apply(sourceBitmap.GetImageRGBA());
-                //overviewSKImage = BitmapToSKImage(overviewImage);
-
-                //pyramidalRenderManager.CacheCurrentFrame(overviewImage.Bytes, new PointD(0, 0), Resolution);
-                //overviewImage.Dispose();
-                sourceBitmap.Dispose();
-                sourceBitmap = null;
-                ShowOverview = true;
-                Console.WriteLine($"Preview initialized: {overviewWidth}x{overviewHeight} from resolution level {resolutionLevel} ({targetResolution.SizeX}x{targetResolution.SizeY})");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error initializing preview: {ex.Message}");
                 ShowOverview = false;
                 overviewImage = null;
-            }
-            finally
-            {
-                refresh = true;
             }
         }
 
@@ -2586,10 +2595,30 @@ namespace BioGTK
                     PyramidalOrigin = new PointD(dx, dy);
                 }
                 RequestDeferredRender();
-                return;
             }
-            // Delegate all tool logic to Tools.cs
-            App.tools.ToolMove(p, e);
+            else if(overviewImage == null && SelectedImage.isPyramidal && ShowOverview &&
+                e.Event.State.HasFlag(ModifierType.Button1Mask))
+            {
+                if (!OpenSlide)
+                {
+                    double dsx = SelectedImage.SlideBase.Schema.Resolutions[0].UnitsPerPixel / Resolution;
+                    BioLib.Resolution rs = SelectedImage.Resolutions[Level];
+                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX);
+                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY);
+                    PyramidalOrigin = new PointD(dx, dy);
+                }
+                else
+                {
+                    double dsx = SelectedImage.OpenSlideBase.Schema.Resolutions[0].UnitsPerPixel / Resolution;
+                    BioLib.Resolution rs = SelectedImage.Resolutions[Level];
+                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX);
+                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY);
+                    PyramidalOrigin = new PointD(dx, dy);
+                }
+                RequestDeferredRender();
+            }
+                // Delegate all tool logic to Tools.cs
+                App.tools.ToolMove(p, e);
             UpdateStatus();
             pd = p;
         }

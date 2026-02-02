@@ -626,7 +626,15 @@ namespace BioGTK
             String name = System.IO.Path.GetFileNameWithoutExtension(ImageView.SelectedImage.Filename).Replace(".ome","");
             int c = Images.GetImageCountByName(name);
             b.ID = name + "-" + c + ".ome.tif";
-            var bms = await b.GetSlice((int)b.PyramidalOrigin.X, (int)b.PyramidalOrigin.Y, b.PyramidalSize.Width, b.PyramidalSize.Height, b.Resolution);
+            byte[] bms = null;
+            if(b.OpenSlideBase == null)
+            {
+               bms = await b.OpenSlideBase.GetSliceAsync(new OpenSlideGTK.SliceInfo(b.PyramidalOrigin.X, b.PyramidalOrigin.Y, b.PyramidalSize.Width, b.PyramidalSize.Height, b.Resolution),b.Level,b.Coordinate);
+            }
+            else
+                bms = await b.SlideBase.GetSlice(
+                    new SliceInfo(b.PyramidalOrigin.X, b.PyramidalOrigin.Y, b.PyramidalSize.Width, b.PyramidalSize.Height, b.Resolution, b.Coordinate),
+                    b.PyramidalOrigin, b.PyramidalSize);
             Point3D loc = b.Volume.Location;
             Point3D p = new Point3D(b.StageSizeX + b.PyramidalOrigin.X, b.StageSizeY + b.PyramidalOrigin.Y, b.StageSizeZ + b.SizeZ);
             Resolution res = new Resolution(b.PyramidalSize.Width, b.PyramidalSize.Height, b.Buffers[0].PixelFormat,b.PhysicalSizeX,b.PhysicalSizeY,b.PhysicalSizeZ,p.X,p.Y,p.Z);
@@ -634,7 +642,7 @@ namespace BioGTK
             b.Resolutions.Add(res);
             b.Type = BioImage.ImageType.stack;
             b.Buffers.Clear();
-            b.Buffers.AddRange(bms.ToArray());
+            b.Buffers.Add(new Bitmap((int)b.PyramidalOrigin.X, (int)b.PyramidalOrigin.Y,PixelFormat.Format32bppArgb));
             Images.AddImage(b);
             AddTab(b);
         }

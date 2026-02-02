@@ -58,7 +58,8 @@ namespace BioGTK
         {
             if (_openSlideBase == null && _slideBase == null)
                 return;
-
+            if (viewportWidth <= 1 && viewportHeight <= 1)
+                return;
             var schema = _useOpenSlide ? _openSlideBase.Schema : _slideBase.Schema;
 
             int level = TileUtil.GetLevel(schema.Resolutions, resolution);
@@ -80,20 +81,28 @@ namespace BioGTK
 
             // Get tiles that intersect the viewport
             var tileInfos = schema.GetTileInfos(worldExtent, level).ToList();
-
+            
             if (tileInfos.Count == 0)
             {
                 var pixelExtent = OpenSlideGTK.ExtentEx.WorldToPixelInvertedY(worldExtent, resolution);
                 tileInfos = schema.GetTileInfos(pixelExtent, level).ToList();
             }
 
+            if(_openSlideBase != null)
+                await _openSlideBase.FetchTilesAsync(tileInfos.ToList(), level, coordinate);
+            else
+                await _slideBase.FetchTilesAsync(tileInfos.ToList(), level, coordinate, pyramidalOrigin, new Size(viewportWidth,viewportHeight));
+            
             var renderInfos = new List<TileRenderInfo>();
-
             foreach (var tileInfo in tileInfos)
             {
                 if (!_glArea.HasTileTexture(tileInfo.Index))
                 {
-                    byte[] tileData = await FetchTileAsync(tileInfo, level, coordinate);
+                    byte[] tileData;
+                    if (_useOpenSlide)
+                        tileData = await _openSlideBase.GetTileAsync(tileInfo);
+                    else
+                        tileData = await _slideBase.GetTileAsync(tileInfo,coordinate);
                     if (tileData != null)
                     {
                         // Fix: Calculate actual tile dimensions from extent, do not hardcode 256.
