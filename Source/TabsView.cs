@@ -627,7 +627,7 @@ namespace BioGTK
             int c = Images.GetImageCountByName(name);
             b.ID = name + "-" + c + ".ome.tif";
             byte[] bms = null;
-            if(b.OpenSlideBase == null)
+            if(b.OpenSlideBase != null)
             {
                bms = await b.OpenSlideBase.GetSliceAsync(new OpenSlideGTK.SliceInfo(b.PyramidalOrigin.X, b.PyramidalOrigin.Y, b.PyramidalSize.Width, b.PyramidalSize.Height, b.Resolution),b.Level,b.Coordinate);
             }
