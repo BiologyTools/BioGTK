@@ -60,6 +60,9 @@ A .NET application & library for editing & annotating various microscopy image f
 - Save models into "StartupPath/Models" supports [BioImage.IO](https://bioimage.io/) models.
 - Supports ONNX (".onnx") and PyTorch models (".pt"). For PyTorch models include the ".yaml" metadata file with the same name as the model file in the models folder.
 
+## .NET Runtime Install
+- First intall .NET 10 runtime from [here.](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
+
 ## Mac installation, 
 - See [this video](https://www.youtube.com/watch?v=bEC4b8DlNLg) or follow the instructions below.
 - Install Mac package manager [homebrew.](https://brew.sh/)
