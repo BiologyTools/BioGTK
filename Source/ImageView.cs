@@ -12,6 +12,7 @@ using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
+using org.python.compiler;
 using SkiaSharp;
 using SkiaSharp.Views.Gtk;
 using System;
@@ -39,7 +40,6 @@ namespace BioGTK
         private Builder _builder;
         public List<BioImage> Images = new List<BioImage>();
         //public List<SKImage> SKImages = new List<SKImage>();
-        public TileCopyGL tileCopy;
         public void SetCoordinate(int z, int c, int t)
         {
             if (SelectedImage == null)
@@ -87,8 +87,6 @@ namespace BioGTK
             UpdateImages(true);
             UpdateGUI();
             GoToImage(Images.Count - 1);
-            if(im.SlideBase != null)
-            im.SlideBase.stitch.tileCopy = tileCopy;
         }
         double pxWmicron = 5;
         double pxHmicron = 5;
@@ -247,7 +245,7 @@ namespace BioGTK
         #endregion
         public SlideGLArea glArea = new SlideGLArea();
         public SlideRenderer slideRenderer;
-
+        public GLWindow window;
         #region Constructors / Destructors
 
         /// The function creates an ImageView object using a BioImage object and returns it.
@@ -276,26 +274,75 @@ namespace BioGTK
             _builder = builder;
             App.viewer = this;
             builder.Autoconnect(this);
-
             var gameWindowSettings = new GameWindowSettings()
             {
-                UpdateFrequency = 0,
+                UpdateFrequency = 60,
             };
-            var nativeSettings = new NativeWindowSettings()
+            NativeWindowSettings nativeSettings;
+            if (OperatingSystem.IsMacOS())
             {
-                ClientSize = new Vector2i(600, 400),
-                Title = "OpenGL Context",
-                StartVisible = false,  // Window starts hidden
-                StartFocused = false,  // Don't grab focus
-                WindowBorder = WindowBorder.Hidden,  // No border
-                WindowState = OpenTK.Windowing.Common.WindowState.Minimized,  // Start minimized
-                IsEventDriven = false,  // Don't process window events
-                Flags = ContextFlags.Offscreen,  // Offscreen rendering context
-                API = ContextAPI.OpenGL,
-                Profile = ContextProfile.Core,
-                APIVersion = new Version(3, 3)
-            };
-            tileCopy = new TileCopyGL(gameWindowSettings, nativeSettings);
+                nativeSettings = new NativeWindowSettings()
+                {
+                    ClientSize = new Vector2i(600, 400),
+                    Title = "OpenGL Context",
+                    StartVisible = true,
+                    Flags = ContextFlags.ForwardCompatible,
+                    API = ContextAPI.OpenGL,
+                    Profile = ContextProfile.Core,
+                    APIVersion = new Version(3, 3),
+                    NumberOfSamples = 0,
+                    DepthBits = 24,
+                    StencilBits = 8,
+                    RedBits = 8,
+                    GreenBits = 8,
+                    BlueBits = 8,
+                    AlphaBits = 8,
+                    TransparentFramebuffer = false,
+                    SrgbCapable = false
+                };
+            }
+            else if(OperatingSystem.IsLinux())
+            {
+                nativeSettings = new NativeWindowSettings()
+                {
+                    ClientSize = new Vector2i(600, 400),
+                    Location = new Vector2i(0,0),
+                    Title = "OpenGL Context",
+                    StartVisible = false,  // Window starts hidden
+                    API = ContextAPI.OpenGL,
+                    Profile = ContextProfile.Core,
+                    APIVersion = new Version(3, 3)
+                };
+                //tileCopy = new TileCopyGL(gameWindowSettings, nativeSettings);
+                Environment.SetEnvironmentVariable("GDK_BACKEND","x11");
+                Environment.SetEnvironmentVariable("GTK_BACKEND","x11");
+            }
+            else
+            {
+                nativeSettings = new NativeWindowSettings()
+                {
+                    ClientSize = new Vector2i(600, 400),
+                    Title = "OpenGL Context",
+                    StartVisible = false,  // Window starts hidden
+                    StartFocused = false,  // Don't grab focus
+                    WindowBorder = WindowBorder.Hidden,  // No border
+                    WindowState = OpenTK.Windowing.Common.WindowState.Minimized,  // Start minimized
+                    IsEventDriven = false,  // Don't process window events
+                    Flags = ContextFlags.Offscreen,  // Offscreen rendering context
+                    API = ContextAPI.OpenGL,
+                    Profile = ContextProfile.Core,
+                    APIVersion = new Version(3, 3)
+                };
+                //tileCopy = new TileCopyGL(gameWindowSettings, nativeSettings);
+            }
+            GLFWProvider.SetErrorCallback((error, description) =>
+            {
+                if (description.Contains("Wayland") && description.Contains("window position"))
+                    Console.WriteLine($"BioGTK Window Position Error.");
+                Console.WriteLine($"BioGTK GLFW Error {error}: {description}");
+                return;
+            });
+            window = new GLWindow(gameWindowSettings, nativeSettings);
 
             // Create the GLArea widget
             glArea = new SlideGLArea();

@@ -49,10 +49,6 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <WarningLevel>7</WarningLevel>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Remove="bio.png" />
-  </ItemGroup>
   <ItemGroup>
     <Content Include="bio.icns">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -439,6 +435,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AForgeBio" Version="2.4.0" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="ImageJ.NET" Version="154.0.0.2" />
@@ -466,8 +463,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AForgeBio\AForgeBio.csproj" />
-    <ProjectReference Include="..\BioLib\BioLib.csproj" />
+    <ProjectReference Include="..\..\BioLib\BioLib.csproj" />
   </ItemGroup>
 
   <ItemGroup>
