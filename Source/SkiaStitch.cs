@@ -461,7 +461,7 @@ namespace BioGTK
         {
             Console.WriteLine($"\n=== CompositeTilesAsync ===");
             Console.WriteLine($"Compositing {tileRequests.Count} tiles");
-            Console.WriteLine($"Origin (pixels): ({origin.X:F2}, {origin.Y:F2}), Resolution: {resolution:F4}");
+            Console.WriteLine($"Origin: ({origin.X:F2}, {origin.Y:F2}), Resolution: {resolution:F4}");
 
             if (tileRequests.Count == 0)
             {
@@ -495,23 +495,28 @@ namespace BioGTK
 
                     var request = result.Request;
 
-                    // Convert tile world space extent to pixel coordinates
-                    // Tile extents are in world space (inverted Y from schema)
-                    float tilePixelMinX = (float)(request.Extent.MinX / resolution);
-                    float tilePixelMaxY = (float)(request.Extent.MaxY / resolution); // Top in inverted Y
-                    float tilePixelWidth = (float)((request.Extent.MaxX - request.Extent.MinX) / resolution);
-                    float tilePixelHeight = (float)((request.Extent.MaxY - request.Extent.MinY) / resolution);
+                    // CRITICAL FIX: Handle Y-axis inversion properly
+                    // Tile extents come from Schema which uses inverted-Y coordinate system
+                    // Canvas uses standard top-left origin with Y increasing downward
 
-                    // Position on canvas relative to origin (in pixel space)
-                    float destX = tilePixelMinX - (float)origin.X;
-                    float destY = tilePixelMaxY - (float)origin.Y; // MaxY is top in inverted Y
+                    float destX = (float)((request.Extent.MinX - origin.X) / resolution);
 
-                    var destRect = new SKRect(destX, destY, destX + tilePixelWidth, destY + tilePixelHeight);
+
+                    // Y needs inversion - tile extents are in inverted-Y space
+                    // MaxY is the "top" in inverted coordinates
+                    float destY = (float)((origin.Y - request.Extent.MaxY) / resolution);
+
+                    // Option 2: If you need to flip based on canvas height:
+                    // float destY = canvasHeight - (float)((request.Extent.MaxY - origin.Y) / resolution);
+
+                    float destW = (float)((request.Extent.MaxX - request.Extent.MinX) / resolution);
+                    float destH = (float)((request.Extent.MaxY - request.Extent.MinY) / resolution);
+
+                    var destRect = new SKRect(destX, destY, destX + destW, destY + destH);
 
                     Console.WriteLine($"    Tile [{request.Index.Col},{request.Index.Row}]:");
-                    Console.WriteLine($"      World Extent: ({request.Extent.MinX:F0}, {request.Extent.MinY:F0}) to ({request.Extent.MaxX:F0}, {request.Extent.MaxY:F0})");
-                    Console.WriteLine($"      Pixel Pos: ({tilePixelMinX:F1}, {tilePixelMaxY:F1})");
-                    Console.WriteLine($"      Canvas Rect: ({destX:F1}, {destY:F1}) size {tilePixelWidth:F1}x{tilePixelHeight:F1}");
+                    Console.WriteLine($"    Extent: ({request.Extent.MinX:F0}, {request.Extent.MinY:F0}) to ({request.Extent.MaxX:F0}, {request.Extent.MaxY:F0})");
+                    Console.WriteLine($"    Canvas: ({destX:F1}, {destY:F1}) size {destW:F1}x{destH:F1}");
 
                     canvas.DrawImage(result.Image, destRect, paint);
                     drawnCount++;
@@ -523,27 +528,48 @@ namespace BioGTK
         /// <summary>
         /// Draw individual tile to canvas with proper positioning
         /// </summary>
-        private void DrawTileToCanvas(SKCanvas canvas, SKImage Image, TileRequest request, PointD viewportOrigin, double resolution)
+        private void DrawTileToCanvas(
+    SKCanvas canvas,
+    SKImage tileImage,
+    TileRequest request,
+    PointD viewportOrigin,
+    double resolution)
         {
-            // Screen X: (Tile Left - Viewport Left) / resolution
-            // Standard left-to-right logic.
-            float destX = (float)((request.Extent.MinX - viewportOrigin.X) / resolution);
+            // Validate inputs
+            if (canvas == null || tileImage == null || request == null)
+            {
+                Console.WriteLine("Null parameter in DrawTileToCanvas");
+                return;
+            }
 
-            // Screen Y: (Viewport Top World - Tile Top World) / resolution
-            // In BruTile, MaxY is the Top edge of the tile.
-            // viewportOrigin.Y is the Top edge of the visible screen.
-            float destY = (float)((viewportOrigin.Y - request.Extent.MaxY) / resolution);
+            // Validate image isn't disposed/corrupted
+            if (tileImage.Width <= 0 || tileImage.Height <= 0)
+            {
+                Console.WriteLine($"Invalid image dimensions: {tileImage.Width}x{tileImage.Height}");
+                return;
+            }
+            // Convert world-space relative offset to pixel-space
+            float destX = (float)((request.Bounds.X - viewportOrigin.X) / resolution);
+            float destY = (float)((request.Bounds.Y - viewportOrigin.Y) / resolution);
 
-            // Convert world dimensions to pixel dimensions
-            float destW = (float)(request.Extent.Width / resolution);
-            float destH = (float)(request.Extent.Height / resolution);
+            // Convert world-space size to pixel-space
+            float destW = (float)(request.Bounds.W / resolution);
+            float destH = (float)(request.Bounds.H / resolution);
 
             var destRect = new SKRect(destX, destY, destX + destW, destY + destH);
 
-            if (Image != null)
+            Console.WriteLine($"Drawing tile at ({destX}, {destY}) size {destW}x{destH}");
+
+            try
             {
-                // Use Sampling options for smooth zooming
-                canvas.DrawImage(Image, destRect, Sampling);
+                using (var paint = CreateTilePaint())
+                {
+                    canvas.DrawImage(tileImage, destRect, paint);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error drawing tile: {e.Message}\n{e.StackTrace}");
             }
         }
         /// <summary>
@@ -576,36 +602,51 @@ namespace BioGTK
         /// <summary>
         /// Calculate which tiles are needed for the viewport
         /// </summary>
-        private List<TileRequest> CalculateTileRequests(PointD origin, int viewportWidth, int viewportHeight, int level, ZCT coordinate, double resolution)
+        private List<TileRequest> CalculateTileRequests(
+        PointD origin,
+        int viewportWidth,
+        int viewportHeight,
+        int level,
+        ZCT coordinate,
+        double resolution)
         {
-            // In BruTile (OSM), Y increases UPWARDS.
-            // origin.Y is the TOP-LEFT of your view in world space.
+            var requests = new List<TileRequest>();
 
-            double minX = origin.X;
-            double maxX = origin.X + (viewportWidth * resolution);
+            Console.WriteLine($"\n=== CalculateTileRequests (Schema-based) ===");
+            Console.WriteLine($"Origin: ({origin.X:F2}, {origin.Y:F2}), Viewport: {viewportWidth}x{viewportHeight}, Level: {level}");
 
-            // MaxY is the Top of the viewport
-            double maxY = origin.Y;
-            // MinY is the Bottom of the viewport (Origin minus the physical height in world units)
-            double minY = origin.Y - (viewportHeight * resolution);
+            // FIX: Keep viewport extent in pixel coordinates
+            var viewportExtent = new Extent(
+                origin.X,
+                origin.Y,
+                origin.X + viewportWidth,   // Just pixels
+                origin.Y + viewportHeight   // Just pixels
+            );
 
-            var viewportExtent = new Extent(minX, minY, maxX, maxY);
+            Console.WriteLine($"Viewport Extent (pixels): ({viewportExtent.MinX:F0}, {viewportExtent.MinY:F0}) to ({viewportExtent.MaxX:F0}, {viewportExtent.MaxY:F0})");
 
+            // Transform to world space for schema query
             IEnumerable<TileInfo> tileInfos;
             if (_isOpenSlide)
             {
-                tileInfos = _openSlideSource.Schema.GetTileInfos(viewportExtent, level);
+                Extent worldExtent = OpenSlideGTK.ExtentEx.PixelToWorldInvertedY(viewportExtent, resolution);
+                Console.WriteLine($"World Extent: ({worldExtent.MinX:F0}, {worldExtent.MinY:F0}) to ({worldExtent.MaxX:F0}, {worldExtent.MaxY:F0})");
+                tileInfos = _openSlideSource.Schema.GetTileInfos(worldExtent, level);
             }
             else
             {
-                tileInfos = _slideSource.Schema.GetTileInfos(viewportExtent, level);
+                Extent worldExtent = BioLib.ExtentEx.PixelToWorldInvertedY(viewportExtent, resolution);
+                Console.WriteLine($"World Extent: ({worldExtent.MinX:F0}, {worldExtent.MinY:F0}) to ({worldExtent.MaxX:F0}, {worldExtent.MaxY:F0})");
+                tileInfos = _slideSource.Schema.GetTileInfos(worldExtent, level);
             }
 
-            var requests = new List<TileRequest>();
-            foreach (var info in tileInfos)
+            foreach (var tileInfo in tileInfos)
             {
-                requests.Add(new TileRequest(info, coordinate));
+                requests.Add(new TileRequest(tileInfo, coordinate));
+                Console.WriteLine($"  Tile[{tileInfo.Index.Col},{tileInfo.Index.Row}] Extent: ({tileInfo.Extent.MinX:F0}, {tileInfo.Extent.MinY:F0}) to ({tileInfo.Extent.MaxX:F0}, {tileInfo.Extent.MaxY:F0})");
             }
+
+            Console.WriteLine($"Total tile requests: {requests.Count}");
             return requests;
         }
         /// <summary>
