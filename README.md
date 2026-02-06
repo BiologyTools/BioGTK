@@ -60,12 +60,16 @@ A .NET application & library for editing & annotating various microscopy image f
 - Save models into "StartupPath/Models" supports [BioImage.IO](https://bioimage.io/) models.
 - Supports ONNX (".onnx") and PyTorch models (".pt"). For PyTorch models include the ".yaml" metadata file with the same name as the model file in the models folder.
 
+## .NET Runtime Install
+- First intall .NET 10 runtime from [here.](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
+
 ## Mac installation, 
 - See [this video](https://www.youtube.com/watch?v=bEC4b8DlNLg) or follow the instructions below.
 - Install Mac package manager [homebrew.](https://brew.sh/)
 - From brew install [GTK3.](https://formulae.brew.sh/formula/gtk+3#default)
 - Download the BioGTK application for either OSX-x64 or OSX-Arm from releases.
 - Make the .app bundle executable by opening terminal in the Contents/MacOS folder then run "chmod 755 BioGTKApp" then drag it into the applications folder.
+- Then run ```xattr -dr com.apple.quarantine /Applications/BioGTK.app``` to remove Apple quarantine.
 - Optionally install [OpenSlide](https://formulae.brew.sh/formula/openslide) for better navigation of whole-slide-images.
 - Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance and functions with whole-slide-images.
 - Optionally for SAM install ONNX Runtime by running "brew install onnxruntime".
