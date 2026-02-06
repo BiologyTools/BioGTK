@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AForge;
 using BioLib;
+using SkiaSharp.Views.Gtk;
 
 namespace BioGTK
 {
@@ -14,8 +15,6 @@ namespace BioGTK
     public class SKSlideRenderer : IDisposable
     {
         #region Fields and Properties
-
-        private readonly SlideGLArea _glArea;
         private SkiaStitchingPipeline _stitchingPipeline;
 
         // Current rendering state
@@ -26,32 +25,15 @@ namespace BioGTK
         private int _lastWidth;
         private int _lastHeight;
 
-        // Async rendering management
-        private CancellationTokenSource _renderCancellation;
-        private Task _currentRenderTask;
-        private readonly object _renderLock = new object();
-        private readonly SemaphoreSlim _updateSemaphore;
-
-        // Progressive rendering
-        private bool _useProgressiveRendering = true;
-        private SKImage _lowResPreview;
-
         // Source tracking
-        private OpenSlideGTK.ISlideSource _openSlideSource;
-        private ISlideSource _slideSource;
+        private OpenSlideGTK.OpenSlideBase _openSlideSource;
+        private SlideBase _slideSource;
         private bool _isOpenSlide;
         private bool _hasSource;
 
-        // Performance configuration
-        public bool EnableProgressiveRendering
-        {
-            get => _useProgressiveRendering;
-            set => _useProgressiveRendering = value;
-        }
-
         public int MaxCacheSizeMB { get; set; } = 512;
         public int TileSize { get; set; } = 256;
-        public SKFilterQuality FilterQuality { get; set; } = SKFilterQuality.Medium;
+        public SKSamplingOptions Sampling { get; set; } = SKSamplingOptions.Default;
         public bool EnablePrefetch { get; set; } = true;
 
         // State tracking
@@ -65,12 +47,8 @@ namespace BioGTK
         /// <summary>
         /// Initialize renderer for a specific GLArea widget
         /// </summary>
-        public SKSlideRenderer(SlideGLArea glArea)
+        public SKSlideRenderer(SKDrawingArea sk)
         {
-            _glArea = glArea ?? throw new ArgumentNullException(nameof(glArea));
-            _updateSemaphore = new SemaphoreSlim(1, 1);
-            _renderCancellation = new CancellationTokenSource();
-
             InitializeDefaults();
         }
 
@@ -79,8 +57,8 @@ namespace BioGTK
             _lastOrigin = new PointD(0, 0);
             _lastResolution = 1.0;
             _lastCoordinate = new ZCT(0, 0, 0);
-            _lastWidth = 0;
-            _lastHeight = 0;
+            _lastWidth = 600;
+            _lastHeight = 400;
         }
 
         #endregion
@@ -90,7 +68,7 @@ namespace BioGTK
         /// <summary>
         /// Set OpenSlide source and initialize pipeline
         /// </summary>
-        public void SetSource(OpenSlideGTK.ISlideSource openSlideSource)
+        public void SetSource(OpenSlideGTK.OpenSlideBase openSlideSource)
         {
             if (openSlideSource == null)
                 throw new ArgumentNullException(nameof(openSlideSource));
@@ -107,7 +85,7 @@ namespace BioGTK
         /// <summary>
         /// Set BioLib slide source and initialize pipeline
         /// </summary>
-        public void SetSource(ISlideSource slideSource)
+        public void SetSource(SlideBase slideSource)
         {
             if (slideSource == null)
                 throw new ArgumentNullException(nameof(slideSource));
@@ -148,13 +126,8 @@ namespace BioGTK
         /// </summary>
         private void ClearCurrentSource()
         {
-            CancelCurrentRender();
-
             _currentRenderedImage?.Dispose();
             _currentRenderedImage = null;
-
-            _lowResPreview?.Dispose();
-            _lowResPreview = null;
 
             _stitchingPipeline?.Dispose();
             _stitchingPipeline = null;
@@ -171,53 +144,47 @@ namespace BioGTK
         /// </summary>
         public async Task UpdateViewAsync(
             PointD origin,
-            int width,
-            int height,
             double resolution,
             ZCT coordinate,
-            bool forceUpdate = false)
+            int width = 600,
+            int height = 400)
         {
             if (!_hasSource || _stitchingPipeline == null)
                 return;
-
+            /*
             // Check if update is needed
             if (!forceUpdate && !NeedsUpdate(origin, width, height, resolution, coordinate))
                 return;
-
+            */
             // Cancel any in-progress render
-            CancelCurrentRender();
+            //CancelCurrentRender();
 
             // Acquire update lock
-            await _updateSemaphore.WaitAsync();
+            //await _updateSemaphore.WaitAsync();
 
             try
             {
                 IsRendering = true;
-
+                /*
                 // Create new cancellation token for this render
                 _renderCancellation = new CancellationTokenSource();
                 var cancellationToken = _renderCancellation.Token;
-
+                */
                 // Store current parameters
                 _lastOrigin = origin;
                 _lastResolution = resolution;
                 _lastCoordinate = coordinate;
                 _lastWidth = width;
                 _lastHeight = height;
-
+                /*
                 // Progressive rendering: render low-res preview first if enabled
                 if (_useProgressiveRendering && ShouldRenderPreview(resolution))
                 {
-                    await RenderLowResPreviewAsync(origin, width, height, resolution, coordinate, cancellationToken);
+                    await RenderLowResPreviewAsync(origin, width, height, resolution, coordinate);
                 }
-
+                */
                 // Render full quality
-                await RenderFullQualityAsync(origin, width, height, resolution, coordinate, cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                // Render was cancelled - this is expected behavior
-                Console.WriteLine("Render cancelled");
+                await RenderFullQualityAsync(origin, resolution, coordinate, width, height);
             }
             catch (Exception ex)
             {
@@ -226,7 +193,6 @@ namespace BioGTK
             finally
             {
                 IsRendering = false;
-                _updateSemaphore.Release();
             }
         }
 
@@ -238,8 +204,7 @@ namespace BioGTK
             int width,
             int height,
             double resolution,
-            ZCT coordinate,
-            CancellationToken cancellationToken)
+            ZCT coordinate)
         {
             try
             {
@@ -251,21 +216,21 @@ namespace BioGTK
                 // Create preview with stitching pipeline
                 var previewImage = await _stitchingPipeline.StitchViewportAsync(
                     origin,
-                    previewWidth,
-                    previewHeight,
                     previewResolution,
                     coordinate,
-                    cancellationToken
+                    previewWidth,
+                    previewHeight
                 );
-
-                if (previewImage != null && !cancellationToken.IsCancellationRequested)
+                /*
+                if (previewImage != null)
                 {
                     _lowResPreview?.Dispose();
                     _lowResPreview = previewImage;
 
                     // Request immediate redraw with preview
-                    RequestRedraw();
+                    //RequestRedraw();
                 }
+                */
             }
             catch (Exception ex)
             {
@@ -278,39 +243,29 @@ namespace BioGTK
         /// </summary>
         private async Task RenderFullQualityAsync(
             PointD origin,
-            int width,
-            int height,
             double resolution,
             ZCT coordinate,
-            CancellationToken cancellationToken)
+            int width = 600,
+            int height = 400)
         {
             try
             {
                 // Use stitching pipeline to create full quality composite
                 var stitchedImage = await _stitchingPipeline.StitchViewportAsync(
                     origin,
-                    width,
-                    height,
                     resolution,
                     coordinate,
-                    cancellationToken
+                    width,
+                    height
                 );
 
-                if (stitchedImage != null && !cancellationToken.IsCancellationRequested)
+                if (stitchedImage != null)
                 {
-                    // Swap in new image
-                    lock (_renderLock)
-                    {
-                        _currentRenderedImage?.Dispose();
-                        _currentRenderedImage = stitchedImage;
-
-                        // Clear preview once we have full quality
-                        _lowResPreview?.Dispose();
-                        _lowResPreview = null;
-                    }
+                    _currentRenderedImage?.Dispose();
+                    _currentRenderedImage = stitchedImage;
 
                     // Request redraw with new image
-                    RequestRedraw();
+                    //RequestRedraw();
                 }
             }
             catch (Exception ex)
@@ -329,12 +284,12 @@ namespace BioGTK
         public SKImage RenderRegion(
             RectangleD region,
             int level,
-            ZCT coordinate)
+            ZCT coordinate, double resolution)
         {
             if (!_hasSource || _stitchingPipeline == null)
                 return null;
 
-            return _stitchingPipeline.StitchRegion(region, level, coordinate);
+            return _stitchingPipeline.StitchRegion(region, level, coordinate, resolution);
         }
 
         /// <summary>
@@ -347,10 +302,10 @@ namespace BioGTK
 
             return _stitchingPipeline.StitchViewportAsync(
                 _lastOrigin,
-                _lastWidth,
-                _lastHeight,
                 _lastResolution,
-                _lastCoordinate
+                _lastCoordinate,
+                _lastWidth,
+                _lastHeight
             ).Result;
         }
 
@@ -364,11 +319,8 @@ namespace BioGTK
         /// </summary>
         public SKImage GetCurrentImage()
         {
-            lock (_renderLock)
-            {
-                // Return full quality if available, otherwise preview
-                return _currentRenderedImage ?? _lowResPreview;
-            }
+            // Return full quality if available, otherwise preview
+            return _currentRenderedImage;
         }
 
         /// <summary>
@@ -383,27 +335,22 @@ namespace BioGTK
             var image = GetCurrentImage();
             if (image == null)
                 return;
-
-            lock (_renderLock)
+            try
             {
-                try
+                using (var paint = new SKPaint
                 {
-                    using (var paint = new SKPaint
-                    {
-                        FilterQuality = FilterQuality,
-                        IsAntialias = true,
-                        BlendMode = SKBlendMode.SrcOver
-                    })
-                    {
-                        // Draw image to fill canvas
-                        var destRect = new SKRect(0, 0, canvasWidth, canvasHeight);
-                        canvas.DrawImage(image, destRect, paint);
-                    }
-                }
-                catch (Exception ex)
+                    IsAntialias = true,
+                    BlendMode = SKBlendMode.SrcOver
+                })
                 {
-                    Console.WriteLine($"Error drawing to canvas: {ex.Message}");
+                    // Draw image to fill canvas
+                    var destRect = new SKRect(0, 0, canvasWidth, canvasHeight);
+                    canvas.DrawImage(image, destRect, paint);
                 }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error drawing to canvas: {ex.Message}");
             }
         }
 
@@ -443,28 +390,13 @@ namespace BioGTK
         }
 
         /// <summary>
-        /// Cancel any currently running render operation
-        /// </summary>
-        public void CancelCurrentRender()
-        {
-            try
-            {
-                _renderCancellation?.Cancel();
-            }
-            catch (ObjectDisposedException)
-            {
-                // Already disposed, ignore
-            }
-        }
-
-        /// <summary>
         /// Request GLArea redraw on GTK main thread
         /// </summary>
         private void RequestRedraw()
         {
             Gtk.Application.Invoke((sender, args) =>
             {
-                _glArea?.RequestRedraw();
+                App.viewer.RequestDeferredRender();
             });
         }
 
@@ -511,7 +443,7 @@ namespace BioGTK
         public void UpdateConfiguration(
             int? maxCacheSizeMB = null,
             int? tileSize = null,
-            SKFilterQuality? filterQuality = null,
+            SKSamplingOptions? sampling = null,
             bool? enablePrefetch = null,
             bool? enableProgressiveRendering = null)
         {
@@ -529,18 +461,6 @@ namespace BioGTK
                 needsReinit = true;
             }
 
-            if (enablePrefetch.HasValue)
-            {
-                EnablePrefetch = enablePrefetch.Value;
-                if (_stitchingPipeline != null)
-                    _stitchingPipeline.EnablePrefetch = enablePrefetch.Value;
-            }
-
-            if (enableProgressiveRendering.HasValue)
-            {
-                EnableProgressiveRendering = enableProgressiveRendering.Value;
-            }
-
             // Reinitialize pipeline if structural changes were made
             if (needsReinit && _hasSource)
             {
@@ -554,18 +474,9 @@ namespace BioGTK
 
         public void Dispose()
         {
-            CancelCurrentRender();
-
-            _renderCancellation?.Dispose();
-            _updateSemaphore?.Dispose();
-
-            _currentRenderedImage?.Dispose();
-            _lowResPreview?.Dispose();
-
+            _currentRenderedImage?.Dispose();       
             _stitchingPipeline?.Dispose();
-
             _currentRenderedImage = null;
-            _lowResPreview = null;
             _stitchingPipeline = null;
         }
 
