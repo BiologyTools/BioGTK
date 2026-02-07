@@ -1041,7 +1041,7 @@ namespace BioGTK
                 {
                     paint.Style = SKPaintStyle.Stroke;
                     paint.StrokeWidth = 1f;
-                    paint.Color = SKColors.Red;
+                    paint.Color = SKColors.Gray;
                     paint.IsAntialias = true;
 
                     canvas.DrawRect(rectLeft, rectTop, rectRight - rectLeft, rectBottom - rectTop, paint);

@@ -215,7 +215,7 @@ namespace BioGTK
                 }
 
                 var canvas = surface.Canvas;
-                canvas.Clear(SKColors.Red);
+                canvas.Clear(SKColors.Gray);
 
                 // Fetch and composite all tiles
                 await CompositeTilesAsync(canvas, tileRequests, origin, resolution);
