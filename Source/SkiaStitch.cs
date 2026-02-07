@@ -3,10 +3,12 @@ using BioLib;
 using BruTile;
 using CSScripting;
 using OpenSlideGTK;
+using org.apache.xmlgraphics.image.codec.tiff;
 using SkiaSharp;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -229,9 +231,10 @@ namespace BioGTK
         public SKImage StitchRegion(
             RectangleD region,
             int level,
-            ZCT coordinate, double resolution)
+            ZCT coordinate, double resolution, int pxwidth, int pxheight)
         {
-            var tileRequests = CalculateTileRequestsForRegion(region, level, coordinate);
+            var tileRequests = CalculateTileRequests(
+                new PointD(region.X,region.Y),pxwidth, pxheight, level, coordinate, resolution);
 
             int outputWidth = (int)Math.Ceiling(region.W);
             int outputHeight = (int)Math.Ceiling(region.H);
@@ -246,7 +249,7 @@ namespace BioGTK
                     var tileImage = FetchTileSync(request);
                     if (tileImage != null)
                     {
-                        DrawTileToCanvas(canvas, tileImage, request, new AForge.PointD(region.X,region.Y), resolution);
+                        DrawTileToCanvas(canvas,request, new AForge.PointD(region.X,region.Y), resolution,  tileImage);
                     }
                 }
 
@@ -261,59 +264,62 @@ namespace BioGTK
         /// <summary>
         /// Fetch tile asynchronously with caching
         /// </summary>
-        private async Task<SKImage> FetchTileAsync(TileRequest request)
+        private async Task<SKImage> FetchTileAsync(TileRequest request, ZCT coordinate)
         {
-            string cacheKey = request.GetCacheKey();
+            string key = request.GetCacheKey();
 
-            // Check cache first
-            if (_tileCache.TryGetValue(cacheKey, out var cachedTile))
-            {
-                cachedTile.LastAccessed = DateTime.UtcNow;
-                return cachedTile.Image;
-            }
+            // 1. Check cache again to be sure
+            if (_tileCache.TryGetValue(key, out var cached)) return cached.Image;
 
-            // Check if already fetching
-            if (_pendingTileFetches.TryGetValue(cacheKey, out var existingTask))
-            {
-                return await existingTask;
-            }
+            // 2. Check if already being fetched
+            if (_pendingTileFetches.TryGetValue(key, out var pendingTask)) return await pendingTask;
 
-            // Create new fetch task
+            // 3. Create the fetch task
             var fetchTask = Task.Run(async () =>
             {
                 try
                 {
-                    byte[] tileData = await FetchTileDataAsync(request);
-                    if (tileData == null || tileData.Length == 0)
-                        return null;
-
-                    SKImage skImage = ConvertTileDataToSKImage(tileData, request);
-
-                    // Add to cache
-                    if (skImage != null)
+                    byte[] data;
+                    if (_isOpenSlide)
                     {
-                        AddToCache(cacheKey, skImage);
+                        TileInfo tf = new TileInfo { Index = request.Index, Extent = request.Extent };
+                        // OpenSlide usually takes Level, X-index, Y-index
+                        data = _openSlideSource.GetTile(tf);
+                    }
+                    else
+                    {
+                        // SlideBase usually takes the Index object and ZCT
+                        TileInfo tf = new TileInfo { Index = request.Index, Extent = request.Extent };
+                        // OpenSlide usually takes Level, X-index, Y-index
+                        data = _slideSource.GetTile(tf,request.Coordinate);
                     }
 
-                    return skImage;
+                    if (data == null || data.Length == 0) return null;
+
+                    // Convert to Skia Image (using the shear-fix logic from before)
+                    var levelResolution = CalculateResolutionFromLevel(request.Index.Level);
+                    var image = ConvertTileDataToSKImage(data, request);
+
+                    if (image != null)
+                    {
+                        var cachedTile = new CachedTile(image, DateTime.Now.ToString());
+                        _tileCache.AddOrUpdate(key, cachedTile, (k, old) => cachedTile);
+                        return image;
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error fetching tile {cacheKey}: {ex.Message}");
-                    return null;
+                    Console.WriteLine($"Fetch error for tile {key}: {ex.Message}");
                 }
+                finally
+                {
+                    _pendingTileFetches.TryRemove(key, out _);
+                }
+                return null;
             });
 
-            _pendingTileFetches.TryAdd(cacheKey, fetchTask);
-
-            try
-            {
-                return await fetchTask;
-            }
-            finally
-            {
-                _pendingTileFetches.TryRemove(cacheKey, out _);
-            }
+            _pendingTileFetches[key] = fetchTask;
+            return await fetchTask;
         }
 
         /// <summary>
@@ -391,8 +397,8 @@ namespace BioGTK
 
                     var origin = new PointD(request.Extent.MinX, request.Extent.MinY);
                     var size = new AForge.Size((int)request.Bounds.W, (int)request.Bounds.H);
-
-                    byte[] tileData = await _slideSource.GetSlice(sliceInfo, origin, size);
+                    TileInformation tf = new TileInformation(request.Index, request.Extent, request.Coordinate);
+                    byte[] tileData = await _slideSource.GetTileAsync(tf, request.Coordinate);
 
                     if (tileData == null || tileData.Length == 0)
                     {
@@ -451,126 +457,65 @@ namespace BioGTK
         #region Tile Compositing
 
         /// <summary>
-        /// Composite all tiles onto the canvas
+        /// Composite all tiles onto the canvas using a unified coordinate system
         /// </summary>
         private async Task CompositeTilesAsync(
-    SKCanvas canvas,
-    List<TileRequest> tileRequests,
-    PointD origin,
-    double resolution)
+            SKCanvas canvas,
+            List<TileRequest> tileRequests,
+            PointD origin,
+            double resolution)
         {
-            Console.WriteLine($"\n=== CompositeTilesAsync ===");
-            Console.WriteLine($"Compositing {tileRequests.Count} tiles");
-            Console.WriteLine($"Origin: ({origin.X:F2}, {origin.Y:F2}), Resolution: {resolution:F4}");
-
-            if (tileRequests.Count == 0)
-            {
-                Console.WriteLine("⚠ WARNING: No tile requests to composite!");
-                return;
-            }
-
-            int drawnCount = 0;
-            int failedCount = 0;
+            if (tileRequests.Count == 0) return;
 
             // Fetch all tiles in parallel
             var tileTasks = tileRequests.Select(async req =>
             {
-                var image = await FetchTileAsync(req);
+                var image = await FetchTileAsync(req, req.Coordinate);
                 return new { Request = req, Image = image };
             }).ToArray();
 
             var results = await Task.WhenAll(tileTasks);
 
-            using (var paint = new SKPaint())
+            using (var paint = new SKPaint { IsAntialias = false })
             {
-                paint.IsAntialias = false;
-
                 foreach (var result in results)
                 {
-                    if (result.Image == null)
-                    {
-                        failedCount++;
-                        continue;
-                    }
-
-                    var request = result.Request;
-
-                    // CRITICAL FIX: Handle Y-axis inversion properly
-                    // Tile extents come from Schema which uses inverted-Y coordinate system
-                    // Canvas uses standard top-left origin with Y increasing downward
-
-                    float destX = (float)((request.Extent.MinX - origin.X) / resolution);
-
-
-                    // Y needs inversion - tile extents are in inverted-Y space
-                    // MaxY is the "top" in inverted coordinates
-                    float destY = (float)((origin.Y - request.Extent.MaxY) / resolution);
-
-                    // Option 2: If you need to flip based on canvas height:
-                    // float destY = canvasHeight - (float)((request.Extent.MaxY - origin.Y) / resolution);
-
-                    float destW = (float)((request.Extent.MaxX - request.Extent.MinX) / resolution);
-                    float destH = (float)((request.Extent.MaxY - request.Extent.MinY) / resolution);
-
-                    var destRect = new SKRect(destX, destY, destX + destW, destY + destH);
-
-                    Console.WriteLine($"    Tile [{request.Index.Col},{request.Index.Row}]:");
-                    Console.WriteLine($"    Extent: ({request.Extent.MinX:F0}, {request.Extent.MinY:F0}) to ({request.Extent.MaxX:F0}, {request.Extent.MaxY:F0})");
-                    Console.WriteLine($"    Canvas: ({destX:F1}, {destY:F1}) size {destW:F1}x{destH:F1}");
-
-                    canvas.DrawImage(result.Image, destRect, paint);
-                    drawnCount++;
+                    if (result.Image == null) continue;
+                    DrawTileToCanvas(canvas, result.Request, origin, resolution, result.Image, paint);
                 }
             }
-
-            Console.WriteLine($"\n✓ Composited {drawnCount} tiles, {failedCount} failed");
         }
         /// <summary>
-        /// Draw individual tile to canvas with proper positioning
+        /// Unified drawing method to handle BruTile Y-up to Skia Y-down conversion
         /// </summary>
         private void DrawTileToCanvas(
-    SKCanvas canvas,
-    SKImage tileImage,
-    TileRequest request,
-    PointD viewportOrigin,
-    double resolution)
+            SKCanvas canvas,
+            TileRequest request,
+            PointD viewportOrigin,
+            double resolution,
+            SKImage tileImage,
+            SKPaint paint = null)
         {
-            // Validate inputs
-            if (canvas == null || tileImage == null || request == null)
-            {
-                Console.WriteLine("Null parameter in DrawTileToCanvas");
-                return;
-            }
+            if (tileImage == null) return;
 
-            // Validate image isn't disposed/corrupted
-            if (tileImage.Width <= 0 || tileImage.Height <= 0)
-            {
-                Console.WriteLine($"Invalid image dimensions: {tileImage.Width}x{tileImage.Height}");
-                return;
-            }
-            // Convert world-space relative offset to pixel-space
-            float destX = (float)((request.Bounds.X - viewportOrigin.X) / resolution);
-            float destY = (float)((request.Bounds.Y - viewportOrigin.Y) / resolution);
+            // X: (Tile Left - Viewport Left) / Resolution
+            float destX = (float)((request.Extent.MinX - viewportOrigin.X) / resolution);
 
-            // Convert world-space size to pixel-space
-            float destW = (float)(request.Bounds.W / resolution);
-            float destH = (float)(request.Bounds.H / resolution);
+            // Y: (Viewport Top - Tile Top) / Resolution 
+            // In BruTile, MaxY is the Top of the tile
+            float destY = (float)((viewportOrigin.Y - request.Extent.MaxY) / resolution);
+
+            // Calculate dimensions based on the Extent to ensure precision
+            float destW = (float)(request.Extent.Width / resolution);
+            float destH = (float)(request.Extent.Height / resolution);
 
             var destRect = new SKRect(destX, destY, destX + destW, destY + destH);
 
-            Console.WriteLine($"Drawing tile at ({destX}, {destY}) size {destW}x{destH}");
-
-            try
-            {
-                using (var paint = CreateTilePaint())
-                {
-                    canvas.DrawImage(tileImage, destRect, paint);
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Error drawing tile: {e.Message}\n{e.StackTrace}");
-            }
+            // Use Sampling if provided in the class, otherwise use the paint object
+            if (paint != null)
+                canvas.DrawImage(tileImage, destRect, paint);
+            else
+                canvas.DrawImage(tileImage, destRect, Sampling);
         }
         /// <summary>
         /// Create paint for compositing operations
@@ -602,89 +547,41 @@ namespace BioGTK
         /// <summary>
         /// Calculate which tiles are needed for the viewport
         /// </summary>
-        private List<TileRequest> CalculateTileRequests(
-        PointD origin,
-        int viewportWidth,
-        int viewportHeight,
-        int level,
-        ZCT coordinate,
-        double resolution)
+        private List<TileRequest> CalculateTileRequests(PointD origin, int viewportWidth, int viewportHeight, int level, ZCT coordinate, double resolution)
         {
-            var requests = new List<TileRequest>();
+            // origin.X/Y is the Top-Left of the viewport in World Space.
+            // In BruTile (OSM/TMS style), Y increases UPWARDS.
 
-            Console.WriteLine($"\n=== CalculateTileRequests (Schema-based) ===");
-            Console.WriteLine($"Origin: ({origin.X:F2}, {origin.Y:F2}), Viewport: {viewportWidth}x{viewportHeight}, Level: {level}");
+            double minX = origin.X;
+            double maxX = origin.X + (viewportWidth * resolution);
 
-            // FIX: Keep viewport extent in pixel coordinates
-            var viewportExtent = new Extent(
-                origin.X,
-                origin.Y,
-                origin.X + viewportWidth,   // Just pixels
-                origin.Y + viewportHeight   // Just pixels
-            );
+            // Because Y increases UP, the Top of the screen (origin.Y) 
+            // is the MAXIMUM Y value.
+            double maxY = origin.Y;
 
-            Console.WriteLine($"Viewport Extent (pixels): ({viewportExtent.MinX:F0}, {viewportExtent.MinY:F0}) to ({viewportExtent.MaxX:F0}, {viewportExtent.MaxY:F0})");
+            // The Bottom of the screen is the MINIMUM Y value.
+            double minY = origin.Y - (viewportHeight * resolution);
 
-            // Transform to world space for schema query
+            // Create the extent (MinX, MinY, MaxX, MaxY)
+            var viewportExtent = new Extent(minX, minY, maxX, maxY);
+
             IEnumerable<TileInfo> tileInfos;
             if (_isOpenSlide)
             {
-                Extent worldExtent = OpenSlideGTK.ExtentEx.PixelToWorldInvertedY(viewportExtent, resolution);
-                Console.WriteLine($"World Extent: ({worldExtent.MinX:F0}, {worldExtent.MinY:F0}) to ({worldExtent.MaxX:F0}, {worldExtent.MaxY:F0})");
-                tileInfos = _openSlideSource.Schema.GetTileInfos(worldExtent, level);
+                tileInfos = _openSlideSource.Schema.GetTileInfos(viewportExtent, level);
             }
             else
             {
-                Extent worldExtent = BioLib.ExtentEx.PixelToWorldInvertedY(viewportExtent, resolution);
-                Console.WriteLine($"World Extent: ({worldExtent.MinX:F0}, {worldExtent.MinY:F0}) to ({worldExtent.MaxX:F0}, {worldExtent.MaxY:F0})");
-                tileInfos = _slideSource.Schema.GetTileInfos(worldExtent, level);
+                tileInfos = _slideSource.Schema.GetTileInfos(viewportExtent, level);
             }
 
-            foreach (var tileInfo in tileInfos)
-            {
-                requests.Add(new TileRequest(tileInfo, coordinate));
-                Console.WriteLine($"  Tile[{tileInfo.Index.Col},{tileInfo.Index.Row}] Extent: ({tileInfo.Extent.MinX:F0}, {tileInfo.Extent.MinY:F0}) to ({tileInfo.Extent.MaxX:F0}, {tileInfo.Extent.MaxY:F0})");
-            }
-
-            Console.WriteLine($"Total tile requests: {requests.Count}");
-            return requests;
-        }
-        /// <summary>
-        /// Calculate tiles for a specific region
-        /// </summary>
-        private List<TileRequest> CalculateTileRequestsForRegion(
-            RectangleD region,
-            int level,
-            ZCT coordinate)
-        {
             var requests = new List<TileRequest>();
-
-            int startTileX = (int)Math.Floor(region.X / TileSize);
-            int startTileY = (int)Math.Floor(region.Y / TileSize);
-            int endTileX = (int)Math.Ceiling((region.X + region.W) / TileSize);
-            int endTileY = (int)Math.Ceiling((region.Y + region.H) / TileSize);
-
-            for (int tileY = startTileY; tileY <= endTileY; tileY++)
+            foreach (var info in tileInfos)
             {
-                for (int tileX = startTileX; tileX <= endTileX; tileX++)
-                {
-                    Extent bounds = new Extent(
-                        tileX * TileSize,
-                        tileY * TileSize,
-                        TileSize,
-                        TileSize
-                    );
-                    TileInfo tf = new TileInfo
-                    {
-                        Index = new TileIndex(tileX, tileY, level),
-                        Extent = bounds
-                    };
-                    requests.Add(new TileRequest(tf, coordinate));
-                }
+                requests.Add(new TileRequest(info, coordinate));
             }
             return requests;
         }
-
         #endregion
 
         #region Cache Management
@@ -767,28 +664,29 @@ namespace BioGTK
         /// <summary>
         /// Convert raw tile data to SKImage
         /// </summary>
+        // SkiaStitch.cs - Update this method
         private SKImage ConvertTileDataToSKImage(byte[] tileData, TileRequest request)
         {
             try
             {
-                // Assume RGBA format from source
-                int width = (int)request.Bounds.W;
-                int height = (int)request.Bounds.H;
-
-                var imageInfo = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
-
-                // Try decoding as compressed image first
+                // 1. Try standard decoding (JPEG/PNG/etc)
                 using (var data = SKData.CreateCopy(tileData))
-                using (var skBitmap = SKBitmap.Decode(data))
                 {
-                    if (skBitmap != null)
-                    {
-                        return SKImage.FromBitmap(skBitmap);
-                    }
+                    var image = SKImage.FromEncodedData(data);
+                    if (image != null) return image;
                 }
 
+                // 2. Fallback for Raw Pixels (The "Shear" Fix)
+                // Use the Schema's defined TileWidth/Height, NOT the calculated resolution width
+                int width = _isOpenSlide ? _openSlideSource.Schema.GetTileWidth(request.Index.Level)
+                                         : _slideSource.Schema.GetTileWidth(request.Index.Level);
+                int height = _isOpenSlide ? _openSlideSource.Schema.GetTileHeight(request.Index.Level)
+                                          : _slideSource.Schema.GetTileHeight(request.Index.Level);
+
+                var info = new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Premul);
                 // If decode fails, create from raw RGBA data
                 // CRITICAL: Don't dispose SKData until image is disposed
+                var imageInfo = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
                 var rawData = SKData.CreateCopy(tileData);
                 var pixmap = new SKPixmap(imageInfo, rawData.Data, imageInfo.RowBytes);
 

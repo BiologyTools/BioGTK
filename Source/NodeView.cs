@@ -1,5 +1,8 @@
 ﻿using AForge;
 using Gtk;
+using OpenTK.Mathematics;
+using OpenTK.Windowing.Common;
+using OpenTK.Windowing.Desktop;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -43,7 +46,7 @@ namespace BioGTK
             return new NodeView(builder, builder.GetObject("nodeView").Handle,args);
         }
         ListStore store;
-
+        GLWindow window;
         /* The code you provided is the constructor for the `NodeView` class. */
         protected NodeView(Builder builder, IntPtr handle, string[] args) : base(handle)
         {
@@ -70,6 +73,7 @@ namespace BioGTK
             }
             Console.WriteLine("Initializing nodes.");    
             InitItems();
+            App.MoveToMain(this);
             App.ApplyStyles(this);
             Console.WriteLine("NodeView initialized.");
         }

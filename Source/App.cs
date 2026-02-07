@@ -9,6 +9,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using Monitor = Gdk.Monitor;
+using Window = Gtk.Window;
 
 namespace BioGTK
 {
@@ -163,6 +165,28 @@ namespace BioGTK
             BioLib.Settings.Save();
             return true;
         }
+        public static void MoveToMain(Window window)
+        {
+            MoveToMonitor(window, 0);
+        }
+        public static void MoveToMonitor(Window window, int monitorIndex)
+        {
+            Display display = Display.Default;
+            if (display == null)
+                return;
+
+            int monitorCount = display.NMonitors;
+
+            if (monitorIndex >= monitorCount)
+                monitorIndex = 0; // fallback to primary
+
+            Monitor monitor = display.GetMonitor(monitorIndex);
+            Rectangle geometry = monitor.Geometry;
+
+            // Move window to monitor origin
+            window.Move(geometry.X, geometry.Y);
+        }
+
         /// Initialize() is a function that initializes the BioImage Suite Web
         public static void Initialize()
         {

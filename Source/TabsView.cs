@@ -275,6 +275,7 @@ namespace BioGTK
             Plugins.Initialize();
             ML.ML.Initialize();
             AIMenu.ShowAll();
+            App.MoveToMain(this);
         }
         /*
         public PointD GetTextSize(string s, string font, int size)
@@ -969,29 +970,26 @@ namespace BioGTK
             {
                 if (im == null)
                     return;
-                Application.Invoke(delegate
+                for (int vi = 0; vi < viewers.Count; vi++)
                 {
-                    for (int vi = 0; vi < viewers.Count; vi++)
+                    for (int i = 0; i < viewers[vi].Images.Count; i++)
                     {
-                        for (int i = 0; i < viewers[vi].Images.Count; i++)
-                        {
-                            if (viewers[vi].Images[i].Filename == im.Filename)
-                                return;
-                        }
+                        if (viewers[vi].Images[i].Filename == im.Filename)
+                            return;
                     }
-                    ImageView v = ImageView.Create(im);
-                    viewers.Add(v);
-                    Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file.Replace("\\", "/")) + "/" + im.Filename);
-                    dummy.Text = im.file.Replace("\\", "/") + "/" + im.Filename;
-                    dummy.Visible = false;
-                    Label l = new Gtk.Label(System.IO.Path.GetFileName(im.Filename));
-                    l.Text = System.IO.Path.GetFileName(im.Filename);
-                    tabsView.AppendPage(dummy, l);                
-                    Console.WriteLine("New tab added for " + im.Filename);
-                    App.nodeView.UpdateItems();
-                    tabsView.ShowAll();
-                    v.Show();
-                });
+                }
+                ImageView v = ImageView.Create(im);
+                viewers.Add(v);
+                Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file.Replace("\\", "/")) + "/" + im.Filename);
+                dummy.Text = im.file.Replace("\\", "/") + "/" + im.Filename;
+                dummy.Visible = false;
+                Label l = new Gtk.Label(System.IO.Path.GetFileName(im.Filename));
+                l.Text = System.IO.Path.GetFileName(im.Filename);
+                tabsView.AppendPage(dummy, l);
+                Console.WriteLine("New tab added for " + im.Filename);
+                App.nodeView.UpdateItems();
+                tabsView.ShowAll();
+                v.Show();
             }
             catch (Exception e)
             {

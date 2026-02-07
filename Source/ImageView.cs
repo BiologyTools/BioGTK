@@ -78,8 +78,16 @@ namespace BioGTK
             selectedIndex = Images.Count - 1;
             if (im.Resolutions[0].SizeX < 1920 && im.Resolutions[0].SizeY < 1080)
             {
-                glArea.WidthRequest = 600;
-                glArea.HeightRequest = 400;
+                if(sk != null)
+                {
+                    sk.WidthRequest = im.Resolutions[0].SizeX;
+                    sk.HeightRequest = im.Resolutions[0].SizeY;
+                }
+                else
+                {
+                    glArea.WidthRequest = im.Resolutions[0].SizeX;
+                    glArea.HeightRequest = im.Resolutions[0].SizeY;
+                }
             }
 
             Initialize();
@@ -239,13 +247,15 @@ namespace BioGTK
         private MenuItem setValueRange;
         [Builder.Object]
         private MenuItem loop;
-
+        [Builder.Object]
 #pragma warning restore 649
-        //private SKDrawingArea glArea = new SKDrawingArea();
+        private SKDrawingArea sk;
         #endregion
-        public SlideGLArea glArea = new SlideGLArea();
+        public SlideGLArea glArea;
         public SlideRenderer slideRenderer;
+        public SKSlideRenderer sKSlideRenderer;
         public GLWindow window;
+        public static bool MacOS = true;
         #region Constructors / Destructors
 
         /// The function creates an ImageView object using a BioImage object and returns it.
@@ -279,27 +289,11 @@ namespace BioGTK
                 UpdateFrequency = 60,
             };
             NativeWindowSettings nativeSettings;
-            if (OperatingSystem.IsMacOS())
+            if (MacOS)
             {
-                nativeSettings = new NativeWindowSettings()
-                {
-                    ClientSize = new Vector2i(600, 400),
-                    Title = "OpenGL Context",
-                    StartVisible = true,
-                    Flags = ContextFlags.ForwardCompatible,
-                    API = ContextAPI.OpenGL,
-                    Profile = ContextProfile.Core,
-                    APIVersion = new Version(3, 3),
-                    NumberOfSamples = 0,
-                    DepthBits = 24,
-                    StencilBits = 8,
-                    RedBits = 8,
-                    GreenBits = 8,
-                    BlueBits = 8,
-                    AlphaBits = 8,
-                    TransparentFramebuffer = false,
-                    SrgbCapable = false
-                };
+                // Create the renderer bridge
+                sk = new SKDrawingArea();
+                sKSlideRenderer = new SKSlideRenderer(sk);
             }
             else if(OperatingSystem.IsLinux())
             {
@@ -316,8 +310,20 @@ namespace BioGTK
                 //tileCopy = new TileCopyGL(gameWindowSettings, nativeSettings);
                 Environment.SetEnvironmentVariable("GDK_BACKEND","x11");
                 Environment.SetEnvironmentVariable("GTK_BACKEND","x11");
+                window = new GLWindow(gameWindowSettings, nativeSettings);
+                // Create the renderer bridge
+                slideRenderer = new SlideRenderer(glArea);
+                GLFWProvider.SetErrorCallback((error, description) =>
+                {
+                    if (description.Contains("Wayland") && description.Contains("window position"))
+                        Console.WriteLine($"BioGTK Window Position Error.");
+                    Console.WriteLine($"BioGTK GLFW Error {error}: {description}");
+                });
+                // Create the GLArea widget
+                glArea = new SlideGLArea();
+                glArea.OnSkiaRender += RenderSkia;
             }
-            else
+            else if(OperatingSystem.IsWindows())
             {
                 nativeSettings = new NativeWindowSettings()
                 {
@@ -333,37 +339,51 @@ namespace BioGTK
                     Profile = ContextProfile.Core,
                     APIVersion = new Version(3, 3)
                 };
-                //tileCopy = new TileCopyGL(gameWindowSettings, nativeSettings);
-            }
-            GLFWProvider.SetErrorCallback((error, description) =>
-            {
-                if (description.Contains("Wayland") && description.Contains("window position"))
-                    Console.WriteLine($"BioGTK Window Position Error.");
-                Console.WriteLine($"BioGTK GLFW Error {error}: {description}");
-                return;
-            });
-            window = new GLWindow(gameWindowSettings, nativeSettings);
-
-            // Create the GLArea widget
-            glArea = new SlideGLArea();
-            glArea.OnSkiaRender += RenderSkia;
-
-            // Create the renderer bridge
-            slideRenderer = new SlideRenderer(glArea);
-
-            // Set the source based on image type
-            if (im.OpenSlideBase != null)
-            {
-                slideRenderer.SetSource(im.OpenSlideBase);
-            }
-            else if (im.SlideBase != null)
-            {
-                slideRenderer.SetSource(im.SlideBase);
+                window = new GLWindow(gameWindowSettings, nativeSettings);
+                // Create the renderer bridge
+                slideRenderer = new SlideRenderer(glArea);
+                GLFWProvider.SetErrorCallback((error, description) =>
+                {
+                    if (description.Contains("Wayland") && description.Contains("window position"))
+                        Console.WriteLine($"BioGTK Window Position Error.");
+                    Console.WriteLine($"BioGTK GLFW Error {error}: {description}");
+                });
+                // Create the GLArea widget
+                glArea = new SlideGLArea();
+                glArea.OnSkiaRender += RenderSkia;
             }
 
-            // Add to view
-            viewStack.Add(glArea);
+            if (MacOS)
+            {
+                // Set the source based on image type
+                if (im.OpenSlideBase != null)
+                {
+                    sKSlideRenderer.SetSource(im.OpenSlideBase);
+                }
+                else if (im.SlideBase != null)
+                {
+                    sKSlideRenderer.SetSource(im.SlideBase);
+                }
+                // Add to view
+                viewStack.Add(sk);
+            }
+            else
+            {
+                // Set the source based on image type
+                if (im.OpenSlideBase != null)
+                {
+                    slideRenderer.SetSource(im.OpenSlideBase);
+                }
+                else if (im.SlideBase != null)
+                {
+                    slideRenderer.SetSource(im.SlideBase);
+                }
+                // Add to view
+                viewStack.Add(glArea);
+            }
+            
             viewStack.ShowAll();
+            if(!MacOS)
             glArea.Show();
             this.WidthRequest = 600;
             this.HeightRequest = 400;
@@ -1086,49 +1106,98 @@ namespace BioGTK
             {
                 UpdateGUI();
             }
-            if (SelectedImage.isPyramidal && glArea.AllocatedWidth > 1 && glArea.AllocatedHeight > 1)
+            if (!MacOS)
             {
-                // Use the new renderer - no more ReadPixels!
-                _ = slideRenderer.UpdateViewAsync(
-                    PyramidalOrigin,
-                    glArea.AllocatedWidth,
-                    glArea.AllocatedHeight,
-                    Resolution,
-                    GetCoordinate()
-                );
-
-            }
-            else if (!SelectedImage.isPyramidal)
-            {
-                SKImages.Clear();
-                Bitmaps.Clear();
-                foreach (BioImage b in Images)
+                if (SelectedImage.isPyramidal && glArea.AllocatedWidth > 1 && glArea.AllocatedHeight > 1)
                 {
-                    ZCT c = GetCoordinate();
-                    AForge.Bitmap bitmap = null;
-                    int index = b.GetFrameIndex(c.Z, c.C, c.T);
-                    if (Mode == ViewMode.Filtered)
+                    // Use the new renderer - no more ReadPixels!
+                    _ = slideRenderer.UpdateViewAsync(
+                        PyramidalOrigin,
+                        glArea.AllocatedWidth,
+                        glArea.AllocatedHeight,
+                        Resolution,
+                        GetCoordinate()
+                    );
+                }
+                else if (!SelectedImage.isPyramidal)
+                {
+                    SKImages.Clear();
+                    Bitmaps.Clear();
+                    foreach (BioImage b in Images)
                     {
-                        bitmap = b.GetFiltered(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
+                        ZCT c = GetCoordinate();
+                        AForge.Bitmap bitmap = null;
+                        int index = b.GetFrameIndex(c.Z, c.C, c.T);
+                        if (Mode == ViewMode.Filtered)
+                        {
+                            bitmap = b.GetFiltered(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
+                        }
+                        else if (Mode == ViewMode.RGBImage)
+                        {
+                            bitmap = b.GetRGBBitmap(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
+                        }
+                        else if (Mode == ViewMode.Raw)
+                        {
+                            bitmap = b.Buffers[index];
+                        }
+                        else
+                        {
+                            bitmap = b.GetEmission(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
+                        }
+                        if (bitmap == null)
+                            return;
+                        var bm = bitmap.GetImageRGBA();
+                        SKImage skim = BitmapToSKImage(bm);
+                        SKImages.Add(skim);
+                        Bitmaps.Add(bm);
                     }
-                    else if (Mode == ViewMode.RGBImage)
+                }
+            }
+            else
+            {
+                if (SelectedImage.isPyramidal && sk.AllocatedWidth > 1 && sk.AllocatedHeight > 1)
+                {
+                    // Use the new renderer - no more ReadPixels!
+                    _ = sKSlideRenderer.UpdateViewAsync(
+                        PyramidalOrigin,
+                        Resolution,
+                        GetCoordinate(),
+                        sk.AllocatedWidth,
+                        sk.AllocatedHeight
+                    );
+                }
+                else if (!SelectedImage.isPyramidal)
+                {
+                    SKImages.Clear();
+                    Bitmaps.Clear();
+                    foreach (BioImage b in Images)
                     {
-                        bitmap = b.GetRGBBitmap(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
+                        ZCT c = GetCoordinate();
+                        AForge.Bitmap bitmap = null;
+                        int index = b.GetFrameIndex(c.Z, c.C, c.T);
+                        if (Mode == ViewMode.Filtered)
+                        {
+                            bitmap = b.GetFiltered(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
+                        }
+                        else if (Mode == ViewMode.RGBImage)
+                        {
+                            bitmap = b.GetRGBBitmap(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
+                        }
+                        else if (Mode == ViewMode.Raw)
+                        {
+                            bitmap = b.Buffers[index];
+                        }
+                        else
+                        {
+                            bitmap = b.GetEmission(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
+                        }
+                        if (bitmap == null)
+                            return;
+                        var bm = bitmap.GetImageRGBA();
+                        SKImage skim = BitmapToSKImage(bm);
+                        SKImages.Add(skim);
+                        Bitmaps.Add(bm);
                     }
-                    else if (Mode == ViewMode.Raw)
-                    {
-                        bitmap = b.Buffers[index];
-                    }
-                    else
-                    {
-                        bitmap = b.GetEmission(c, b.RChannel.RangeR, b.GChannel.RangeG, b.BChannel.RangeB);
-                    }
-                    if (bitmap == null)
-                        return;
-                    var bm = bitmap.GetImageRGBA();
-                    SKImage skim = BitmapToSKImage(bm);
-                    SKImages.Add(skim);
-                    Bitmaps.Add(bm);
                 }
             }
         }
@@ -1270,18 +1339,37 @@ namespace BioGTK
             zBar.ValueChanged += ValueChangedZ;
             cBar.ValueChanged += ValueChangedC;
             tBar.ValueChanged += ValueChangedT;
-            glArea.MotionNotifyEvent += ImageView_MotionNotifyEvent;
-            glArea.ButtonPressEvent += ImageView_ButtonPressEvent;
-            glArea.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
-            glArea.ScrollEvent += ImageView_ScrollEvent;
-            glArea.ScrollEvent += OnMouseWheel;
-            glArea.Render += GlArea_Render;
-            glArea.SizeAllocated += PictureBox_SizeAllocated;
-            glArea.AddEvents((int)(EventMask.ButtonPressMask
-            | EventMask.ButtonReleaseMask
-            | EventMask.KeyPressMask
-            | EventMask.PointerMotionMask
-            | EventMask.ScrollMask));
+            if (MacOS)
+            {
+                sk.MotionNotifyEvent += ImageView_MotionNotifyEvent;
+                sk.ButtonPressEvent += ImageView_ButtonPressEvent;
+                sk.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
+                sk.ScrollEvent += ImageView_ScrollEvent;
+                sk.ScrollEvent += OnMouseWheel;
+                sk.PaintSurface += Sk_PaintSurface;
+                sk.SizeAllocated += PictureBox_SizeAllocated;
+                sk.SetSizeRequest(600, 400);
+                sk.AddEvents((int)(EventMask.ButtonPressMask
+                | EventMask.ButtonReleaseMask
+                | EventMask.KeyPressMask
+                | EventMask.PointerMotionMask
+                | EventMask.ScrollMask));
+            }
+            else
+            {
+                glArea.MotionNotifyEvent += ImageView_MotionNotifyEvent;
+                glArea.ButtonPressEvent += ImageView_ButtonPressEvent;
+                glArea.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
+                glArea.ScrollEvent += ImageView_ScrollEvent;
+                glArea.ScrollEvent += OnMouseWheel;
+                glArea.Render += GlArea_Render;
+                glArea.SizeAllocated += PictureBox_SizeAllocated;
+                glArea.AddEvents((int)(EventMask.ButtonPressMask
+                | EventMask.ButtonReleaseMask
+                | EventMask.KeyPressMask
+                | EventMask.PointerMotionMask
+                | EventMask.ScrollMask));
+            }
 
             this.KeyPressEvent += ImageView_KeyPressEvent;
             this.DestroyEvent += ImageView_DestroyEvent;
@@ -1311,6 +1399,21 @@ namespace BioGTK
             tBar.ButtonPressEvent += TBar_ButtonPressEvent;
             cBar.ButtonPressEvent += CBar_ButtonPressEvent;
 
+        }
+
+        private void Sk_PaintSurface(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e)
+        {
+            if (MacOS)
+            {
+                var canvas = e.Surface.Canvas;
+                var width = e.Info.Width;
+                var height = e.Info.Height;
+                canvas.Clear(SKColors.Black);
+                if (SelectedImage?.isPyramidal == true && sKSlideRenderer != null)
+                {
+                    sKSlideRenderer.DrawToCanvas(canvas, width, height);
+                }
+            }
         }
 
         private void GlArea_Render(object o, RenderArgs args)
@@ -1831,16 +1934,24 @@ namespace BioGTK
         private void PictureBox_SizeAllocated(object o, SizeAllocatedArgs args)
         {
             if (SelectedImage == null) return;
-            if (SelectedImage.isPyramidal)
+            if (!MacOS)
             {
-                SelectedImage.PyramidalSize = new AForge.Size(glArea.AllocatedWidth, glArea.AllocatedHeight);
+                if (SelectedImage.isPyramidal)
+                {
+                    SelectedImage.PyramidalSize = new AForge.Size(glArea.AllocatedWidth, glArea.AllocatedHeight);
+                    UpdateImage();
+                }
+            }
+            else
+            {
+                SelectedImage.PyramidalSize = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
                 UpdateImage();
             }
             if (!initialized)
-            {
-                GoToImage();
-                initialized = true;
-            }
+                {
+                    GoToImage();
+                    initialized = true;
+                }
             UpdateView();
         }
 
@@ -2300,7 +2411,11 @@ namespace BioGTK
             {
                 if (AllowNavigation)
                     origin = value;
-                UpdateView(true);
+                if (sk != null)
+                {
+                    UpdateImages();
+                    sk.QueueDraw();
+                }
             }
         }
         /* Origin of the viewer in microns */
@@ -2329,6 +2444,11 @@ namespace BioGTK
                 if (!AllowNavigation)
                     return;
                 SelectedImage.PyramidalOrigin = value;
+                if (sk != null)
+                {
+                    UpdateImages();
+                    sk.QueueDraw();
+                }
             }
         }
         // Mouse wheel handler
@@ -2383,6 +2503,11 @@ namespace BioGTK
             {
                 if (SelectedImage.isPyramidal)
                     SelectedImage.Resolution = value;
+                if (sk != null)
+                {
+                    UpdateImages();
+                    sk.QueueDraw();
+                }
             }
         }
 
@@ -2484,19 +2609,43 @@ namespace BioGTK
             refresh = true;
             if (SelectedImage?.isPyramidal == true)
             {
-                // Trigger async tile update
-                _ = slideRenderer.UpdateViewAsync(
-                    PyramidalOrigin,
-                    glArea.AllocatedWidth,
-                    glArea.AllocatedHeight,
-                    Resolution,
-                    GetCoordinate()
-                );
+                if (!MacOS)
+                {
+                    // Trigger async tile update
+                    _ = slideRenderer.UpdateViewAsync(
+                        PyramidalOrigin,
+                        glArea.AllocatedWidth,
+                        glArea.AllocatedHeight,
+                        Resolution,
+                        GetCoordinate()
+                    );
+                }
+                else
+                {
+                    AForge.Size s = new AForge.Size();
+                    if (sk.AllocatedWidth <= 1 || sk.AllocatedHeight <= 1)
+                        s = new AForge.Size(600, 400);
+                    else
+                        s = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
+                    // Trigger async tile update
+                    _ = sKSlideRenderer.UpdateViewAsync(
+                            PyramidalOrigin,
+                            Resolution,
+                            GetCoordinate(),
+                            s.Width,
+                            s.Height
+                        );
+                }
             }
             else
             {
                 UpdateImages(true);
-                glArea.RequestRedraw();
+                if (!MacOS)
+                {
+                    glArea.RequestRedraw();
+                }
+                else
+                    sk.QueueDraw();
             }
         }
         private string mousePoint = "";

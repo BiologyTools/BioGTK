@@ -284,12 +284,12 @@ namespace BioGTK
         public SKImage RenderRegion(
             RectangleD region,
             int level,
-            ZCT coordinate, double resolution)
+            ZCT coordinate, double resolution, int pxwidth, int pxheight)
         {
             if (!_hasSource || _stitchingPipeline == null)
                 return null;
 
-            return _stitchingPipeline.StitchRegion(region, level, coordinate, resolution);
+            return _stitchingPipeline.StitchRegion(region, level, coordinate, resolution, pxwidth, pxheight);
         }
 
         /// <summary>
