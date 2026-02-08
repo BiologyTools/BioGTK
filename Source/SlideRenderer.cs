@@ -21,7 +21,7 @@ namespace BioGTK
 
         public SlideRenderer(SlideGLArea glArea)
         {
-            _glArea = glArea ?? throw new ArgumentNullException(nameof(glArea));
+            _glArea = glArea;
         }
 
         public void SetSource(OpenSlideBase source)

@@ -993,7 +993,32 @@ namespace BioGTK
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.ToString());
+                // Execute on UI thread
+                Gtk.Application.Invoke((sender, args) =>
+                {
+                    if (im == null)
+                        return;
+                    for (int vi = 0; vi < viewers.Count; vi++)
+                    {
+                        for (int i = 0; i < viewers[vi].Images.Count; i++)
+                        {
+                            if (viewers[vi].Images[i].Filename == im.Filename)
+                                return;
+                        }
+                    }
+                    ImageView v = ImageView.Create(im);
+                    viewers.Add(v);
+                    Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file.Replace("\\", "/")) + "/" + im.Filename);
+                    dummy.Text = im.file.Replace("\\", "/") + "/" + im.Filename;
+                    dummy.Visible = false;
+                    Label l = new Gtk.Label(System.IO.Path.GetFileName(im.Filename));
+                    l.Text = System.IO.Path.GetFileName(im.Filename);
+                    tabsView.AppendPage(dummy, l);
+                    Console.WriteLine("New tab added for " + im.Filename);
+                    App.nodeView.UpdateItems();
+                    tabsView.ShowAll();
+                    v.Show();
+                });
             }
         }
         Gtk.FileChooserDialog filechooser;

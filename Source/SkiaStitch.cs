@@ -309,7 +309,7 @@ namespace BioGTK
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Fetch error for tile {key}: {ex.Message}");
+                    Console.WriteLine($"Fetch error for tile {key}: {ex.Message} + {ex.StackTrace}");
                 }
                 finally
                 {

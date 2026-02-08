@@ -255,7 +255,7 @@ namespace BioGTK
         public SlideRenderer slideRenderer;
         public SKSlideRenderer sKSlideRenderer;
         public GLWindow window;
-        public static bool MacOS = true;
+        public static bool MacOS = false;
         #region Constructors / Destructors
 
         /// The function creates an ImageView object using a BioImage object and returns it.
@@ -289,8 +289,10 @@ namespace BioGTK
                 UpdateFrequency = 60,
             };
             NativeWindowSettings nativeSettings;
-            if (MacOS)
+
+            if (OperatingSystem.IsMacOS())
             {
+                MacOS = true;
                 // Create the renderer bridge
                 sk = new SKDrawingArea();
                 sKSlideRenderer = new SKSlideRenderer(sk);
@@ -311,6 +313,9 @@ namespace BioGTK
                 Environment.SetEnvironmentVariable("GDK_BACKEND","x11");
                 Environment.SetEnvironmentVariable("GTK_BACKEND","x11");
                 window = new GLWindow(gameWindowSettings, nativeSettings);
+                // Create the GLArea widget
+                glArea = new SlideGLArea();
+                glArea.OnSkiaRender += RenderSkia;
                 // Create the renderer bridge
                 slideRenderer = new SlideRenderer(glArea);
                 GLFWProvider.SetErrorCallback((error, description) =>
@@ -319,9 +324,7 @@ namespace BioGTK
                         Console.WriteLine($"BioGTK Window Position Error.");
                     Console.WriteLine($"BioGTK GLFW Error {error}: {description}");
                 });
-                // Create the GLArea widget
-                glArea = new SlideGLArea();
-                glArea.OnSkiaRender += RenderSkia;
+               
             }
             else if(OperatingSystem.IsWindows())
             {
@@ -355,14 +358,17 @@ namespace BioGTK
 
             if (MacOS)
             {
-                // Set the source based on image type
-                if (im.OpenSlideBase != null)
+                if (im.isPyramidal)
                 {
-                    sKSlideRenderer.SetSource(im.OpenSlideBase);
-                }
-                else if (im.SlideBase != null)
-                {
-                    sKSlideRenderer.SetSource(im.SlideBase);
+                    // Set the source based on image type
+                    if (im.OpenSlideBase != null)
+                    {
+                        sKSlideRenderer.SetSource(im.OpenSlideBase);
+                    }
+                    else if (im.SlideBase != null)
+                    {
+                        sKSlideRenderer.SetSource(im.SlideBase);
+                    }
                 }
                 // Add to view
                 viewStack.Add(sk);
@@ -1413,6 +1419,11 @@ namespace BioGTK
                 {
                     sKSlideRenderer.DrawToCanvas(canvas, width, height);
                 }
+                else
+                {
+                    // Render non-pyramidal images and annotations
+                    RenderSkia(canvas, width, height);
+                }
             }
         }
 
@@ -2455,9 +2466,9 @@ namespace BioGTK
         public void OnMouseWheel(object sender, ScrollEventArgs e)
         {
             if (e.Event.Direction == ScrollDirection.Up)
-                ZoomAtPoint(PyramidalOrigin.X, PyramidalOrigin.Y, true);
-            else if (e.Event.Direction == ScrollDirection.Down)
                 ZoomAtPoint(PyramidalOrigin.X, PyramidalOrigin.Y, false);
+            else if (e.Event.Direction == ScrollDirection.Down)
+                ZoomAtPoint(PyramidalOrigin.X, PyramidalOrigin.Y, true);
         }
         public void ZoomAtPoint(double mouseX, double mouseY, bool zoomIn)
         {

@@ -3,8 +3,8 @@
 
 A .NET application & library for editing & annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters & macro functions. Check out the wiki for [library usage.](https://github.com/BiologyTools/BioGTK/#Usage) or check out the [documentation.](https://biologytools.github.io/) Supports Windows, Linux and Mac. For Windows & Mac see installation instructions. For Discussion check out the new Discord Server. https://discord.gg/tdeyc6fgpv
 
-[![NuGet version (BioGTK)](https://img.shields.io/nuget/v/BioGTK.svg?style=flat-square)](https://www.nuget.org/packages/BioGTK/6.4.0)
-[![NuGet version (BioGTK)](https://img.shields.io/nuget/dt/BioGTK?color=g)](https://www.nuget.org/packages/BioGTK/6.4.0) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8122239.svg)](https://doi.org/10.5281/zenodo.8122239)
+[![NuGet version (BioGTK)](https://img.shields.io/nuget/v/BioGTK.svg?style=flat-square)](https://www.nuget.org/packages/BioGTK/6.5.0)
+[![NuGet version (BioGTK)](https://img.shields.io/nuget/dt/BioGTK?color=g)](https://www.nuget.org/packages/BioGTK/6.5.0) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8122239.svg)](https://doi.org/10.5281/zenodo.8122239)
 ## Features
 
 - C# scripting with sample tool-script and other sample scripts in "/Scripts/" folder. [See samples.](https://github.com/BiologyTools/Bio-Scripts)
@@ -87,7 +87,10 @@ A .NET application & library for editing & annotating various microscopy image f
 - Download the latest tarball(tar.gz) from Releases as linux already includes GTK3 package.
 - Extract the tarball and go to the "Glade" folder and select all the glade files and change permissions to read-write.
 - Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance and functions with whole-slide-images.
-- Optionally install [OpenSlide](http://openslide.org/) for better navigation of whole-slide-images.
+- Optionally install [OpenSlide](http://openslide.org/) for better navigation of whole-slide-images. By running each line below as sudo.
+	 ```sudo apt install software-properties-common```
+	 ```sudo add-apt-repository ppa:openslide/openslide```
+	 ```sudo apt install openslide-tools```
 - Optionally install [CUDA](https://developer.nvidia.com/cuda-downloads) for hardware accelerated stitching as well as tile cache in graphics card memory instead of RAM.
 - Optionally install [PyTorch](https://pytorch.org/) for running BioImage.io models.
 
