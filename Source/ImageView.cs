@@ -331,29 +331,23 @@ namespace BioGTK
                 nativeSettings = new NativeWindowSettings()
                 {
                     ClientSize = new Vector2i(600, 400),
+                    Location = new Vector2i(0, 0),
                     Title = "OpenGL Context",
                     StartVisible = false,  // Window starts hidden
-                    StartFocused = false,  // Don't grab focus
-                    WindowBorder = WindowBorder.Hidden,  // No border
-                    WindowState = OpenTK.Windowing.Common.WindowState.Minimized,  // Start minimized
-                    IsEventDriven = false,  // Don't process window events
-                    Flags = ContextFlags.Offscreen,  // Offscreen rendering context
                     API = ContextAPI.OpenGL,
                     Profile = ContextProfile.Core,
                     APIVersion = new Version(3, 3)
                 };
                 window = new GLWindow(gameWindowSettings, nativeSettings);
+                // Create the GLArea widget
+                glArea = new SlideGLArea();
+                glArea.OnSkiaRender += RenderSkia;
                 // Create the renderer bridge
                 slideRenderer = new SlideRenderer(glArea);
                 GLFWProvider.SetErrorCallback((error, description) =>
                 {
-                    if (description.Contains("Wayland") && description.Contains("window position"))
-                        Console.WriteLine($"BioGTK Window Position Error.");
                     Console.WriteLine($"BioGTK GLFW Error {error}: {description}");
                 });
-                // Create the GLArea widget
-                glArea = new SlideGLArea();
-                glArea.OnSkiaRender += RenderSkia;
             }
 
             if (MacOS)
@@ -497,10 +491,13 @@ namespace BioGTK
                     rois.AddRange(im.Annotations);
                     int ri = 0;
                     ZCT co = GetCoordinate();
-                    canvas.DrawImage(SKImages[i], new SKPoint((float)im.StageSizeX, (float)im.StageSizeX), paint);
+                    canvas.Translate(width / 2f, height / 2f);
+                    RectangleD rp = ToScreenSpace(new RectangleD(im.StageSizeX * im.PhysicalSizeX, im.StageSizeX * im.PhysicalSizeY, im.SizeX * im.PhysicalSizeX, im.SizeY * im.PhysicalSizeY));
+                    canvas.DrawImage(SKImages[i], ToRectangle((float)rp.X, (float)rp.Y, (float)rp.W, (float)rp.H), paint);
+
                     if (rois.Count > 0)
                     {
-                        canvas.Translate(width / 2f, height / 2f);
+                        //canvas.Translate(width / 2f, height / 2f);
                         foreach (ROI an in rois)
                         {
                             if (Mode == ViewMode.RGBImage)
