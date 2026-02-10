@@ -21,7 +21,7 @@
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>Added Openslide 4.0 support for Linux, MacOS both x64 and arm64.</PackageReleaseNotes>
+    <PackageReleaseNotes>Fixes view of masks and ROI's on all platforms.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
