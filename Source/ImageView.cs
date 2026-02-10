@@ -497,9 +497,9 @@ namespace BioGTK
                     if (rois.Count > 0)
                     {
                         if(!SelectedImage.isPyramidal)
-                            canvas.Translate(width / 2f, height / 2f);
+                            canvas.Translate(0, 0);
                         else
-                            canvas.Translate(0,0);
+                            canvas.Translate(-(width / 2f),-(height / 2f));
                         foreach (ROI an in rois)
                             {
                                 if (Mode == ViewMode.RGBImage)
