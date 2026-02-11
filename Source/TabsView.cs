@@ -136,6 +136,13 @@ namespace BioGTK
         private MenuItem importROIQuPath;
         [Builder.Object]
         private MenuItem exportROIQuPath;
+        [Builder.Object]
+        private MenuItem importPointsNapari;
+        [Builder.Object]
+        private MenuItem importShapesNapari;
+        [Builder.Object]
+        private MenuItem exportROINapari;
+
 
         [Builder.Object]
         private MenuItem autoThresholdAllMenu;
@@ -429,6 +436,9 @@ namespace BioGTK
             exportROIsFromImageJMenu.ButtonPressEvent += ExportROIsFromImageJMenu_ButtonPressEvent;
             importROIQuPath.ButtonPressEvent += ImportROIQuPath_ButtonPressEvent;
             exportROIQuPath.ButtonPressEvent += ExportROIQuPath_ButtonPressEvent;
+            importPointsNapari.ButtonPressEvent += ImportPointsNapari_ButtonPressEvent;
+            importShapesNapari.ButtonPressEvent += ImportShapesNapari_ButtonPressEvent;
+            exportROINapari.ButtonPressEvent += ExportROINapari_ButtonPressEvent;
 
             autoThresholdAllMenu.ButtonPressEvent += autoThresholdAllMenuClick;
             channelsToolMenu.ButtonPressEvent += channelsToolMenuClick;
@@ -478,6 +488,64 @@ namespace BioGTK
             }, Gdk.DragAction.Copy);
             this.DragDataReceived += TabsView_DragDataReceived;
 
+        }
+
+        private void ImportPointsNapari_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Gtk.FileChooserDialog filechooser =
+         new Gtk.FileChooserDialog("Choose Napari Points files to import.",
+             this,
+             FileChooserAction.Open,
+             "Cancel", ResponseType.Cancel,
+             "Open", ResponseType.Accept);
+            filechooser.SelectMultiple = true;
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            Napari.Initialize(ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY);
+            foreach (var f in filechooser.Filenames)
+            {
+                if (f.EndsWith(".CSV") || f.EndsWith(".csv"))
+                    ImageView.SelectedImage.Annotations.AddRange(Napari.ParsePointsFile(f));
+            }
+            filechooser.Destroy();
+        }
+
+        private void ExportROINapari_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Gtk.FileChooserDialog filechooser =
+        new Gtk.FileChooserDialog("Choose filename for Shape and Points CSV files to save to.",
+            this,
+            FileChooserAction.Save,
+            "Cancel", ResponseType.Cancel,
+            "Open", ResponseType.Accept);
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            Napari.Initialize(ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY);
+            Napari.WriteNapariFiles(filechooser.Filename + "_points.csv", filechooser.Filename + "_shapes.csv", ImageView.SelectedImage.Annotations);
+            filechooser.Destroy();
+        }
+
+        private void ImportShapesNapari_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Gtk.FileChooserDialog filechooser =
+         new Gtk.FileChooserDialog("Choose Napari Shape files to import.",
+             this,
+             FileChooserAction.Open,
+             "Cancel", ResponseType.Cancel,
+             "Open", ResponseType.Accept);
+            filechooser.SelectMultiple = true;
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            Napari.Initialize(ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY);
+            foreach (var f in filechooser.Filenames)
+            {
+                if (f.EndsWith(".CSV") || f.EndsWith(".csv"))
+                {
+                    List<ROI> rs = Napari.ParseShapesFile(f);
+                    ImageView.SelectedImage.Annotations.AddRange(rs);
+                }
+            }
+            filechooser.Destroy();
         }
 
         private void UploadImageMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)

@@ -336,6 +336,27 @@
                         <property name="label" translatable="yes">Export Qupath ROI</property>
                       </object>
                     </child>
+                    <child>
+                      <object class="GtkMenuItem" id="importPointsNapari">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Import Points Napari</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkMenuItem" id="importShapesNapari">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Import Shapes Napari</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkMenuItem" id="exportROINapari">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Export Shapes &amp; Points Napari</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>
