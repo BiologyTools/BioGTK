@@ -501,7 +501,7 @@ namespace BioGTK
             filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            Napari.Initialize(ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY);
+            Napari.Initialize(ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY,ImageView.SelectedImage.SizeT > 1);
             foreach (var f in filechooser.Filenames)
             {
                 if (f.EndsWith(".CSV") || f.EndsWith(".csv"))
@@ -520,7 +520,7 @@ namespace BioGTK
             "Open", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            Napari.Initialize(ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY);
+            Napari.Initialize(ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY, ImageView.SelectedImage.SizeT > 1);
             Napari.WriteNapariFiles(filechooser.Filename + "_points.csv", filechooser.Filename + "_shapes.csv", ImageView.SelectedImage.Annotations);
             filechooser.Destroy();
         }
@@ -536,7 +536,7 @@ namespace BioGTK
             filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            Napari.Initialize(ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY);
+            Napari.Initialize(ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY, ImageView.SelectedImage.SizeT > 1);
             foreach (var f in filechooser.Filenames)
             {
                 if (f.EndsWith(".CSV") || f.EndsWith(".csv"))
