@@ -467,52 +467,257 @@ namespace BioGTK
         private volatile bool _isRendering = false;
         private volatile bool _needsRedraw = false;
 
-        // Modified RenderSkia with guards
+        // Modify RenderSkia to skip during coordinate changes
         private void RenderSkia(SKCanvas canvas, int width, int height)
         {
-            // Guard against concurrent rendering
-            if (!Monitor.TryEnter(_renderSyncLock, 0))
-            {
-                _needsRedraw = true;
+            // Skip rendering if coordinate is changing
+            if (_isChangingCoordinate)
                 return;
-            }
 
             try
             {
-                if (_isRendering)
+                canvas.Save();
+                canvas.Scale(ScaleFactor);
+
+                var paint = new SKPaint
                 {
-                    _needsRedraw = true;
-                    return;
+                    Color = SKColors.Gray,
+                    BlendMode = SKBlendMode.SrcOver,
+                    IsAntialias = true,
+                    Style = SKPaintStyle.Fill
+                };
+
+                // Capture references to avoid mid-render changes
+                List<SKImage> currentImages;
+                List<BioImage> currentBioImages;
+
+                lock (_imageLock)
+                {
+                    // Check again after acquiring lock
+                    if (_isChangingCoordinate)
+                    {
+                        paint.Dispose();
+                        canvas.Restore();
+                        return;
+                    }
+
+                    currentImages = new List<SKImage>(SKImages);
+                    currentBioImages = new List<BioImage>(Images);
                 }
 
-                _isRendering = true;
+                // ... rest of your existing RenderSkia code (annotations, overview, etc.)
+                // I'll include the full rendering code below
 
-                // Render annotations with protection
-                RenderAnnotations(canvas, width, height);
+                int i = 0;
+                foreach (BioImage im in currentBioImages)
+                {
+                    if (i >= currentImages.Count)
+                        break;
 
-                _isRendering = false;
+                    List<ROI> rois = new List<ROI>();
+                    rois.AddRange(im.Annotations);
+                    int ri = 0;
+                    ZCT co = GetCoordinate();
+                    canvas.Translate(width / 2f, height / 2f);
+                    RectangleD rp = ToScreenSpace(new RectangleD(im.StageSizeX * im.PhysicalSizeX, im.StageSizeX * im.PhysicalSizeY, im.SizeX * im.PhysicalSizeX, im.SizeY * im.PhysicalSizeY));
+                    if (!im.isPyramidal && currentImages[i] != null)
+                        canvas.DrawImage(currentImages[i], ToRectangle((float)rp.X, (float)rp.Y, (float)rp.W, (float)rp.H), paint);
+
+                    if (rois.Count > 0)
+                    {
+                        if (!SelectedImage.isPyramidal)
+                            canvas.Translate(0, 0);
+                        else
+                            canvas.Translate(-(width / 2f), -(height / 2f));
+
+                        foreach (ROI an in rois)
+                        {
+                            if (an.coord.Z != GetCoordinate().Z || an.coord.C != GetCoordinate().C || an.coord.T != GetCoordinate().T)
+                                continue;
+                            if (Mode == ViewMode.RGBImage)
+                            {
+                                if (!showRROIs && an.coord.C == 0)
+                                    continue;
+                                if (!showGROIs && an.coord.C == 1)
+                                    continue;
+                                if (!showBROIs && an.coord.C == 2)
+                                    continue;
+                            }
+                            if (an.Selected)
+                            {
+                                paint.Color = SKColors.Magenta;
+                            }
+                            else
+                                paint.Color = new SKColor(an.strokeColor.R, an.strokeColor.G, an.strokeColor.B);
+                            paint.StrokeWidth = (float)an.strokeWidth;
+                            paint.Style = SKPaintStyle.Stroke;
+                            PointF pc = new PointF((float)(an.BoundingBox.X + (an.BoundingBox.W / 2)), (float)(an.BoundingBox.Y + (an.BoundingBox.H / 2)));
+                            float widths = ROI.selectBoxSize * (float)Resolution;
+
+                            if (an.type == ROI.Type.Mask && an.coord == App.viewer.GetCoordinate() && ShowMasks)
+                            {
+                                paint.Style = SKPaintStyle.Fill;
+                                SKImage sim;
+                                if (an.Selected)
+                                    sim = an.roiMask.GetColored(Color.Blue, 10, true).ToSKImage();
+                                else
+                                    sim = an.roiMask.GetColored(Color.FromArgb(1, an.fillColor.R, an.fillColor.G, an.fillColor.B), 1, true).ToSKImage();
+                                RectangleD p = ToScreenSpace(new RectangleD(an.roiMask.X * an.roiMask.PhysicalSizeX, an.roiMask.Y * an.roiMask.PhysicalSizeY, an.W, an.H));
+                                canvas.DrawImage(sim, ToRectangle((float)p.X, (float)p.Y, (float)p.W, (float)p.H), paint);
+                                sim.Dispose();
+                                continue;
+                            }
+                            else
+                            if (an.type == ROI.Type.Point)
+                            {
+                                RectangleD r1 = ToScreenRect(an.Point.X, an.Point.Y, ToViewW(3), ToViewH(3));
+                                canvas.DrawCircle((float)r1.X, (float)r1.Y, 3, paint);
+                            }
+                            else
+                            if (an.type == ROI.Type.Line)
+                            {
+                                for (int p = 0; p < an.Points.Count - 1; p++)
+                                {
+                                    PointD p1 = ToScreenSpace(an.Points[p].X, an.Points[p].Y);
+                                    PointD p2 = ToScreenSpace(an.Points[p + 1].X, an.Points[p + 1].Y);
+                                    canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
+                                }
+                            }
+                            else
+                            if (an.type == ROI.Type.Rectangle)
+                            {
+                                RectangleD rectt = ToScreenRect(an.Points[0].X, an.Points[0].Y, Math.Abs(an.Points[0].X - an.Points[1].X), Math.Abs(an.Points[0].Y - an.Points[2].Y));
+                                canvas.DrawRect((float)rectt.X, (float)rectt.Y, (float)rectt.W, (float)rectt.H, paint);
+                            }
+                            else
+                            if (an.type == ROI.Type.Ellipse)
+                            {
+                                RectangleD rect = ToScreenRect(an.X + (an.W / 2), an.Y + (an.H / 2), an.W, an.H);
+                                canvas.DrawOval((float)rect.X, (float)rect.Y, (float)rect.W / 2, (float)rect.H / 2, paint);
+                            }
+                            else
+                            if ((an.type == ROI.Type.Polygon && an.closed))
+                            {
+                                for (int p = 0; p < an.Points.Count - 1; p++)
+                                {
+                                    RectangleD p1 = ToScreenRect(an.Points[p].X, an.Points[p].Y, 1, 1);
+                                    RectangleD p2 = ToScreenRect(an.Points[p + 1].X, an.Points[p + 1].Y, 1, 1);
+                                    canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
+                                }
+                                RectangleD pp1 = ToScreenRect(an.Points[0].X, an.Points[0].Y, 1, 1);
+                                RectangleD pp2 = ToScreenRect(an.Points[an.Points.Count - 1].X, an.Points[an.Points.Count - 1].Y, 1, 1);
+                                canvas.DrawLine(new SKPoint((float)pp1.X, (float)pp1.Y), new SKPoint((float)pp2.X, (float)pp2.Y), paint);
+                            }
+                            else
+                            if ((an.type == ROI.Type.Polygon && !an.closed) || an.type == ROI.Type.Polyline)
+                            {
+                                for (int p = 0; p < an.Points.Count - 1; p++)
+                                {
+                                    RectangleD p1 = ToScreenRect(an.Points[p].X, an.Points[p].Y, 1, 1);
+                                    RectangleD p2 = ToScreenRect(an.Points[p + 1].X, an.Points[p + 1].Y, 1, 1);
+                                    canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
+                                }
+                            }
+                            else
+                            if (an.type == ROI.Type.Freeform)
+                            {
+                                for (int p = 0; p < an.Points.Count - 1; p++)
+                                {
+                                    RectangleD p1 = ToScreenRect(an.Points[p].X, an.Points[p].Y, 1, 1);
+                                    RectangleD p2 = ToScreenRect(an.Points[p + 1].X, an.Points[p + 1].Y, 1, 1);
+                                    canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
+                                }
+                                RectangleD pp1 = ToScreenRect(an.Points[0].X, an.Points[0].Y, 1, 1);
+                                RectangleD pp2 = ToScreenRect(an.Points[an.Points.Count - 1].X, an.Points[an.Points.Count - 1].Y, 1, 1);
+                                canvas.DrawLine(new SKPoint((float)pp1.X, (float)pp1.Y), new SKPoint((float)pp2.X, (float)pp2.Y), paint);
+                            }
+                            else
+                            if (an.type == ROI.Type.Label)
+                            {
+                                RectangleD p = ToScreenRect(an.Point.X, an.Point.Y, 1, 1);
+                                canvas.DrawText(an.Text, (float)p.X, (float)p.Y, new SKFont(SKTypeface.Default, an.fontSize, 1, 0), paint);
+                            }
+
+                            if (ROIManager.showText)
+                            {
+                                RectangleD p = ToScreenRect(an.Point.X, an.Point.Y, 1, 1);
+                                canvas.DrawText(an.Text, (float)p.X, (float)p.Y, new SKFont(SKTypeface.Default, an.fontSize, 1, 0), paint);
+                            }
+                            if (ROIManager.showBounds && an.type != ROI.Type.Rectangle && an.type != ROI.Type.Mask && an.type != ROI.Type.Label)
+                            {
+                                RectangleD rrf = ToScreenRect(an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
+                                canvas.DrawRect((float)rrf.X, (float)rrf.Y, (float)rrf.W, (float)rrf.H, paint);
+                            }
+                            paint.Color = SKColors.Red;
+                            if (!(an.type == ROI.Type.Freeform && !an.Selected) && an.type != ROI.Type.Mask)
+                                foreach (RectangleD re in an.GetSelectBoxes(1))
+                                {
+                                    RectangleD recd = ToScreenRect(re.X, re.Y, re.W, re.H);
+                                    canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
+                                }
+                            if (an.type != ROI.Type.Mask)
+                            {
+                                //Lets draw the selection Boxes.
+                                List<RectangleD> rects = new List<RectangleD>();
+                                RectangleD[] sels = an.GetSelectBoxes(widths);
+                                for (int p = 0; p < an.selectedPoints.Count; p++)
+                                {
+                                    if (an.selectedPoints[p] < an.GetPointCount())
+                                    {
+                                        rects.Add(sels[an.selectedPoints[p]]);
+                                    }
+                                }
+                                //Lets draw selected selection boxes.
+                                paint.Color = SKColors.Blue;
+                                if (rects.Count > 0)
+                                {
+                                    int ind = 0;
+                                    foreach (RectangleD re in an.GetSelectBoxes(1))
+                                    {
+                                        RectangleD recd = ToScreenRect(re.X, re.Y, re.W, re.H);
+                                        if (an.selectedPoints.Contains(ind))
+                                        {
+                                            canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
+                                        }
+                                        ind++;
+                                    }
+                                }
+                                rects.Clear();
+                            }
+                            ri++;
+                        }
+                        canvas.Translate(0, 0);
+                    }
+                    i++;
+                }
+
+                // Draw overview if enabled
+                if (overviewImage != null && ShowOverview)
+                {
+                    var ims = BitmapToSKImage(overviewImage.GetImageRGBA());
+                    paint.Style = SKPaintStyle.Fill;
+                    canvas.DrawImage(ims, 0, 0, paint);
+                }
+                else if (overviewImage == null && ShowOverview)
+                {
+                    paint.Style = SKPaintStyle.Stroke;
+                    paint.Color = SKColors.Gray;
+                    paint.StrokeWidth = 2;
+                    canvas.DrawRect(0, 0, overview.Width, overview.Height, paint);
+                }
+
+                SKImageInfo inf = new SKImageInfo(width, height);
+                if (SelectedImage.isPyramidal)
+                    DrawViewportRectangle(canvas, paint);
+
+                // Plugin rendering hook
+                Plugins.Render(this, new SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs(canvas.Surface, inf));
+                paint.Dispose();
+                canvas.Restore();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Render error: {ex.Message}");
-                _isRendering = false;
-            }
-            finally
-            {
-                Monitor.Exit(_renderSyncLock);
-
-                // Schedule redraw if one was requested during rendering
-                if (_needsRedraw)
-                {
-                    _needsRedraw = false;
-                    Gtk.Application.Invoke((s, a) =>
-                    {
-                        if (!MacOS)
-                            glArea?.QueueRender();
-                        else
-                            sk?.QueueDraw();
-                    });
-                }
+                Console.WriteLine($"Annotation render error: {ex.Message}");
             }
         }
 
@@ -2404,33 +2609,103 @@ namespace BioGTK
             }
         }
 
-        /// The function ValueChanged is called when the value of the trackbar is changed.
-        /// 
-        /// @param sender The object that raised the event.
-        /// @param EventArgs The event arguments.
+        // Add these fields at the class level
+        private readonly object _coordinateChangeLock = new object();
+        private volatile bool _isChangingCoordinate = false;
+        private System.Threading.CancellationTokenSource _renderCancellation;
+
+        // Replace all three ValueChanged methods with this pattern:
         private void ValueChangedZ(object? sender, EventArgs e)
         {
-            SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
-            UpdateView(true);
+            lock (_coordinateChangeLock)
+            {
+                _isChangingCoordinate = true;
+
+                // Cancel any pending renders
+                _renderCancellation?.Cancel();
+                _renderCancellation = new System.Threading.CancellationTokenSource();
+
+                SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
+
+                // Schedule update after a brief delay to let everything settle
+                var token = _renderCancellation.Token;
+                GLib.Timeout.Add(50, () => {
+                    if (!token.IsCancellationRequested)
+                    {
+                        UpdateViewSafe(true);
+                        _isChangingCoordinate = false;
+                    }
+                    return false;
+                });
+            }
         }
-        /// The function ValueChanged is called when the value of the trackbar is changed.
-        /// 
-        /// @param sender The object that raised the event.
-        /// @param EventArgs The event arguments.
+
         private void ValueChangedC(object? sender, EventArgs e)
         {
-            SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
-            UpdateView(true);
+            lock (_coordinateChangeLock)
+            {
+                _isChangingCoordinate = true;
+
+                // Cancel any pending renders
+                _renderCancellation?.Cancel();
+                _renderCancellation = new System.Threading.CancellationTokenSource();
+
+                SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
+
+                // Schedule update after a brief delay
+                var token = _renderCancellation.Token;
+                GLib.Timeout.Add(50, () => {
+                    if (!token.IsCancellationRequested)
+                    {
+                        UpdateViewSafe(true);
+                        _isChangingCoordinate = false;
+                    }
+                    return false;
+                });
+            }
         }
-        /// The function ValueChanged is called when the value of the trackbar is changed.
-        /// 
-        /// @param sender The object that raised the event.
-        /// @param EventArgs The event arguments.
+
         private void ValueChangedT(object? sender, EventArgs e)
         {
-            SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
-            UpdateView(true);
+            lock (_coordinateChangeLock)
+            {
+                _isChangingCoordinate = true;
+
+                // Cancel any pending renders
+                _renderCancellation?.Cancel();
+                _renderCancellation = new System.Threading.CancellationTokenSource();
+
+                SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
+
+                // Schedule update after a brief delay
+                var token = _renderCancellation.Token;
+                GLib.Timeout.Add(50, () => {
+                    if (!token.IsCancellationRequested)
+                    {
+                        UpdateViewSafe(true);
+                        _isChangingCoordinate = false;
+                    }
+                    return false;
+                });
+            }
         }
+
+        // Add this new method
+        private void UpdateViewSafe(bool updateImages)
+        {
+            if (_isChangingCoordinate)
+                return;
+
+            try
+            {
+                UpdateView(updateImages);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"UpdateView error: {ex.Message}");
+            }
+        }
+
         /// It updates the GUI to reflect the current state of the image
         public void UpdateGUI()
         {
