@@ -413,51 +413,7 @@ namespace BioGTK
             bBox.AddAttribute(rendererb, "text", 0);
             App.ApplyStyles(this);
         }
-        /*
-        GRBackendRenderTarget _renderTarget;
-        GRContext _grContext;
-        SKSurface _skSurface;
-        private void InitializeSkia()
-        {
-            // 1. Get the High-DPI scaling factor for the laptop screen
-            int scale = ScaleFactor;
-            int width = AllocatedWidth * scale;
-            int height = AllocatedHeight * scale;
 
-            if (width <= 0 || height <= 0) return;
-
-            // 2. Query the current GL state for the framebuffer configuration
-            GL.GetInteger(GetPName.FramebufferBinding, out int framebufferId);
-            GL.GetInteger(GetPName.Samples, out int samples); // <--- This fills your 'samples'
-                                                              // Get Stencil Bits with a fallback
-            int stencil;
-            try
-            {
-                // 0x0D57 is the GL constant for STENCIL_BITS
-                GL.GetInteger((GetPName)0x0D57, out stencil);
-            }
-            catch
-            {
-                stencil = 8; // Standard fallback for Skia
-            }
-
-            var glInfo = new GRGlFramebufferInfo(
-            fboId: (uint)framebufferId,
-            format: 0x8058); // GL_RGBA8
-
-            // 4. Create the render target with physical pixel dimensions
-            _renderTarget = new GRBackendRenderTarget(
-                width,
-                height,
-                samples,
-                stencil,
-                glInfo);
-
-            // 5. Create the context and surface
-            _grContext = GRContext.CreateGl();
-            _skSurface = SKSurface.Create(_grContext, _renderTarget, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888);
-        }
-        */
         /// <summary>
         /// Called by SlideGLArea during the Skia rendering phase.
         /// Draws annotations on top of the GL-rendered tiles.
@@ -504,6 +460,8 @@ namespace BioGTK
                     currentImages = new List<SKImage>(SKImages);
                     currentBioImages = new List<BioImage>(Images);
                 }
+
+
 
                 // ... rest of your existing RenderSkia code (annotations, overview, etc.)
                 // I'll include the full rendering code below
@@ -1036,14 +994,6 @@ namespace BioGTK
             }
         }
 
-        // Add this helper method to SlideRenderer class (you'll need to add this)
-        // This should return true when tile rendering is complete
-        public bool IsTileRenderComplete()
-        {
-            // You'll need to implement this in SlideRenderer
-            // It should return true when all tiles for current view are loaded
-            return true; // Placeholder - implement based on your SlideRenderer
-        }
         private static SKImage Convert24bppBitmapToSKImage(Bitmap sourceBitmap)
         {
             int width = sourceBitmap.Width;
@@ -1222,27 +1172,7 @@ namespace BioGTK
             else
                 throw new NotSupportedException("PixelFormat " + bitm.PixelFormat + " is not supported for SKImage.");
         }
-        /*
-        /// <summary>
-        /// Draw the overview/minimap (extracted helper)
-        /// </summary>
-        private void DrawOverview(SKCanvas canvas, SKPaint paint)
-        {
-            var ims = BitmapToSKImage(overviewImage.GetImageRGBA());
-            paint.Style = SKPaintStyle.Fill;
-            canvas.DrawImage(ims, 0, 0, paint);
-
-            paint.Style = SKPaintStyle.Stroke;
-            paint.Color = SKColors.Gray;
-            canvas.DrawRect(overview.X, overview.Y, overview.Width, overview.Height, paint);
-
-            // Draw viewport indicator
-            paint.Color = SKColors.Red;
-            // ... existing viewport rect calculation ...
-
-            ims.Dispose();
-        }
-        */
+      
         // Immediate render for interactive operations like panning
         public void RequestImmediateRender()
         {
@@ -1809,8 +1739,8 @@ namespace BioGTK
                 | EventMask.PointerMotionMask
                 | EventMask.ScrollMask));
             }
-
             this.KeyPressEvent += ImageView_KeyPressEvent;
+            this.KeyReleaseEvent += ImageView_KeyUpEvent;
             this.DestroyEvent += ImageView_DestroyEvent;
             this.DeleteEvent += ImageView_DeleteEvent;
             this.FocusInEvent += ImageView_FocusInEvent;
@@ -1851,6 +1781,7 @@ namespace BioGTK
                 if (SelectedImage?.isPyramidal == true && sKSlideRenderer != null)
                 {
                     sKSlideRenderer.DrawToCanvas(canvas, width, height);
+                    RenderAnnotations(e.Surface.Canvas, width, height);
                 }
                 else
                 {
@@ -2629,11 +2560,11 @@ namespace BioGTK
 
                 // Schedule update after a brief delay to let everything settle
                 var token = _renderCancellation.Token;
-                GLib.Timeout.Add(50, () => {
+                GLib.Timeout.Add(25, () => {
                     if (!token.IsCancellationRequested)
                     {
-                        UpdateViewSafe(true);
                         _isChangingCoordinate = false;
+                        UpdateViewSafe(true);             
                     }
                     return false;
                 });
@@ -2654,11 +2585,11 @@ namespace BioGTK
 
                 // Schedule update after a brief delay
                 var token = _renderCancellation.Token;
-                GLib.Timeout.Add(50, () => {
+                GLib.Timeout.Add(25, () => {
                     if (!token.IsCancellationRequested)
                     {
-                        UpdateViewSafe(true);
                         _isChangingCoordinate = false;
+                        UpdateViewSafe(true);
                     }
                     return false;
                 });
@@ -2679,11 +2610,11 @@ namespace BioGTK
 
                 // Schedule update after a brief delay
                 var token = _renderCancellation.Token;
-                GLib.Timeout.Add(50, () => {
+                GLib.Timeout.Add(25, () => {
                     if (!token.IsCancellationRequested)
                     {
-                        UpdateViewSafe(true);
                         _isChangingCoordinate = false;
+                        UpdateViewSafe(true);
                     }
                     return false;
                 });
