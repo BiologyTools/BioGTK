@@ -68,6 +68,8 @@ namespace BioGTK
         [Builder.Object]
         public MenuBar MainMenu;
         [Builder.Object]
+        private MenuItem openURLMenu;
+        [Builder.Object]
         private MenuItem openImagesMenu;
         [Builder.Object]
         private MenuItem openOMEImagesMenu;
@@ -397,6 +399,7 @@ namespace BioGTK
         /// This function sets up the event handlers for the menu items
         protected void SetupHandlers()
         {
+            openURLMenu.ButtonPressEvent += OpenURLMenu_ButtonPressEvent;
             openImagesMenu.ButtonPressEvent += openImagesMenuClick;
             openOMEImagesMenu.ButtonPressEvent += openOMEImagesMenuClick;
             openOMESeriesMenu.ButtonPressEvent += openOMESeriesMenuClick;
@@ -488,6 +491,13 @@ namespace BioGTK
             }, Gdk.DragAction.Copy);
             this.DragDataReceived += TabsView_DragDataReceived;
 
+        }
+
+        private void OpenURLMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            OpenUrlBox box = OpenUrlBox.Create();
+             if(box.Run() == (int)ResponseType.Ok)
+                BioImage.OpenFile(box.GetUrl());
         }
 
         private void ImportPointsNapari_ButtonPressEvent(object o, ButtonPressEventArgs args)

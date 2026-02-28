@@ -21,7 +21,7 @@
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>Adds support for Napari Shape and Points CSV files both import and export.</PackageReleaseNotes>
+    <PackageReleaseNotes>Adds support for Napari Shape and Points CSV files both import and export. Also fixes intermittent ROI render crash.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
@@ -450,6 +450,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="BioLib" Version="3.9.1" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="ImageJ.NET" Version="154.0.0.2" />
@@ -474,10 +475,6 @@
     <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.119.2" />
     <PackageReference Include="TorchSharp-cpu" Version="0.105.2" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />  
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\BioLib\BioLib.csproj" />
   </ItemGroup>
 
   <ItemGroup>

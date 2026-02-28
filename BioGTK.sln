@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenSlideGTK", "..\..\OpenS
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AForgeBio", "..\..\AForgeBio\AForgeBio\AForgeBio.csproj", "{3A6C4144-82B3-D087-189D-68CD8AB00502}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmeZarr", "..\..\ZarrNET\OmeZarr.csproj", "{5D47B2F2-5240-0F02-45E6-199951FBAB1D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{3A6C4144-82B3-D087-189D-68CD8AB00502}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3A6C4144-82B3-D087-189D-68CD8AB00502}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3A6C4144-82B3-D087-189D-68CD8AB00502}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D47B2F2-5240-0F02-45E6-199951FBAB1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D47B2F2-5240-0F02-45E6-199951FBAB1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D47B2F2-5240-0F02-45E6-199951FBAB1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D47B2F2-5240-0F02-45E6-199951FBAB1D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

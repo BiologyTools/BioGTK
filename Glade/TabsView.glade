@@ -178,6 +178,14 @@
                         <property name="label" translatable="yes">Upload To OMERO</property>
                       </object>
                     </child>
+                    <child>
+                      <object class="GtkMenuItem" id="openURLMenu">
+                        <property name="name">openImagesMenu</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Open URL</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>

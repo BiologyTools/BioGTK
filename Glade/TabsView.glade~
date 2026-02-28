@@ -178,6 +178,14 @@
                         <property name="label" translatable="yes">Upload To OMERO</property>
                       </object>
                     </child>
+                    <child>
+                      <object class="GtkMenuItem" id="openURLImages">
+                        <property name="name">openImagesMenu</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Open URL</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>
@@ -351,10 +359,10 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkMenuItem" id="exportShapesNapari">
+                      <object class="GtkMenuItem" id="exportROINapari">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
-                        <property name="label" translatable="yes">Export Shapes Napari</property>
+                        <property name="label" translatable="yes">Export Shapes &amp; Points Napari</property>
                       </object>
                     </child>
                   </object>
