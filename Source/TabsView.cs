@@ -493,11 +493,19 @@ namespace BioGTK
 
         }
 
-        private void OpenURLMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        private async void OpenURLMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             OpenUrlBox box = OpenUrlBox.Create();
-             if(box.Run() == (int)ResponseType.Ok)
-                BioImage.OpenFile(box.GetUrl());
+            if (box.Run() == (int)ResponseType.Ok)
+            {
+                BioImage b = await BioImage.OpenFile(box.GetUrl());
+                if(App.viewer!=null)
+                    App.viewer.AddImage(b);
+                else
+                    App.viewer = ImageView.Create(b);
+            }
+            App.viewer.Show();
+            box.Destroy();
         }
 
         private void ImportPointsNapari_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -593,7 +601,7 @@ namespace BioGTK
             AI.Create();
         }
 
-        private void TabsView_DragDataReceived(object o, DragDataReceivedArgs args)
+        private async void TabsView_DragDataReceived(object o, DragDataReceivedArgs args)
         {
             // Convert the received data to a string
             string receivedData = System.Text.Encoding.UTF8.GetString(args.SelectionData.Data);
@@ -605,7 +613,7 @@ namespace BioGTK
                 if (Uri.TryCreate(uri, UriKind.Absolute, out Uri fileUri) && fileUri.IsFile)
                 {
                     string filePath = fileUri.LocalPath;
-                    AddTab(BioImage.OpenFile(filePath));
+                    AddTab(await BioImage.OpenFile(filePath));
                 }
             }
 
@@ -1199,7 +1207,7 @@ namespace BioGTK
             }
             tabsView.Show();
         }
-        private void openQuPathProjectMenuClick(object sender, EventArgs a)
+        private async void openQuPathProjectMenuClick(object sender, EventArgs a)
         {
             filechooser = new FileChooserDialog("Choose QuPath project file to open", this, FileChooserAction.Open, "Cancel", ResponseType.Cancel, "OK", ResponseType.Accept);
             filechooser.SelectMultiple = true;
@@ -1210,7 +1218,7 @@ namespace BioGTK
             foreach (var item in pr.Images)
             {
                 string file = item.ServerBuilder.Uri.Replace("file:/", "");
-                BioImage bm = BioImage.OpenFile(file);
+                BioImage bm = await BioImage.OpenFile(file);
                 AddTab(bm);
                 string[] rs = Directory.GetFiles(System.IO.Path.GetDirectoryName(file));
                 foreach (string s in rs)
@@ -1699,9 +1707,9 @@ namespace BioGTK
         /// Open's a file in a new tab.
         /// 
         /// @param tabName The filename of the image to add to tabcontrol
-        public void Open(string file)
+        public async void Open(string file)
         {
-            BioImage b = BioImage.OpenFile(file);
+            BioImage b = await BioImage.OpenFile(file);
             ImageView view = ImageView.Create(b);
             if (!viewers.Contains(App.viewer))
                 viewers.Add(view);

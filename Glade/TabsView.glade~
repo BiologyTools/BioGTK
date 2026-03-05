@@ -179,7 +179,7 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkMenuItem" id="openURLImages">
+                      <object class="GtkMenuItem" id="openURLMenu">
                         <property name="name">openImagesMenu</property>
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>

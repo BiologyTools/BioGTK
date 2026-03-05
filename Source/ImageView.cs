@@ -1126,7 +1126,7 @@ namespace BioGTK
         /// Initializes the overview/minimap preview for pyramidal images.
         /// Resizes the lowest resolution level to fit in a 160x160 thumbnail while maintaining aspect ratio.
         /// </summary>
-        private void InitPreview()
+        private async void InitPreview()
         {
             // Only initialize preview for pyramidal images
             if (SelectedImage == null || !SelectedImage.isPyramidal)
@@ -1220,7 +1220,7 @@ namespace BioGTK
                     {
                         var sl = new BioLib.SliceInfo(0, 0, SelectedImage.Resolutions.Last().SizeX, SelectedImage.Resolutions.Last().SizeY,
                             Resolution, GetCoordinate());
-                        byte[] bt = SelectedImage.SlideBase.GetSlice(sl, new PointD(0, 0), new AForge.Size(overviewWidth, overviewHeight)).Result;
+                        byte[] bt = await SelectedImage.SlideBase.GetSlice(sl, new PointD(0, 0), new AForge.Size(overviewWidth, overviewHeight));
                         // Get the tile for the entire resolution level
                         sourceBitmap = new Bitmap(overviewWidth, overviewHeight, AForge.PixelFormat.Format32bppArgb,
                             bt, GetCoordinate(), "");
@@ -1333,20 +1333,20 @@ namespace BioGTK
             }
         }
 
-        private void GlArea_Render(object o, RenderArgs args)
+        private async void GlArea_Render(object o, RenderArgs args)
         {
             if (!SelectedImage.isPyramidal)
                 return;
             glArea.MakeCurrent();
             if (glArea.Error != 0)
                 return;
-            slideRenderer.UpdateViewAsync(
+            await slideRenderer.UpdateViewAsync(
                 PyramidalOrigin,
                 glArea.AllocatedWidth,
                 glArea.AllocatedHeight,
                 Resolution,
                 GetCoordinate()
-            ).Wait();
+            );
         }
 
         private void ImageView_FocusInEvent(object o, FocusInEventArgs args)

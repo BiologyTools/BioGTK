@@ -130,7 +130,7 @@ namespace BioGTK
         static string fi;
         private static void Upload()
         {
-            BioLib.OMERO.Upload(BioImage.OpenFile(fi), id);
+            BioLib.OMERO.Upload(BioImage.OpenFile(fi).Result, id);
             uploading = false;
         }
         public static void UpdateProgress()

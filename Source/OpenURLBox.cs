@@ -18,9 +18,9 @@ namespace BioGTK
         [Builder.Object]
         private Menu contextMenu;
         [Builder.Object]
-        private Button okButton;
+        private Button okBut;
         [Builder.Object]
-        private Menu cancelButton;
+        private Button cancelBut;
 #pragma warning restore 649
 
         #endregion
@@ -35,8 +35,8 @@ namespace BioGTK
         /// @return A new instance of the SetTool class.
         public static OpenUrlBox Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/SetTool.glade", FileMode.Open));
-            return new OpenUrlBox(builder, builder.GetObject("mainwin").Handle);
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/OpenURLBox.glade", FileMode.Open));
+            return new OpenUrlBox(builder, builder.GetObject("mainwindow").Handle);
         }
         /* The constructor of the class. */
         protected OpenUrlBox(Builder builder, IntPtr handle) : base(handle)
@@ -44,7 +44,22 @@ namespace BioGTK
             _builder = builder;
             builder.Autoconnect(this);
             App.ApplyStyles(this);
+            okBut.Clicked += OkButton_Clicked;
+            cancelBut.Clicked += CancelBut_Clicked;
         }
+
+        private void CancelBut_Clicked(object sender, EventArgs e)
+        {
+            Respond(ResponseType.Cancel);
+            this.Destroy();
+        }
+
+        private void OkButton_Clicked(object sender, EventArgs e)
+        {
+            this.Respond(ResponseType.Ok);
+            this.Hide();
+        }
+
         public string GetUrl()
         {
             return textBox.Text;
