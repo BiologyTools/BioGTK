@@ -111,13 +111,18 @@
             <property name="can-focus">False</property>
             <property name="transition-duration">0</property>
             <child>
-              <object class="GtkGLArea" id="viewport">
-                <property name="width-request">600</property>
-                <property name="height-request">400</property>
+              <object class="GtkScrolledWindow" id="viewport">
                 <property name="visible">True</property>
-                <property name="app-paintable">True</property>
-                <property name="can-focus">False</property>
-                <property name="has-alpha">True</property>
+                <property name="can-focus">True</property>
+                <property name="hscrollbar-policy">always</property>
+                <property name="vscrollbar-policy">always</property>
+                <property name="window-placement-set">False</property>
+                <property name="shadow-type">in</property>
+                <property name="min-content-width">10</property>
+                <property name="min-content-height">10</property>
+                <child>
+                  <placeholder/>
+                </child>
               </object>
               <packing>
                 <property name="name">page0</property>

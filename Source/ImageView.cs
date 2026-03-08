@@ -212,7 +212,9 @@ namespace BioGTK
         [Builder.Object]
         private Gtk.ComboBox bBox;
         [Builder.Object]
-        private Gtk.Stack viewStack;
+        private Gtk.Stack stack;
+        [Builder.Object]
+        private Gtk.ScrolledWindow viewStack;
         [Builder.Object]
         public Menu contextMenu;
         [Builder.Object]
@@ -247,8 +249,11 @@ namespace BioGTK
         private MenuItem setValueRange;
         [Builder.Object]
         private MenuItem loop;
-        [Builder.Object]
+        
+
+
 #pragma warning restore 649
+        [Builder.Object]
         private SKDrawingArea sk;
         #endregion
         public SlideGLArea glArea;
@@ -256,6 +261,7 @@ namespace BioGTK
         public SKSlideRenderer sKSlideRenderer;
         public GLWindow window;
         public static bool MacOS = false;
+
         #region Constructors / Destructors
 
         /// The function creates an ImageView object using a BioImage object and returns it.
@@ -491,14 +497,19 @@ namespace BioGTK
                     }
                     i++;
                 }
-
+                canvas.Restore();
                 // Draw overview if enabled
                 if (overviewImage != null && ShowOverview)
                 {
-                    var ims = BitmapToSKImage(overviewImage.GetImageRGBA());
-                    paint.Style = SKPaintStyle.Fill;
+                    paint = new SKPaint
+                    {
+                        Color = SKColors.Gray,
+                        BlendMode = SKBlendMode.SrcOver,
+                        IsAntialias = true,
+                        Style = SKPaintStyle.Fill
+                    };
                     // Draw the overview image at the top-left corner
-                    canvas.DrawImage(ims, 0, 0, paint);
+                    canvas.DrawImage(overviewImage, 0, 0, paint);
                 }
                 else if (overviewImage == null && ShowOverview)
                 {
@@ -1118,7 +1129,7 @@ namespace BioGTK
             UpdateImages();
         }
         Rectangle overview;
-        Bitmap overviewImage;
+        SKImage overviewImage;
         public int? MacroResolution { get { return SelectedImage.MacroResolution; } }
         public int? LabelResolution { get { return SelectedImage.LabelResolution; } }
 
@@ -1222,12 +1233,24 @@ namespace BioGTK
                             Resolution, GetCoordinate());
                         byte[] bt = await SelectedImage.SlideBase.GetSlice(sl, new PointD(0, 0), new AForge.Size(overviewWidth, overviewHeight));
                         // Get the tile for the entire resolution level
-                        sourceBitmap = new Bitmap(overviewWidth, overviewHeight, AForge.PixelFormat.Format32bppArgb,
-                            bt, GetCoordinate(), "");
+                        if (SelectedImage.Resolutions[Level].PixelFormat == AForge.PixelFormat.Format16bppGrayScale)
+                            sourceBitmap = new Bitmap(overviewWidth, overviewHeight, AForge.PixelFormat.Format16bppGrayScale,
+                                bt, GetCoordinate(), "").GetImageRGBA(true,true);
+                        else if (SelectedImage.Resolutions[Level].PixelFormat == AForge.PixelFormat.Format8bppIndexed)
+                            sourceBitmap = new Bitmap(overviewWidth, overviewHeight, AForge.PixelFormat.Format8bppIndexed,
+                            bt, GetCoordinate(), "").GetImageRGBA();
+                        else if (SelectedImage.Resolutions[Level].PixelFormat == AForge.PixelFormat.Format32bppArgb)
+                            sourceBitmap = new Bitmap(overviewWidth, overviewHeight, AForge.PixelFormat.Format32bppArgb,
+                            bt, GetCoordinate(), SelectedImage.Resolutions[Level].PixelFormat.ToString());
+                        else if (SelectedImage.Resolutions[Level].PixelFormat == AForge.PixelFormat.Float)
+                            sourceBitmap = new Bitmap(overviewWidth, overviewHeight, AForge.PixelFormat.Float,
+                            bt, GetCoordinate(), SelectedImage.Resolutions[Level].PixelFormat.ToString()).GetImageRGBA();
+                        else
+                            throw new NotSupportedException("Not Supported: " + SelectedImage.Resolutions[Level].PixelFormat);
                     }
                     // Resize to overview dimensions
                     AForge.Imaging.Filters.ResizeBilinear resizer = new ResizeBilinear(overviewWidth, overviewHeight);
-                    overviewImage = resizer.Apply(sourceBitmap.GetImageRGBA());
+                    overviewImage = BitmapToSKImage(resizer.Apply(sourceBitmap));
                     sourceBitmap.Dispose();
                     sourceBitmap = null;
                     ShowOverview = true;
