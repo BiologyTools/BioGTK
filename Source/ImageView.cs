@@ -1000,19 +1000,39 @@ namespace BioGTK
 
             double oldResolution = Resolution;
 
-            // 1. Compute image pixel under cursor BEFORE zoom
+            // 1. Compute the full-resolution image pixel under the cursor BEFORE zoom.
+            //    PyramidalOrigin is in current-level pixel space; multiply by Resolution
+            //    (units-per-pixel) to get absolute image coordinates.
             PointD imagePixel = new PointD(
                 PyramidalOrigin.X + mouseScreenPos.X * oldResolution,
                 PyramidalOrigin.Y + mouseScreenPos.Y * oldResolution
             );
 
-            // 2. Apply zoom
+            // 2. Apply zoom.
             Resolution = newResolution;
 
-            // 3. Recompute origin so the same image pixel stays under cursor
+            // 3. Read back the actual resolution - the setter may have clamped or
+            //    rejected the value (e.g. when hitting a pyramid boundary).
+            //    If nothing changed there is nothing to reposition.
+            double actualResolution = Resolution;
+            if (actualResolution == oldResolution)
+                return;
+
+            // 4. Recompute origin so the same image pixel stays under the cursor.
+            //    After the Resolution change, Level may have changed too, so clamp
+            //    explicitly against the new level's dimensions rather than relying
+            //    on PyramidalOrigin's setter (which uses the already-updated Level).
+            double newOriginX = imagePixel.X - mouseScreenPos.X * actualResolution;
+            double newOriginY = imagePixel.Y - mouseScreenPos.Y * actualResolution;
+
+            // PyramidalOrigin is always in full-resolution (level 0) pixel space,
+            // so clamp against Resolutions[0], not the current pyramid level.
+            double maxX = Math.Max(0, SelectedImage.Resolutions[0].SizeX - 1);
+            double maxY = Math.Max(0, SelectedImage.Resolutions[0].SizeY - 1);
+
             PyramidalOrigin = new PointD(
-                imagePixel.X - mouseScreenPos.X * Resolution,
-                imagePixel.Y - mouseScreenPos.Y * Resolution
+                Math.Max(0, Math.Min(newOriginX, maxX)),
+                Math.Max(0, Math.Min(newOriginY, maxY))
             );
         }
         public void SetTitle(string s)
@@ -1327,24 +1347,6 @@ namespace BioGTK
                 | EventMask.KeyPressMask
                 | EventMask.PointerMotionMask
                 | EventMask.ScrollMask));
-                // For non-pyramidal (stack) images on Linux/Windows, sk is placed in the
-                // grid instead of glArea. Wire up its paint and input events here so that
-                // RenderSkia can draw the stack frames and interaction still works.
-                if (SelectedImage != null && !SelectedImage.isPyramidal)
-                {
-                    sk.PaintSurface += Sk_PaintSurface;
-                    sk.MotionNotifyEvent += ImageView_MotionNotifyEvent;
-                    sk.ButtonPressEvent += ImageView_ButtonPressEvent;
-                    sk.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
-                    sk.ScrollEvent += ImageView_ScrollEvent;
-                    sk.ScrollEvent += OnMouseWheel;
-                    sk.SizeAllocated += PictureBox_SizeAllocated;
-                    sk.AddEvents((int)(EventMask.ButtonPressMask
-                    | EventMask.ButtonReleaseMask
-                    | EventMask.KeyPressMask
-                    | EventMask.PointerMotionMask
-                    | EventMask.ScrollMask));
-                }
             }
             vScroll.ValueChanged += VScroll_ValueChanged;
             hScroll.ValueChanged += HScroll_ValueChanged;   
@@ -1380,33 +1382,36 @@ namespace BioGTK
 
         private void HScroll_ValueChanged(object sender, EventArgs e)
         {
+            if (_updatingScrollBars) return;
             PyramidalOrigin = new PointD(hScroll.Value, PyramidalOrigin.Y);
             UpdateView();
         }
 
         private void VScroll_ValueChanged(object sender, EventArgs e)
         {
+            if (_updatingScrollBars) return;
             PyramidalOrigin = new PointD(PyramidalOrigin.X, vScroll.Value);
             UpdateView();
         }
 
         private void Sk_PaintSurface(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e)
         {
-            var canvas = e.Surface.Canvas;
-            var width = e.Info.Width;
-            var height = e.Info.Height;
-            canvas.Clear(SKColors.Black);
-            if (MacOS && SelectedImage?.isPyramidal == true && sKSlideRenderer != null)
+            if (MacOS)
             {
-                // macOS pyramidal: draw tiles via SKSlideRenderer then annotations
-                sKSlideRenderer.DrawToCanvas(canvas, width, height);
-                RenderSkiaAnnotations(canvas, width, height);
-            }
-            else
-            {
-                // Non-pyramidal (image stacks) on all platforms, and macOS non-pyramidal:
-                // RenderSkia draws the current SKImage buffer and all annotations.
-                RenderSkia(canvas, width, height);
+                var canvas = e.Surface.Canvas;
+                var width = e.Info.Width;
+                var height = e.Info.Height;
+                canvas.Clear(SKColors.Black);
+                if (SelectedImage?.isPyramidal == true && sKSlideRenderer != null)
+                {
+                    sKSlideRenderer.DrawToCanvas(canvas, width, height);
+                    RenderSkiaAnnotations(canvas, width, height);
+                }
+                else
+                {
+                    // Render non-pyramidal images and annotations
+                    RenderSkia(canvas, width, height);
+                }
             }
         }
 
@@ -1936,11 +1941,6 @@ namespace BioGTK
                     SelectedImage.PyramidalSize = new AForge.Size(glArea.AllocatedWidth, glArea.AllocatedHeight);
                     UpdateImage();
                 }
-                else
-                {
-                    // For non-pyramidal stacks the sk widget was resized — redraw.
-                    UpdateImage();
-                }
             }
             else
             {
@@ -2174,10 +2174,13 @@ namespace BioGTK
             Plugins.ScrollEvent(o, e);
             if (SelectedImage.isPyramidal)
             {
+                // Use the raw screen-space mouse position so that the image point
+                // under the cursor stays fixed while zooming.
+                PointD mouseScreenPos = new PointD(e.Event.X, e.Event.Y);
                 if (e.Event.Direction == ScrollDirection.Up)
-                    SelectedImage.Resolution *= 1.1;
-                if (e.Event.Direction == ScrollDirection.Down)
-                    SelectedImage.Resolution *= 0.9;
+                    SetResolution(Resolution * 1.1, mouseScreenPos);
+                else if (e.Event.Direction == ScrollDirection.Down)
+                    SetResolution(Resolution * 0.9, mouseScreenPos);
             }
         }
 
@@ -2240,12 +2243,16 @@ namespace BioGTK
                 endc = Images[selectedIndex].SizeC - 1;
             if (endt == 0 || endt > Images[selectedIndex].SizeT - 1)
                 endt = Images[selectedIndex].SizeT - 1;
+            UpdateScrollBars();
             var store = new ListStore(typeof(string));
             foreach (Channel c in SelectedImage.Channels)
             {
                 store.AppendValues(c.Name);
             }
-
+            // Set the model for the ComboBox
+            rBox.Model = store;
+            gBox.Model = store;
+            bBox.Model = store;
             if (SelectedImage.Channels.Count > 2)
             {
                 rBox.Active = 0;
@@ -2450,6 +2457,7 @@ namespace BioGTK
                 return new PointD((Origin.X - ((glArea.AllocatedWidth / 2) * pxWmicron)), (Origin.Y - ((glArea.AllocatedHeight / 2) * pxHmicron)));
             }
         }
+        private bool _updatingScrollBars = false;
         public PointD PyramidalOriginTransformed
         {
             get { return new PointD(PyramidalOrigin.X * Resolution, PyramidalOrigin.Y * Resolution); }
@@ -2468,8 +2476,10 @@ namespace BioGTK
                 if (!AllowNavigation)
                     return;
                 SelectedImage.PyramidalOrigin = value;
+                _updatingScrollBars = true;
                 hScroll.Value = value.X;
                 vScroll.Value = value.Y;
+                _updatingScrollBars = false;
                 if (sk != null)
                 {
                     UpdateImages();
@@ -2669,9 +2679,12 @@ namespace BioGTK
             else
             {
                 UpdateImages(true);
-                // Non-pyramidal images (stacks) use the sk (SKDrawingArea) widget on all
-                // platforms. QueueDraw triggers Sk_PaintSurface which calls RenderSkia.
-                sk.QueueDraw();
+                if (!MacOS)
+                {
+                    glArea.RequestRedraw();
+                }
+                else
+                    sk.QueueDraw();
             }
         }
         private string mousePoint = "";
