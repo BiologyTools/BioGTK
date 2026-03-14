@@ -1,5 +1,6 @@
 ﻿using AForge;
 using Bio;
+using ch.qos.logback.core.joran.conditional;
 using Gtk;
 using omero.gateway;
 using Pango;
@@ -78,6 +79,8 @@ namespace BioGTK
         [Builder.Object]
         private MenuItem openSeriesMenu;
         [Builder.Object]
+        private MenuItem openZarr;
+        [Builder.Object]
         private MenuItem openQuPathProject;
         [Builder.Object]
         private MenuItem addImagesToTabMenu;
@@ -98,12 +101,15 @@ namespace BioGTK
         [Builder.Object]
         private MenuItem savePyramidalMenu;
         [Builder.Object]
+        private MenuItem saveZarr;
+        [Builder.Object]
         private MenuItem saveQuPathProject;
         [Builder.Object]
         private MenuItem imagesToStack;
         [Builder.Object]
         private MenuItem uploadImageMenu;
-
+        [Builder.Object]
+        private Gtk.Stack stack;
         [Builder.Object]
         private Gtk.CheckMenuItem rgbMenu;
         [Builder.Object]
@@ -410,6 +416,8 @@ namespace BioGTK
             saveSelectedTiff.ButtonPressEvent += saveSelectedTiffClick;
             saveSelectedOME.ButtonPressEvent += saveSelectedOMEClick;
             saveNumPyBut.ButtonPressEvent += SaveNumPyBut_ButtonPressEvent;
+            saveZarr.ButtonPressEvent += SaveZarr_ButtonPressEvent;
+            openZarr.ButtonPressEvent += OpenZarr_ButtonPressEvent;
 
             saveTabOME.ButtonPressEvent += saveTabOMEClick;
             saveTabTiffMenu.ButtonPressEvent += saveTabTiffMenuClick;
@@ -493,18 +501,54 @@ namespace BioGTK
 
         }
 
+        private async void OpenZarr_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Gtk.FileChooserDialog filechooser =
+        new Gtk.FileChooserDialog("Choose Zarr folder to open.",
+            this,
+            FileChooserAction.SelectFolder,
+            "Cancel", ResponseType.Cancel,
+            "Open", ResponseType.Accept);
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            string p = filechooser.Filename.Replace("\\0", "");
+            filechooser.Hide();
+            if(p.EndsWith(".zarr/"))
+                p = p.Replace(".zarr/", ".zarr");
+            if (!p.EndsWith(".zarr"))
+                p = p + ".zarr";
+            ImageView.SelectedImage = null;
+            BioImage bm = await BioImage.OpenFile(p);
+            this.AddTab(bm);
+        }
+
+        private void SaveZarr_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Gtk.FileChooserDialog filechooser =
+        new Gtk.FileChooserDialog("Choose filename for Zarr file to save to.",
+            this,
+            FileChooserAction.Save,
+            "Cancel", ResponseType.Cancel,
+            "Open", ResponseType.Accept);
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            ImageView.SelectedImage = null;
+            filechooser.Hide();
+            BioImage.SaveZarr(ImageView.SelectedImage,filechooser.Filename);
+        }
+
         private async void OpenURLMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
+            
             OpenUrlBox box = OpenUrlBox.Create();
             if (box.Run() == (int)ResponseType.Ok)
             {
-                BioImage b = await BioImage.OpenFile(box.GetUrl());
-                if(App.viewer!=null)
-                    App.viewer.AddImage(b);
-                else
-                    App.viewer = ImageView.Create(b);
+                ImageView.SelectedImage = null;
+                BioImage b = await BioImage.OpenURL(box.GetUrl(),new ZCT(0,0,0),0,0,800,600);
+                App.viewer = ImageView.Create(b);
+                ImageView.SelectedImage = b;
+                App.viewer.Show();
             }
-            App.viewer.Show();
             box.Destroy();
         }
 

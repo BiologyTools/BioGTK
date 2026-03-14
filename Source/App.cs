@@ -223,20 +223,21 @@ namespace BioGTK
             BioLib.Settings.Load();
         }
 
-        public static void ApplyStyles(Widget widget)
+        public static void ApplyStyles(Widget widget, bool applyToContainer = true, bool applyColor = true)
         {
-       
             if (widget != null)
             {
-                if (widget is not Button || widget is not SpinButton)
+                if (widget is not Button || widget is not SpinButton || widget is not Scrollbar && applyColor)
                 {
                     widget.ModifyBg(StateType.Normal, new Gdk.Color(49, 91, 138));
                     widget.ModifyFg(StateType.Normal, new Gdk.Color(255, 255, 255));
                 }
+                else
+                    return;
             }
             try
             {
-                if (widget is Container)
+                if (widget is Container && applyToContainer)
                 {
                     foreach (var child in ((Container)widget).Children)
                     {

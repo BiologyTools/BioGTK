@@ -1,34 +1,21 @@
 using AForge;
 using AForge.Imaging.Filters;
 using Bio;
-using BioLib;
 using BruTile;
-using Cairo;
 using Gdk;
 using Gtk;
 using OpenSlideGTK;
-using OpenTK;
-using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
-using org.python.compiler;
 using SkiaSharp;
 using SkiaSharp.Views.Gtk;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
-using static NetVips.Enums;
-using static OpenSlideGTK.Stitch;
 using Color = AForge.Color;
-using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
-using Point = AForge.Point;
 using PointD = AForge.PointD;
 using PointF = AForge.PointF;
 using Rectangle = AForge.Rectangle;
 using SizeF = AForge.SizeF;
+using ZCT = AForge.ZCT;
 
 namespace BioGTK
 {
@@ -60,12 +47,15 @@ namespace BioGTK
                 SelectedImage.Coordinate = new ZCT(0, (int)cBar.Value, (int)tBar.Value);
             else
                 SelectedImage.Coordinate = new ZCT((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
+            
         }
         /// It returns the coordinate of the selected image
         /// 
         /// @return The Coordinate property of the SelectedImage object.
         public ZCT GetCoordinate()
         {
+            if (SelectedImage == null)
+                return new ZCT();
             return SelectedImage.Coordinate;
         }
 
@@ -103,6 +93,8 @@ namespace BioGTK
         {
             get
             {
+                if (SelectedImage == null)
+                    return 1;
                 if (SelectedImage.Type == BioImage.ImageType.pyramidal)
                     if (openSlide)
                     {
@@ -126,6 +118,8 @@ namespace BioGTK
         {
             get
             {
+                if (SelectedImage == null)
+                    return 1;
                 if (SelectedImage.Type == BioImage.ImageType.pyramidal)
                     if (openSlide)
                     {
@@ -165,11 +159,19 @@ namespace BioGTK
         int selectedIndex = 0;
         public int SelectedIndex
         {
-            get { return selectedIndex; }
+            get 
+            { 
+                if(selectedIndex >= Images.Count)
+                    selectedIndex = Images.Count - 1;  
+                return selectedIndex;
+            }
             set
             {
-                selectedIndex = value;
-                Images[selectedIndex] = SelectedImage;
+                if (Images.Count < value)
+                {
+                    selectedIndex = value;
+                    Images[selectedIndex] = SelectedImage;
+                }
             }
         }
         Menu imagesMenu;
@@ -212,9 +214,9 @@ namespace BioGTK
         [Builder.Object]
         private Gtk.ComboBox bBox;
         [Builder.Object]
-        private Gtk.Stack stack;
+        private Gtk.Scrollbar hScroll;
         [Builder.Object]
-        private Gtk.ScrolledWindow viewStack;
+        private Gtk.Scrollbar vScroll;
         [Builder.Object]
         public Menu contextMenu;
         [Builder.Object]
@@ -249,12 +251,12 @@ namespace BioGTK
         private MenuItem setValueRange;
         [Builder.Object]
         private MenuItem loop;
-        
+
 
 
 #pragma warning restore 649
         [Builder.Object]
-        private SKDrawingArea sk;
+        private SKDrawingArea sk = new SKDrawingArea();
         #endregion
         public SlideGLArea glArea;
         public SlideRenderer slideRenderer;
@@ -370,8 +372,12 @@ namespace BioGTK
                         sKSlideRenderer.SetSource(im.SlideBase);
                     }
                 }
-                // Add to view
-                viewStack.Add(sk);
+                else
+                {
+                    // Add to view
+                    sk.Expand = true;
+                    grid.Attach(sk, 0, 0, 1, 1);
+                }
             }
             else
             {
@@ -384,15 +390,36 @@ namespace BioGTK
                 {
                     slideRenderer.SetSource(im.SlideBase);
                 }
-                // Add to view
-                viewStack.Add(glArea);
+                if (im.isPyramidal)
+                {
+                    glArea.Expand = true;
+                    grid.Attach(glArea,0,0,1,1);
+                }                
+                else
+                {
+                    sk.Name = "sk";
+                    sk.WidthRequest = 800;
+                    sk.HeightRequest = 600;
+                    grid.Attach(sk, 0, 0, 1, 1);
+                }
             }
-
-            viewStack.ShowAll();
+            
             if (!MacOS)
-                glArea.Show();
-            this.WidthRequest = 600;
-            this.HeightRequest = 400;
+            {
+                if (im.isPyramidal)
+                {
+                    glArea.SetAllocation(new Gdk.Rectangle(0, 0, 800, 600));
+                    glArea.Show();
+                }
+                else
+                    sk.ShowAll();
+            }
+            else
+            {
+                sk.WidthRequest = 800;
+                sk.HeightRequest = 600;
+                sk.Show();
+            }
             roi.Submenu = roiMenu;
             roi.ShowAll();
             AddImage(im);
@@ -414,7 +441,8 @@ namespace BioGTK
             var rendererb = new CellRendererText();
             bBox.PackStart(rendererb, false);
             bBox.AddAttribute(rendererb, "text", 0);
-            App.ApplyStyles(this);
+            UpdateScrollBars();
+            //App.ApplyStyles(this);
         }
         /*
         GRBackendRenderTarget _renderTarget;
@@ -519,6 +547,7 @@ namespace BioGTK
                     canvas.DrawRect(0, 0, overview.Width, overview.Height, paint);
                 }
                 SKImageInfo inf = new SKImageInfo(width, height);
+                if(SelectedImage!=null)
                 if (SelectedImage.isPyramidal)
                     DrawViewportRectangle(canvas, paint);
 
@@ -1031,7 +1060,7 @@ namespace BioGTK
                         GetCoordinate()
                     );
                 }
-                else if (!SelectedImage.isPyramidal)
+                else
                 {
                     for (int i = 0; i < SKImages.Count; i++)
                     {
@@ -1135,7 +1164,9 @@ namespace BioGTK
 
         /// <summary>
         /// Initializes the overview/minimap preview for pyramidal images.
-        /// Resizes the lowest resolution level to fit in a 160x160 thumbnail while maintaining aspect ratio.
+        /// Finds the smallest pyramid level that is small enough to be quickly read
+        /// (under MAX_QUICK_PIXELS in each dimension), fetches it, and scales it to
+        /// fit within OVERVIEW_SIZE while maintaining aspect ratio.
         /// </summary>
         private async void InitPreview()
         {
@@ -1147,115 +1178,109 @@ namespace BioGTK
             {
                 refresh = false;
 
-                // Default overview size
                 const int OVERVIEW_SIZE = 160;
-                const long MAX_SIZE_BYTES = 1500000000; // 1.5GB limit
+                // Maximum pixel dimension considered "small enough to read quickly"
+                const int MAX_QUICK_PIXELS = 2000;
 
-                int resolutionLevel;
-                BioLib.Resolution targetResolution;
+                // Find the best resolution level: the smallest level (highest index)
+                // whose pixel dimensions are within MAX_QUICK_PIXELS so it can be
+                // read in one shot without excessive I/O.
+                int resolutionLevel = -1;
+                BioLib.Resolution targetResolution = new BioLib.Resolution();
 
-                // Determine which resolution level to use
-                if (MacroResolution.HasValue && MacroResolution.Value >= 2 && MacroResolution.Value <= SelectedImage.Resolutions.Count)
+                // Walk from the lowest-resolution level upward and pick the first
+                // (smallest) level that fits within MAX_QUICK_PIXELS.
+                for (int lev = SelectedImage.Resolutions.Count - 1; lev >= 0; lev--)
                 {
-                    // Use macro resolution if available (usually a label or overview image)
-                    resolutionLevel = MacroResolution.Value - 2;
-                    targetResolution = SelectedImage.Resolutions[resolutionLevel];
+                    var res = SelectedImage.Resolutions[lev];
+                    if (res.SizeX <= MAX_QUICK_PIXELS && res.SizeY <= MAX_QUICK_PIXELS)
+                    {
+                        resolutionLevel = lev;
+                        targetResolution = res;
+                        break;
+                    }
+                }
+
+                if (resolutionLevel < 0 )
+                {
+                    // Every pyramid level is larger than MAX_QUICK_PIXELS.
+                    // Show an empty overview rectangle so navigation still works.
+                    Console.WriteLine("Preview: no sufficiently small pyramid level found — overview disabled.");
+                    var fallback = SelectedImage.Resolutions[SelectedImage.Resolutions.Count - 1];
+                    double ar = (double)fallback.SizeX / Math.Max(1, fallback.SizeY);
+                    int ow = ar >= 1.0 ? OVERVIEW_SIZE : (int)(OVERVIEW_SIZE * ar);
+                    int oh = ar >= 1.0 ? (int)(OVERVIEW_SIZE / ar) : OVERVIEW_SIZE;
+                    overview = new Rectangle(0, 0, Math.Max(ow, 20), Math.Max(oh, 20));
+                    overviewImage = null;
+                    ShowOverview = false;
+                    return;
+                }
+
+                // Calculate overview thumbnail dimensions preserving aspect ratio
+                double aspectRatio = (double)targetResolution.SizeX / Math.Max(1, targetResolution.SizeY);
+                int overviewWidth, overviewHeight;
+                if (aspectRatio >= 1.0)
+                {
+                    overviewWidth = OVERVIEW_SIZE;
+                    overviewHeight = (int)(OVERVIEW_SIZE / aspectRatio);
                 }
                 else
                 {
-                    // Use the lowest resolution pyramid level (highest index)
-                    resolutionLevel = SelectedImage.Resolutions.Count - 1;
-                    targetResolution = SelectedImage.Resolutions[resolutionLevel];
+                    overviewHeight = OVERVIEW_SIZE;
+                    overviewWidth = (int)(OVERVIEW_SIZE * aspectRatio);
                 }
-                Bitmap sourceBitmap = null;
-                int overviewWidth = 100;
-                int overviewHeight = 100;
-                // Check if resolution level is too large to process
-                if (targetResolution.SizeInBytes > MAX_SIZE_BYTES)
+                overviewWidth = Math.Max(overviewWidth, 20);
+                overviewHeight = Math.Max(overviewHeight, 20);
+
+                overview = new Rectangle(0, 0, overviewWidth, overviewHeight);
+
+                // Fetch the raw pixels for the chosen level
+                byte[] bt;
+                int srcW = targetResolution.SizeX;
+                int srcH = targetResolution.SizeY;
+
+                if (openSlide)
                 {
-                    Console.WriteLine($"Preview disabled: Resolution level {resolutionLevel} is too large ({targetResolution.SizeInBytes} bytes)");
-                    // Calculate aspect ratio and overview dimensions
-                    double aspectRatio = (double)targetResolution.SizeX / (double)targetResolution.SizeY;
-                    if (aspectRatio >= 1.0)
+                    if (SelectedImage.Type == BioImage.ImageType.zarr)
                     {
-                        // Landscape or square - width is OVERVIEW_SIZE
-                        overviewWidth = OVERVIEW_SIZE;
-                        overviewHeight = (int)(OVERVIEW_SIZE / aspectRatio);
+                        // Zarr goes through the BioLib slide source
+                        double unitsPerPx = SelectedImage.SlideBase.Schema.Resolutions
+                            .OrderByDescending(r => r.Value.UnitsPerPixel)
+                            .Skip(SelectedImage.Resolutions.Count - 1 - resolutionLevel)
+                            .First().Value.UnitsPerPixel;
+                        var sl = new BioLib.SliceInfo(0, 0, srcW, srcH, unitsPerPx, new ZCT());
+                        bt = await SelectedImage.SlideBase.GetSlice(sl, SelectedImage.PyramidalOrigin, SelectedImage.PyramidalSize);
                     }
                     else
                     {
-                        // Portrait - height is OVERVIEW_SIZE
-                        overviewHeight = OVERVIEW_SIZE;
-                        overviewWidth = (int)(OVERVIEW_SIZE * aspectRatio);
+                        // Standard OpenSlide: request the full extent at the chosen level
+                        double unitsPerPx = _openSlideBase.Schema.Resolutions
+                            .OrderByDescending(r => r.Value.UnitsPerPixel)
+                            .Skip(SelectedImage.Resolutions.Count - 1 - resolutionLevel)
+                            .First().Value.UnitsPerPixel;
+                        var sll = new OpenSlideGTK.SliceInfo(0, 0, srcW, srcH, unitsPerPx);
+                        bt = SelectedImage.OpenSlideBase.GetSlice(sll, new ZCT(), resolutionLevel);
                     }
-
-                    // Ensure minimum size
-                    overviewWidth = Math.Max(overviewWidth, 20);
-                    overviewHeight = Math.Max(overviewHeight, 20);
-
-                    overview = new Rectangle(0, 0, overviewWidth, overviewHeight);
-
                 }
                 else
                 {
-                    ShowOverview = true;
-                    // Calculate aspect ratio and overview dimensions
-                    double aspectRatio = (double)targetResolution.SizeX / (double)targetResolution.SizeY;
-                    if (aspectRatio >= 1.0)
-                    {
-                        // Landscape or square - width is OVERVIEW_SIZE
-                        overviewWidth = OVERVIEW_SIZE;
-                        overviewHeight = (int)(OVERVIEW_SIZE / aspectRatio);
-                    }
-                    else
-                    {
-                        // Portrait - height is OVERVIEW_SIZE
-                        overviewHeight = OVERVIEW_SIZE;
-                        overviewWidth = (int)(OVERVIEW_SIZE * aspectRatio);
-                    }
-
-                    // Ensure minimum size
-                    overviewWidth = Math.Max(overviewWidth, 20);
-                    overviewHeight = Math.Max(overviewHeight, 20);
-
-                    overview = new Rectangle(0, 0, overviewWidth, overviewHeight);
-
-                    if (openSlide)
-                    {
-                        var sl = new OpenSlideGTK.SliceInfo(0, 0, overviewWidth, overviewHeight, Resolution);
-                        // Get the tile for the entire resolution level
-                        sourceBitmap = new Bitmap(overviewWidth, overviewHeight, AForge.PixelFormat.Format32bppArgb,
-                            SelectedImage.OpenSlideBase.GetSlice(sl, new ZCT(0, 0, 0), Level), GetCoordinate(), "");
-                    }
-                    else
-                    {
-                        var sl = new BioLib.SliceInfo(0, 0, SelectedImage.Resolutions.Last().SizeX, SelectedImage.Resolutions.Last().SizeY,
-                            Resolution, GetCoordinate());
-                        byte[] bt = await SelectedImage.SlideBase.GetSlice(sl, new PointD(0, 0), new AForge.Size(overviewWidth, overviewHeight));
-                        // Get the tile for the entire resolution level
-                        if (SelectedImage.Resolutions[Level].PixelFormat == AForge.PixelFormat.Format16bppGrayScale)
-                            sourceBitmap = new Bitmap(overviewWidth, overviewHeight, AForge.PixelFormat.Format16bppGrayScale,
-                                bt, GetCoordinate(), "").GetImageRGBA(true,true);
-                        else if (SelectedImage.Resolutions[Level].PixelFormat == AForge.PixelFormat.Format8bppIndexed)
-                            sourceBitmap = new Bitmap(overviewWidth, overviewHeight, AForge.PixelFormat.Format8bppIndexed,
-                            bt, GetCoordinate(), "").GetImageRGBA();
-                        else if (SelectedImage.Resolutions[Level].PixelFormat == AForge.PixelFormat.Format32bppArgb)
-                            sourceBitmap = new Bitmap(overviewWidth, overviewHeight, AForge.PixelFormat.Format32bppArgb,
-                            bt, GetCoordinate(), SelectedImage.Resolutions[Level].PixelFormat.ToString());
-                        else if (SelectedImage.Resolutions[Level].PixelFormat == AForge.PixelFormat.Float)
-                            sourceBitmap = new Bitmap(overviewWidth, overviewHeight, AForge.PixelFormat.Float,
-                            bt, GetCoordinate(), SelectedImage.Resolutions[Level].PixelFormat.ToString()).GetImageRGBA();
-                        else
-                            throw new NotSupportedException("Not Supported: " + SelectedImage.Resolutions[Level].PixelFormat);
-                    }
-                    // Resize to overview dimensions
-                    AForge.Imaging.Filters.ResizeBilinear resizer = new ResizeBilinear(overviewWidth, overviewHeight);
-                    overviewImage = BitmapToSKImage(resizer.Apply(sourceBitmap));
-                    sourceBitmap.Dispose();
-                    sourceBitmap = null;
-                    ShowOverview = true;
-                    Console.WriteLine($"Preview initialized: {overviewWidth}x{overviewHeight} from resolution level {resolutionLevel} ({targetResolution.SizeX}x{targetResolution.SizeY})");
+                    // BioLib slide source (non-OpenSlide)
+                    double unitsPerPx = _slideBase.Schema.Resolutions
+                        .OrderByDescending(r => r.Value.UnitsPerPixel)
+                        .Skip(SelectedImage.Resolutions.Count - 1 - resolutionLevel)
+                        .First().Value.UnitsPerPixel;
+                    var sl = new BioLib.SliceInfo(0, 0, srcW, srcH, unitsPerPx, new ZCT());
+                    bt = await SelectedImage.SlideBase.GetSlice(sl, SelectedImage.PyramidalOrigin, SelectedImage.PyramidalSize);
                 }
+
+                // Build bitmap from raw bytes (actual source dimensions) then scale to overview size
+                Bitmap sourceBitmap = new Bitmap(srcW, srcH, AForge.PixelFormat.Format32bppArgb, bt, GetCoordinate(), "");
+                AForge.Imaging.Filters.ResizeBilinear resizer = new ResizeBilinear(overviewWidth, overviewHeight);
+                overviewImage = BitmapToSKImage(resizer.Apply(sourceBitmap));
+                sourceBitmap.Dispose();
+
+                ShowOverview = true;
+                Console.WriteLine($"Preview initialized: {overviewWidth}x{overviewHeight} from resolution level {resolutionLevel} ({srcW}x{srcH})");
             }
             catch (Exception ex)
             {
@@ -1264,7 +1289,6 @@ namespace BioGTK
                 overviewImage = null;
             }
         }
-
         #region Handlers
 
         /// <summary> Sets up the handlers. </summary>
@@ -1303,8 +1327,27 @@ namespace BioGTK
                 | EventMask.KeyPressMask
                 | EventMask.PointerMotionMask
                 | EventMask.ScrollMask));
+                // For non-pyramidal (stack) images on Linux/Windows, sk is placed in the
+                // grid instead of glArea. Wire up its paint and input events here so that
+                // RenderSkia can draw the stack frames and interaction still works.
+                if (SelectedImage != null && !SelectedImage.isPyramidal)
+                {
+                    sk.PaintSurface += Sk_PaintSurface;
+                    sk.MotionNotifyEvent += ImageView_MotionNotifyEvent;
+                    sk.ButtonPressEvent += ImageView_ButtonPressEvent;
+                    sk.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
+                    sk.ScrollEvent += ImageView_ScrollEvent;
+                    sk.ScrollEvent += OnMouseWheel;
+                    sk.SizeAllocated += PictureBox_SizeAllocated;
+                    sk.AddEvents((int)(EventMask.ButtonPressMask
+                    | EventMask.ButtonReleaseMask
+                    | EventMask.KeyPressMask
+                    | EventMask.PointerMotionMask
+                    | EventMask.ScrollMask));
+                }
             }
-
+            vScroll.ValueChanged += VScroll_ValueChanged;
+            hScroll.ValueChanged += HScroll_ValueChanged;   
             this.KeyPressEvent += ImageView_KeyPressEvent;
             this.DestroyEvent += ImageView_DestroyEvent;
             this.DeleteEvent += ImageView_DeleteEvent;
@@ -1335,24 +1378,35 @@ namespace BioGTK
 
         }
 
+        private void HScroll_ValueChanged(object sender, EventArgs e)
+        {
+            PyramidalOrigin = new PointD(hScroll.Value, PyramidalOrigin.Y);
+            UpdateView();
+        }
+
+        private void VScroll_ValueChanged(object sender, EventArgs e)
+        {
+            PyramidalOrigin = new PointD(PyramidalOrigin.X, vScroll.Value);
+            UpdateView();
+        }
+
         private void Sk_PaintSurface(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e)
         {
-            if (MacOS)
+            var canvas = e.Surface.Canvas;
+            var width = e.Info.Width;
+            var height = e.Info.Height;
+            canvas.Clear(SKColors.Black);
+            if (MacOS && SelectedImage?.isPyramidal == true && sKSlideRenderer != null)
             {
-                var canvas = e.Surface.Canvas;
-                var width = e.Info.Width;
-                var height = e.Info.Height;
-                canvas.Clear(SKColors.Black);
-                if (SelectedImage?.isPyramidal == true && sKSlideRenderer != null)
-                {
-                    sKSlideRenderer.DrawToCanvas(canvas, width, height);
-                    RenderSkiaAnnotations(canvas, width, height);
-                }
-                else
-                {
-                    // Render non-pyramidal images and annotations
-                    RenderSkia(canvas, width, height);
-                }
+                // macOS pyramidal: draw tiles via SKSlideRenderer then annotations
+                sKSlideRenderer.DrawToCanvas(canvas, width, height);
+                RenderSkiaAnnotations(canvas, width, height);
+            }
+            else
+            {
+                // Non-pyramidal (image stacks) on all platforms, and macOS non-pyramidal:
+                // RenderSkia draws the current SKImage buffer and all annotations.
+                RenderSkia(canvas, width, height);
             }
         }
 
@@ -1774,6 +1828,7 @@ namespace BioGTK
             for (int i = 0; i < this.Images.Count; i++)
             {
                 var item = this.Images[i];
+                item.Dispose();
                 App.CloseWindow(item.Filename);
             }
         }
@@ -1879,6 +1934,11 @@ namespace BioGTK
                 if (SelectedImage.isPyramidal)
                 {
                     SelectedImage.PyramidalSize = new AForge.Size(glArea.AllocatedWidth, glArea.AllocatedHeight);
+                    UpdateImage();
+                }
+                else
+                {
+                    // For non-pyramidal stacks the sk widget was resized — redraw.
                     UpdateImage();
                 }
             }
@@ -2148,9 +2208,26 @@ namespace BioGTK
             SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
             UpdateView(true);
         }
+        private void UpdateScrollBars()
+        {
+            if (SelectedImage.isPyramidal)
+            {
+                hScroll.ShowAll();
+                vScroll.ShowAll();
+                hScroll.Adjustment.Upper = SelectedImage.Resolutions[SelectedImage.Level].SizeX;
+                vScroll.Adjustment.Upper = SelectedImage.Resolutions[SelectedImage.Level].SizeY;
+            }
+            else
+            {
+                vScroll.Hide();
+                hScroll.Hide();
+            }
+        }
         /// It updates the GUI to reflect the current state of the image
         public void UpdateGUI()
         {
+            if (SelectedImage == null)
+                return;
             cBar.Adjustment.Lower = 0;
             cBar.Adjustment.Upper = Images[selectedIndex].SizeC - 1;
             zBar.Adjustment.Lower = 0;
@@ -2168,10 +2245,7 @@ namespace BioGTK
             {
                 store.AppendValues(c.Name);
             }
-            // Set the model for the ComboBox
-            rBox.Model = store;
-            gBox.Model = store;
-            bBox.Model = store;
+
             if (SelectedImage.Channels.Count > 2)
             {
                 rBox.Active = 0;
@@ -2185,9 +2259,15 @@ namespace BioGTK
                 gBox.Active = 1;
             }
             imagesMenu = new Menu();
-            foreach (BioImage b in Images)
+            for (int i = 0; i < Images.Count; i++)
             {
-                MenuItem mi = new MenuItem(b.Filename);
+                if (Images[i] == null)
+                {
+                    if (SelectedIndex >= Images.Count)
+                        SelectedIndex--;
+                    Images.RemoveAt(i);
+                }
+                MenuItem mi = new MenuItem(Images[i].Filename);
                 mi.ButtonPressEvent += Mi_ButtonPressEvent;
                 imagesMenu.Append(mi);
             }
@@ -2284,6 +2364,10 @@ namespace BioGTK
             }
             set
             {
+                if (value == null)
+                    return;
+                if (App.viewer == null)
+                    App.viewer = ImageView.Create(value);
                 App.viewer.Images[App.viewer.SelectedIndex] = value;
             }
         }
@@ -2384,6 +2468,8 @@ namespace BioGTK
                 if (!AllowNavigation)
                     return;
                 SelectedImage.PyramidalOrigin = value;
+                hScroll.Value = value.X;
+                vScroll.Value = value.Y;
                 if (sk != null)
                 {
                     UpdateImages();
@@ -2485,15 +2571,17 @@ namespace BioGTK
         {
             get
             {
+                if (SelectedImage == null)
+                    return 0;
                 if (SelectedImage.Type == BioImage.ImageType.well)
                 {
                     return (int)SelectedImage.Level;
                 }
                 if (SelectedImage.isPyramidal)
                     if (!openSlide)
-                        l = OpenSlideGTK.TileUtil.GetLevel(_slideBase.Schema.Resolutions, Resolution);
+                        l = OpenSlideGTK.TileUtil.GetLevel(SelectedImage.SlideBase.Schema.Resolutions, Resolution);
                     else
-                        l = OpenSlideGTK.TileUtil.GetLevel(_openSlideBase.Schema.Resolutions, Resolution);
+                        l = OpenSlideGTK.TileUtil.GetLevel(SelectedImage.OpenSlideBase.Schema.Resolutions, Resolution);
                 return l;
             }
             set
@@ -2511,6 +2599,7 @@ namespace BioGTK
                     SelectedImage.UpdateBuffersWells();
                     UpdateView();
                 }
+                UpdateScrollBars();
             }
         }
 
@@ -2580,12 +2669,9 @@ namespace BioGTK
             else
             {
                 UpdateImages(true);
-                if (!MacOS)
-                {
-                    glArea.RequestRedraw();
-                }
-                else
-                    sk.QueueDraw();
+                // Non-pyramidal images (stacks) use the sk (SKDrawingArea) widget on all
+                // platforms. QueueDraw triggers Sk_PaintSurface which calls RenderSkia.
+                sk.QueueDraw();
             }
         }
         private string mousePoint = "";
@@ -2701,6 +2787,7 @@ namespace BioGTK
         /// </summary>
         private void ImageView_MotionNotifyEvent(object o, MotionNotifyEventArgs e)
         {
+            
             App.viewer = this;
             Modifiers = e.Event.State;
             MouseMove = new PointD(e.Event.X, e.Event.Y);
@@ -2709,7 +2796,8 @@ namespace BioGTK
             // Convert to view space (world coordinates)
             PointD p = ImageToViewSpace(e.Event.X, e.Event.Y);
             mousePoint = "(" + (p.X.ToString("F")) + ", " + (p.Y.ToString("F")) + ")";
-
+            if (SelectedImage == null)
+                return;
             // Handle pyramidal overview navigation
             if (SelectedImage.isPyramidal && overview.IntersectsWith(e.Event.X, e.Event.Y) &&
                 e.Event.State.HasFlag(ModifierType.Button1Mask) && ShowOverview)
@@ -2732,7 +2820,7 @@ namespace BioGTK
                 }
                 RequestDeferredRender();
             }
-            else if (overviewImage == null && SelectedImage.isPyramidal && ShowOverview &&
+            else if (SelectedImage.isPyramidal && ShowOverview &&
                 e.Event.State.HasFlag(ModifierType.Button1Mask))
             {
                 if (!OpenSlide)
@@ -2771,7 +2859,8 @@ namespace BioGTK
                 Tools.currentTool = Tools.GetTool("move");
             if (e.Event.Button == 1)
                 mouseLeftState = false;
-
+            if (SelectedImage == null)
+                return;
             App.viewer = this;
             PointD pointer = ImageToViewSpace(e.Event.X, e.Event.Y);
             mouseUp = pointer;
@@ -2793,7 +2882,8 @@ namespace BioGTK
                 mouseLeftState = true;
             else
                 mouseLeftState = false;
-
+            if (SelectedImage == null)
+                return;
             App.viewer = this;
             PointD pointer = ImageToViewSpace(e.Event.X, e.Event.Y);
             MouseDownInt = new PointD(e.Event.X, e.Event.Y);
@@ -3026,26 +3116,53 @@ namespace BioGTK
         {
             return ToViewSpace(p.X, p.Y); ;
         }
+        public Widget View
+        {
+            get
+            {
+                if(sk != null)
+                    return sk;
+                else
+                    return glArea;
+            }
+        }
         public PointD ToViewSpace(double x, double y)
         {
             if (SelectedImage == null)
             {
-                double dx = (ToViewSizeW(x - (viewStack.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
-                double dy = (ToViewSizeH(y - (viewStack.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
+                double dx = (ToViewSizeW(x - (View.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
+                double dy = (ToViewSizeH(y - (View.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
                 return new PointD(dx, dy);
             }
-
             if (SelectedImage.isPyramidal)
             {
-                PointD p = new PointD(x / Resolution, y / Resolution);
-                return new PointD(p.X - PyramidalOrigin.X, p.Y - PyramidalOrigin.Y);
+               
+                // Handle non-pyramidal case
+                double dx = (ToViewSizeW(x - (View.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
+                double dy = (ToViewSizeH(y - (View.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
+                return new PointD(dx, dy);
             }
             else
             {
-                // Handle non-pyramidal case
-                double dx = (ToViewSizeW(x - (viewStack.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
-                double dy = (ToViewSizeH(y - (viewStack.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
-                return new PointD(dx, dy);
+                if (SelectedImage == null)
+                {
+                    double dx = (ToViewSizeW(x - (View.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
+                    double dy = (ToViewSizeH(y - (View.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
+                    return new PointD(dx, dy);
+                }
+
+                if (SelectedImage.isPyramidal)
+                {
+                    PointD p = new PointD(x / Resolution, y / Resolution);
+                    return new PointD(p.X - PyramidalOrigin.X, p.Y - PyramidalOrigin.Y);
+                }
+                else
+                {
+                    // Handle non-pyramidal case
+                    double dx = (ToViewSizeW(x - (View.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
+                    double dy = (ToViewSizeH(y - (View.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
+                    return new PointD(dx, dy);
+                }
             }
         }
 
@@ -3338,8 +3455,8 @@ namespace BioGTK
             double dy = Images[i].Volume.Height / 2;
             Origin = new PointD(-(Images[i].Volume.Location.X + dx), -(Images[i].Volume.Location.Y + dy));
             double wx, wy;
-            wx = viewStack.AllocatedWidth / ToScreenW(SelectedImage.Volume.Width);
-            wy = viewStack.AllocatedHeight / ToScreenH(SelectedImage.Volume.Height);
+            wx = View.AllocatedWidth / ToScreenW(SelectedImage.Volume.Width);
+            wy = View.AllocatedHeight / ToScreenH(SelectedImage.Volume.Height);
             Scale = new SizeF((float)wy, (float)wy);
             UpdateView();
         }
