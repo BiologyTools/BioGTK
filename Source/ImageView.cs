@@ -47,7 +47,7 @@ namespace BioGTK
                 SelectedImage.Coordinate = new ZCT(0, (int)cBar.Value, (int)tBar.Value);
             else
                 SelectedImage.Coordinate = new ZCT((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
-            
+            UpdateImages();
         }
         /// It returns the coordinate of the selected image
         /// 
@@ -1079,6 +1079,7 @@ namespace BioGTK
                         Resolution,
                         GetCoordinate()
                     );
+                    
                 }
                 else
                 {
@@ -1340,7 +1341,6 @@ namespace BioGTK
                 glArea.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
                 glArea.ScrollEvent += ImageView_ScrollEvent;
                 glArea.ScrollEvent += OnMouseWheel;
-                glArea.Render += GlArea_Render;
                 glArea.SizeAllocated += PictureBox_SizeAllocated;
                 glArea.AddEvents((int)(EventMask.ButtonPressMask
                 | EventMask.ButtonReleaseMask
@@ -2191,6 +2191,8 @@ namespace BioGTK
         private void ValueChangedZ(object? sender, EventArgs e)
         {
             SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
+            if (SelectedImage?.isPyramidal == true)
+                SelectedImage.InvalidateTileCache();
             UpdateView(true);
         }
         /// The function ValueChanged is called when the value of the trackbar is changed.
@@ -2200,6 +2202,8 @@ namespace BioGTK
         private void ValueChangedC(object? sender, EventArgs e)
         {
             SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
+            if (SelectedImage?.isPyramidal == true)
+                SelectedImage.InvalidateTileCache();
             UpdateView(true);
         }
         /// The function ValueChanged is called when the value of the trackbar is changed.
@@ -2209,6 +2213,8 @@ namespace BioGTK
         private void ValueChangedT(object? sender, EventArgs e)
         {
             SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
+            if (SelectedImage?.isPyramidal == true)
+                SelectedImage.InvalidateTileCache();
             UpdateView(true);
         }
         private void UpdateScrollBars()

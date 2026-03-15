@@ -78,6 +78,8 @@ namespace BioGTK
         [Builder.Object]
         private MenuItem openSeriesMenu;
         [Builder.Object]
+        private MenuItem openZarr;
+        [Builder.Object]
         private MenuItem openQuPathProject;
         [Builder.Object]
         private MenuItem addImagesToTabMenu;
@@ -97,6 +99,8 @@ namespace BioGTK
         private MenuItem saveSeriesMenu;
         [Builder.Object]
         private MenuItem savePyramidalMenu;
+        [Builder.Object]
+        private MenuItem saveZarr;
         [Builder.Object]
         private MenuItem saveQuPathProject;
         [Builder.Object]
@@ -407,6 +411,7 @@ namespace BioGTK
             openQuPathProject.ButtonPressEvent += openQuPathProjectMenuClick;
             addImagesToTabMenu.ButtonPressEvent += addImagesToTabMenuClick;
             addOMEImagesToTab.ButtonPressEvent += addOMEImagesToTabClick;
+            openZarr.ButtonPressEvent += OpenZarr_ButtonPressEvent;
             saveSelectedTiff.ButtonPressEvent += saveSelectedTiffClick;
             saveSelectedOME.ButtonPressEvent += saveSelectedOMEClick;
             saveNumPyBut.ButtonPressEvent += SaveNumPyBut_ButtonPressEvent;
@@ -415,6 +420,7 @@ namespace BioGTK
             saveTabTiffMenu.ButtonPressEvent += saveTabTiffMenuClick;
             saveSeriesMenu.ButtonPressEvent += saveSeriesMenuClick;
             savePyramidalMenu.ButtonPressEvent += SavePyramidalMenu_ButtonPressEvent;
+            saveZarr.ButtonPressEvent += SaveZarr_ButtonPressEvent;
             saveQuPathProject.ButtonPressEvent += saveQuPathProject_ButtonPressEvent;
             imagesToStack.ButtonPressEvent += imagesToStackClick;
             uploadImageMenu.ButtonPressEvent += UploadImageMenu_ButtonPressEvent;
@@ -491,6 +497,40 @@ namespace BioGTK
             }, Gdk.DragAction.Copy);
             this.DragDataReceived += TabsView_DragDataReceived;
 
+        }
+
+        private async void SaveZarr_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Gtk.FileChooserDialog filechooser =
+         new Gtk.FileChooserDialog("Choose Zarr file to save.",
+             this,
+             FileChooserAction.Save,
+             "Cancel", ResponseType.Cancel,
+             "Open", ResponseType.Accept);
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            if(ImageView.SelectedImage == null)
+                ImageView.SelectedImage = await BioImage.OpenFile(filechooser.Filename, new ZCT());
+            BioImage.SaveZarr(ImageView.SelectedImage, filechooser.Filename);
+        }
+
+        private async void OpenZarr_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            Gtk.FileChooserDialog filechooser =
+         new Gtk.FileChooserDialog("Choose Zarr file to open.",
+             this,
+             FileChooserAction.Open,
+             "Cancel", ResponseType.Cancel,
+             "Open", ResponseType.Accept);
+            filechooser.SelectMultiple = true;
+            if (filechooser.Run() != (int)ResponseType.Accept)
+                return;
+            foreach (string f in filechooser.Filenames)
+            {
+                BioImage b = await BioImage.OpenFile(f, new ZCT());
+                if (b != null)
+                    AddTab(b);
+            }
         }
 
         private async void OpenURLMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)

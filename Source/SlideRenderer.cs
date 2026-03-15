@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,6 +18,7 @@ namespace BioGTK
         private OpenSlideGTK.TileCache _openTileCache;
         private HashSet<TileIndex> _uploadedTiles = new();
         private int _currentLevel = -1;
+        private ZCT _currentCoordinate = new ZCT(-1, -1, -1);
 
         public SlideRenderer(SlideGLArea glArea)
         {
@@ -47,6 +48,7 @@ namespace BioGTK
             _glArea.ClearTextureCache();
             _uploadedTiles.Clear();
             _currentLevel = -1;
+            _currentCoordinate = new ZCT(-1, -1, -1);
         }
 
         public async Task UpdateViewAsync(
@@ -66,10 +68,18 @@ namespace BioGTK
             var levelRes = schema.Resolutions[level];
             double levelUnitsPerPixel = levelRes.UnitsPerPixel;
 
-            if (level != _currentLevel)
+            bool coordinateChanged = coordinate.Z != _currentCoordinate.Z ||
+                                     coordinate.C != _currentCoordinate.C ||
+                                     coordinate.T != _currentCoordinate.T;
+
+            if (level != _currentLevel || coordinateChanged)
             {
                 _glArea.ReleaseLevelTextures(_currentLevel);
+                if (coordinateChanged)
+                    _glArea.ClearTextureCache();
+                _uploadedTiles.Clear();
                 _currentLevel = level;
+                _currentCoordinate = coordinate;
             }
 
             // Calculate world extent for the viewport
