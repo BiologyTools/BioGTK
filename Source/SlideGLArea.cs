@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -38,6 +38,7 @@ namespace BioGTK
         // ============================================================================
 
         private Dictionary<TileIndex, int> _textureCache = new();
+        private Dictionary<TileIndex, (int w, int h)> _textureSizes = new();
         private const int MAX_CACHED_TEXTURES = 500;
 
         // ============================================================================
@@ -401,6 +402,16 @@ void main()
                 return;
             }
 
+            // Safety: reject any buffer that is still too small to fill tileWidth*tileHeight*4.
+            // SlideRenderer pads edge tiles to the full size before calling here, so this
+            // should only trigger if another call site passes bad data.
+            int expectedBytes = tileWidth * tileHeight * 4;
+            if (pixelData.Length < expectedBytes)
+            {
+                Console.WriteLine($"WARNING: Tile {index} skipped — data {pixelData.Length}B < required {expectedBytes}B ({tileWidth}x{tileHeight}).");
+                return;
+            }
+
             MakeCurrent();
 
             // Check if already cached
@@ -422,7 +433,6 @@ void main()
 
             GL.PixelStore(PixelStoreParameter.UnpackAlignment, 1);
 
-            // CRITICAL FIX: Use Rgba instead of Bgra for internal format consistency
             GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba,
                           tileWidth, tileHeight, 0, PixelFormat.Rgba, PixelType.UnsignedByte, pixelData);
 
@@ -434,7 +444,20 @@ void main()
             GL.BindTexture(TextureTarget.Texture2D, 0);
 
             _textureCache[index] = tex;
+            _textureSizes[index] = (tileWidth, tileHeight);
             Console.WriteLine($"Uploaded tile {index} as texture {tex} ({tileWidth}x{tileHeight}, {pixelData.Length} bytes)");
+        }
+
+        /// <summary>
+        /// Get the uploaded texture dimensions for a cached tile.
+        /// Returns (0,0) if the tile is not in the cache.
+        /// </summary>
+        public void GetUploadedTileSize(TileIndex index, out int w, out int h)
+        {
+            if (_textureSizes.TryGetValue(index, out var sz))
+            { w = sz.w; h = sz.h; }
+            else
+            { w = 0; h = 0; }
         }
 
         /// <summary>
@@ -472,6 +495,7 @@ void main()
             {
                 GL.DeleteTexture(kvp.Value);
                 _textureCache.Remove(kvp.Key);
+                _textureSizes.Remove(kvp.Key);
             }
         }
 
@@ -489,6 +513,7 @@ void main()
                 GL.DeleteTexture(tex);
             }
             _textureCache.Clear();
+            _textureSizes.Clear();
         }
 
         private void EvictOldestTextures(int count)

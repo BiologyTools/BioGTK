@@ -146,7 +146,8 @@ namespace BioGTK
         }
 
         public bool ShowMasks { get; set; } = true;
-        public bool ShowOverview { get; set; } = true;
+        public const bool hideOverview = true;
+        public bool ShowOverview { get; set; } = !hideOverview;
         /* Getting the selected buffer from the selected image. */
         public static AForge.Bitmap SelectedBuffer
         {
@@ -1260,38 +1261,39 @@ namespace BioGTK
                 int srcW = targetResolution.SizeX;
                 int srcH = targetResolution.SizeY;
 
-                if (openSlide)
+                if (openSlide && SelectedImage.Type != BioImage.ImageType.zarr)
                 {
-                    if (SelectedImage.Type == BioImage.ImageType.zarr)
-                    {
-                        // Zarr goes through the BioLib slide source
-                        double unitsPerPx = SelectedImage.SlideBase.Schema.Resolutions
-                            .OrderByDescending(r => r.Value.UnitsPerPixel)
-                            .Skip(SelectedImage.Resolutions.Count - 1 - resolutionLevel)
-                            .First().Value.UnitsPerPixel;
-                        var sl = new BioLib.SliceInfo(0, 0, srcW, srcH, unitsPerPx, new ZCT());
-                        bt = await SelectedImage.SlideBase.GetSlice(sl, SelectedImage.PyramidalOrigin, SelectedImage.PyramidalSize);
-                    }
-                    else
-                    {
-                        // Standard OpenSlide: request the full extent at the chosen level
-                        double unitsPerPx = _openSlideBase.Schema.Resolutions
-                            .OrderByDescending(r => r.Value.UnitsPerPixel)
-                            .Skip(SelectedImage.Resolutions.Count - 1 - resolutionLevel)
-                            .First().Value.UnitsPerPixel;
-                        var sll = new OpenSlideGTK.SliceInfo(0, 0, srcW, srcH, unitsPerPx);
-                        bt = SelectedImage.OpenSlideBase.GetSlice(sll, new ZCT(), resolutionLevel);
-                    }
-                }
-                else
-                {
-                    // BioLib slide source (non-OpenSlide)
-                    double unitsPerPx = _slideBase.Schema.Resolutions
+                    // Standard OpenSlide path: request the full extent at the chosen level.
+                    double unitsPerPx = _openSlideBase.Schema.Resolutions
                         .OrderByDescending(r => r.Value.UnitsPerPixel)
                         .Skip(SelectedImage.Resolutions.Count - 1 - resolutionLevel)
                         .First().Value.UnitsPerPixel;
-                    var sl = new BioLib.SliceInfo(0, 0, srcW, srcH, unitsPerPx, new ZCT());
-                    bt = await SelectedImage.SlideBase.GetSlice(sl, SelectedImage.PyramidalOrigin, SelectedImage.PyramidalSize);
+                    var sll = new OpenSlideGTK.SliceInfo(0, 0, srcW, srcH, unitsPerPx);
+                    bt = SelectedImage.OpenSlideBase.GetSlice(sll, new ZCT(), resolutionLevel);
+                }
+                else
+                {
+                    // Zarr and all BioLib slide sources: use GetTile directly at the
+                    // chosen pyramid level.  GetSlice cannot be used here because
+                    // SliceInfo uses positive-Y pixel extents while the SlideBase
+                    // schema uses OSM negative-Y world coordinates — causing
+                    // GetTileInfos to return zero tiles and yielding a blank preview.
+                    var coordIndex = SelectedImage.Coords[0, 0, 0];
+                    var tileBitmap = await SelectedImage.GetTile(
+                        coordIndex, resolutionLevel,
+                        0, 0, srcW, srcH);
+
+                    if (tileBitmap == null)
+                    {
+                        Console.WriteLine("Preview: GetTile returned null — overview disabled.");
+                        ShowOverview = false;
+                        overviewImage = null;
+                        return;
+                    }
+
+                    // GetTile returns Format32bppArgb (BGRA); GetImageRGBA converts to
+                    // RGBA so the Bitmap constructor and ResizeBilinear see consistent data.
+                    bt = tileBitmap.GetImageRGBA().Bytes;
                 }
 
                 // Build bitmap from raw bytes (actual source dimensions) then scale to overview size
@@ -1302,6 +1304,11 @@ namespace BioGTK
 
                 ShowOverview = true;
                 Console.WriteLine($"Preview initialized: {overviewWidth}x{overviewHeight} from resolution level {resolutionLevel} ({srcW}x{srcH})");
+
+                // Trigger a canvas redraw so the newly fetched preview is shown immediately.
+                // InitPreview is async void, so the caller has already returned by the time
+                // we reach here — we must schedule the redraw on the GTK main thread.
+                Gtk.Application.Invoke((s, e) => sk?.QueueDraw());
             }
             catch (Exception ex)
             {
@@ -1341,6 +1348,7 @@ namespace BioGTK
                 glArea.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
                 glArea.ScrollEvent += ImageView_ScrollEvent;
                 glArea.ScrollEvent += OnMouseWheel;
+                glArea.Render += GlArea_Render;
                 glArea.SizeAllocated += PictureBox_SizeAllocated;
                 glArea.AddEvents((int)(EventMask.ButtonPressMask
                 | EventMask.ButtonReleaseMask
@@ -2594,7 +2602,7 @@ namespace BioGTK
                     return (int)SelectedImage.Level;
                 }
                 if (SelectedImage.isPyramidal)
-                    if (!openSlide)
+                    if (SelectedImage.SlideBase != null)
                         l = OpenSlideGTK.TileUtil.GetLevel(SelectedImage.SlideBase.Schema.Resolutions, Resolution);
                     else
                         l = OpenSlideGTK.TileUtil.GetLevel(SelectedImage.OpenSlideBase.Schema.Resolutions, Resolution);

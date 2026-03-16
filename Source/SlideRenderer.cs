@@ -18,7 +18,6 @@ namespace BioGTK
         private OpenSlideGTK.TileCache _openTileCache;
         private HashSet<TileIndex> _uploadedTiles = new();
         private int _currentLevel = -1;
-        private ZCT _currentCoordinate = new ZCT(-1, -1, -1);
 
         public SlideRenderer(SlideGLArea glArea)
         {
@@ -48,7 +47,6 @@ namespace BioGTK
             _glArea.ClearTextureCache();
             _uploadedTiles.Clear();
             _currentLevel = -1;
-            _currentCoordinate = new ZCT(-1, -1, -1);
         }
 
         public async Task UpdateViewAsync(
@@ -68,18 +66,10 @@ namespace BioGTK
             var levelRes = schema.Resolutions[level];
             double levelUnitsPerPixel = levelRes.UnitsPerPixel;
 
-            bool coordinateChanged = coordinate.Z != _currentCoordinate.Z ||
-                                     coordinate.C != _currentCoordinate.C ||
-                                     coordinate.T != _currentCoordinate.T;
-
-            if (level != _currentLevel || coordinateChanged)
+            if (level != _currentLevel)
             {
                 _glArea.ReleaseLevelTextures(_currentLevel);
-                if (coordinateChanged)
-                    _glArea.ClearTextureCache();
-                _uploadedTiles.Clear();
                 _currentLevel = level;
-                _currentCoordinate = coordinate;
             }
 
             // Calculate world extent for the viewport
@@ -115,10 +105,21 @@ namespace BioGTK
                         tileData = await _slideBase.GetTileAsync(tileInfo,coordinate);
                     if (tileData != null)
                     {
-                        // Fix: Calculate actual tile dimensions from extent, do not hardcode 256.
-                        // This handles edge tiles that might be smaller.
-                        int tW = (int)Math.Round(tileInfo.Extent.Width / levelUnitsPerPixel);
+                        // Nominal tile dimensions derived from the world-space extent.
+                        int tW = (int)Math.Round(tileInfo.Extent.Width  / levelUnitsPerPixel);
                         int tH = (int)Math.Round(tileInfo.Extent.Height / levelUnitsPerPixel);
+                        tW = Math.Max(1, tW);
+                        tH = Math.Max(1, tH);
+
+                        // Safety: if the buffer is still undersized (should not
+                        // happen now that ISlideSource uses extent-derived dimensions),
+                        // clamp tH to avoid reading past the buffer end in GL.
+                        int actualPixels = tileData.Length / 4;
+                        if (actualPixels > 0 && actualPixels < tW * tH)
+                        {
+                            if (actualPixels < tW) tW = actualPixels;
+                            tH = Math.Max(1, actualPixels / tW);
+                        }
 
                         _glArea.UploadTileTexture(tileInfo.Index, tileData, tW, tH);
                         _uploadedTiles.Add(tileInfo.Index);
@@ -169,29 +170,16 @@ namespace BioGTK
             int level,
             ITileSchema schema)
         {
-            // Get the actual tile size from schema (typically 256x256)
-            int tileWidth = schema.GetTileWidth(level);
-            int tileHeight = schema.GetTileHeight(level);
-
-            // Convert tile extent to pixel coordinates
+            // Convert tile world extent to screen pixel coordinates.
             var pixelExtent = OpenSlideGTK.ExtentEx.WorldToPixelInvertedY(tile.Extent, viewResolution);
 
-            // Use approach 1: MinY with positive origin
-            double tileLeftPx = pixelExtent.MinX;
-            double tileTopPx = pixelExtent.MinY;
-            double viewXPx = pyramidalOrigin.X;
-            double viewYPx = pyramidalOrigin.Y;
+            float screenX = (float)(pixelExtent.MinX - pyramidalOrigin.X);
+            float screenY = (float)(pixelExtent.MinY - pyramidalOrigin.Y);
 
-            float screenX = (float)(tileLeftPx - viewXPx);
-            float screenY = (float)(tileTopPx - viewYPx);
-
-            // KEY FIX: Use the extent dimensions directly, not fixed tile size
-            // The extent already accounts for any edge tiles that might be smaller
-            float screenWidth = (float)pixelExtent.Width;
+            // Screen size from world extent — GL stretches the texture to fill,
+            // which is correct even for edge tiles (smaller texture, same world area).
+            float screenWidth  = (float)pixelExtent.Width;
             float screenHeight = (float)pixelExtent.Height;
-
-            // Comprehensive debug logging
-            // Console.WriteLine(...) // Reduced noise for production
 
             return new TileRenderInfo(tile.Index, screenX, screenY, screenWidth, screenHeight);
         }

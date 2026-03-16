@@ -37,6 +37,7 @@ namespace BioGTK
         public static SAMTool samTool;
         public static Updater updater;
         private static int selectedIndex;
+        public static Progress prog = Progress.Create("Loading","", "");
         static bool useGPU = true, useVips = false, useImageSharp = false;
         public static bool UseGPU
         {

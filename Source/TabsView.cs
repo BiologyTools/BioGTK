@@ -498,7 +498,7 @@ namespace BioGTK
             this.DragDataReceived += TabsView_DragDataReceived;
 
         }
-
+        Progress prog = null;
         private async void SaveZarr_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Gtk.FileChooserDialog filechooser =
@@ -509,8 +509,11 @@ namespace BioGTK
              "Open", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
-            if(ImageView.SelectedImage == null)
-                ImageView.SelectedImage = await BioImage.OpenFile(filechooser.Filename, new ZCT());
+            filechooser.Hide();
+            prog = Progress.Create("Saving Zarr", "Saving " + ImageView.SelectedImage.ID + " as Zarr file.", filechooser.Filename);
+            if (ImageView.SelectedImage == null)
+                ImageView.SelectedImage = await BioImage.OpenFile(filechooser.Filename);
+
             BioImage.SaveZarr(ImageView.SelectedImage, filechooser.Filename);
         }
 
@@ -525,6 +528,7 @@ namespace BioGTK
             filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
+            filechooser.Hide();
             foreach (string f in filechooser.Filenames)
             {
                 BioImage b = await BioImage.OpenFile(f, new ZCT());
@@ -539,9 +543,8 @@ namespace BioGTK
             if (box.Run() == (int)ResponseType.Ok)
             {
                 BioImage b = await BioImage.OpenFile(box.GetUrl());
-                App.viewer = ImageView.Create(b);
+                AddTab(b);
             }
-            App.viewer.Show();
             box.Destroy();
         }
 
