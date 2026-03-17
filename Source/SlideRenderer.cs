@@ -72,19 +72,23 @@ namespace BioGTK
                 _currentLevel = level;
             }
 
-            // Calculate world extent for the viewport
-            double minX = pyramidalOrigin.X * resolution;
-            double minY = -pyramidalOrigin.Y * resolution;
-            double width = viewportWidth * resolution;
-            double height = viewportHeight * resolution;
+            // Calculate world extent for the viewport.
+            // pyramidalOrigin is in level-pixel coordinates. Multiply by
+            // levelUnitsPerPixel (not the raw resolution scalar) to get world units.
+            // Using the raw resolution diverges from levelUnitsPerPixel between zoom
+            // levels, causing GetTileInfos to cover only a fraction of the viewport.
+            double minX =  pyramidalOrigin.X * levelUnitsPerPixel;
+            double minY = -pyramidalOrigin.Y * levelUnitsPerPixel;
+            double width  = viewportWidth  * levelUnitsPerPixel;
+            double height = viewportHeight * levelUnitsPerPixel;
             var worldExtent = new Extent(minX, minY - height, minX + width, minY);
 
             // Get tiles that intersect the viewport
             var tileInfos = schema.GetTileInfos(worldExtent, level).ToList();
-            
+
             if (tileInfos.Count == 0)
             {
-                var pixelExtent = OpenSlideGTK.ExtentEx.WorldToPixelInvertedY(worldExtent, resolution);
+                var pixelExtent = OpenSlideGTK.ExtentEx.WorldToPixelInvertedY(worldExtent, levelUnitsPerPixel);
                 tileInfos = schema.GetTileInfos(pixelExtent, level).ToList();
             }
 
@@ -170,14 +174,14 @@ namespace BioGTK
             int level,
             ITileSchema schema)
         {
-            // Convert tile world extent to screen pixel coordinates.
-            var pixelExtent = OpenSlideGTK.ExtentEx.WorldToPixelInvertedY(tile.Extent, viewResolution);
+            // Convert tile world extent to level-pixel coordinates using
+            // levelUnitsPerPixel so positions are consistent with pyramidalOrigin.
+            double levelUnitsPerPixel = schema.Resolutions[level].UnitsPerPixel;
+            var pixelExtent = OpenSlideGTK.ExtentEx.WorldToPixelInvertedY(tile.Extent, levelUnitsPerPixel);
 
             float screenX = (float)(pixelExtent.MinX - pyramidalOrigin.X);
             float screenY = (float)(pixelExtent.MinY - pyramidalOrigin.Y);
 
-            // Screen size from world extent — GL stretches the texture to fill,
-            // which is correct even for edge tiles (smaller texture, same world area).
             float screenWidth  = (float)pixelExtent.Width;
             float screenHeight = (float)pixelExtent.Height;
 

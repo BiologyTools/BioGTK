@@ -146,7 +146,7 @@ namespace BioGTK
         }
 
         public bool ShowMasks { get; set; } = true;
-        public const bool hideOverview = true;
+        public const bool hideOverview = false;
         public bool ShowOverview { get; set; } = !hideOverview;
         /* Getting the selected buffer from the selected image. */
         public static AForge.Bitmap SelectedBuffer
@@ -1273,14 +1273,14 @@ namespace BioGTK
                 }
                 else
                 {
-                    // Zarr and all BioLib slide sources: use GetTile directly at the
-                    // chosen pyramid level.  GetSlice cannot be used here because
-                    // SliceInfo uses positive-Y pixel extents while the SlideBase
-                    // schema uses OSM negative-Y world coordinates — causing
-                    // GetTileInfos to return zero tiles and yielding a blank preview.
-                    var coordIndex = SelectedImage.Coords[0, 0, 0];
+                    // Zarr: call GetTile once for the whole level, convert directly to
+                    // SKImage via BitmapToSKImage (handles all pixel formats correctly),
+                    // then scale down to overview size on a small SKSurface.
+                    // Previous attempts via .GetImageRGBA().Bytes were unreliable because
+                    // GetTile already calls GetImageRGBA() internally, so calling it again
+                    // on the returned bitmap double-converted the data and corrupted it.
                     var tileBitmap = await SelectedImage.GetTile(
-                        coordIndex, resolutionLevel,
+                        SelectedImage.Coords[0, 0, 0], resolutionLevel,
                         0, 0, srcW, srcH);
 
                     if (tileBitmap == null)
@@ -1291,9 +1291,18 @@ namespace BioGTK
                         return;
                     }
 
-                    // GetTile returns Format32bppArgb (BGRA); GetImageRGBA converts to
-                    // RGBA so the Bitmap constructor and ResizeBilinear see consistent data.
-                    bt = tileBitmap.GetImageRGBA().Bytes;
+                    using var fullSK = BioImage.BitmapToSKImage(tileBitmap);
+                    using var scaleSurface = SKSurface.Create(
+                        new SKImageInfo(overviewWidth, overviewHeight, SKColorType.Rgba8888, SKAlphaType.Premul));
+                    scaleSurface.Canvas.DrawImage(fullSK,
+                        new SKRect(0, 0, srcW, srcH),
+                        new SKRect(0, 0, overviewWidth, overviewHeight));
+                    overviewImage = scaleSurface.Snapshot();
+
+                    ShowOverview = true;
+                    Console.WriteLine($"Preview initialized: {overviewWidth}x{overviewHeight} from level {resolutionLevel} ({srcW}x{srcH})");
+                    Gtk.Application.Invoke((s, e) => { sk?.QueueDraw(); glArea?.QueueDraw(); });
+                    return;
                 }
 
                 // Build bitmap from raw bytes (actual source dimensions) then scale to overview size
@@ -1308,7 +1317,7 @@ namespace BioGTK
                 // Trigger a canvas redraw so the newly fetched preview is shown immediately.
                 // InitPreview is async void, so the caller has already returned by the time
                 // we reach here — we must schedule the redraw on the GTK main thread.
-                Gtk.Application.Invoke((s, e) => sk?.QueueDraw());
+                Gtk.Application.Invoke((s, e) => { sk?.QueueDraw(); glArea?.QueueDraw(); });
             }
             catch (Exception ex)
             {
@@ -2651,10 +2660,16 @@ namespace BioGTK
                 mousePoint + mouseColor + ", " + SelectedImage.Buffers[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") "
                 + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2") + " , Well:" + SelectedImage.Level;
             }
-            else
+            else if (SelectedImage.Type == BioImage.ImageType.stack)
                 statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
                     mousePoint + mouseColor + ", " + SelectedImage.Buffers[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") "
                     + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2") + ", Res:" + Resolution + " Level:" + Level;
+            else if (SelectedImage.Type == BioImage.ImageType.pyramidal)
+            {
+                statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
+                mousePoint + mouseColor + ", " + SelectedImage.Buffers[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") "
+                + PyramidalOrigin.X.ToString("N2") + "," + PyramidalOrigin.Y.ToString("N2") + " , Level:" + SelectedImage.Level;
+            }
         }
         /// It updates the view.
         public void UpdateView(bool updateImages = true)
@@ -2847,29 +2862,11 @@ namespace BioGTK
                 }
                 RequestDeferredRender();
             }
-            else if (SelectedImage.isPyramidal && ShowOverview &&
-                e.Event.State.HasFlag(ModifierType.Button1Mask))
+            else
             {
-                if (!OpenSlide)
-                {
-                    double dsx = SelectedImage.SlideBase.Schema.Resolutions[0].UnitsPerPixel / Resolution;
-                    BioLib.Resolution rs = SelectedImage.Resolutions[Level];
-                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX);
-                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY);
-                    PyramidalOrigin = new PointD(dx, dy);
-                }
-                else
-                {
-                    double dsx = SelectedImage.OpenSlideBase.Schema.Resolutions[0].UnitsPerPixel / Resolution;
-                    BioLib.Resolution rs = SelectedImage.Resolutions[Level];
-                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX);
-                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY);
-                    PyramidalOrigin = new PointD(dx, dy);
-                }
-                RequestDeferredRender();
+                // Delegate all tool logic to Tools.cs
+                App.tools.ToolMove(p, e);
             }
-            // Delegate all tool logic to Tools.cs
-            App.tools.ToolMove(p, e);
             UpdateStatus();
             pd = p;
         }
