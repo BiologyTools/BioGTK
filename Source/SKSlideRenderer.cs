@@ -1,4 +1,4 @@
-﻿using SkiaSharp;
+using SkiaSharp;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +15,9 @@ namespace BioGTK
     public class SKSlideRenderer : IDisposable
     {
         #region Fields and Properties
+        private readonly SemaphoreSlim _renderSemaphore = new SemaphoreSlim(1, 1);
+        /// <summary>True if the last UpdateViewAsync call was skipped because a render was already in progress.</summary>
+        public bool LastRenderSkipped { get; private set; }
         private SkiaStitchingPipeline _stitchingPipeline;
 
         // Current rendering state
@@ -151,39 +154,29 @@ namespace BioGTK
         {
             if (!_hasSource || _stitchingPipeline == null)
                 return;
-            /*
-            // Check if update is needed
-            if (!forceUpdate && !NeedsUpdate(origin, width, height, resolution, coordinate))
-                return;
-            */
-            // Cancel any in-progress render
-            //CancelCurrentRender();
 
-            // Acquire update lock
-            //await _updateSemaphore.WaitAsync();
+            // If a render is already in progress, record the skip and return.
+            // The finally block of the running render will re-schedule via RequestDeferredRender.
+            if (!_renderSemaphore.Wait(0))
+            {
+                LastRenderSkipped = true;
+                return;
+            }
+
+            // We hold the semaphore — clear the skip flag and run.
+            LastRenderSkipped = false;
 
             try
             {
                 IsRendering = true;
-                /*
-                // Create new cancellation token for this render
-                _renderCancellation = new CancellationTokenSource();
-                var cancellationToken = _renderCancellation.Token;
-                */
+
                 // Store current parameters
                 _lastOrigin = origin;
                 _lastResolution = resolution;
                 _lastCoordinate = coordinate;
                 _lastWidth = width;
                 _lastHeight = height;
-                /*
-                // Progressive rendering: render low-res preview first if enabled
-                if (_useProgressiveRendering && ShouldRenderPreview(resolution))
-                {
-                    await RenderLowResPreviewAsync(origin, width, height, resolution, coordinate);
-                }
-                */
-                // Render full quality
+
                 await RenderFullQualityAsync(origin, resolution, coordinate, width, height);
             }
             catch (Exception ex)
@@ -193,6 +186,12 @@ namespace BioGTK
             finally
             {
                 IsRendering = false;
+                _renderSemaphore.Release();
+
+                // If a request was skipped while we were running, reschedule so the
+                // view always ends up showing the latest coordinates.
+                if (LastRenderSkipped)
+                    Gtk.Application.Invoke((s, a) => App.viewer?.RequestDeferredRender());
             }
         }
 

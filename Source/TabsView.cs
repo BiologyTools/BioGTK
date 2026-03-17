@@ -522,10 +522,9 @@ namespace BioGTK
             Gtk.FileChooserDialog filechooser =
          new Gtk.FileChooserDialog("Choose Zarr file to open.",
              this,
-             FileChooserAction.Open,
+             FileChooserAction.SelectFolder,
              "Cancel", ResponseType.Cancel,
              "Open", ResponseType.Accept);
-            filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();

@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using AForge;
 using BruTile;
+using Gtk;
 using OpenSlideGTK;
 
 namespace BioGTK
@@ -18,6 +20,8 @@ namespace BioGTK
         private OpenSlideGTK.TileCache _openTileCache;
         private HashSet<TileIndex> _uploadedTiles = new();
         private int _currentLevel = -1;
+        private readonly SemaphoreSlim _renderSemaphore = new SemaphoreSlim(1, 1);
+        public bool LastRenderSkipped { get; private set; }
 
         public SlideRenderer(SlideGLArea glArea)
         {
@@ -60,90 +64,105 @@ namespace BioGTK
                 return;
             if (viewportWidth <= 1 && viewportHeight <= 1)
                 return;
-            var schema = _useOpenSlide ? _openSlideBase.Schema : _slideBase.Schema;
 
-            int level = TileUtil.GetLevel(schema.Resolutions, resolution);
-            var levelRes = schema.Resolutions[level];
-            double levelUnitsPerPixel = levelRes.UnitsPerPixel;
-
-            if (level != _currentLevel)
+            // Prevent concurrent renders racing to update the GL tile set.
+            if (!_renderSemaphore.Wait(0))
             {
-                _glArea.ReleaseLevelTextures(_currentLevel);
-                _currentLevel = level;
+                LastRenderSkipped = true;
+                return;
             }
+            LastRenderSkipped = false;
 
-            // Calculate world extent for the viewport.
-            // pyramidalOrigin is in level-pixel coordinates. Multiply by
-            // levelUnitsPerPixel (not the raw resolution scalar) to get world units.
-            // Using the raw resolution diverges from levelUnitsPerPixel between zoom
-            // levels, causing GetTileInfos to cover only a fraction of the viewport.
-            double minX =  pyramidalOrigin.X * levelUnitsPerPixel;
-            double minY = -pyramidalOrigin.Y * levelUnitsPerPixel;
-            double width  = viewportWidth  * levelUnitsPerPixel;
-            double height = viewportHeight * levelUnitsPerPixel;
-            var worldExtent = new Extent(minX, minY - height, minX + width, minY);
-
-            // Get tiles that intersect the viewport
-            var tileInfos = schema.GetTileInfos(worldExtent, level).ToList();
-
-            if (tileInfos.Count == 0)
+            try
             {
-                var pixelExtent = OpenSlideGTK.ExtentEx.WorldToPixelInvertedY(worldExtent, levelUnitsPerPixel);
-                tileInfos = schema.GetTileInfos(pixelExtent, level).ToList();
-            }
+                var schema = _useOpenSlide ? _openSlideBase.Schema : _slideBase.Schema;
 
-            if(_openSlideBase != null)
-                await _openSlideBase.FetchTilesAsync(tileInfos.ToList(), level, coordinate);
-            else
-                await _slideBase.FetchTilesAsync(tileInfos.ToList(), level, coordinate, pyramidalOrigin, new Size(viewportWidth,viewportHeight));
-            
-            var renderInfos = new List<TileRenderInfo>();
-            foreach (var tileInfo in tileInfos)
-            {
-                if (!_glArea.HasTileTexture(tileInfo.Index))
+                int level = TileUtil.GetLevel(schema.Resolutions, resolution);
+                var levelRes = schema.Resolutions[level];
+                double levelUnitsPerPixel = levelRes.UnitsPerPixel;
+
+                if (level != _currentLevel)
                 {
-                    byte[] tileData;
-                    if (_useOpenSlide)
-                        tileData = await _openSlideBase.GetTileAsync(tileInfo);
-                    else
-                        tileData = await _slideBase.GetTileAsync(tileInfo,coordinate);
-                    if (tileData != null)
+                    _glArea.ReleaseLevelTextures(_currentLevel);
+                    _currentLevel = level;
+                }
+
+                double minX =  pyramidalOrigin.X * levelUnitsPerPixel;
+                double minY = -pyramidalOrigin.Y * levelUnitsPerPixel;
+                double width  = viewportWidth  * levelUnitsPerPixel;
+                double height = viewportHeight * levelUnitsPerPixel;
+                var worldExtent = new Extent(minX, minY - height, minX + width, minY);
+
+                var tileInfos = schema.GetTileInfos(worldExtent, level).ToList();
+
+                if (tileInfos.Count == 0)
+                {
+                    var pixelExtent = OpenSlideGTK.ExtentEx.WorldToPixelInvertedY(worldExtent, levelUnitsPerPixel);
+                    tileInfos = schema.GetTileInfos(pixelExtent, level).ToList();
+                }
+
+                if (_openSlideBase != null)
+                    await _openSlideBase.FetchTilesAsync(tileInfos.ToList(), level, coordinate);
+                else
+                    await _slideBase.FetchTilesAsync(tileInfos.ToList(), level, coordinate, pyramidalOrigin, new Size(viewportWidth, viewportHeight));
+
+                var renderInfos = new List<TileRenderInfo>();
+                foreach (var tileInfo in tileInfos)
+                {
+                    if (!_glArea.HasTileTexture(tileInfo.Index))
                     {
-                        // Nominal tile dimensions derived from the world-space extent.
-                        int tW = (int)Math.Round(tileInfo.Extent.Width  / levelUnitsPerPixel);
-                        int tH = (int)Math.Round(tileInfo.Extent.Height / levelUnitsPerPixel);
-                        tW = Math.Max(1, tW);
-                        tH = Math.Max(1, tH);
-
-                        // Safety: if the buffer is still undersized (should not
-                        // happen now that ISlideSource uses extent-derived dimensions),
-                        // clamp tH to avoid reading past the buffer end in GL.
-                        int actualPixels = tileData.Length / 4;
-                        if (actualPixels > 0 && actualPixels < tW * tH)
+                        byte[] tileData;
+                        if (_useOpenSlide)
+                            tileData = await _openSlideBase.GetTileAsync(tileInfo);
+                        else
+                            tileData = await _slideBase.GetTileAsync(tileInfo, coordinate);
+                        if (tileData != null)
                         {
-                            if (actualPixels < tW) tW = actualPixels;
-                            tH = Math.Max(1, actualPixels / tW);
-                        }
+                            int tW = (int)Math.Round(tileInfo.Extent.Width  / levelUnitsPerPixel);
+                            int tH = (int)Math.Round(tileInfo.Extent.Height / levelUnitsPerPixel);
+                            tW = Math.Max(1, tW);
+                            tH = Math.Max(1, tH);
 
-                        _glArea.UploadTileTexture(tileInfo.Index, tileData, tW, tH);
-                        _uploadedTiles.Add(tileInfo.Index);
+                            int actualPixels = tileData.Length / 4;
+                            if (actualPixels > 0 && actualPixels < tW * tH)
+                            {
+                                if (actualPixels < tW) tW = actualPixels;
+                                tH = Math.Max(1, actualPixels / tW);
+                            }
+
+                            _glArea.UploadTileTexture(tileInfo.Index, tileData, tW, tH);
+                            _uploadedTiles.Add(tileInfo.Index);
+                        }
+                    }
+
+                    if (_glArea.HasTileTexture(tileInfo.Index))
+                    {
+                        var renderInfo = CalculateScreenPosition(
+                            tileInfo,
+                            pyramidalOrigin,
+                            resolution,
+                            level,
+                            schema);
+                        renderInfos.Add(renderInfo);
                     }
                 }
 
-                if (_glArea.HasTileTexture(tileInfo.Index))
-                {
-                    var renderInfo = CalculateScreenPosition(
-                        tileInfo,
-                        pyramidalOrigin,
-                        resolution,
-                        level,
-                        schema);
-                    renderInfos.Add(renderInfo);
-                }
+                _glArea.SetTilesToRender(renderInfos);
+                _glArea.RequestRedraw();
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"SlideRenderer.UpdateViewAsync error: {ex.Message}");
+            }
+            finally
+            {
+                _renderSemaphore.Release();
 
-            _glArea.SetTilesToRender(renderInfos);
-            _glArea.RequestRedraw();
+                // If a request was skipped while we were running, reschedule so the
+                // view always ends up showing the latest coordinates.
+                if (LastRenderSkipped)
+                    Gtk.Application.Invoke((s, a) => App.viewer?.RequestDeferredRender());
+            }
         }
 
         private async Task<byte[]> FetchTileAsync(TileInfo tileInfo, int level, ZCT coordinate)

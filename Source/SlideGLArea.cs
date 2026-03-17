@@ -402,13 +402,21 @@ void main()
                 return;
             }
 
-            // Safety: reject any buffer that is still too small to fill tileWidth*tileHeight*4.
-            // SlideRenderer pads edge tiles to the full size before calling here, so this
-            // should only trigger if another call site passes bad data.
+            // The buffer is always BGRA = 4 bytes per pixel.
+            // GetTile pads every tile — including edge tiles — to exactly
+            // tileWidth x tileHeight pixels, so the dimensions passed by SlideRenderer
+            // (the schema tile size) always match the buffer. We just validate and bail
+            // on any genuine mismatch rather than trying to guess new dimensions.
+            if (tileWidth <= 0 || tileHeight <= 0)
+            {
+                Console.WriteLine($"WARNING: Tile {index} has invalid dimensions {tileWidth}x{tileHeight}, skipping.");
+                return;
+            }
+
             int expectedBytes = tileWidth * tileHeight * 4;
             if (pixelData.Length < expectedBytes)
             {
-                Console.WriteLine($"WARNING: Tile {index} skipped — data {pixelData.Length}B < required {expectedBytes}B ({tileWidth}x{tileHeight}).");
+                Console.WriteLine($"ERROR: Tile {index} buffer too small — need {expectedBytes}B, got {pixelData.Length}B, skipping.");
                 return;
             }
 
@@ -427,14 +435,26 @@ void main()
                 EvictOldestTextures(MAX_CACHED_TEXTURES / 4);
             }
 
-            // Create and upload texture
+            // Create and upload texture.
+            // Pin the managed array explicitly so the GC cannot relocate it while the
+            // driver is reading from the pointer (avoids ExecutionEngineException).
+            // PixelFormat.Bgra matches the byte order produced by ReadRegionAsync.
             int tex = GL.GenTexture();
             GL.BindTexture(TextureTarget.Texture2D, tex);
+            GL.PixelStore(PixelStoreParameter.UnpackAlignment, 4);
 
-            GL.PixelStore(PixelStoreParameter.UnpackAlignment, 1);
-
-            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba,
-                          tileWidth, tileHeight, 0, PixelFormat.Rgba, PixelType.UnsignedByte, pixelData);
+            var handle = System.Runtime.InteropServices.GCHandle.Alloc(pixelData, System.Runtime.InteropServices.GCHandleType.Pinned);
+            try
+            {
+                GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba,
+                              tileWidth, tileHeight, 0,
+                              PixelFormat.Bgra, PixelType.UnsignedByte,
+                              handle.AddrOfPinnedObject());
+            }
+            finally
+            {
+                handle.Free();
+            }
 
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
