@@ -1,4 +1,5 @@
 using AForge;
+using System.Linq;
 using AForge.Imaging.Filters;
 using Bio;
 using BruTile;
@@ -26,6 +27,12 @@ namespace BioGTK
         /// <summary> Used to load in the glade file resource as a window. </summary>
         private Builder _builder;
         public List<BioImage> Images = new List<BioImage>();
+        private static void Log(string msg)
+        {
+            try { System.IO.File.AppendAllText(@"C:\\Users\\Public\\biolog.txt", msg + "\n"); }
+            catch { }
+        }
+
         //public List<SKImage> SKImages = new List<SKImage>();
         public void SetCoordinate(int z, int c, int t)
         {
@@ -1110,6 +1117,7 @@ namespace BioGTK
             {
                 UpdateGUI();
             }
+
             if (!MacOS)
             {
                 if (SelectedImage.isPyramidal && glArea.AllocatedWidth > 1 && glArea.AllocatedHeight > 1)
@@ -1211,6 +1219,43 @@ namespace BioGTK
                 }
             }
         }
+
+        /// <summary>
+        /// Asynchronously fetches the active well field at the coarsest pyramid level
+        /// and places it in SKImages so RenderSkia can draw it.
+        /// </summary>
+        private async Task UpdateWellImageAsync()
+        {
+            try
+            {
+                var bitmap = await SelectedImage.GetWellFieldBitmap().ConfigureAwait(false);
+                if (bitmap == null) return;
+
+                var tcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
+                Gtk.Application.Invoke((s, e) =>
+                {
+                    try
+                    {
+                        for (int i = 0; i < SKImages.Count; i++) { SKImages[i].Dispose(); Bitmaps[i].Dispose(); }
+                        SKImages.Clear();
+                        Bitmaps.Clear();
+
+                        SKImage skim = BitmapToSKImage(bitmap);
+                        SKImages.Add(skim);
+                        Bitmaps.Add(bitmap);
+
+                        View?.QueueDraw();
+                        tcs.SetResult(true);
+                    }
+                    catch (Exception ex) { tcs.SetException(ex); }
+                });
+                await tcs.Task.ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"UpdateWellImageAsync error: {ex.Message}");
+            }
+        }
         /// It updates the image.
         public void UpdateImage()
         {
@@ -1238,8 +1283,38 @@ namespace BioGTK
                 refresh = false;
 
                 const int OVERVIEW_SIZE = 160;
-                // Maximum pixel dimension considered "small enough to read quickly"
                 const int MAX_QUICK_PIXELS = 2000;
+
+                // Well images: fetch the coarsest field level directly from ZarrWellLevels.
+                if (SelectedImage.Type == BioImage.ImageType.well)
+                {
+                    var fieldBitmap = await SelectedImage.GetWellFieldBitmap().ConfigureAwait(false);
+                    if (fieldBitmap == null)
+                    {
+                        Console.WriteLine("Preview: GetWellFieldBitmap returned null — overview disabled.");
+                        ShowOverview = false;
+                        overviewImage = null;
+                        return;
+                    }
+
+                    double ar = (double)fieldBitmap.Width / Math.Max(1, fieldBitmap.Height);
+                    int ow = ar >= 1.0 ? OVERVIEW_SIZE : Math.Max(20, (int)(OVERVIEW_SIZE * ar));
+                    int oh = ar >= 1.0 ? Math.Max(20, (int)(OVERVIEW_SIZE / ar)) : OVERVIEW_SIZE;
+                    overview = new Rectangle(0, 0, ow, oh);
+
+                    using var fullSK = BioImage.BitmapToSKImage(fieldBitmap);
+                    using var scaleSurface = SKSurface.Create(
+                        new SKImageInfo(ow, oh, SKColorType.Rgba8888, SKAlphaType.Premul));
+                    scaleSurface.Canvas.DrawImage(fullSK,
+                        new SKRect(0, 0, fieldBitmap.Width, fieldBitmap.Height),
+                        new SKRect(0, 0, ow, oh));
+                    overviewImage = scaleSurface.Snapshot();
+
+                    ShowOverview = true;
+                    Console.WriteLine($"Well preview: {ow}x{oh} from coarsest field level");
+                    Gtk.Application.Invoke((s, e) => { sk?.QueueDraw(); glArea?.QueueDraw(); });
+                    return;
+                }
 
                 // Find the best resolution level: the smallest level (highest index)
                 // whose pixel dimensions are within MAX_QUICK_PIXELS so it can be
@@ -2636,30 +2711,24 @@ namespace BioGTK
 
         private void UpdateLevel()
         {
-            if (SelectedImage.isPyramidal)
+            if (!SelectedImage.isPyramidal) return;
+            if (l != ImageView.SelectedImage.Level)
             {
-                if (l != ImageView.SelectedImage.Level)
-                {
-                    if (openSlide)
-                        for (int j = 0; j < ImageView.SelectedImage.OpenSlideBase.stitch.gpuTiles.Count; j++)
-                        {
-                            var tile = ImageView.SelectedImage.OpenSlideBase.stitch.gpuTiles[j];
-                            if (tile.Index.Level != Level)
-                            {
-                                tile.Dispose();
-                            }
-                        }
-                    else
-                        for (int j = 0; j < ImageView.SelectedImage.SlideBase.stitch.gpuTiles.Count; j++)
-                        {
-                            var tile = ImageView.SelectedImage.SlideBase.stitch.gpuTiles[j];
-                            if (tile.Index.Level != Level)
-                            {
-                                tile.Dispose();
-                            }
-                        }
-                    l = ImageView.SelectedImage.Level;
-                }
+                if (openSlide)
+                    for (int j = 0; j < ImageView.SelectedImage.OpenSlideBase.stitch.gpuTiles.Count; j++)
+                    {
+                        var tile = ImageView.SelectedImage.OpenSlideBase.stitch.gpuTiles[j];
+                        if (tile.Index.Level != Level)
+                            tile.Dispose();
+                    }
+                else if (ImageView.SelectedImage.SlideBase?.stitch != null)
+                    for (int j = 0; j < ImageView.SelectedImage.SlideBase.stitch.gpuTiles.Count; j++)
+                    {
+                        var tile = ImageView.SelectedImage.SlideBase.stitch.gpuTiles[j];
+                        if (tile.Index.Level != Level)
+                            tile.Dispose();
+                    }
+                l = ImageView.SelectedImage.Level;
             }
         }
 
@@ -2670,15 +2739,13 @@ namespace BioGTK
             {
                 if (SelectedImage == null)
                     return 0;
-                if (SelectedImage.Type == BioImage.ImageType.well)
-                {
-                    return (int)SelectedImage.Level;
-                }
                 if (SelectedImage.isPyramidal)
+                {
                     if (SelectedImage.SlideBase != null)
                         l = OpenSlideGTK.TileUtil.GetLevel(SelectedImage.SlideBase.Schema.Resolutions, Resolution);
-                    else
+                    else if (SelectedImage.OpenSlideBase != null)
                         l = OpenSlideGTK.TileUtil.GetLevel(SelectedImage.OpenSlideBase.Schema.Resolutions, Resolution);
+                }
                 return l;
             }
             set
@@ -2686,16 +2753,9 @@ namespace BioGTK
                 if (value < 0)
                     return;
                 if (l != value)
-                {
                     UpdateLevel();
-                }
                 l = value;
                 SelectedImage.Level = l;
-                if (SelectedImage.Type == BioImage.ImageType.well)
-                {
-                    SelectedImage.UpdateBuffersWells();
-                    UpdateView();
-                }
                 UpdateScrollBars();
             }
         }
@@ -2716,7 +2776,7 @@ namespace BioGTK
         /// It updates the status of the user.
         public void UpdateStatus()
         {
-            if (SelectedImage.Buffers.Count == 0)
+            if (SelectedImage.Buffers.Count == 0 && SelectedImage.Type != BioImage.ImageType.well)
                 return;
             if (SelectedImage.Type == BioImage.ImageType.well)
             {
@@ -2728,11 +2788,13 @@ namespace BioGTK
                 statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
                     mousePoint + mouseColor + ", " + SelectedImage.Resolutions[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") "
                     + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2") + ", Res:" + Resolution + " Level:" + Level;
-            else if (SelectedImage.Type == BioImage.ImageType.pyramidal || SelectedImage.Type == BioImage.ImageType.zarr)
+            else if (SelectedImage.Type == BioImage.ImageType.pyramidal || 
+                     SelectedImage.Type == BioImage.ImageType.zarr ||
+                     SelectedImage.Type == BioImage.ImageType.well)
             {
                 statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
                 mousePoint + mouseColor + ", " + SelectedImage.Resolutions[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") "
-                + PyramidalOrigin.X.ToString("N2") + "," + PyramidalOrigin.Y.ToString("N2") + " , Level:" + SelectedImage.Level;
+                + PyramidalOrigin.X.ToString("N2") + "," + PyramidalOrigin.Y.ToString("N2") + " , Level:" + Level + " Well:" + SelectedImage.Level;
             }
         }
         /// It updates the view.
@@ -3512,7 +3574,17 @@ namespace BioGTK
             _suppressViewUpdates = true;
             try
             {
-                if (SelectedImage.Type == BioImage.ImageType.pyramidal)
+                if (SelectedImage.Type == BioImage.ImageType.well ||
+                    SelectedImage.Type == BioImage.ImageType.zarr)
+                {
+                    var schema = SelectedImage.SlideBase?.Schema;
+                    if (schema != null && schema.Resolutions != null && schema.Resolutions.Count > 0)
+                        Resolution = schema.Resolutions[schema.Resolutions.Count - 1].UnitsPerPixel * 0.98;
+                    else
+                        Resolution = SelectedImage.GetUnitPerPixel(SelectedImage.Resolutions.Count - 1) * 0.98;
+                    PyramidalOrigin = new PointD(0, 0);
+                }
+                else if (SelectedImage.Type == BioImage.ImageType.pyramidal)
                 {
                     if (SelectedImage.OpenSlideBase != null)
                     {
@@ -3570,6 +3642,40 @@ namespace BioGTK
         /// <param name="e"></param>
         private void Initialize()
         {
+            // Well and zarr pyramidal images both use SlideBase + tile renderer.
+            // For wells, RebuildSchemaForWell fixes the schema to match the active field.
+            if (SelectedImage.Type == BioImage.ImageType.well ||
+                SelectedImage.Type == BioImage.ImageType.zarr)
+            {
+                openSlide = false;
+                var slideImage = SlideImage.Open(SelectedImage);
+                var sbSource = SlideBase.Create(SelectedImage, slideImage);
+                var sb = sbSource as SlideBase;
+                if (sb == null) return;
+                _slideSource = sbSource;
+                _slideBase   = sb;
+                SelectedImage.SlideBase = sb;
+
+                if (SelectedImage.Type == BioImage.ImageType.well)
+                {
+                    sb.RebuildSchemaForWell(SelectedImage);
+                    Log($"[Initialize] Well schema rebuilt. Levels={sb.Schema?.Resolutions?.Count} Extent={sb.Schema?.Extent.MinX:F0},{sb.Schema?.Extent.MinY:F0},{sb.Schema?.Extent.MaxX:F0},{sb.Schema?.Extent.MaxY:F0}");
+                }
+
+                var sbResolutions = sb.Schema?.Resolutions;
+                if (sbResolutions != null && sbResolutions.Count > 0)
+                    Resolution = sbResolutions[sbResolutions.Count - 1].UnitsPerPixel;
+
+                Log($"[Initialize] SetSource called. Resolution={Resolution:F3} WellIndex={SelectedImage.WellIndex} ZarrWellLevels={SelectedImage.ZarrWellLevels?.Count}");
+                if (MacOS) sKSlideRenderer?.SetSource(sb);
+                else       slideRenderer?.SetSource(sb);
+
+                // Temporarily show schema info in title for debugging
+                Gtk.Application.Invoke((s2,e2) => {
+                    this.Title = $"W:{sb.Schema?.Extent.MaxX:F0}x{Math.Abs(sb.Schema?.Extent.MinY ?? 0):F0} L:{sb.Schema?.Resolutions?.Count} R:{Resolution:F2}";
+                });
+                return;
+            }
 
             if (SelectedImage.OpenSlideBase != null)
             {
@@ -3603,6 +3709,7 @@ namespace BioGTK
                 }
             }
         }
+
         #endregion
 
     }
