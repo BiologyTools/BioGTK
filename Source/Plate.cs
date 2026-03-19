@@ -1,4 +1,4 @@
-﻿using Gtk;
+using Gtk;
 using Gdk;
 using System;
 using Bio;
@@ -58,10 +58,12 @@ namespace BioGTK
                         Rectangle re = new Rectangle(r, (w.Column - 1) * l, l, l);
                         if(re.IntersectsWith(new Rectangle((int)args.Event.X, (int)args.Event.Y,1,1)))
                         {
-                            App.viewer.Level = s.Index;
                             selected = s;
-                            App.viewer.UpdateImages();
-                            App.viewer.UpdateView();
+                            // Set the well field index on the BioImage and viewer,
+                            // then rebuild the tile schema for the new field.
+                            ImageView.SelectedImage.WellIndex = s.Index;
+                            App.viewer.Level = s.Index;
+                            App.viewer.OnWellFieldChanged();
                             pictureBox.QueueDraw();
                         }
                         r += l;
@@ -80,7 +82,7 @@ namespace BioGTK
                 int r = 0;
                 foreach (BioImage.WellPlate.Well.Sample s in w.Samples)
                 {
-                    if (s.Index != ImageView.SelectedImage.Level)
+                    if (s.Index != ImageView.SelectedImage.WellIndex)
                     {
                         args.Cr.SetSourceColor(new Cairo.Color(0, 0, 0));
                         args.Cr.Rectangle(r, (w.Column - 1) * l, l, l);
@@ -95,7 +97,7 @@ namespace BioGTK
                 int r = 0;
                 foreach (BioImage.WellPlate.Well.Sample s in w.Samples)
                 {
-                    if (s.Index == ImageView.SelectedImage.Level)
+                    if (s.Index == ImageView.SelectedImage.WellIndex)
                     {
                         args.Cr.SetSourceColor(new Cairo.Color(255, 0, 0));
                         args.Cr.Rectangle(r, (w.Column - 1) * l, l, l);

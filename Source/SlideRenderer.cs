@@ -81,16 +81,12 @@ namespace BioGTK
                 var levelRes = schema.Resolutions[level];
                 double levelUnitsPerPixel = levelRes.UnitsPerPixel;
 
-                if (level != _currentLevel)
-                {
-                    _glArea.ReleaseLevelTextures(_currentLevel);
-                    _currentLevel = level;
-                }
-
-                double minX =  pyramidalOrigin.X * levelUnitsPerPixel;
-                double minY = -pyramidalOrigin.Y * levelUnitsPerPixel;
-                double width  = viewportWidth  * levelUnitsPerPixel;
-                double height = viewportHeight * levelUnitsPerPixel;
+                // PyramidalOrigin is in level-0 pixel space; worldExtent is also in
+                // level-0 pixel space (world units = level-0 pixels for these schemas).
+                double minX =  pyramidalOrigin.X;
+                double minY = -pyramidalOrigin.Y;
+                double width  = viewportWidth  * resolution;
+                double height = viewportHeight * resolution;
                 var worldExtent = new Extent(minX, minY - height, minX + width, minY);
 
                 var tileInfos = schema.GetTileInfos(worldExtent, level).ToList();
@@ -101,12 +97,16 @@ namespace BioGTK
                     tileInfos = schema.GetTileInfos(pixelExtent, level).ToList();
                 }
 
+                // ---------------------------------------------------------------
+                // Phase 1: Fetch tile data on the current thread (may involve
+                // async S3 / HTTP I/O).  Collect results before touching GL.
+                // ---------------------------------------------------------------
                 if (_openSlideBase != null)
                     await _openSlideBase.FetchTilesAsync(tileInfos.ToList(), level, coordinate);
                 else
                     await _slideBase.FetchTilesAsync(tileInfos.ToList(), level, coordinate, pyramidalOrigin, new Size(viewportWidth, viewportHeight));
 
-                var renderInfos = new List<TileRenderInfo>();
+                var pendingUploads = new List<(TileIndex index, byte[] data, int tW, int tH)>();
                 foreach (var tileInfo in tileInfos)
                 {
                     if (!_glArea.HasTileTexture(tileInfo.Index))
@@ -130,38 +130,77 @@ namespace BioGTK
                                 tH = Math.Max(1, actualPixels / tW);
                             }
 
-                            _glArea.UploadTileTexture(tileInfo.Index, tileData, tW, tH);
-                            _uploadedTiles.Add(tileInfo.Index);
+                            pendingUploads.Add((tileInfo.Index, tileData, tW, tH));
                         }
-                    }
-
-                    if (_glArea.HasTileTexture(tileInfo.Index))
-                    {
-                        var renderInfo = CalculateScreenPosition(
-                            tileInfo,
-                            pyramidalOrigin,
-                            resolution,
-                            level,
-                            schema);
-                        renderInfos.Add(renderInfo);
                     }
                 }
 
-                _glArea.SetTilesToRender(renderInfos);
-                _glArea.RequestRedraw();
+                // ---------------------------------------------------------------
+                // Phase 2: Upload textures and set render list on the GTK main
+                // thread — GL calls require the main thread context.
+                // ---------------------------------------------------------------
+                var capturedTileInfos  = tileInfos;
+                var capturedUploads    = pendingUploads;
+                var capturedOrigin     = pyramidalOrigin;
+                var capturedResolution = resolution;
+                var capturedLevel      = level;
+                var capturedSchema     = schema;
+
+                Gtk.Application.Invoke((s, a) =>
+                {
+                    try
+                    {
+                        // Upload any new tiles
+                        if (capturedLevel != _currentLevel)
+                        {
+                            _glArea.ReleaseLevelTextures(_currentLevel);
+                            _currentLevel = capturedLevel;
+                        }
+
+                        foreach (var (idx, data, tW, tH) in capturedUploads)
+                        {
+                            if (!_glArea.HasTileTexture(idx))
+                            {
+                                _glArea.UploadTileTexture(idx, data, tW, tH);
+                                _uploadedTiles.Add(idx);
+                            }
+                        }
+
+                        // Build render list from all tiles that are now in the cache
+                        var renderInfos = new List<TileRenderInfo>();
+                        foreach (var tileInfo in capturedTileInfos)
+                        {
+                            if (_glArea.HasTileTexture(tileInfo.Index))
+                            {
+                                var renderInfo = CalculateScreenPosition(
+                                    tileInfo,
+                                    capturedOrigin,
+                                    capturedResolution,
+                                    capturedLevel,
+                                    capturedSchema);
+                                renderInfos.Add(renderInfo);
+                            }
+                        }
+
+                        _glArea.SetTilesToRender(renderInfos);
+                        _glArea.RequestRedraw();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"SlideRenderer GL upload error: {ex.Message}");
+                    }
+                    finally
+                    {
+                        _renderSemaphore.Release();
+                        if (LastRenderSkipped)
+                            App.viewer?.RequestDeferredRender();
+                    }
+                });
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"SlideRenderer.UpdateViewAsync error: {ex.Message}");
-            }
-            finally
-            {
                 _renderSemaphore.Release();
-
-                // If a request was skipped while we were running, reschedule so the
-                // view always ends up showing the latest coordinates.
-                if (LastRenderSkipped)
-                    Gtk.Application.Invoke((s, a) => App.viewer?.RequestDeferredRender());
             }
         }
 
