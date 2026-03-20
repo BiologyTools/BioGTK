@@ -2365,20 +2365,10 @@ namespace BioGTK
                 }
                 hScroll.ShowAll();
                 vScroll.ShowAll();
-                // For well/zarr images use the schema extent (rebuilt per field) for the
-                // scrollbar range. For other pyramidal images use the level-0 resolution.
-                if (SelectedImage.Type == BioImage.ImageType.well ||
-                    SelectedImage.Type == BioImage.ImageType.zarr)
-                {
-                    var ext = SelectedImage.SlideBase?.Schema?.Extent;
-                    hScroll.Adjustment.Upper = ext.HasValue ? ext.Value.MaxX : SelectedImage.Resolutions[0].SizeX;
-                    vScroll.Adjustment.Upper = ext.HasValue ? ext.Value.Height : SelectedImage.Resolutions[0].SizeY;
-                }
-                else
-                {
-                    hScroll.Adjustment.Upper = SelectedImage.Resolutions[0].SizeX;
-                    vScroll.Adjustment.Upper = SelectedImage.Resolutions[0].SizeY;
-                }
+                // Use level-0 (full-resolution) dimensions so the scrollbar range matches
+                // PyramidalOrigin, which is always stored in full-resolution pixel space.
+                hScroll.Adjustment.Upper = SelectedImage.Resolutions[0].SizeX;
+                vScroll.Adjustment.Upper = SelectedImage.Resolutions[0].SizeY;
             }
             else
             {
@@ -2766,66 +2756,9 @@ namespace BioGTK
                 if (l != value)
                     UpdateLevel();
                 l = value;
-                // For well plates, Level in ImageView drives the field selector (WellIndex),
-                // not the pyramid resolution level (which is managed by Resolution/SlideBase).
-                if (SelectedImage?.Type == BioImage.ImageType.well)
-                    SelectedImage.WellIndex = l;
-                else
-                    SelectedImage.Level = l;
+                SelectedImage.Level = l;
                 UpdateScrollBars();
-
-                // When switching well fields, rebuild the tile schema so the renderer
-                // fetches tiles from the correct field pyramid.
-                if (SelectedImage?.Type == BioImage.ImageType.well)
-                    OnWellFieldChanged();
             }
-        }
-
-        /// <summary>
-        /// Called whenever the active well field index changes.
-        /// Rebuilds the BruTile schema and dimension cache to match the new field,
-        /// resets the viewport, and triggers a fresh tile render.
-        /// </summary>
-        public void OnWellFieldChanged()
-        {
-            if (SelectedImage?.Type != BioImage.ImageType.well) return;
-            var sb = _slideBase;
-            if (sb == null) return;
-
-            // Invalidate cached level-0 dimensions so GetLevelDimension re-reads the new field.
-            sb.SlideImage?.ResetDimensionsCache();
-
-            // Rebuild the BruTile schema to match the new field's pyramid dimensions.
-            sb.RebuildSchemaForWell(SelectedImage);
-
-            // Invalidate cached tiles so stale data from the previous field isn't reused.
-            SelectedImage.InvalidateTileCache();
-
-            // Reset the viewport to show the new field at full extent.
-            var resolutions = sb.Schema?.Resolutions;
-            if (resolutions != null && resolutions.Count > 0)
-            {
-                int vw = MacOS ? (sk.AllocatedWidth  > 1 ? sk.AllocatedWidth  : 800)
-                               : (glArea.AllocatedWidth  > 1 ? glArea.AllocatedWidth  : 800);
-                int vh = MacOS ? (sk.AllocatedHeight > 1 ? sk.AllocatedHeight : 600)
-                               : (glArea.AllocatedHeight > 1 ? glArea.AllocatedHeight : 600);
-                double imgW = sb.Schema.Extent.MaxX;
-                double imgH = Math.Abs(sb.Schema.Extent.MinY);
-                double fitRes = Math.Max(imgW / vw, imgH / vh);
-                double minRes = resolutions[0].UnitsPerPixel;
-                double maxRes = resolutions[resolutions.Count - 1].UnitsPerPixel;
-                Resolution = Math.Max(minRes, Math.Min(maxRes, fitRes));
-            }
-            PyramidalOrigin = new PointD(0, 0);
-
-            // Push the updated source to the active renderer.
-            if (MacOS)
-                sKSlideRenderer?.SetSource(sb);
-            else
-                slideRenderer?.SetSource(sb);
-
-            UpdateScrollBars();
-            UpdateView();
         }
 
         SizeF scale = new SizeF(1, 1);
@@ -2850,7 +2783,7 @@ namespace BioGTK
             {
                 statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
                 mousePoint + mouseColor + ", " + SelectedImage.Resolutions[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") "
-                + PyramidalOrigin.X.ToString("N2") + "," + PyramidalOrigin.Y.ToString("N2") + " , Level:" + Level + " Well:" + SelectedImage.WellIndex;
+                + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2") + " , Well:" + SelectedImage.Level;
             }
             else if (SelectedImage.Type == BioImage.ImageType.stack)
                 statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
@@ -3108,16 +3041,16 @@ namespace BioGTK
 
             mouseD = SelectedImage.ToImageSpace(pd);
 
-            // Handle well plate field navigation via mouse side buttons
+            // Handle well plate level navigation
             if (ImageView.SelectedImage.Type == BioImage.ImageType.well)
             {
                 if (e.Event.Button == 4)
                 {
-                    Level = ImageView.SelectedImage.WellIndex - 1;
+                    Level = ImageView.SelectedImage.Level - 1;
                 }
                 else if (e.Event.Button == 5)
                 {
-                    Level = ImageView.SelectedImage.WellIndex + 1;
+                    Level = ImageView.SelectedImage.Level + 1;
                 }
             }
 
@@ -3335,14 +3268,10 @@ namespace BioGTK
         {
             get
             {
-                // On macOS sk is the sole rendering surface for all image types.
-                // On Windows/Linux, pyramidal and well images render into glArea;
-                // only non-pyramidal images use the sk fallback.
-                if (MacOS)
+                if(sk != null)
                     return sk;
-                if (SelectedImage?.isPyramidal == true && glArea != null)
+                else
                     return glArea;
-                return sk ?? (Widget)glArea;
             }
         }
         public PointD ToViewSpace(double x, double y)
@@ -3651,22 +3580,7 @@ namespace BioGTK
                 {
                     var schema = SelectedImage.SlideBase?.Schema;
                     if (schema != null && schema.Resolutions != null && schema.Resolutions.Count > 0)
-                    {
-                        // Compute a resolution that fits the full field in the viewport.
-                        // Resolution = level-0 pixels per screen pixel.
-                        // Use whichever axis requires the most zoom-out.
-                        int vw = MacOS ? (sk.AllocatedWidth  > 1 ? sk.AllocatedWidth  : 800)
-                                       : (glArea.AllocatedWidth  > 1 ? glArea.AllocatedWidth  : 800);
-                        int vh = MacOS ? (sk.AllocatedHeight > 1 ? sk.AllocatedHeight : 600)
-                                       : (glArea.AllocatedHeight > 1 ? glArea.AllocatedHeight : 600);
-                        double imgW = schema.Extent.MaxX;           // level-0 pixels wide
-                        double imgH = Math.Abs(schema.Extent.MinY); // level-0 pixels tall
-                        double fitRes = Math.Max(imgW / vw, imgH / vh);
-                        // Clamp to the valid range [finest, coarsest].
-                        double minRes = schema.Resolutions[0].UnitsPerPixel;
-                        double maxRes = schema.Resolutions[schema.Resolutions.Count - 1].UnitsPerPixel;
-                        Resolution = Math.Max(minRes, Math.Min(maxRes, fitRes));
-                    }
+                        Resolution = schema.Resolutions[schema.Resolutions.Count - 1].UnitsPerPixel * 0.98;
                     else
                         Resolution = SelectedImage.GetUnitPerPixel(SelectedImage.Resolutions.Count - 1) * 0.98;
                     PyramidalOrigin = new PointD(0, 0);
@@ -3736,10 +3650,10 @@ namespace BioGTK
             {
                 openSlide = false;
                 var slideImage = SlideImage.Open(SelectedImage);
-                // Construct SlideBase directly — SlideSourceBase.Create() routes through a
-                // vendor-extension dictionary that has no .zarr entry and always returns null.
-                var sb = new SlideBase(SelectedImage, slideImage);
-                _slideSource = sb;
+                var sbSource = SlideBase.Create(SelectedImage, slideImage);
+                var sb = sbSource as SlideBase;
+                if (sb == null) return;
+                _slideSource = sbSource;
                 _slideBase   = sb;
                 SelectedImage.SlideBase = sb;
 

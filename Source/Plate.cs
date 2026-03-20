@@ -62,8 +62,6 @@ namespace BioGTK
                             // Set the well field index on the BioImage and viewer,
                             // then rebuild the tile schema for the new field.
                             ImageView.SelectedImage.WellIndex = s.Index;
-                            App.viewer.Level = s.Index;
-                            App.viewer.OnWellFieldChanged();
                             pictureBox.QueueDraw();
                         }
                         r += l;
