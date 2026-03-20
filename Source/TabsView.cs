@@ -766,7 +766,6 @@ namespace BioGTK
             Resolution res = new Resolution(b.PyramidalSize.Width, b.PyramidalSize.Height, b.Buffers[0].PixelFormat,b.PhysicalSizeX,b.PhysicalSizeY,b.PhysicalSizeZ,p.X,p.Y,p.Z);
             b.Resolutions.Clear();
             b.Resolutions.Add(res);
-            b.Type = BioImage.ImageType.stack;
             b.Buffers.Clear();
             b.Buffers.Add(new Bitmap((int)b.PyramidalOrigin.X, (int)b.PyramidalOrigin.Y,PixelFormat.Format32bppArgb));
             Images.AddImage(b);

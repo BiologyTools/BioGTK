@@ -81,6 +81,15 @@
         <property name="use-stock">False</property>
       </object>
     </child>
+    <child>
+      <object class="GtkImageMenuItem" id="overView">
+        <property name="label">Hide Overview</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
   </object>
   <object class="GtkWindow" id="imageView">
     <property name="can-focus">False</property>

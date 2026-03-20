@@ -19,9 +19,14 @@ namespace BioGTK
         private BioLib.TileCache _tileCache;
         private OpenSlideGTK.TileCache _openTileCache;
         private HashSet<TileIndex> _uploadedTiles = new();
+        // Stores the TileInfo (including world-space Extent) for every tile in the GPU cache
+        // so the render list can be rebuilt from all cached tiles, not just those fetched this frame.
+        private Dictionary<TileIndex, TileInfo> _uploadedTileInfos = new();
         private int _currentLevel = -1;
         private readonly SemaphoreSlim _renderSemaphore = new SemaphoreSlim(1, 1);
         public bool LastRenderSkipped { get; private set; }
+        // Latest args saved when a render is skipped so the re-queued render uses current state.
+        private volatile bool _pendingRequeue = false;
 
         public SlideRenderer(SlideGLArea glArea)
         {
@@ -50,6 +55,7 @@ namespace BioGTK
         {
             _glArea.ClearTextureCache();
             _uploadedTiles.Clear();
+            _uploadedTileInfos.Clear();
             _currentLevel = -1;
         }
 
@@ -69,6 +75,7 @@ namespace BioGTK
             if (!_renderSemaphore.Wait(0))
             {
                 LastRenderSkipped = true;
+                _pendingRequeue = true;
                 return;
             }
             LastRenderSkipped = false;
@@ -81,33 +88,43 @@ namespace BioGTK
                 var levelRes = schema.Resolutions[level];
                 double levelUnitsPerPixel = levelRes.UnitsPerPixel;
 
-                // PyramidalOrigin is in level-0 pixel space; worldExtent is also in
-                // level-0 pixel space (world units = level-0 pixels for these schemas).
+                // pyramidalOrigin is in world (micron) units, matching the schema's world coordinate space.
+                double tileWorldW = levelRes.TileWidth  * levelUnitsPerPixel;
+                double tileWorldH = levelRes.TileHeight * levelUnitsPerPixel;
+
+                // Exact viewport extent (used for the render list)
                 double minX =  pyramidalOrigin.X;
                 double minY = -pyramidalOrigin.Y;
                 double width  = viewportWidth  * resolution;
                 double height = viewportHeight * resolution;
-                var worldExtent = new Extent(minX, minY - height, minX + width, minY);
+                var viewportExtent = new Extent(minX, minY - height, minX + width, minY);
 
-                var tileInfos = schema.GetTileInfos(worldExtent, level).ToList();
+                // Padded extent — 1 tile on every side — used for prefetch so surrounding
+                // tiles are already in the cache when the user pans into them.
+                const int PAD = 2;
+                var fetchExtent = new Extent(
+                    viewportExtent.MinX - PAD * tileWorldW,
+                    viewportExtent.MinY - PAD * tileWorldH,
+                    viewportExtent.MaxX + PAD * tileWorldW,
+                    viewportExtent.MaxY + PAD * tileWorldH);
 
-                if (tileInfos.Count == 0)
+                var fetchTileInfos = schema.GetTileInfos(fetchExtent, level).ToList();
+                if (fetchTileInfos.Count == 0)
                 {
-                    var pixelExtent = OpenSlideGTK.ExtentEx.WorldToPixelInvertedY(worldExtent, levelUnitsPerPixel);
-                    tileInfos = schema.GetTileInfos(pixelExtent, level).ToList();
+                    var pixelExtent = OpenSlideGTK.ExtentEx.WorldToPixelInvertedY(fetchExtent, levelUnitsPerPixel);
+                    fetchTileInfos = schema.GetTileInfos(pixelExtent, level).ToList();
                 }
 
                 // ---------------------------------------------------------------
-                // Phase 1: Fetch tile data on the current thread (may involve
-                // async S3 / HTTP I/O).  Collect results before touching GL.
+                // Phase 1: Fetch tile data for the padded extent (includes surroundings).
                 // ---------------------------------------------------------------
                 if (_openSlideBase != null)
-                    await _openSlideBase.FetchTilesAsync(tileInfos.ToList(), level, coordinate);
+                    await _openSlideBase.FetchTilesAsync(fetchTileInfos, level, coordinate);
                 else
-                    await _slideBase.FetchTilesAsync(tileInfos.ToList(), level, coordinate, pyramidalOrigin, new Size(viewportWidth, viewportHeight));
+                    await _slideBase.FetchTilesAsync(fetchTileInfos, level, coordinate, pyramidalOrigin, new Size(viewportWidth, viewportHeight));
 
                 var pendingUploads = new List<(TileIndex index, byte[] data, int tW, int tH)>();
-                foreach (var tileInfo in tileInfos)
+                foreach (var tileInfo in fetchTileInfos)
                 {
                     if (!_glArea.HasTileTexture(tileInfo.Index))
                     {
@@ -139,24 +156,32 @@ namespace BioGTK
                 // Phase 2: Upload textures and set render list on the GTK main
                 // thread — GL calls require the main thread context.
                 // ---------------------------------------------------------------
-                var capturedTileInfos  = tileInfos;
-                var capturedUploads    = pendingUploads;
-                var capturedOrigin     = pyramidalOrigin;
-                var capturedResolution = resolution;
-                var capturedLevel      = level;
-                var capturedSchema     = schema;
+                var capturedFetchTileInfos   = fetchTileInfos;
+                var capturedUploads          = pendingUploads;
+                var capturedOrigin           = pyramidalOrigin;
+                var capturedResolution       = resolution;
+                var capturedLevel            = level;
+                var capturedSchema           = schema;
 
                 Gtk.Application.Invoke((s, a) =>
                 {
                     try
                     {
-                        // Upload any new tiles
+                        // On level change, evict stale textures and their infos.
                         if (capturedLevel != _currentLevel)
                         {
                             _glArea.ReleaseLevelTextures(_currentLevel);
+                            var staleKeys = _uploadedTileInfos.Keys
+                                .Where(k => k.Level != capturedLevel).ToList();
+                            foreach (var k in staleKeys)
+                            {
+                                _uploadedTiles.Remove(k);
+                                _uploadedTileInfos.Remove(k);
+                            }
                             _currentLevel = capturedLevel;
                         }
 
+                        // Upload new tiles and record their TileInfo for future render passes.
                         foreach (var (idx, data, tW, tH) in capturedUploads)
                         {
                             if (!_glArea.HasTileTexture(idx))
@@ -165,20 +190,26 @@ namespace BioGTK
                                 _uploadedTiles.Add(idx);
                             }
                         }
-
-                        // Build render list from all tiles that are now in the cache
-                        var renderInfos = new List<TileRenderInfo>();
-                        foreach (var tileInfo in capturedTileInfos)
+                        foreach (var tileInfo in capturedFetchTileInfos)
                         {
                             if (_glArea.HasTileTexture(tileInfo.Index))
+                                _uploadedTileInfos[tileInfo.Index] = tileInfo;
+                        }
+
+                        // Build render list from ALL tiles currently in the GPU cache.
+                        // This means tiles cached from previous positions are still drawn
+                        // while the user pans, eliminating dark edges.
+                        var renderInfos = new List<TileRenderInfo>();
+                        foreach (var kv in _uploadedTileInfos)
+                        {
+                            if (_glArea.HasTileTexture(kv.Key))
                             {
-                                var renderInfo = CalculateScreenPosition(
-                                    tileInfo,
+                                renderInfos.Add(CalculateScreenPosition(
+                                    kv.Value,
                                     capturedOrigin,
                                     capturedResolution,
                                     capturedLevel,
-                                    capturedSchema);
-                                renderInfos.Add(renderInfo);
+                                    capturedSchema));
                             }
                         }
 
@@ -192,8 +223,13 @@ namespace BioGTK
                     finally
                     {
                         _renderSemaphore.Release();
-                        if (LastRenderSkipped)
+                        // If any render was skipped while we were busy, fire one more
+                        // pass now with the latest viewer state.
+                        if (_pendingRequeue)
+                        {
+                            _pendingRequeue = false;
                             App.viewer?.RequestDeferredRender();
+                        }
                     }
                 });
             }
@@ -232,16 +268,23 @@ namespace BioGTK
             int level,
             ITileSchema schema)
         {
-            // Convert tile world extent to level-pixel coordinates using
-            // levelUnitsPerPixel so positions are consistent with pyramidalOrigin.
+            // Both tile.Extent and pyramidalOrigin are in world (micron) units.
+            // Convert both to level-N screen pixels by dividing by levelUnitsPerPixel.
             double levelUnitsPerPixel = schema.Resolutions[level].UnitsPerPixel;
-            var pixelExtent = OpenSlideGTK.ExtentEx.WorldToPixelInvertedY(tile.Extent, levelUnitsPerPixel);
 
-            float screenX = (float)(pixelExtent.MinX - pyramidalOrigin.X);
-            float screenY = (float)(pixelExtent.MinY - pyramidalOrigin.Y);
+            // Tile top-left in level-N pixels (Y axis is inverted: world MaxY → screen MinY)
+            double tilePixelX = tile.Extent.MinX / levelUnitsPerPixel;
+            double tilePixelY = -tile.Extent.MaxY / levelUnitsPerPixel;
 
-            float screenWidth  = (float)pixelExtent.Width;
-            float screenHeight = (float)pixelExtent.Height;
+            // Origin in level-N pixels
+            double originPixelX = pyramidalOrigin.X / levelUnitsPerPixel;
+            double originPixelY = pyramidalOrigin.Y / levelUnitsPerPixel;
+
+            float screenX = (float)(tilePixelX - originPixelX);
+            float screenY = (float)(tilePixelY - originPixelY);
+
+            float screenWidth  = (float)(tile.Extent.Width  / levelUnitsPerPixel);
+            float screenHeight = (float)(tile.Extent.Height / levelUnitsPerPixel);
 
             return new TileRenderInfo(tile.Index, screenX, screenY, screenWidth, screenHeight);
         }

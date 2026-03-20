@@ -1,5 +1,6 @@
 using AForge;
 using System.Linq;
+using System.Threading;
 using AForge.Imaging.Filters;
 using Bio;
 using BruTile;
@@ -153,8 +154,7 @@ namespace BioGTK
         }
 
         public bool ShowMasks { get; set; } = true;
-        public const bool hideOverview = false;
-        public bool ShowOverview { get; set; } = !hideOverview;
+        public bool ShowOverview { get; set; } = true;
         /* Getting the selected buffer from the selected image. */
         public static AForge.Bitmap SelectedBuffer
         {
@@ -231,6 +231,8 @@ namespace BioGTK
         private MenuItem goToOriginMenu;
         [Builder.Object]
         private MenuItem goToImageMenu;
+        [Builder.Object]
+        private MenuItem overView;
         [Builder.Object]
         private MenuItem roi;
         [Builder.Object]
@@ -924,76 +926,61 @@ namespace BioGTK
         }
         public void RequestDeferredRender()
         {
-            lock (_renderLock)
-            {
-                _pendingRender = true;
-
-                // Reset timer - only render after 50ms of no requests
-                _renderTimer?.Dispose();
-                _renderTimer = new System.Threading.Timer(
-                    _ => ExecuteDeferredRender(),
-                    null,
-                    20,  // Delay in milliseconds
-                    Timeout.Infinite
-                );
-            }
+            ExecuteDeferredRender();
         }
         private void ExecuteDeferredRender()
         {
-            lock (_renderLock)
+            // Run directly if already on the GTK main thread so panning and zooming
+            // update immediately. Post via Invoke only for background-thread callers.
+            if (Thread.CurrentThread == _gtkMainThread)
+                DoRender();
+            else
+                Gtk.Application.Invoke((sender, args) => DoRender());
+        }
+        private void DoRender()
+        {
+            if (SelectedImage?.isPyramidal != true) return;
+
+            if (MacOS)
             {
-                if (!_pendingRender) return;
-                _pendingRender = false;
-            }
-
-            Gtk.Application.Invoke((sender, args) =>
-            {
-                if (SelectedImage?.isPyramidal != true) return;
-
-                if (MacOS)
-                {
-                    // Skia stitching path — all UpdateView calls funnel here.
-                    AForge.Size s = new AForge.Size();
-                    if (sk.AllocatedWidth <= 1 || sk.AllocatedHeight <= 1)
-                        s = new AForge.Size(600, 400);
-                    else
-                        s = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
-
-                    var brutileOrigin = new PointD(PyramidalOrigin.X, -PyramidalOrigin.Y);
-                    int myGeneration = System.Threading.Interlocked.Increment(ref _renderGeneration);
-
-                    var renderTask = sKSlideRenderer?.UpdateViewAsync(
-                        brutileOrigin,
-                        Resolution,
-                        GetCoordinate(),
-                        s.Width,
-                        s.Height
-                    );
-                    if (renderTask != null)
-                    {
-                        _ = renderTask.ContinueWith(t =>
-                            {
-                                if (!t.IsFaulted && _renderGeneration == myGeneration)
-                                    Gtk.Application.Invoke((s2, a2) => sk?.QueueDraw());
-                            }
-                        );
-                    }
-                }
+                AForge.Size s;
+                if (sk.AllocatedWidth <= 1 || sk.AllocatedHeight <= 1)
+                    s = new AForge.Size(600, 400);
                 else
+                    s = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
+
+                var brutileOrigin = new PointD(PyramidalOrigin.X, -PyramidalOrigin.Y);
+                int myGeneration = System.Threading.Interlocked.Increment(ref _renderGeneration);
+
+                var renderTask = sKSlideRenderer?.UpdateViewAsync(
+                    brutileOrigin,
+                    Resolution,
+                    GetCoordinate(),
+                    s.Width,
+                    s.Height
+                );
+                if (renderTask != null)
                 {
-                    // GL tile path — same debounced single-render pattern.
-                    if (glArea.AllocatedWidth > 1 && glArea.AllocatedHeight > 1)
+                    _ = renderTask.ContinueWith(t =>
                     {
-                        _ = slideRenderer?.UpdateViewAsync(
-                            PyramidalOrigin,
-                            glArea.AllocatedWidth,
-                            glArea.AllocatedHeight,
-                            Resolution,
-                            GetCoordinate()
-                        );
-                    }
+                        if (!t.IsFaulted && _renderGeneration == myGeneration)
+                            Gtk.Application.Invoke((s2, a2) => sk?.QueueDraw());
+                    });
                 }
-            });
+            }
+            else
+            {
+                if (glArea.AllocatedWidth > 1 && glArea.AllocatedHeight > 1)
+                {
+                    _ = slideRenderer?.UpdateViewAsync(
+                        PyramidalOrigin,
+                        glArea.AllocatedWidth,
+                        glArea.AllocatedHeight,
+                        Resolution,
+                        GetCoordinate()
+                    );
+                }
+            }
         }
         bool initrend = false;
         #endregion
@@ -1004,15 +991,13 @@ namespace BioGTK
 
             try
             {
-                // 1. Get the scale factor of the CURRENT level relative to Full Res (Level 0)
-                // LevelScale is typically: CurrentLevelWidth / FullResWidth
-                double levelScale = (double)SelectedImage.Resolutions[Level].SizeX / SelectedImage.SizeX;
-
-                // 2. Convert PyramidalOrigin (Current Level) to Full Res (Level 0)
-                double fullResX = PyramidalOrigin.X / levelScale;
-                double fullResY = PyramidalOrigin.Y / levelScale;
-                double fullResW = AllocatedWidth / levelScale;
-                double fullResH = AllocatedHeight / levelScale;
+                // 1. PyramidalOrigin is stored in full-resolution (level-0) pixel space.
+                // AllocatedWidth/Height are screen pixels; multiply by Resolution
+                // (full-res pixels per screen pixel) to get the viewport size in full-res pixels.
+                double fullResX = PyramidalOrigin.X;
+                double fullResY = PyramidalOrigin.Y;
+                double fullResW = AllocatedWidth  * Resolution;
+                double fullResH = AllocatedHeight * Resolution;
 
                 // 3. Project Full Res to Overview Space
                 float ovScaleX = (float)overview.Width / SelectedImage.SizeX;
@@ -1052,32 +1037,48 @@ namespace BioGTK
 
             double oldResolution = Resolution;
 
-            // 1. Compute the image pixel under the cursor BEFORE zoom.
-            PointD imagePixel = new PointD(
-                PyramidalOrigin.X + mouseScreenPos.X * oldResolution,
-                PyramidalOrigin.Y + mouseScreenPos.Y * oldResolution
-            );
+            // 1. World-space point currently under the cursor.
+            //    PyramidalOrigin and Resolution are both in world (micron) units.
+            double worldX = PyramidalOrigin.X + mouseScreenPos.X * oldResolution;
+            double worldY = PyramidalOrigin.Y + mouseScreenPos.Y * oldResolution;
 
-            // 2. Apply zoom directly on the image object to avoid triggering UpdateView twice.
-            if (SelectedImage.isPyramidal)
-                SelectedImage.Resolution = newResolution;
+            // 2. Apply the new resolution directly on the image to avoid triggering
+            //    UpdateView before the origin is also updated.
+            _suppressViewUpdates = true;
+            try
+            {
+                if (SelectedImage.isPyramidal)
+                    SelectedImage.Resolution = newResolution;
+            }
+            finally
+            {
+                _suppressViewUpdates = false;
+            }
 
             double actualResolution = Resolution;
             if (actualResolution == oldResolution)
                 return;
 
-            // 3. Recompute origin so the same image pixel stays under the cursor.
-            double newOriginX = imagePixel.X - mouseScreenPos.X * actualResolution;
-            double newOriginY = imagePixel.Y - mouseScreenPos.Y * actualResolution;
+            // 3. Reposition origin so the same world point stays under the cursor.
+            double newOriginX = worldX - mouseScreenPos.X * actualResolution;
+            double newOriginY = worldY - mouseScreenPos.Y * actualResolution;
 
-            double maxX = Math.Max(0, SelectedImage.Resolutions[0].SizeX - 1);
-            double maxY = Math.Max(0, SelectedImage.Resolutions[0].SizeY - 1);
+            // 4. Clamp to schema world-space bounds (Extent is in world/micron units).
+            var schema = SelectedImage.isPyramidal
+                ? (SelectedImage.OpenSlideBase != null
+                    ? (ITileSchema)SelectedImage.OpenSlideBase.Schema
+                    : SelectedImage.SlideBase.Schema)
+                : null;
 
-            // Setting PyramidalOrigin triggers a single UpdateView (via its setter on macOS).
+            double maxX = schema != null ? schema.Extent.MaxX : 0;
+            double maxY = schema != null ? -schema.Extent.MinY : 0;
+
             PyramidalOrigin = new PointD(
                 Math.Max(0, Math.Min(newOriginX, maxX)),
                 Math.Max(0, Math.Min(newOriginY, maxY))
             );
+            // PyramidalOrigin setter fires UpdateView with both the new origin and
+            // new resolution already in place — one render, correct result.
         }
         public void SetTitle(string s)
         {
@@ -1094,9 +1095,9 @@ namespace BioGTK
         }
 
         // Add these fields to ImageView class
-        private System.Threading.Timer _renderTimer;
-        private volatile bool _pendingRender = false;
-        private readonly object _renderLock = new object();
+        // Captured at construction time on the GTK main thread so ExecuteDeferredRender
+        // can detect whether it's already on the right thread without GLib internals.
+        private readonly Thread _gtkMainThread = Thread.CurrentThread;
         // Incremented each time a new macOS pyramidal render is requested.
         // ContinueWith callbacks check this to discard stale results.
         private volatile int _renderGeneration = 0;
@@ -1275,161 +1276,28 @@ namespace BioGTK
         /// </summary>
         private async void InitPreview()
         {
-            // Only initialize preview for pyramidal images
             if (SelectedImage == null || !SelectedImage.isPyramidal)
                 return;
 
             try
             {
                 refresh = false;
-
                 const int OVERVIEW_SIZE = 160;
-                const int MAX_QUICK_PIXELS = 2000;
 
-                // Well images: fetch the coarsest field level directly from ZarrWellLevels.
-                if (SelectedImage.Type == BioImage.ImageType.well)
+                var (sourceBitmap, srcW, srcH) = await FetchPreviewBitmap(OVERVIEW_SIZE);
+                if (sourceBitmap == null)
                 {
-                    var fieldBitmap = await SelectedImage.GetWellFieldBitmap(SelectedImage.WellIndex).ConfigureAwait(false);
-                    if (fieldBitmap == null)
-                    {
-                        Console.WriteLine("Preview: GetWellFieldBitmap returned null — overview disabled.");
-                        ShowOverview = false;
-                        overviewImage = null;
-                        return;
-                    }
-
-                    double ar = (double)fieldBitmap.Width / Math.Max(1, fieldBitmap.Height);
-                    int ow = ar >= 1.0 ? OVERVIEW_SIZE : Math.Max(20, (int)(OVERVIEW_SIZE * ar));
-                    int oh = ar >= 1.0 ? Math.Max(20, (int)(OVERVIEW_SIZE / ar)) : OVERVIEW_SIZE;
-                    overview = new Rectangle(0, 0, ow, oh);
-
-                    using var fullSK = BioImage.BitmapToSKImage(fieldBitmap);
-                    using var scaleSurface = SKSurface.Create(
-                        new SKImageInfo(ow, oh, SKColorType.Rgba8888, SKAlphaType.Premul));
-                    scaleSurface.Canvas.DrawImage(fullSK,
-                        new SKRect(0, 0, fieldBitmap.Width, fieldBitmap.Height),
-                        new SKRect(0, 0, ow, oh));
-                    overviewImage = scaleSurface.Snapshot();
-
-                    ShowOverview = true;
-                    Console.WriteLine($"Well preview: {ow}x{oh} from coarsest field level");
-                    Gtk.Application.Invoke((s, e) => { sk?.QueueDraw(); glArea?.QueueDraw(); });
-                    return;
-                }
-
-                // Find the best resolution level: the smallest level (highest index)
-                // whose pixel dimensions are within MAX_QUICK_PIXELS so it can be
-                // read in one shot without excessive I/O.
-                int resolutionLevel = -1;
-                BioLib.Resolution targetResolution = new BioLib.Resolution();
-
-                // Walk from the lowest-resolution level upward and pick the first
-                // (smallest) level that fits within MAX_QUICK_PIXELS.
-                for (int lev = SelectedImage.Resolutions.Count - 1; lev >= 0; lev--)
-                {
-                    var res = SelectedImage.Resolutions[lev];
-                    if (res.SizeX <= MAX_QUICK_PIXELS && res.SizeY <= MAX_QUICK_PIXELS)
-                    {
-                        resolutionLevel = lev;
-                        targetResolution = res;
-                        break;
-                    }
-                }
-
-                if (resolutionLevel < 0 )
-                {
-                    // Every pyramid level is larger than MAX_QUICK_PIXELS.
-                    // Show an empty overview rectangle so navigation still works.
-                    Console.WriteLine("Preview: no sufficiently small pyramid level found — overview disabled.");
-                    var fallback = SelectedImage.Resolutions[SelectedImage.Resolutions.Count - 1];
-                    double ar = (double)fallback.SizeX / Math.Max(1, fallback.SizeY);
-                    int ow = ar >= 1.0 ? OVERVIEW_SIZE : (int)(OVERVIEW_SIZE * ar);
-                    int oh = ar >= 1.0 ? (int)(OVERVIEW_SIZE / ar) : OVERVIEW_SIZE;
-                    overview = new Rectangle(0, 0, Math.Max(ow, 20), Math.Max(oh, 20));
-                    overviewImage = null;
                     ShowOverview = false;
+                    overviewImage = null;
                     return;
                 }
 
-                // Calculate overview thumbnail dimensions preserving aspect ratio
-                double aspectRatio = (double)targetResolution.SizeX / Math.Max(1, targetResolution.SizeY);
-                int overviewWidth, overviewHeight;
-                if (aspectRatio >= 1.0)
-                {
-                    overviewWidth = OVERVIEW_SIZE;
-                    overviewHeight = (int)(OVERVIEW_SIZE / aspectRatio);
-                }
-                else
-                {
-                    overviewHeight = OVERVIEW_SIZE;
-                    overviewWidth = (int)(OVERVIEW_SIZE * aspectRatio);
-                }
-                overviewWidth = Math.Max(overviewWidth, 20);
-                overviewHeight = Math.Max(overviewHeight, 20);
+                var (ow, oh) = CalcOverviewSize(srcW, srcH, OVERVIEW_SIZE);
+                overview = new Rectangle(0, 0, ow, oh);
+                overviewImage = ScaleToOverview(sourceBitmap, srcW, srcH, ow, oh);
+                ShowOverview = overviewImage != null;
 
-                overview = new Rectangle(0, 0, overviewWidth, overviewHeight);
-
-                // Fetch the raw pixels for the chosen level
-                byte[] bt;
-                int srcW = targetResolution.SizeX;
-                int srcH = targetResolution.SizeY;
-
-                if (openSlide && SelectedImage.Type != BioImage.ImageType.zarr)
-                {
-                    // Standard OpenSlide path: request the full extent at the chosen level.
-                    double unitsPerPx = _openSlideBase.Schema.Resolutions
-                        .OrderByDescending(r => r.Value.UnitsPerPixel)
-                        .Skip(SelectedImage.Resolutions.Count - 1 - resolutionLevel)
-                        .First().Value.UnitsPerPixel;
-                    var sll = new OpenSlideGTK.SliceInfo(0, 0, srcW, srcH, unitsPerPx);
-                    bt = SelectedImage.OpenSlideBase.GetSlice(sll, new ZCT(), resolutionLevel);
-                }
-                else
-                {
-                    // Zarr: call GetTile once for the whole level, convert directly to
-                    // SKImage via BitmapToSKImage (handles all pixel formats correctly),
-                    // then scale down to overview size on a small SKSurface.
-                    // Previous attempts via .GetImageRGBA().Bytes were unreliable because
-                    // GetTile already calls GetImageRGBA() internally, so calling it again
-                    // on the returned bitmap double-converted the data and corrupted it.
-                    var tileBitmap = await SelectedImage.GetTile(
-                        SelectedImage.Coords[0, 0, 0], resolutionLevel,
-                        0, 0, srcW, srcH);
-
-                    if (tileBitmap == null)
-                    {
-                        Console.WriteLine("Preview: GetTile returned null — overview disabled.");
-                        ShowOverview = false;
-                        overviewImage = null;
-                        return;
-                    }
-
-                    using var fullSK = BioImage.BitmapToSKImage(tileBitmap);
-                    using var scaleSurface = SKSurface.Create(
-                        new SKImageInfo(overviewWidth, overviewHeight, SKColorType.Rgba8888, SKAlphaType.Premul));
-                    scaleSurface.Canvas.DrawImage(fullSK,
-                        new SKRect(0, 0, srcW, srcH),
-                        new SKRect(0, 0, overviewWidth, overviewHeight));
-                    overviewImage = scaleSurface.Snapshot();
-
-                    ShowOverview = true;
-                    Console.WriteLine($"Preview initialized: {overviewWidth}x{overviewHeight} from level {resolutionLevel} ({srcW}x{srcH})");
-                    Gtk.Application.Invoke((s, e) => { sk?.QueueDraw(); glArea?.QueueDraw(); });
-                    return;
-                }
-
-                // Build bitmap from raw bytes (actual source dimensions) then scale to overview size
-                Bitmap sourceBitmap = new Bitmap(srcW, srcH, AForge.PixelFormat.Format32bppArgb, bt, GetCoordinate(), "");
-                AForge.Imaging.Filters.ResizeBilinear resizer = new ResizeBilinear(overviewWidth, overviewHeight);
-                overviewImage = BitmapToSKImage(resizer.Apply(sourceBitmap));
-                sourceBitmap.Dispose();
-
-                ShowOverview = true;
-                Console.WriteLine($"Preview initialized: {overviewWidth}x{overviewHeight} from resolution level {resolutionLevel} ({srcW}x{srcH})");
-
-                // Trigger a canvas redraw so the newly fetched preview is shown immediately.
-                // InitPreview is async void, so the caller has already returned by the time
-                // we reach here — we must schedule the redraw on the GTK main thread.
+                Console.WriteLine($"Preview initialized: {ow}x{oh} from {srcW}x{srcH}");
                 Gtk.Application.Invoke((s, e) => { sk?.QueueDraw(); glArea?.QueueDraw(); });
             }
             catch (Exception ex)
@@ -1438,6 +1306,101 @@ namespace BioGTK
                 ShowOverview = false;
                 overviewImage = null;
             }
+        }
+
+        // Returns (bitmap, srcW, srcH), or (null, 0, 0) on failure.
+        private async Task<(Bitmap bitmap, int w, int h)> FetchPreviewBitmap(int overviewSize)
+        {
+            const int MAX_QUICK_PIXELS = 10000;
+
+            if (SelectedImage.Type == BioImage.ImageType.well)
+            {
+                var bmp = await SelectedImage.GetWellFieldBitmap(SelectedImage.WellIndex).ConfigureAwait(false);
+                if (bmp == null)
+                {
+                    Console.WriteLine("Preview: GetWellFieldBitmap returned null.");
+                    return (null, 0, 0);
+                }
+                return (bmp, bmp.Width, bmp.Height);
+            }
+
+            int level = FindSmallestFittingLevel(MAX_QUICK_PIXELS);
+            if (level < 0)
+            {
+                Console.WriteLine("Preview: no sufficiently small pyramid level found.");
+                var fallback = SelectedImage.Resolutions[^1];
+                var (fw, fh) = CalcOverviewSize(fallback.SizeX, fallback.SizeY, overviewSize);
+                overview = new Rectangle(0, 0, fw, fh);
+                return (null, 0, 0);
+            }
+
+            var res = SelectedImage.Resolutions[level];
+            int srcW = res.SizeX, srcH = res.SizeY;
+
+            if (openSlide)
+            {
+                double unitsPerPx = _openSlideBase.Schema.Resolutions
+                    .OrderByDescending(r => r.Value.UnitsPerPixel)
+                    .Skip(SelectedImage.Resolutions.Count - 1 - level)
+                    .First().Value.UnitsPerPixel;
+                var sll = new OpenSlideGTK.SliceInfo(0, 0, srcW, srcH, unitsPerPx);
+                byte[] bt = SelectedImage.OpenSlideBase.GetSlice(sll, new ZCT(), level);
+                var bmp = new Bitmap(srcW, srcH, AForge.PixelFormat.Format32bppArgb, bt, GetCoordinate(), "");
+                return (bmp, srcW, srcH);
+            }
+            else
+            {
+                var tileBitmap = await SelectedImage.GetTile(SelectedImage.Coords[0, 0, 0], level, 0, 0, srcW, srcH);
+                if (tileBitmap == null)
+                {
+                    Console.WriteLine("Preview: GetTile returned null.");
+                    return (null, 0, 0);
+                }
+                return (tileBitmap, srcW, srcH);
+            }
+        }
+
+        private int FindSmallestFittingLevel(int maxPixels)
+        {
+            // Exclude macro/label thumbnail levels so the overview shows tissue, not a slide label.
+            int maxLevel = MacroResolution.HasValue
+                ? MacroResolution.Value - 1
+                : SelectedImage.Resolutions.Count - 1;
+            maxLevel = Math.Clamp(maxLevel, 0, SelectedImage.Resolutions.Count - 1);
+
+            for (int lev = maxLevel; lev >= 0; lev--)
+            {
+                var res = SelectedImage.Resolutions[lev];
+                if (res.SizeX <= maxPixels && res.SizeY <= maxPixels)
+                    return lev;
+            }
+            return -1;
+        }
+
+        private static (int w, int h) CalcOverviewSize(int srcW, int srcH, int maxSize)
+        {
+            double ar = (double)srcW / Math.Max(1, srcH);
+            int w = ar >= 1.0 ? maxSize : (int)(maxSize * ar);
+            int h = ar >= 1.0 ? (int)(maxSize / ar) : maxSize;
+            return (Math.Max(w, 20), Math.Max(h, 20));
+        }
+
+        private SKImage ScaleToOverview(Bitmap src, int srcW, int srcH, int destW, int destH)
+        {
+            // SKImage path (Zarr / well bitmaps already in correct format)
+            if (src is not null && SelectedImage.Type != BioImage.ImageType.well && !openSlide)
+            {
+                using var fullSK = BioImage.BitmapToSKImage(src);
+                var scaled = new SKBitmap(destW, destH, SKColorType.Rgba8888, SKAlphaType.Premul);
+                fullSK.ScalePixels(scaled.PeekPixels(), SKFilterQuality.Low);
+                return SKImage.FromBitmap(scaled);
+            }
+
+            // AForge path (OpenSlide raw bytes already wrapped in a Bitmap)
+            ResizeBilinear resizer = new ResizeBilinear(destW, destH);
+            var result = BitmapToSKImage(resizer.Apply(src));
+            src.Dispose();
+            return result;
         }
         #region Handlers
 
@@ -1491,6 +1454,7 @@ namespace BioGTK
             //Context Menu
             goToImageMenu.ButtonPressEvent += GoToImageMenu_ButtonPressEvent;
             goToOriginMenu.ButtonPressEvent += GoToOriginMenu_ButtonPressEvent;
+            overView.ButtonPressEvent += OverView_ButtonPressEvent;
 
             roiDelete.ButtonPressEvent += RoiDelete_ButtonPressEvent;
             roiID.ButtonPressEvent += RoiID_ButtonPressEvent;
@@ -1509,6 +1473,21 @@ namespace BioGTK
             tBar.ButtonPressEvent += TBar_ButtonPressEvent;
             cBar.ButtonPressEvent += CBar_ButtonPressEvent;
 
+        }
+
+        private void OverView_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            if(ShowOverview)
+            {
+                ShowOverview = false;
+                overView.Label = "Show Overview";
+            }
+            else
+            {
+                ShowOverview = true;
+                overView.Label = "Hide Overview";
+            }
+            UpdateView();
         }
 
         private void HScroll_ValueChanged(object sender, EventArgs e)
@@ -1551,8 +1530,7 @@ namespace BioGTK
         private void GlArea_Render(object o, RenderArgs args)
         {
             // The GL area redraws itself from tiles already uploaded to the GPU.
-            // Tile fetching and uploading is handled by UpdateViewAsync via the
-            // debounced RequestDeferredRender path — not here on every draw signal.
+            // Tile fetching and uploading is handled by UpdateViewAsync via RequestDeferredRender.
         }
 
         private void ImageView_FocusInEvent(object o, FocusInEventArgs args)
@@ -2305,14 +2283,14 @@ namespace BioGTK
             Plugins.ScrollEvent(o, e);
             if (SelectedImage.isPyramidal)
             {
-                // Use the raw screen-space mouse position so that the image point
-                // under the cursor stays fixed while zooming.
-                PointD mouseScreenPos = new PointD(e.Event.X, e.Event.Y);
+                // Anchor zoom to the top-left of the viewport (origin) so the image
+                // does not shift when zooming — passes (0,0) screen coords so
+                // PyramidalOrigin stays fixed while Resolution changes.
+                PointD anchor = new PointD(0, 0);
                 if (e.Event.Direction == ScrollDirection.Up)
-                    SetResolution(Resolution * 0.8, mouseScreenPos);   // zoom in (smaller resolution = more detail)
+                    SetResolution(Resolution * 0.8, anchor);   // zoom in
                 else if (e.Event.Direction == ScrollDirection.Down)
-                    SetResolution(Resolution * 1.25, mouseScreenPos);  // zoom out
-                // UpdateView is triggered by the Resolution and PyramidalOrigin setters inside SetResolution.
+                    SetResolution(Resolution * 1.25, anchor);  // zoom out
             }
         }
 
@@ -2633,15 +2611,15 @@ namespace BioGTK
                     vScroll.Value = value.Y;
                     _updatingScrollBars = false;
                 }
-                if (!_suppressViewUpdates)
+                if (SelectedImage?.isPyramidal == true)
                 {
-                    if (SelectedImage?.isPyramidal == true)
-                        UpdateView();
-                    else if (sk != null)
-                    {
-                        UpdateImages();
-                        sk.QueueDraw();
-                    }
+                    UpdateView();
+                    UpdateImages();
+                }
+                else if (sk != null)
+                {
+                    UpdateImages();
+                    sk.QueueDraw();
                 }
             }
         }
@@ -2790,7 +2768,6 @@ namespace BioGTK
                     mousePoint + mouseColor + ", " + SelectedImage.Resolutions[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") "
                     + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2") + ", Res:" + Resolution + " Level:" + Level;
             else if (SelectedImage.Type == BioImage.ImageType.pyramidal || 
-                     SelectedImage.Type == BioImage.ImageType.zarr ||
                      SelectedImage.Type == BioImage.ImageType.well)
             {
                 statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
@@ -2804,9 +2781,6 @@ namespace BioGTK
             refresh = true;
             if (SelectedImage?.isPyramidal == true)
             {
-                // Both macOS and Windows/Linux now use the debounced RequestDeferredRender path.
-                // This collapses rapid bursts of UpdateView calls (from setters, events,
-                // size-allocate) into a single pipeline invocation per debounce window.
                 RequestDeferredRender();
             }
             else
@@ -2949,22 +2923,15 @@ namespace BioGTK
             if (SelectedImage.isPyramidal && overview.IntersectsWith(e.Event.X, e.Event.Y) &&
                 e.Event.State.HasFlag(ModifierType.Button1Mask) && ShowOverview)
             {
-                if (!OpenSlide)
-                {
-                    double dsx = SelectedImage.SlideBase.Schema.Resolutions[0].UnitsPerPixel / Resolution;
-                    BioLib.Resolution rs = SelectedImage.Resolutions[Level];
-                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX);
-                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY);
-                    PyramidalOrigin = new PointD(dx, dy);
-                }
-                else
-                {
-                    double dsx = SelectedImage.OpenSlideBase.Schema.Resolutions[0].UnitsPerPixel / Resolution;
-                    BioLib.Resolution rs = SelectedImage.Resolutions[Level];
-                    double dx = ((double)e.Event.X / overview.Width) * (rs.SizeX);
-                    double dy = ((double)e.Event.Y / overview.Height) * (rs.SizeY);
-                    PyramidalOrigin = new PointD(dx, dy);
-                }
+                // PyramidalOrigin is in full-resolution pixel space.
+                // Map the click to full-res coords then centre the viewport on that point.
+                double fullResX = ((double)e.Event.X / overview.Width)  * SelectedImage.SizeX;
+                double fullResY = ((double)e.Event.Y / overview.Height) * SelectedImage.SizeY;
+                double halfW = (AllocatedWidth  * Resolution) / 2.0;
+                double halfH = (AllocatedHeight * Resolution) / 2.0;
+                PyramidalOrigin = new PointD(
+                    Math.Max(0, fullResX - halfW),
+                    Math.Max(0, fullResY - halfH));
                 RequestDeferredRender();
             }
             else
@@ -2980,7 +2947,7 @@ namespace BioGTK
                     double dy = (e.Event.Y - prevScreenPos.Y) * Resolution;
                     double newX = Math.Max(0, PyramidalOrigin.X - dx);
                     double newY = Math.Max(0, PyramidalOrigin.Y - dy);
-                    // PyramidalOrigin setter schedules a debounced render via UpdateView/RequestDeferredRender.
+                    // PyramidalOrigin setter triggers UpdateView -> immediate render.
                     PyramidalOrigin = new PointD(newX, newY);
                 }
                 else
@@ -3561,58 +3528,17 @@ namespace BioGTK
         {
             GoToImage(0);
         }
-        /// It takes an image index and centers the image in the viewport
-        /// 
-        /// @param i the index of the image to go to
-        /// 
-        /// @return The method is returning the value of the variable "i"
         public void GoToImage(int i)
         {
             if (Images.Count <= i)
                 return;
-            // Suppress intermediate UpdateView calls triggered by the Resolution and
-            // PyramidalOrigin setters below so that only one render fires at the end.
             _suppressViewUpdates = true;
             try
             {
-                if (SelectedImage.Type == BioImage.ImageType.well ||
-                    SelectedImage.Type == BioImage.ImageType.zarr)
+                if (SelectedImage.isPyramidal)
                 {
-                    var schema = SelectedImage.SlideBase?.Schema;
-                    if (schema != null && schema.Resolutions != null && schema.Resolutions.Count > 0)
-                        Resolution = schema.Resolutions[schema.Resolutions.Count - 1].UnitsPerPixel * 0.98;
-                    else
-                        Resolution = SelectedImage.GetUnitPerPixel(SelectedImage.Resolutions.Count - 1) * 0.98;
+                    Resolution = PickInitialResolution() * 0.98;
                     PyramidalOrigin = new PointD(0, 0);
-                }
-                else if (SelectedImage.Type == BioImage.ImageType.pyramidal)
-                {
-                    if (SelectedImage.OpenSlideBase != null)
-                    {
-                        if (MacroResolution.HasValue)
-                        {
-                            int lev = MacroResolution.Value - 2;
-                            Resolution = _openSlideBase.Schema.Resolutions[lev].UnitsPerPixel * 0.98;
-                        }
-                        else
-                        {
-                            int lev = 0;
-                            Resolution = _openSlideBase.Schema.Resolutions[lev].UnitsPerPixel * 0.98;
-                        }
-                    }
-                    else
-                    {
-                        if (MacroResolution.HasValue)
-                        {
-                            int lev = MacroResolution.Value - 1;
-                            Resolution = SelectedImage.SlideBase.Schema.Resolutions[lev].UnitsPerPixel * 0.98;
-                            PyramidalOrigin = new PointD(0, 0);
-                        }
-                        else
-                        {
-                            Resolution = SelectedImage.GetUnitPerPixel(SelectedImage.Resolutions.Count - 1) * 0.98;
-                        }
-                    }
                 }
                 double dx = Images[i].Volume.Width / 2;
                 double dy = Images[i].Volume.Height / 2;
@@ -3627,6 +3553,37 @@ namespace BioGTK
                 _suppressViewUpdates = false;
             }
             UpdateView();
+        }
+
+        /// <summary>
+        /// Returns the UnitsPerPixel value for the coarsest real pyramid level,
+        /// reading directly from the schema so it matches what TileUtil.GetLevel
+        /// and the tile renderer expect. Excludes macro/label thumbnail levels.
+        /// Falls back to BioImage.GetUnitPerPixel if no schema is available yet.
+        /// </summary>
+        private double PickInitialResolution()
+        {
+            // Exclude macro/label levels.
+            int maxLevel = MacroResolution.HasValue
+                ? MacroResolution.Value - 1
+                : SelectedImage.Resolutions.Count - 1;
+            maxLevel = Math.Clamp(maxLevel, 0, SelectedImage.Resolutions.Count - 1);
+
+            // Prefer reading from the schema so we match TileUtil.GetLevel exactly.
+            var schema = openSlide
+                ? (ITileSchema)_openSlideBase?.Schema
+                : _slideBase?.Schema;
+
+            if (schema?.Resolutions != null && schema.Resolutions.Count > 0)
+            {
+                // Schema resolutions are keyed 0..N where 0=finest, N=coarsest.
+                // Find the largest key that is <= maxLevel.
+                int schemaMax = Math.Min(maxLevel, schema.Resolutions.Keys.Max());
+                return schema.Resolutions[schemaMax].UnitsPerPixel;
+            }
+
+            // Fallback: derive from BioImage geometry (used before SlideBase is set).
+            return SelectedImage.GetUnitPerPixel(maxLevel);
         }
 
         #endregion
@@ -3645,8 +3602,7 @@ namespace BioGTK
         {
             // Well and zarr pyramidal images both use SlideBase + tile renderer.
             // For wells, RebuildSchemaForWell fixes the schema to match the active field.
-            if (SelectedImage.Type == BioImage.ImageType.well ||
-                SelectedImage.Type == BioImage.ImageType.zarr)
+            if (SelectedImage.Type == BioImage.ImageType.well)
             {
                 openSlide = false;
                 var slideImage = SlideImage.Open(SelectedImage);
@@ -3670,11 +3626,6 @@ namespace BioGTK
                 Log($"[Initialize] SetSource called. Resolution={Resolution:F3} WellIndex={SelectedImage.WellIndex} ZarrWellLevels={SelectedImage.ZarrWellLevels?.Count}");
                 if (MacOS) sKSlideRenderer?.SetSource(sb);
                 else       slideRenderer?.SetSource(sb);
-
-                // Temporarily show schema info in title for debugging
-                Gtk.Application.Invoke((s2,e2) => {
-                    this.Title = $"W:{sb.Schema?.Extent.MaxX:F0}x{Math.Abs(sb.Schema?.Extent.MinY ?? 0):F0} L:{sb.Schema?.Resolutions?.Count} R:{Resolution:F2}";
-                });
                 return;
             }
 
@@ -3683,32 +3634,16 @@ namespace BioGTK
                 _openSlideSource = SelectedImage.OpenSlideBase;
                 _openSlideBase = SelectedImage.OpenSlideBase as OpenSlideBase;
                 openSlide = true;
-                if (MacroResolution.HasValue)
-                {
-                    int lev = MacroResolution.Value - 2;
-                    Resolution = _openSlideBase.Schema.Resolutions[lev].UnitsPerPixel;
-                }
-                else
-                {
-                    Resolution = _openSlideBase.Schema.Resolutions[0].UnitsPerPixel;
-                }
             }
             else
             {
                 _slideSource = SelectedImage.SlideBase;
                 _slideBase = SelectedImage.SlideBase;
                 openSlide = false;
-                if (MacroResolution.HasValue)
-                {
-                    int lev = MacroResolution.Value - 2;
-                    double[] ds = SelectedImage.GetLevelDownsamples();
-                    Resolution = ds[lev];
-                }
-                else
-                {
-                    Resolution = SelectedImage.GetLevelDownsamples()[SelectedImage.Resolutions.Count - 1];
-                }
             }
+            // PickInitialResolution reads from the schema (now assigned above) so
+            // the value matches what TileUtil.GetLevel and the tile renderer expect.
+            Resolution = PickInitialResolution();
         }
 
         #endregion
