@@ -32,6 +32,8 @@ namespace BioGTK
         private int _locSize;
         private int _locViewportSize;
         private int _locTex;
+        private int _locUvMin;
+        private int _locUvMax;
 
         // ============================================================================
         // Texture Cache - tiles uploaded to GPU
@@ -56,6 +58,14 @@ namespace BioGTK
         public List<TileRenderInfo> TilesToRender { get; } = new();
         public bool NeedsRedraw { get; set; } = true;
 
+        // Screen-space boundary of the image (in pixels from top-left).
+        // Tiles are scissored to this rect so nothing renders outside the image.
+        // Set by SlideRenderer before each draw call. (-1 means no clipping.)
+        public float ImageScreenX { get; set; } = -1;
+        public float ImageScreenY { get; set; } = -1;
+        public float ImageScreenW { get; set; } = -1;
+        public float ImageScreenH { get; set; } = -1;
+
         /// <summary>
         /// Event fired during Skia rendering phase for annotation drawing.
         /// </summary>
@@ -74,6 +84,8 @@ layout(location=1) in vec2 aUV;
 uniform vec2 pos;           // pixel-space top-left of tile
 uniform vec2 size;          // pixel-space size of tile
 uniform vec2 viewportSize;  // (width, height) in pixels
+uniform vec2 uvMin;         // UV sub-region min (for boundary clipping)
+uniform vec2 uvMax;         // UV sub-region max (for boundary clipping)
 
 out vec2 uv;
 
@@ -88,7 +100,9 @@ void main()
     ndc.y = 1.0 - (pixelPos.y / viewportSize.y) * 2.0;
 
     gl_Position = vec4(ndc, 0.0, 1.0);
-    uv = aUV;
+
+    // Map aUV [0,1] to the sub-region [uvMin, uvMax]
+    uv = uvMin + aUV * (uvMax - uvMin);
 }
 ";
 
@@ -187,6 +201,8 @@ void main()
             _locSize = GL.GetUniformLocation(_shaderProgram, "size");
             _locViewportSize = GL.GetUniformLocation(_shaderProgram, "viewportSize");
             _locTex = GL.GetUniformLocation(_shaderProgram, "tex");
+            _locUvMin = GL.GetUniformLocation(_shaderProgram, "uvMin");
+            _locUvMax = GL.GetUniformLocation(_shaderProgram, "uvMax");
 
             // Create quad VAO/VBO for tile rendering
             float[] quadVertices =
@@ -319,7 +335,6 @@ void main()
 
         private void RenderTiles(int width, int height)
         {
-            // Multiply by ScaleFactor to handle High-DPI screens correctly
             int scale = ScaleFactor;
             GL.Viewport(0, 0, width * scale, height * scale);
             GL.ClearColor(0.2f, 0.2f, 0.2f, 1f);
@@ -336,13 +351,23 @@ void main()
             GL.Enable(EnableCap.Blend);
             GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
+            // Scissor to the image boundary so tiles cannot render pixels outside the image.
+            // GL scissor Y is from bottom; convert from top-left screen coords.
+            if (ImageScreenW > 0 && ImageScreenH > 0)
+            {
+                GL.Enable(EnableCap.ScissorTest);
+                int sx = (int)Math.Max(0, ImageScreenX) * scale;
+                int sy = (int)Math.Max(0, (height - ImageScreenY - ImageScreenH)) * scale;
+                int sw = (int)Math.Min(ImageScreenW, width  - ImageScreenX) * scale;
+                int sh = (int)Math.Min(ImageScreenH, height - ImageScreenY)  * scale;
+                GL.Scissor(sx, sy, Math.Max(0, sw), Math.Max(0, sh));
+            }
+
             GL.UseProgram(_shaderProgram);
             GL.BindVertexArray(_vao);
 
-            // Set viewport size uniform (constant for all tiles this frame)
             GL.Uniform2(_locViewportSize, (float)width, (float)height);
             GL.Uniform1(_locTex, 0);
-
             GL.ActiveTexture(TextureUnit.Texture0);
 
             int renderedCount = 0;
@@ -356,6 +381,8 @@ void main()
 
                 GL.Uniform2(_locPos, tile.ScreenX, tile.ScreenY);
                 GL.Uniform2(_locSize, tile.ScreenWidth, tile.ScreenHeight);
+                GL.Uniform2(_locUvMin, tile.U0, tile.V0);
+                GL.Uniform2(_locUvMax, tile.U1, tile.V1);
 
                 Console.WriteLine($"Rendering tile {tile.Index}: pos=({tile.ScreenX}, {tile.ScreenY}), size=({tile.ScreenWidth}, {tile.ScreenHeight})");
 
@@ -366,6 +393,7 @@ void main()
 
             Console.WriteLine($"Successfully rendered {renderedCount} tiles");
 
+            GL.Disable(EnableCap.ScissorTest);
             GL.BindVertexArray(0);
             GL.UseProgram(0);
             GL.Disable(EnableCap.Blend);
@@ -607,6 +635,9 @@ void main()
         public float ScreenWidth;
         public float ScreenHeight;
 
+        // UV sub-region within the tile texture (for boundary clipping)
+        public float U0, V0, U1, V1;
+
         public TileRenderInfo(TileIndex index, float x, float y, float w, float h)
         {
             Index = index;
@@ -614,6 +645,18 @@ void main()
             ScreenY = y;
             ScreenWidth = w;
             ScreenHeight = h;
+            U0 = 0f; V0 = 0f; U1 = 1f; V1 = 1f;
+        }
+
+        public TileRenderInfo(TileIndex index, float x, float y, float w, float h,
+                              float u0, float v0, float u1, float v1)
+        {
+            Index = index;
+            ScreenX = x;
+            ScreenY = y;
+            ScreenWidth = w;
+            ScreenHeight = h;
+            U0 = u0; V0 = v0; U1 = u1; V1 = v1;
         }
     }
 }

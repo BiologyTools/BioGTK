@@ -2337,7 +2337,14 @@ namespace BioGTK
         {
             SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
             if (SelectedImage?.isPyramidal == true)
+            {
                 SelectedImage.InvalidateTileCache();
+                // Also clear the GPU tile cache in SlideRenderer — it holds textures
+                // keyed by TileIndex only, so changing ZCT won't evict them and the
+                // old plane's tiles would be reused instead of fetching the new plane.
+                slideRenderer?.ClearCache();
+                SelectedImage.ZarrDisplayMax = 0; // force display range recalculation for new plane
+            }
             UpdateView(true);
         }
         /// The function ValueChanged is called when the value of the trackbar is changed.
@@ -2348,7 +2355,11 @@ namespace BioGTK
         {
             SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
             if (SelectedImage?.isPyramidal == true)
+            {
                 SelectedImage.InvalidateTileCache();
+                slideRenderer?.ClearCache();
+                SelectedImage.ZarrDisplayMax = 0;
+            }
             UpdateView(true);
         }
         /// The function ValueChanged is called when the value of the trackbar is changed.
@@ -2359,7 +2370,11 @@ namespace BioGTK
         {
             SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
             if (SelectedImage?.isPyramidal == true)
+            {
                 SelectedImage.InvalidateTileCache();
+                slideRenderer?.ClearCache();
+                SelectedImage.ZarrDisplayMax = 0;
+            }
             UpdateView(true);
         }
         private void UpdateScrollBars()

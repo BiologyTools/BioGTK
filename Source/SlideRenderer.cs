@@ -162,6 +162,8 @@ namespace BioGTK
                 var capturedResolution       = resolution;
                 var capturedLevel            = level;
                 var capturedSchema           = schema;
+                var capturedLevel0UPP        = schema.Resolutions.ContainsKey(0)
+                                                ? schema.Resolutions[0].UnitsPerPixel : 1.0;
 
                 Gtk.Application.Invoke((s, a) =>
                 {
@@ -199,19 +201,65 @@ namespace BioGTK
                         // Build render list from ALL tiles currently in the GPU cache.
                         // This means tiles cached from previous positions are still drawn
                         // while the user pans, eliminating dark edges.
+                        // Viewport dimensions are needed for screen-space culling.
+                        int vpW = _glArea.AllocatedWidth;
+                        int vpH = _glArea.AllocatedHeight;
+
+                        // Schema extent is in pixels; tile extents are in world (micron) units.
+                        // Convert schema extent to world units using level-0 UnitsPerPixel.
+                        double l0upp = capturedSchema.Resolutions.ContainsKey(0)
+                            ? capturedSchema.Resolutions[0].UnitsPerPixel : 1.0;
+                        double wMaxX =  capturedSchema.Extent.MaxX * l0upp;
+                        double wMinX =  capturedSchema.Extent.MinX * l0upp;
+                        double wMaxY =  capturedSchema.Extent.MaxY * l0upp; // 0
+                        double wMinY =  capturedSchema.Extent.MinY * l0upp; // negative
+
                         var renderInfos = new List<TileRenderInfo>();
                         foreach (var kv in _uploadedTileInfos)
                         {
-                            if (_glArea.HasTileTexture(kv.Key))
-                            {
-                                renderInfos.Add(CalculateScreenPosition(
-                                    kv.Value,
-                                    capturedOrigin,
-                                    capturedResolution,
-                                    capturedLevel,
-                                    capturedSchema));
-                            }
+                            if (!_glArea.HasTileTexture(kv.Key))
+                                continue;
+
+                            // Cull tiles entirely outside the image in world units.
+                            var te = kv.Value.Extent;
+                            if (te.MaxX <= wMinX || te.MinX >= wMaxX ||
+                                te.MaxY <= wMinY || te.MinY >= wMaxY)
+                                continue;
+
+                            var ri = CalculateScreenPosition(
+                                kv.Value,
+                                capturedOrigin,
+                                capturedResolution,
+                                capturedLevel,
+                                capturedSchema);
+
+                            // Screen-space cull: skip tiles fully outside the visible viewport.
+                            if (ri.ScreenX + ri.ScreenWidth  <= 0 || ri.ScreenX >= vpW ||
+                                ri.ScreenY + ri.ScreenHeight <= 0 || ri.ScreenY >= vpH)
+                                continue;
+
+                            renderInfos.Add(ri);
                         }
+
+                        // Compute the image boundary in screen pixels and pass to the GL area
+                        // for scissor clipping. This definitively prevents any tile data
+                        // from being rendered outside the image boundary regardless of tile
+                        // extent rounding or coordinate space mismatches.
+                        double imgWorldMaxX = capturedSchema.Extent.MaxX * capturedLevel0UPP;
+                        double imgWorldMaxY = capturedSchema.Extent.MaxY * capturedLevel0UPP; // 0
+                        double imgWorldMinX = capturedSchema.Extent.MinX * capturedLevel0UPP;
+                        double imgWorldMinY = capturedSchema.Extent.MinY * capturedLevel0UPP;
+
+                        float imgScreenX = (float)(imgWorldMinX / capturedResolution - capturedOrigin.X / capturedResolution);
+                        float imgScreenY = (float)(-imgWorldMaxY / capturedResolution - capturedOrigin.Y / capturedResolution);
+                        float imgScreenW = (float)((imgWorldMaxX - imgWorldMinX) / capturedResolution);
+                        // imgWorldMinY is negative so height = |imgWorldMinY| / res
+                        float imgScreenH = (float)(Math.Abs(imgWorldMinY - imgWorldMaxY) / capturedResolution);
+
+                        _glArea.ImageScreenX = imgScreenX;
+                        _glArea.ImageScreenY = imgScreenY;
+                        _glArea.ImageScreenW = imgScreenW;
+                        _glArea.ImageScreenH = imgScreenH;
 
                         _glArea.SetTilesToRender(renderInfos);
                         _glArea.RequestRedraw();
@@ -268,25 +316,47 @@ namespace BioGTK
             int level,
             ITileSchema schema)
         {
-            // Both tile.Extent and pyramidalOrigin are in world (micron) units.
-            // Convert both to level-N screen pixels by dividing by levelUnitsPerPixel.
-            double levelUnitsPerPixel = schema.Resolutions[level].UnitsPerPixel;
+            // tile.Extent and pyramidalOrigin are both in world units (microns).
+            // viewResolution converts world units → screen pixels.
 
-            // Tile top-left in level-N pixels (Y axis is inverted: world MaxY → screen MinY)
-            double tilePixelX = tile.Extent.MinX / levelUnitsPerPixel;
-            double tilePixelY = -tile.Extent.MaxY / levelUnitsPerPixel;
+            double r = schema.Resolutions[level].UnitsPerPixel;
 
-            // Origin in level-N pixels
-            double originPixelX = pyramidalOrigin.X / levelUnitsPerPixel;
-            double originPixelY = pyramidalOrigin.Y / levelUnitsPerPixel;
+            // Image boundary in the same world units as tile extents.
+            // Schema.Extent is in pixels; multiply by level-0 UPP to get world units.
+            double level0UPP = schema.Resolutions.ContainsKey(0)
+                ? schema.Resolutions[0].UnitsPerPixel : r;
+            double imgMaxX =  schema.Extent.MaxX * level0UPP;
+            double imgMinX =  schema.Extent.MinX * level0UPP;
+            double imgMaxY =  schema.Extent.MaxY * level0UPP; // 0
+            double imgMinY =  schema.Extent.MinY * level0UPP; // negative
 
-            float screenX = (float)(tilePixelX - originPixelX);
-            float screenY = (float)(tilePixelY - originPixelY);
+            // Clamp tile world extent to image boundary.
+            double clampedMinX = Math.Max(tile.Extent.MinX, imgMinX);
+            double clampedMaxX = Math.Min(tile.Extent.MaxX, imgMaxX);
+            double clampedMinY = Math.Max(tile.Extent.MinY, imgMinY);
+            double clampedMaxY = Math.Min(tile.Extent.MaxY, imgMaxY);
 
-            float screenWidth  = (float)(tile.Extent.Width  / levelUnitsPerPixel);
-            float screenHeight = (float)(tile.Extent.Height / levelUnitsPerPixel);
+            if (clampedMaxX <= clampedMinX || clampedMaxY <= clampedMinY)
+                return new TileRenderInfo(tile.Index, -9999, -9999, 0, 0);
 
-            return new TileRenderInfo(tile.Index, screenX, screenY, screenWidth, screenHeight);
+            // UV sub-region within the texture for the clamped portion.
+            double tw = tile.Extent.Width;
+            double th = tile.Extent.Height;
+            float u0 = (float)((clampedMinX - tile.Extent.MinX) / tw);
+            float u1 = (float)((clampedMaxX - tile.Extent.MinX) / tw);
+            float v0 = (float)((tile.Extent.MaxY - clampedMaxY) / th);
+            float v1 = (float)((tile.Extent.MaxY - clampedMinY) / th);
+
+            // Screen position using viewResolution (continuous zoom).
+            double originScreenX = pyramidalOrigin.X / viewResolution;
+            double originScreenY = pyramidalOrigin.Y / viewResolution;
+
+            float screenX      = (float)(clampedMinX /  viewResolution - originScreenX);
+            float screenY      = (float)(-clampedMaxY / viewResolution - originScreenY);
+            float screenWidth  = (float)((clampedMaxX - clampedMinX) / viewResolution);
+            float screenHeight = (float)((clampedMaxY - clampedMinY) / viewResolution);
+
+            return new TileRenderInfo(tile.Index, screenX, screenY, screenWidth, screenHeight, u0, v0, u1, v1);
         }
 
         public int CurrentLevel => _currentLevel;
