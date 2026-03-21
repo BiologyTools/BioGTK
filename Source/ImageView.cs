@@ -1387,6 +1387,35 @@ namespace BioGTK
 
         private SKImage ScaleToOverview(Bitmap src, int srcW, int srcH, int destW, int destH)
         {
+            // For 16-bit formats, stamp the channel min/max from BioImage.Channels onto
+            // the bitmap's Stats so BitmapToSKImage applies the correct display range
+            // instead of blindly shifting by 8 bits (which produces near-black images
+            // for 12-bit or other sub-range data).
+            if (src != null && SelectedImage?.Channels != null &&
+                (src.PixelFormat == PixelFormat.Format16bppGrayScale ||
+                 src.PixelFormat == PixelFormat.Format48bppRgb))
+            {
+                bool isGray = src.PixelFormat == PixelFormat.Format16bppGrayScale;
+                int nStats  = isGray ? 1 : 3;
+                if (src.Stats == null || src.Stats.Length < nStats)
+                    src.Stats = new Statistics[nStats];
+
+                src.Stats[0] = src.Stats[0] ?? new Statistics();
+                src.Stats[0].Min = SelectedImage.RChannel.RangeR.Min;
+                src.Stats[0].Max = SelectedImage.RChannel.RangeR.Max;
+
+                if (!isGray && nStats > 1)
+                {
+                    src.Stats[1] = src.Stats[1] ?? new Statistics();
+                    src.Stats[1].Min = SelectedImage.GChannel.RangeG.Min;
+                    src.Stats[1].Max = SelectedImage.GChannel.RangeG.Max;
+
+                    src.Stats[2] = src.Stats[2] ?? new Statistics();
+                    src.Stats[2].Min = SelectedImage.BChannel.RangeB.Min;
+                    src.Stats[2].Max = SelectedImage.BChannel.RangeB.Max;
+                }
+            }
+
             // SKImage path (Zarr / well bitmaps already in correct format)
             if (src is not null && SelectedImage.Type != BioImage.ImageType.well && !openSlide)
             {
@@ -2283,11 +2312,17 @@ namespace BioGTK
             Plugins.ScrollEvent(o, e);
             if (SelectedImage.isPyramidal)
             {
-                // Anchor zoom to the top-left of the viewport (origin) so the image
-                // does not shift when zooming — passes (0,0) screen coords so
-                // PyramidalOrigin stays fixed while Resolution changes.
-                PointD anchor = new PointD(0, 0);
-                if (e.Event.Direction == ScrollDirection.Up)
+                // Anchor zoom to the mouse cursor for natural zoom-to-point behaviour.
+                PointD anchor = MouseMove;
+                if (e.Event.Direction == ScrollDirection.Smooth)
+                {
+                    // Smooth / trackpad scroll — use the continuous delta for fluid zoom.
+                    double delta = e.Event.DeltaY;
+                    if (delta == 0) return;
+                    double factor = Math.Pow(2.0, delta * 0.1);
+                    SetResolution(Resolution * factor, anchor);
+                }
+                else if (e.Event.Direction == ScrollDirection.Up)
                     SetResolution(Resolution * 0.8, anchor);   // zoom in
                 else if (e.Event.Direction == ScrollDirection.Down)
                     SetResolution(Resolution * 1.25, anchor);  // zoom out
@@ -2725,6 +2760,7 @@ namespace BioGTK
                     else if (SelectedImage.OpenSlideBase != null)
                         l = OpenSlideGTK.TileUtil.GetLevel(SelectedImage.OpenSlideBase.Schema.Resolutions, Resolution);
                 }
+                UpdateScrollBars();
                 return l;
             }
             set
@@ -2772,7 +2808,7 @@ namespace BioGTK
             {
                 statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
                 mousePoint + mouseColor + ", " + SelectedImage.Resolutions[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") "
-                + PyramidalOrigin.X.ToString("N2") + "," + PyramidalOrigin.Y.ToString("N2") + " , Level:" + Level + " Well:" + SelectedImage.Level;
+                + PyramidalOrigin.X.ToString("N2") + "," + PyramidalOrigin.Y.ToString("N2") + " , Level:" + Level + " Res:" + Resolution;
             }
         }
         /// It updates the view.
