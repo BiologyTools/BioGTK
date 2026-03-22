@@ -1303,9 +1303,6 @@ namespace BioGTK
 
         // Animation
         private bool kineticActive = true;
-        // Pan speed multiplier (user configurable)
-
-        public static double PanSpeed = 0.75;  // Default to 0.75 for more controlled panning
         // --------------------------------------------------------------------
         // Mouse Down
         // --------------------------------------------------------------------
@@ -1347,10 +1344,13 @@ namespace BioGTK
 
             double dx = buts.Event.X - panStartX;
             double dy = buts.Event.Y - panStartY;
-            // Apply pan speed multiplier for user-controlled panning sensitivity
 
-            double deltaX = (dx / initialPanScale) * PanSpeed;
-            double deltaY = (dy / initialPanScale) * PanSpeed;
+            // Convert screen-pixel drag delta to origin-space units by multiplying
+            // by Resolution (UnitsPerPixel). This keeps pan speed exactly 1:1 with
+            // the cursor at all zoom levels — dragging N screen pixels always moves
+            // the viewport by N screen pixels worth of content.
+            double deltaX = dx * initialPanScale;
+            double deltaY = dy * initialPanScale;
 
             if (ImageView.SelectedImage.isPyramidal)
             {
@@ -1364,7 +1364,6 @@ namespace BioGTK
                 App.viewer.Origin = new PointD(
                     initialPanOrigin.X - deltaX,
                     initialPanOrigin.Y - deltaY);
-                // Non-pyramidal can still use normal update
                 App.viewer.UpdateView();
             }
         }
@@ -1431,14 +1430,12 @@ namespace BioGTK
             double viewW = App.viewer.ImageViewWidth / App.viewer.Resolution;
             double viewH = App.viewer.ImageViewHeight / App.viewer.Resolution;
 
-            double minX = 0;
-            double minY = 0;
             double maxX = res0.SizeX - viewW;
             double maxY = res0.SizeY - viewH;
 
             return new PointD(
-                Math.Clamp(origin.X, minX, Math.Abs(maxX)),
-                Math.Clamp(origin.Y, minY, Math.Abs(maxY)));
+                Math.Min(origin.X, Math.Abs(maxX)),
+                Math.Min(origin.Y, Math.Abs(maxY)));
         }
         private PointD GetOrigin()
         {

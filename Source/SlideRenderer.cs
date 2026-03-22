@@ -184,18 +184,43 @@ namespace BioGTK
                         }
 
                         // Upload new tiles and record their TileInfo for future render passes.
-                        foreach (var (idx, data, tW, tH) in capturedUploads)
+                        // Upload each tile then immediately null the byte[] so the GC can
+                        // reclaim the raw pixel data — the closure keeps the list alive
+                        // until this lambda runs, so without nulling every pending buffer
+                        // across all queued Invoke calls would stay in memory simultaneously.
+                        for (int _i = 0; _i < capturedUploads.Count; _i++)
                         {
+                            var (idx, data, tW, tH) = capturedUploads[_i];
                             if (!_glArea.HasTileTexture(idx))
                             {
                                 _glArea.UploadTileTexture(idx, data, tW, tH);
                                 _uploadedTiles.Add(idx);
                             }
+                            // Release the byte[] immediately after upload.
+                            capturedUploads[_i] = (idx, null, tW, tH);
                         }
+                        capturedUploads.Clear();
+
                         foreach (var tileInfo in capturedFetchTileInfos)
                         {
                             if (_glArea.HasTileTexture(tileInfo.Index))
                                 _uploadedTileInfos[tileInfo.Index] = tileInfo;
+                        }
+
+                        // Keep _uploadedTileInfos in sync with the GPU texture cache size.
+                        // Without this it grows unboundedly as the user pans around since
+                        // entries are only removed on level change, never on LRU eviction.
+                        const int MaxInfoEntries = 500; // matches SlideGLArea.MAX_CACHED_TEXTURES
+                        if (_uploadedTileInfos.Count > MaxInfoEntries)
+                        {
+                            var excess = _uploadedTileInfos.Keys
+                                .Take(_uploadedTileInfos.Count - MaxInfoEntries)
+                                .ToList();
+                            foreach (var k in excess)
+                            {
+                                _uploadedTiles.Remove(k);
+                                _uploadedTileInfos.Remove(k);
+                            }
                         }
 
                         // Build render list from ALL tiles currently in the GPU cache.
