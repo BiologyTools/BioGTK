@@ -1303,6 +1303,9 @@ namespace BioGTK
 
         // Animation
         private bool kineticActive = true;
+        // Pan speed multiplier (user configurable)
+
+        public static double PanSpeed = 0.75;  // Default to 0.75 for more controlled panning
         // --------------------------------------------------------------------
         // Mouse Down
         // --------------------------------------------------------------------
@@ -1345,15 +1348,14 @@ namespace BioGTK
             double dx = buts.Event.X - panStartX;
             double dy = buts.Event.Y - panStartY;
 
-            // Convert screen-pixel drag delta to origin-space units by multiplying
-            // by Resolution (UnitsPerPixel). This keeps pan speed exactly 1:1 with
-            // the cursor at all zoom levels — dragging N screen pixels always moves
-            // the viewport by N screen pixels worth of content.
-            double deltaX = dx * initialPanScale;
-            double deltaY = dy * initialPanScale;
-
             if (ImageView.SelectedImage.isPyramidal)
             {
+                // PyramidalOrigin is in full-resolution (level-0) pixel space.
+                // Resolution = full-res pixels per screen pixel, so multiplying
+                // screen-pixel delta by Resolution gives the correct full-res shift.
+                // PanSpeed applies a user-tunable multiplier on top.
+                double deltaX = dx * App.viewer.Resolution * PanSpeed;
+                double deltaY = dy * App.viewer.Resolution * PanSpeed;
                 App.viewer.PyramidalOrigin = new PointD(
                     initialPanOrigin.X - deltaX,
                     initialPanOrigin.Y - deltaY);
@@ -1361,6 +1363,10 @@ namespace BioGTK
             }
             else
             {
+                // Non-pyramidal: Origin is in world (micron) units; keep the
+                // previous scale-based formula so existing behaviour is unchanged.
+                double deltaX = (dx / initialPanScale) * PanSpeed;
+                double deltaY = (dy / initialPanScale) * PanSpeed;
                 App.viewer.Origin = new PointD(
                     initialPanOrigin.X - deltaX,
                     initialPanOrigin.Y - deltaY);
@@ -1430,12 +1436,18 @@ namespace BioGTK
             double viewW = App.viewer.ImageViewWidth / App.viewer.Resolution;
             double viewH = App.viewer.ImageViewHeight / App.viewer.Resolution;
 
-            double maxX = res0.SizeX - viewW;
-            double maxY = res0.SizeY - viewH;
+            // Allow panning one full viewport past the image edge in both directions
+            // so the image can be scrolled off-screen on all sides. Previously
+            // minX/minY were hard-coded to 0, blocking all negative-X panning
+            // (and negative-Y via this same path).
+            double minX = -(viewW);
+            double minY = -(viewH);
+            double maxX = res0.SizeX;
+            double maxY = res0.SizeY;
 
             return new PointD(
-                Math.Min(origin.X, Math.Abs(maxX)),
-                Math.Min(origin.Y, Math.Abs(maxY)));
+                Math.Clamp(origin.X, minX, maxX),
+                Math.Clamp(origin.Y, minY, maxY));
         }
         private PointD GetOrigin()
         {
