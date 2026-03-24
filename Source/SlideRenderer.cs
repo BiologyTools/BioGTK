@@ -57,6 +57,10 @@ namespace BioGTK
             _uploadedTiles.Clear();
             _uploadedTileInfos.Clear();
             _currentLevel = -1;
+            _tileCache?.Clear();
+            _openTileCache?.Clear();
+            _slideBase?.cache?.Clear();
+            _openSlideBase?.cache?.Clear();
         }
 
         public async Task UpdateViewAsync(
@@ -83,6 +87,7 @@ namespace BioGTK
             try
             {
                 var schema = _useOpenSlide ? _openSlideBase.Schema : _slideBase.Schema;
+                await EnsureGlobalDisplayRangeAsync(coordinate);
 
                 int level = TileUtil.GetLevel(schema.Resolutions, resolution);
                 var levelRes = schema.Resolutions[level];
@@ -180,47 +185,26 @@ namespace BioGTK
                                 _uploadedTiles.Remove(k);
                                 _uploadedTileInfos.Remove(k);
                             }
+                            _tileCache?.Clear();
+                            _openTileCache?.Clear();
+                            _slideBase?.cache?.Clear();
+                            _openSlideBase?.cache?.Clear();
                             _currentLevel = capturedLevel;
                         }
 
                         // Upload new tiles and record their TileInfo for future render passes.
-                        // Upload each tile then immediately null the byte[] so the GC can
-                        // reclaim the raw pixel data — the closure keeps the list alive
-                        // until this lambda runs, so without nulling every pending buffer
-                        // across all queued Invoke calls would stay in memory simultaneously.
-                        for (int _i = 0; _i < capturedUploads.Count; _i++)
+                        foreach (var (idx, data, tW, tH) in capturedUploads)
                         {
-                            var (idx, data, tW, tH) = capturedUploads[_i];
                             if (!_glArea.HasTileTexture(idx))
                             {
                                 _glArea.UploadTileTexture(idx, data, tW, tH);
                                 _uploadedTiles.Add(idx);
                             }
-                            // Release the byte[] immediately after upload.
-                            capturedUploads[_i] = (idx, null, tW, tH);
                         }
-                        capturedUploads.Clear();
-
                         foreach (var tileInfo in capturedFetchTileInfos)
                         {
                             if (_glArea.HasTileTexture(tileInfo.Index))
                                 _uploadedTileInfos[tileInfo.Index] = tileInfo;
-                        }
-
-                        // Keep _uploadedTileInfos in sync with the GPU texture cache size.
-                        // Without this it grows unboundedly as the user pans around since
-                        // entries are only removed on level change, never on LRU eviction.
-                        const int MaxInfoEntries = 500; // matches SlideGLArea.MAX_CACHED_TEXTURES
-                        if (_uploadedTileInfos.Count > MaxInfoEntries)
-                        {
-                            var excess = _uploadedTileInfos.Keys
-                                .Take(_uploadedTileInfos.Count - MaxInfoEntries)
-                                .ToList();
-                            foreach (var k in excess)
-                            {
-                                _uploadedTiles.Remove(k);
-                                _uploadedTileInfos.Remove(k);
-                            }
                         }
 
                         // Build render list from ALL tiles currently in the GPU cache.
@@ -313,6 +297,38 @@ namespace BioGTK
             }
         }
 
+        private async Task EnsureGlobalDisplayRangeAsync(ZCT coordinate)
+        {
+            if (_useOpenSlide || _slideBase?.Image?.BioImage == null)
+                return;
+
+            var bioImage = _slideBase.Image.BioImage;
+            if (bioImage.ZarrDisplayMax > bioImage.ZarrDisplayMin)
+                return;
+            if (bioImage.Resolutions == null || bioImage.Resolutions.Count == 0)
+                return;
+
+            var pixelFormat = bioImage.Resolutions[0].PixelFormat;
+            if (pixelFormat != PixelFormat.Format16bppGrayScale &&
+                pixelFormat != PixelFormat.Format48bppRgb)
+                return;
+
+            int seedLevel = bioImage.MacroResolution.HasValue
+                ? Math.Max(0, bioImage.MacroResolution.Value - 1)
+                : bioImage.Resolutions.Count - 1;
+            if (seedLevel >= bioImage.Resolutions.Count)
+                seedLevel = bioImage.Resolutions.Count - 1;
+
+            int width = bioImage.Resolutions[seedLevel].SizeX;
+            int height = bioImage.Resolutions[seedLevel].SizeY;
+            if (width <= 0 || height <= 0)
+                return;
+
+            int frameIndex = bioImage.GetFrameIndex(coordinate.Z, coordinate.C, coordinate.T);
+            var seedBitmap = await bioImage.GetTile(frameIndex, seedLevel, 0, 0, width, height);
+            seedBitmap?.Dispose();
+        }
+
         private async Task<byte[]> FetchTileAsync(TileInfo tileInfo, int level, ZCT coordinate)
         {
             try
@@ -341,38 +357,47 @@ namespace BioGTK
             int level,
             ITileSchema schema)
         {
-            // tile.Extent and pyramidalOrigin are both in world units (microns).
-            // viewResolution converts world units → screen pixels.
+            // viewResolution and pyramidalOrigin are in world units (microns or
+            // GetUnitPerPixel units).  Schema.Extent and tile.Extent are in the
+            // schema's native coordinate space, which for SlideBase is raw pixels.
+            // Multiply by level-0 UnitsPerPixel to bring everything into the same
+            // world-unit space before computing screen positions.
 
             double r = schema.Resolutions[level].UnitsPerPixel;
-
-            // Image boundary in the same world units as tile extents.
-            // Schema.Extent is in pixels; multiply by level-0 UPP to get world units.
             double level0UPP = schema.Resolutions.ContainsKey(0)
                 ? schema.Resolutions[0].UnitsPerPixel : r;
+
+            // Image boundary in world units.
             double imgMaxX =  schema.Extent.MaxX * level0UPP;
             double imgMinX =  schema.Extent.MinX * level0UPP;
             double imgMaxY =  schema.Extent.MaxY * level0UPP; // 0
             double imgMinY =  schema.Extent.MinY * level0UPP; // negative
 
-            // Clamp tile world extent to image boundary.
-            double clampedMinX = Math.Max(tile.Extent.MinX, imgMinX);
-            double clampedMaxX = Math.Min(tile.Extent.MaxX, imgMaxX);
-            double clampedMinY = Math.Max(tile.Extent.MinY, imgMinY);
-            double clampedMaxY = Math.Min(tile.Extent.MaxY, imgMaxY);
+            // Tile extent converted to the same world units.
+            double tMinX = tile.Extent.MinX * level0UPP;
+            double tMaxX = tile.Extent.MaxX * level0UPP;
+            double tMinY = tile.Extent.MinY * level0UPP;
+            double tMaxY = tile.Extent.MaxY * level0UPP;
+
+            // Clamp to image boundary.
+            double clampedMinX = Math.Max(tMinX, imgMinX);
+            double clampedMaxX = Math.Min(tMaxX, imgMaxX);
+            double clampedMinY = Math.Max(tMinY, imgMinY);
+            double clampedMaxY = Math.Min(tMaxY, imgMaxY);
 
             if (clampedMaxX <= clampedMinX || clampedMaxY <= clampedMinY)
                 return new TileRenderInfo(tile.Index, -9999, -9999, 0, 0);
 
             // UV sub-region within the texture for the clamped portion.
-            double tw = tile.Extent.Width;
-            double th = tile.Extent.Height;
-            float u0 = (float)((clampedMinX - tile.Extent.MinX) / tw);
-            float u1 = (float)((clampedMaxX - tile.Extent.MinX) / tw);
-            float v0 = (float)((tile.Extent.MaxY - clampedMaxY) / th);
-            float v1 = (float)((tile.Extent.MaxY - clampedMinY) / th);
+            // Use the world-unit tile dimensions so UV ratios stay correct.
+            double tw = tMaxX - tMinX;
+            double th = tMaxY - tMinY;
+            float u0 = tw > 0 ? (float)((clampedMinX - tMinX) / tw) : 0;
+            float u1 = tw > 0 ? (float)((clampedMaxX - tMinX) / tw) : 1;
+            float v0 = th > 0 ? (float)((tMaxY - clampedMaxY) / th) : 0;
+            float v1 = th > 0 ? (float)((tMaxY - clampedMinY) / th) : 1;
 
-            // Screen position using viewResolution (continuous zoom).
+            // Screen position: divide world coords by viewResolution to get pixels.
             double originScreenX = pyramidalOrigin.X / viewResolution;
             double originScreenY = pyramidalOrigin.Y / viewResolution;
 

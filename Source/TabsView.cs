@@ -856,11 +856,17 @@ namespace BioGTK
 
         private void TabClose_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            foreach (BioImage item in App.viewer.Images)
+            if (App.viewer == null) return;
+            ImageView v = App.viewer;
+            foreach (BioImage item in v.Images)
             {
                 Images.RemoveImage(item);
                 RemoveTab(item.Filename);
+                item.Dispose();
             }
+            RemoveViewer(v);
+            v.Hide();
+            v.Destroy();
         }
 
         private void RunSAMMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -993,7 +999,10 @@ namespace BioGTK
             {
                 foreach (ImageView v in viewers)
                 {
-                    if(!v.Visible)
+                    // Only re-present viewers that still have images.
+                    // A viewer with no images has been closed/destroyed and
+                    // calling Present() on it would resurrect an empty window.
+                    if(!v.Visible && v.Images.Count > 0)
                         v.Present();
                 }
             }
@@ -1722,24 +1731,32 @@ namespace BioGTK
         /// @param tabName The name of the tab to remove.
         public void RemoveTab(string tabName)
         {
-            int i = 0;
-            foreach (Widget item in tabsView.Children)
+            string shortName = System.IO.Path.GetFileName(tabName);
+            for (int i = tabsView.NPages - 1; i >= 0; i--)
             {
-                Gtk.Label l = item as Gtk.Label;
-                string name = System.IO.Path.GetFileName(l.LabelMarkup);
-                if (name == tabName)
+                Widget page = tabsView.GetNthPage(i);
+                // Check the visible tab label (the one the user sees)
+                Widget tabLabelWidget = tabsView.GetTabLabel(page);
+                string tabText = null;
+                if (tabLabelWidget is Gtk.Label tl)
+                    tabText = tl.Text;
+
+                // Also check the page content widget (a hidden dummy Label
+                // whose Text holds the full path)
+                string pageText = null;
+                if (page is Gtk.Label pl)
+                    pageText = pl.Text;
+
+                bool match = (tabText != null && (tabText == tabName || tabText == shortName))
+                          || (pageText != null && (pageText == tabName
+                              || System.IO.Path.GetFileName(pageText) == shortName));
+
+                if (match)
                 {
-                    ImageView iv = viewers[i];
-                    for (int v = 0; v < iv.Images.Count; v++)
-                    {
-                        Images.RemoveImage(iv.Images[v]);
-                    }
-                    tabsView.Remove(item);
-                    viewers.RemoveAt(i);
+                    tabsView.RemovePage(i);
                     App.nodeView.UpdateItems();
                     return;
                 }
-                i++;
             }
         }
         /// Open's a file in a new tab.

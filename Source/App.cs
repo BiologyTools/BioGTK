@@ -1,4 +1,4 @@
-﻿using Bio;
+using Bio;
 using Gdk;
 using Gtk;
 using OpenSlideGTK;
@@ -287,6 +287,11 @@ namespace BioGTK
         private static void Window_DeleteEvent(object o, DeleteEventArgs args)
         {
             Gtk.Window w = (Gtk.Window)o;
+            // ImageView handles its own close lifecycle in ImageView_DeleteEvent.
+            // If we also Hide+Destroy here, it races with that handler and can
+            // cause double-destroy or ghost windows.
+            if (w is ImageView)
+                return;
             w.Hide();
             w.Destroy();
         }
@@ -348,10 +353,14 @@ namespace BioGTK
                         ImageView vi = tbs.GetViewer(v);
                         if (vi.Images[im].Filename == Path.GetFileName(name) || vi.Title == name)
                         {
-                            tbs.RemoveTab(name);
-                            vi.Close();
-                            vi.Destroy();
+                            // Remove the image and tab BEFORE destroying the viewer,
+                            // and remove the viewer from the list so TabsView events
+                            // (WindowStateEvent, SwitchPage) don't try to re-present it.
                             Images.RemoveImage(vi.Images[im]);
+                            tbs.RemoveTab(name);
+                            tbs.RemoveViewer(vi);
+                            vi.Hide();
+                            vi.Destroy();
                             return;
                         }
                     }
