@@ -222,6 +222,9 @@ namespace BioGTK
                         // Upload new tiles and record their TileInfo for future render passes.
                         foreach (var (idx, data, tW, tH) in capturedUploads)
                         {
+                            if (capturedRenderVersion != _renderStateVersion)
+                                return;
+
                             if (!_glArea.HasTileTexture(idx))
                             {
                                 _glArea.UploadTileTexture(idx, data, tW, tH);
@@ -230,6 +233,9 @@ namespace BioGTK
                         }
                         foreach (var tileInfo in capturedFetchTileInfos)
                         {
+                            if (capturedRenderVersion != _renderStateVersion)
+                                return;
+
                             if (_glArea.HasTileTexture(tileInfo.Index))
                                 _uploadedTileInfos[tileInfo.Index] = tileInfo;
                         }
@@ -253,6 +259,9 @@ namespace BioGTK
                         var renderInfos = new List<TileRenderInfo>();
                         foreach (var kv in _uploadedTileInfos)
                         {
+                            if (capturedRenderVersion != _renderStateVersion)
+                                return;
+
                             if (!_glArea.HasTileTexture(kv.Key))
                                 continue;
 
