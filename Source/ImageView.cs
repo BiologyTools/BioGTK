@@ -3642,12 +3642,12 @@ namespace BioGTK
                     if (imagePixelW <= 0) imagePixelW = 1;
                     if (imagePixelH <= 0) imagePixelH = 1;
 
-                    // Fit the image to the viewport. For pyramidal images, Resolution
-                    // is used as "full-res pixels per screen pixel", so larger values
+                    // Fit the whole pyramidal image into the current viewport.
+                    // Resolution is image-pixels per screen pixel, so larger values
                     // zoom out and smaller values zoom in.
-                    double resW = imagePixelW / vpW;
-                    double resH = imagePixelH / vpH;
-                    double res = Math.Max(resW, resH);
+                    double fitW = imagePixelW / vpW;
+                    double fitH = imagePixelH / vpH;
+                    double res = Math.Max(fitW, fitH);
                     if (res <= 0) res = 1;
                     Resolution = res;
 
@@ -3762,9 +3762,11 @@ namespace BioGTK
                 _slideBase = SelectedImage.SlideBase;
                 openSlide = false;
             }
-            // PickInitialResolution reads from the schema (now assigned above) so
-            // the value matches what TileUtil.GetLevel and the tile renderer expect.
-            Resolution = PickInitialResolution();
+            // Do not force a thumbnail-like pyramid level here. GoToImage handles
+            // the visible zoom for pyramidal images; non-pyramidal images still
+            // use the legacy initial resolution path.
+            if (!SelectedImage.isPyramidal)
+                Resolution = PickInitialResolution();
         }
 
         #endregion
