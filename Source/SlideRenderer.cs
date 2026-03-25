@@ -324,34 +324,52 @@ namespace BioGTK
             }
         }
 
-        private Task EnsureGlobalDisplayRangeAsync(ZCT coordinate)
+        private async Task EnsureGlobalDisplayRangeAsync(ZCT coordinate)
         {
             if (_useOpenSlide || _slideBase?.Image?.BioImage == null)
-                return Task.CompletedTask;
+                return;
 
             var bioImage = _slideBase.Image.BioImage;
             if (bioImage.ZarrDisplayMax > bioImage.ZarrDisplayMin)
-                return Task.CompletedTask;
+                return;
             if (bioImage.Resolutions == null || bioImage.Resolutions.Count == 0)
-                return Task.CompletedTask;
+                return;
 
             var pixelFormat = bioImage.Resolutions[0].PixelFormat;
             if (pixelFormat != PixelFormat.Format16bppGrayScale &&
                 pixelFormat != PixelFormat.Format48bppRgb)
-                return Task.CompletedTask;
+                return;
 
-            // For microscopy data, a fixed global transfer range is more stable than
-            // inferring one from a single seed tile. Use the image's sample bit depth
-            // so every tile is normalized against the same ceiling.
-            int channelCount = Math.Max(1, bioImage.RGBChannelCount);
-            int sampleBits = bioImage.bitsPerPixel / channelCount;
-            sampleBits = Math.Clamp(sampleBits, 1, 16);
-            bioImage.ZarrDisplayMin = 0;
-            bioImage.ZarrDisplayMax = sampleBits >= 16
-                ? ushort.MaxValue
-                : (ushort)((1 << sampleBits) - 1);
+            int seedLevel = bioImage.MacroResolution.HasValue
+                ? Math.Max(0, bioImage.MacroResolution.Value - 1)
+                : bioImage.Resolutions.Count - 1;
+            if (seedLevel >= bioImage.Resolutions.Count)
+                seedLevel = bioImage.Resolutions.Count - 1;
 
-            return Task.CompletedTask;
+            int width = bioImage.Resolutions[seedLevel].SizeX;
+            int height = bioImage.Resolutions[seedLevel].SizeY;
+            if (width <= 0 || height <= 0)
+                return;
+
+            int frameIndex = bioImage.GetFrameIndex(coordinate.Z, coordinate.C, coordinate.T);
+            var seedBitmap = await bioImage.GetTile(frameIndex, seedLevel, 0, 0, width, height);
+            if (TryComputeRobustDisplayRange(seedBitmap, out ushort displayMin, out ushort displayMax))
+            {
+                bioImage.ZarrDisplayMin = displayMin;
+                bioImage.ZarrDisplayMax = SnapMicroscopyCeiling(displayMax);
+            }
+            seedBitmap?.Dispose();
+        }
+
+        private static ushort SnapMicroscopyCeiling(ushort value)
+        {
+            if (value <= 255)
+                return 255;
+            if (value <= 4095)
+                return 4095;
+            if (value <= 16383)
+                return 16383;
+            return ushort.MaxValue;
         }
 
         private static bool TryComputeRobustDisplayRange(Bitmap bitmap, out ushort displayMin, out ushort displayMax)
