@@ -1401,35 +1401,6 @@ namespace BioGTK
 
         private SKImage ScaleToOverview(Bitmap src, int srcW, int srcH, int destW, int destH)
         {
-            // For 16-bit formats, stamp the channel min/max from BioImage.Channels onto
-            // the bitmap's Stats so BitmapToSKImage applies the correct display range
-            // instead of blindly shifting by 8 bits (which produces near-black images
-            // for 12-bit or other sub-range data).
-            if (src != null && SelectedImage?.Channels != null &&
-                (src.PixelFormat == PixelFormat.Format16bppGrayScale ||
-                 src.PixelFormat == PixelFormat.Format48bppRgb))
-            {
-                bool isGray = src.PixelFormat == PixelFormat.Format16bppGrayScale;
-                int nStats  = isGray ? 1 : 3;
-                if (src.Stats == null || src.Stats.Length < nStats)
-                    src.Stats = new Statistics[nStats];
-
-                src.Stats[0] = src.Stats[0] ?? new Statistics();
-                src.Stats[0].Min = SelectedImage.RChannel.RangeR.Min;
-                src.Stats[0].Max = SelectedImage.RChannel.RangeR.Max;
-
-                if (!isGray && nStats > 1)
-                {
-                    src.Stats[1] = src.Stats[1] ?? new Statistics();
-                    src.Stats[1].Min = SelectedImage.GChannel.RangeG.Min;
-                    src.Stats[1].Max = SelectedImage.GChannel.RangeG.Max;
-
-                    src.Stats[2] = src.Stats[2] ?? new Statistics();
-                    src.Stats[2].Min = SelectedImage.BChannel.RangeB.Min;
-                    src.Stats[2].Max = SelectedImage.BChannel.RangeB.Max;
-                }
-            }
-
             SKImage result;
 
             // Convert through the same RGBA path used by the main viewer so the
@@ -3659,23 +3630,11 @@ namespace BioGTK
             {
                 if (SelectedImage.isPyramidal)
                 {
-                    // For pyramidal images, keep a usable zoom level instead of
-                    // forcing the coarsest thumbnail-like level, then center the
-                    // image in the viewport.
-                    var schema = openSlide
-                        ? (ITileSchema)_openSlideBase?.Schema
-                        : _slideBase?.Schema;
-
-                    double level0UnitsPerPixel = 0;
-                    if (schema?.Resolutions != null && schema.Resolutions.Count > 0)
-                        level0UnitsPerPixel = schema.Resolutions[0].UnitsPerPixel;
-                    if (level0UnitsPerPixel <= 0)
-                        level0UnitsPerPixel = SelectedImage.GetUnitPerPixel(0);
-                    if (level0UnitsPerPixel <= 0)
-                        level0UnitsPerPixel = 1;
-
                     double imagePixelW = SelectedImage.SizeX;
                     double imagePixelH = SelectedImage.SizeY;
+                    var schema = openSlide
+                        ? _openSlideBase?.Schema
+                        : _slideBase?.Schema;
                     if (imagePixelW <= 0 && schema?.Extent != null)
                         imagePixelW = schema.Extent.Width;
                     if (imagePixelH <= 0 && schema?.Extent != null)
@@ -3683,18 +3642,19 @@ namespace BioGTK
                     if (imagePixelW <= 0) imagePixelW = 1;
                     if (imagePixelH <= 0) imagePixelH = 1;
 
-                    double imageWorldW = imagePixelW * level0UnitsPerPixel;
-                    double imageWorldH = imagePixelH * level0UnitsPerPixel;
-
-                    double res = level0UnitsPerPixel;
-                    if (res <= 0) res = PickInitialResolution();
+                    // Fit the image to the viewport. For pyramidal images, Resolution
+                    // is used as "full-res pixels per screen pixel", so larger values
+                    // zoom out and smaller values zoom in.
+                    double resW = imagePixelW / vpW;
+                    double resH = imagePixelH / vpH;
+                    double res = Math.Max(resW, resH);
                     if (res <= 0) res = 1;
                     Resolution = res;
 
                     double viewWorldW = vpW * Resolution;
                     double viewWorldH = vpH * Resolution;
-                    double originX = Math.Max(0, (imageWorldW - viewWorldW) / 2.0);
-                    double originY = Math.Max(0, (imageWorldH - viewWorldH) / 2.0);
+                    double originX = Math.Max(0, (imagePixelW - viewWorldW) / 2.0);
+                    double originY = Math.Max(0, (imagePixelH - viewWorldH) / 2.0);
                     PyramidalOrigin = new PointD(originX, originY);
                 }
                 else
