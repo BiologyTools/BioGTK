@@ -349,6 +349,11 @@ namespace BioGTK
                 pixelFormat != PixelFormat.Format48bppRgb)
                 return;
 
+            // Prefer global stack statistics when they are available. These are
+            // stable across tiles and match the channel UI's own notion of range.
+            if (TryApplyGlobalChannelRange(bioImage))
+                return;
+
             int seedLevel = bioImage.MacroResolution.HasValue
                 ? Math.Max(0, bioImage.MacroResolution.Value - 1)
                 : bioImage.Resolutions.Count - 1;
@@ -368,6 +373,59 @@ namespace BioGTK
                 bioImage.ZarrDisplayMax = SnapMicroscopyCeiling(displayMax);
             }
             seedBitmap?.Dispose();
+        }
+
+        private static bool TryApplyGlobalChannelRange(BioImage bioImage)
+        {
+            if (bioImage?.Channels == null || bioImage.Channels.Count == 0)
+                return false;
+
+            try
+            {
+                if (bioImage.Resolutions[0].PixelFormat == PixelFormat.Format16bppGrayScale)
+                {
+                    var stats = bioImage.Channels[0].stats;
+                    if (stats != null && stats.Length > 0 && stats[0] != null && stats[0].StackMax > stats[0].StackMin)
+                    {
+                        bioImage.ZarrDisplayMin = (ushort)Math.Clamp(stats[0].StackMin, 0, ushort.MaxValue);
+                        bioImage.ZarrDisplayMax = (ushort)Math.Clamp(stats[0].StackMax, 0, ushort.MaxValue);
+                        return true;
+                    }
+                }
+                else if (bioImage.Resolutions[0].PixelFormat == PixelFormat.Format48bppRgb)
+                {
+                    int channels = Math.Min(3, bioImage.Channels.Count);
+                    ushort min = ushort.MaxValue;
+                    ushort max = 0;
+                    bool any = false;
+
+                    for (int i = 0; i < channels; i++)
+                    {
+                        var stats = bioImage.Channels[i].stats;
+                        if (stats == null || stats.Length == 0 || stats[0] == null)
+                            continue;
+                        if (stats[0].StackMax <= stats[0].StackMin)
+                            continue;
+
+                        min = (ushort)Math.Min(min, Math.Clamp(stats[0].StackMin, 0, ushort.MaxValue));
+                        max = (ushort)Math.Max(max, Math.Clamp(stats[0].StackMax, 0, ushort.MaxValue));
+                        any = true;
+                    }
+
+                    if (any)
+                    {
+                        bioImage.ZarrDisplayMin = min;
+                        bioImage.ZarrDisplayMax = max;
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                // Fall back to sampling if channel stats are unavailable or malformed.
+            }
+
+            return false;
         }
 
         private static ushort SnapMicroscopyCeiling(ushort value)
