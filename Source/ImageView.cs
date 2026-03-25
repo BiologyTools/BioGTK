@@ -1401,27 +1401,34 @@ namespace BioGTK
 
         private SKImage ScaleToOverview(Bitmap src, int srcW, int srcH, int destW, int destH)
         {
-            SKImage result;
+            if (src == null)
+                return null;
 
-            // Convert through the same RGBA path used by the main viewer so the
-            // overview uses the exact same display normalization as the tiles.
-            if (src is not null && SelectedImage.Type != BioImage.ImageType.well && !openSlide)
+            Bitmap previewBitmap = src;
+            Bitmap convertedBitmap = null;
+            Bitmap resizedBitmap = null;
+
+            try
             {
-                using var rgba = src.GetImageRGBA();
-                using var fullSK = BitmapToSKImage(rgba);
-                var scaled = new SKBitmap(destW, destH, SKColorType.Rgba8888, SKAlphaType.Premul);
-                fullSK.ScalePixels(scaled.PeekPixels(), SKFilterQuality.Low);
-                result = SKImage.FromBitmap(scaled);
-            }
-            else
-            {
-                // AForge path (OpenSlide raw bytes already wrapped in a Bitmap)
+                // Normal 32bpp preview tiles can be resized directly. 16/48-bit
+                // sources need a displayable RGBA conversion first.
+                if (previewBitmap.PixelFormat == PixelFormat.Format16bppGrayScale ||
+                    previewBitmap.PixelFormat == PixelFormat.Format48bppRgb)
+                {
+                    convertedBitmap = previewBitmap.GetImageRGBA();
+                    previewBitmap = convertedBitmap;
+                }
+
                 ResizeBilinear resizer = new ResizeBilinear(destW, destH);
-                result = BitmapToSKImage(resizer.Apply(src));
+                resizedBitmap = resizer.Apply(previewBitmap);
+                return BitmapToSKImage(resizedBitmap);
             }
-
-            src.Dispose();
-            return result;
+            finally
+            {
+                resizedBitmap?.Dispose();
+                convertedBitmap?.Dispose();
+                src.Dispose();
+            }
         }
         #region Handlers
 
@@ -3625,6 +3632,7 @@ namespace BioGTK
                 UpdateGUI();
             }
 
+            RefreshPyramidalTiles();
             _suppressViewUpdates = true;
             try
             {
