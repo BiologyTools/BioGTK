@@ -1430,18 +1430,25 @@ namespace BioGTK
                 }
             }
 
-            // SKImage path (Zarr / well bitmaps already in correct format)
+            SKImage result;
+
+            // Convert through the same RGBA path used by the main viewer so the
+            // overview uses the exact same display normalization as the tiles.
             if (src is not null && SelectedImage.Type != BioImage.ImageType.well && !openSlide)
             {
-                using var fullSK = BioImage.BitmapToSKImage(src);
+                using var rgba = src.GetImageRGBA();
+                using var fullSK = BitmapToSKImage(rgba);
                 var scaled = new SKBitmap(destW, destH, SKColorType.Rgba8888, SKAlphaType.Premul);
                 fullSK.ScalePixels(scaled.PeekPixels(), SKFilterQuality.Low);
-                return SKImage.FromBitmap(scaled);
+                result = SKImage.FromBitmap(scaled);
+            }
+            else
+            {
+                // AForge path (OpenSlide raw bytes already wrapped in a Bitmap)
+                ResizeBilinear resizer = new ResizeBilinear(destW, destH);
+                result = BitmapToSKImage(resizer.Apply(src));
             }
 
-            // AForge path (OpenSlide raw bytes already wrapped in a Bitmap)
-            ResizeBilinear resizer = new ResizeBilinear(destW, destH);
-            var result = BitmapToSKImage(resizer.Apply(src));
             src.Dispose();
             return result;
         }
@@ -3652,8 +3659,9 @@ namespace BioGTK
             {
                 if (SelectedImage.isPyramidal)
                 {
-                    // For pyramidal images, compute the resolution (world units per
-                    // screen pixel) that fits the entire image into the viewport.
+                    // For pyramidal images, keep a usable zoom level instead of
+                    // forcing the coarsest thumbnail-like level, then center the
+                    // image in the viewport.
                     var schema = openSlide
                         ? (ITileSchema)_openSlideBase?.Schema
                         : _slideBase?.Schema;
@@ -3678,16 +3686,16 @@ namespace BioGTK
                     double imageWorldW = imagePixelW * level0UnitsPerPixel;
                     double imageWorldH = imagePixelH * level0UnitsPerPixel;
 
-                    // The resolution that would exactly fit the image in the viewport.
-                    double fitRes = Math.Max(imageWorldW / vpW, imageWorldH / vpH);
-
-                    // Clamp to the coarsest real pyramid level so we don't request
-                    // a level that doesn't exist.
-                    double maxRes = PickInitialResolution();
-                    double res = Math.Min(fitRes, maxRes);
-                    if (res <= 0) res = maxRes;
+                    double res = level0UnitsPerPixel;
+                    if (res <= 0) res = PickInitialResolution();
+                    if (res <= 0) res = 1;
                     Resolution = res;
-                    PyramidalOrigin = new PointD(0, 0);
+
+                    double viewWorldW = vpW * Resolution;
+                    double viewWorldH = vpH * Resolution;
+                    double originX = Math.Max(0, (imageWorldW - viewWorldW) / 2.0);
+                    double originY = Math.Max(0, (imageWorldH - viewWorldH) / 2.0);
+                    PyramidalOrigin = new PointD(originX, originY);
                 }
                 else
                 {
