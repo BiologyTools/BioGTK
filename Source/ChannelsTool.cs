@@ -272,7 +272,7 @@ namespace BioGTK
                 graphMinBox.Adjustment.PageIncrement = 10;
             }
             minBox.Value = SelectedChannel.stats[(int)sampleBox.Value].Min;
-            minBox.Value = SelectedChannel.stats[(int)sampleBox.Value].Max;
+            maxBox.Value = SelectedChannel.stats[(int)sampleBox.Value].Max;
             emissionBox.Value = 
 
             emissionBox.Adjustment.Upper = 1000;
@@ -301,6 +301,7 @@ namespace BioGTK
                 ImageView.SelectedImage.StackThreshold(true);
             else
                 ImageView.SelectedImage.StackThreshold(false);
+            App.viewer.RefreshPyramidalTiles();
             App.viewer.UpdateView();
         }
         /*
@@ -396,6 +397,7 @@ namespace BioGTK
                 hist.Min = (int)minBox.Value;
             }
             SelectedChannel.range[(int)sampleBox.Value].Min = (int)minBox.Value;
+            App.viewer.RefreshPyramidalTiles();
             App.viewer.UpdateImage();
             App.viewer.UpdateView();
         }
@@ -416,7 +418,8 @@ namespace BioGTK
                 hist.QueueDraw();
                 hist.Max = (int)maxBox.Value;
             }
-            SelectedChannel.range[(int)sampleBox.Value].Min = (int)minBox.Value;
+            SelectedChannel.range[(int)sampleBox.Value].Max = (int)maxBox.Value;
+            App.viewer.RefreshPyramidalTiles();
             App.viewer.UpdateImage();
             App.viewer.UpdateView();
         }
@@ -451,6 +454,7 @@ namespace BioGTK
                     c.range[i].Max = (int)maxBox.Value;
                 }
             }
+            App.viewer.RefreshPyramidalTiles();
             App.viewer.UpdateView();
         }
 
@@ -468,6 +472,7 @@ namespace BioGTK
                     c.range[i].Min = (int)minBox.Value;
                 }
             }
+            App.viewer.RefreshPyramidalTiles();
             App.viewer.UpdateView();
         }
 
@@ -487,6 +492,7 @@ namespace BioGTK
             minBox.Value = SelectedChannel.range[(int)sampleBox.Value].Min;
             maxBox.Value = SelectedChannel.range[(int)sampleBox.Value].Max;
             UpdateItems();
+            App.viewer.RefreshPyramidalTiles();
             hist.UpdateView();
 
         }
@@ -704,6 +710,7 @@ namespace BioGTK
             {
                 ImageView.SelectedImage.StackThreshold(false);
             }
+            App.viewer.RefreshPyramidalTiles();
             App.viewer.UpdateImage();
         }
 
@@ -723,6 +730,7 @@ namespace BioGTK
                 hist.UpdateChannel(SelectedChannel);
                 hist.QueueDraw();
             }
+            App.viewer.RefreshPyramidalTiles();
             App.viewer.UpdateView();
         }
 

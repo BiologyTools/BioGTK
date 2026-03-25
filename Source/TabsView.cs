@@ -1592,6 +1592,7 @@ namespace BioGTK
                 ImageView.SelectedImage.StackThreshold(true);
             else
                 ImageView.SelectedImage.StackThreshold(false);
+            App.viewer.RefreshPyramidalTiles();
             App.viewer.UpdateImage();
             App.viewer.UpdateView();
         }

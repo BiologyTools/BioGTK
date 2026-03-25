@@ -175,7 +175,7 @@ namespace BioGTK
             }
             set
             {
-                if (Images.Count < value)
+                if (value >= 0 && value < Images.Count)
                 {
                     selectedIndex = value;
                     Images[selectedIndex] = SelectedImage;
@@ -1263,6 +1263,19 @@ namespace BioGTK
         {
             UpdateImages();
         }
+        /// <summary>
+        /// Clears cached pyramidal tiles so channel/threshold changes take effect
+        /// immediately on the tile renderer.
+        /// </summary>
+        public void RefreshPyramidalTiles()
+        {
+            if (SelectedImage?.isPyramidal != true)
+                return;
+
+            SelectedImage.InvalidateTileCache();
+            slideRenderer?.ClearCache();
+            SelectedImage.ZarrDisplayMax = 0;
+        }
         Rectangle overview;
         SKImage overviewImage;
         public int? MacroResolution { get { return SelectedImage.MacroResolution; } }
@@ -2048,7 +2061,15 @@ namespace BioGTK
         /// https://developer.gnome.org/gtk3/stable/GtkButton.html#GtkButton-clicked
         private void GoToImageMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            App.viewer.GoToImage();
+            if (Images.Count == 0)
+                return;
+
+            var picker = NumberPicker.Create(0, Images.Count - 1, SelectedIndex);
+            picker.Title = "Go To Image";
+            if (picker.Run() != (int)ResponseType.Ok)
+                return;
+
+            GoToImage((int)picker.SelectedValue);
         }
 
         #endregion
