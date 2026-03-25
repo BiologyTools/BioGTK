@@ -1272,6 +1272,7 @@ namespace BioGTK
             if (SelectedImage?.isPyramidal != true)
                 return;
 
+            slideRenderer?.InvalidateRenderState();
             SelectedImage.InvalidateTileCache();
             slideRenderer?.ClearCache();
             SelectedImage.ZarrDisplayMax = 0;

@@ -24,6 +24,9 @@ namespace BioGTK
         private Dictionary<TileIndex, TileInfo> _uploadedTileInfos = new();
         private int _currentLevel = -1;
         private readonly SemaphoreSlim _renderSemaphore = new SemaphoreSlim(1, 1);
+        // Bumped whenever image state changes in a way that invalidates the
+        // current render result, such as threshold or channel-range updates.
+        private volatile int _renderStateVersion = 0;
         public bool LastRenderSkipped { get; private set; }
         // Latest args saved when a render is skipped so the re-queued render uses current state.
         private volatile bool _pendingRequeue = false;
@@ -63,6 +66,15 @@ namespace BioGTK
             _openSlideBase?.cache?.Clear();
         }
 
+        /// <summary>
+        /// Marks all in-flight tile work as stale. Call this before changing
+        /// threshold/range state so old tiles cannot overwrite the current view.
+        /// </summary>
+        public void InvalidateRenderState()
+        {
+            Interlocked.Increment(ref _renderStateVersion);
+        }
+
         public async Task UpdateViewAsync(
             PointD pyramidalOrigin,
             int viewportWidth,
@@ -83,11 +95,17 @@ namespace BioGTK
                 return;
             }
             LastRenderSkipped = false;
+            int capturedRenderVersion = _renderStateVersion;
 
             try
             {
+                if (capturedRenderVersion != _renderStateVersion)
+                    return;
+
                 var schema = _useOpenSlide ? _openSlideBase.Schema : _slideBase.Schema;
                 await EnsureGlobalDisplayRangeAsync(coordinate);
+                if (capturedRenderVersion != _renderStateVersion)
+                    return;
 
                 int level = TileUtil.GetLevel(schema.Resolutions, resolution);
                 var levelRes = schema.Resolutions[level];
@@ -128,9 +146,15 @@ namespace BioGTK
                 else
                     await _slideBase.FetchTilesAsync(fetchTileInfos, level, coordinate, pyramidalOrigin, new Size(viewportWidth, viewportHeight));
 
+                if (capturedRenderVersion != _renderStateVersion)
+                    return;
+
                 var pendingUploads = new List<(TileIndex index, byte[] data, int tW, int tH)>();
                 foreach (var tileInfo in fetchTileInfos)
                 {
+                    if (capturedRenderVersion != _renderStateVersion)
+                        return;
+
                     if (!_glArea.HasTileTexture(tileInfo.Index))
                     {
                         byte[] tileData;
@@ -174,6 +198,9 @@ namespace BioGTK
                 {
                     try
                     {
+                        if (capturedRenderVersion != _renderStateVersion)
+                            return;
+
                         // On level change, evict stale textures and their infos.
                         if (capturedLevel != _currentLevel)
                         {
