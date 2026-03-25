@@ -3590,11 +3590,11 @@ namespace BioGTK
         /// This function is used to go to the image at the specified index
         public void GoToImage()
         {
-            GoToImage(0);
+            GoToImage(SelectedIndex);
         }
         public void GoToImage(int i)
         {
-            if (Images.Count <= i)
+            if (i < 0 || Images.Count <= i)
                 return;
 
             // Both pyramidal and non-pyramidal paths need valid viewport dimensions:
@@ -3616,6 +3616,15 @@ namespace BioGTK
                 return;
             }
 
+            bool imageChanged = selectedIndex != i;
+            if (imageChanged)
+            {
+                selectedIndex = i;
+                Initialize();
+                InitPreview();
+                UpdateGUI();
+            }
+
             _suppressViewUpdates = true;
             try
             {
@@ -3627,13 +3636,25 @@ namespace BioGTK
                         ? (ITileSchema)_openSlideBase?.Schema
                         : _slideBase?.Schema;
 
-                    // Use the schema Extent to get accurate world-space image size.
-                    // Extent is (minX, minY, maxX, maxY) with BruTile OSM axis
-                    // convention where Y is negative, so Height = |maxY - minY|.
-                    double imageWorldW = schema?.Extent != null ? schema.Extent.Width  : SelectedImage.SizeX;
-                    double imageWorldH = schema?.Extent != null ? schema.Extent.Height : SelectedImage.SizeY;
-                    if (imageWorldW <= 0) imageWorldW = SelectedImage.SizeX;
-                    if (imageWorldH <= 0) imageWorldH = SelectedImage.SizeY;
+                    double level0UnitsPerPixel = 0;
+                    if (schema?.Resolutions != null && schema.Resolutions.Count > 0)
+                        level0UnitsPerPixel = schema.Resolutions[0].UnitsPerPixel;
+                    if (level0UnitsPerPixel <= 0)
+                        level0UnitsPerPixel = SelectedImage.GetUnitPerPixel(0);
+                    if (level0UnitsPerPixel <= 0)
+                        level0UnitsPerPixel = 1;
+
+                    double imagePixelW = SelectedImage.SizeX;
+                    double imagePixelH = SelectedImage.SizeY;
+                    if (imagePixelW <= 0 && schema?.Extent != null)
+                        imagePixelW = schema.Extent.Width;
+                    if (imagePixelH <= 0 && schema?.Extent != null)
+                        imagePixelH = schema.Extent.Height;
+                    if (imagePixelW <= 0) imagePixelW = 1;
+                    if (imagePixelH <= 0) imagePixelH = 1;
+
+                    double imageWorldW = imagePixelW * level0UnitsPerPixel;
+                    double imageWorldH = imagePixelH * level0UnitsPerPixel;
 
                     // The resolution that would exactly fit the image in the viewport.
                     double fitRes = Math.Max(imageWorldW / vpW, imageWorldH / vpH);
@@ -3651,10 +3672,11 @@ namespace BioGTK
                     double dx = Images[i].Volume.Width / 2;
                     double dy = Images[i].Volume.Height / 2;
                     Origin = new PointD(-(Images[i].Volume.Location.X + dx), -(Images[i].Volume.Location.Y + dy));
-                    double wx, wy;
-                    wx = vpW / ToScreenW(SelectedImage.Volume.Width);
-                    wy = vpH / ToScreenH(SelectedImage.Volume.Height);
-                    Scale = new SizeF((float)wy, (float)wy);
+                    double wx = vpW / ToScreenW(SelectedImage.Volume.Width);
+                    double wy = vpH / ToScreenH(SelectedImage.Volume.Height);
+                    float fitScale = (float)Math.Min(wx, wy);
+                    if (fitScale <= 0) fitScale = 1;
+                    Scale = new SizeF(fitScale, fitScale);
                 }
             }
             finally

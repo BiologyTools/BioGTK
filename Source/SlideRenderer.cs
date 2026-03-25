@@ -326,7 +326,92 @@ namespace BioGTK
 
             int frameIndex = bioImage.GetFrameIndex(coordinate.Z, coordinate.C, coordinate.T);
             var seedBitmap = await bioImage.GetTile(frameIndex, seedLevel, 0, 0, width, height);
+            if (TryComputeRobustDisplayRange(seedBitmap, out ushort displayMin, out ushort displayMax))
+            {
+                bioImage.ZarrDisplayMin = displayMin;
+                bioImage.ZarrDisplayMax = displayMax;
+            }
             seedBitmap?.Dispose();
+        }
+
+        private static bool TryComputeRobustDisplayRange(Bitmap bitmap, out ushort displayMin, out ushort displayMax)
+        {
+            displayMin = 0;
+            displayMax = 0;
+
+            if (bitmap == null || bitmap.Bytes == null || bitmap.Bytes.Length < 2)
+                return false;
+            if (bitmap.PixelFormat != PixelFormat.Format16bppGrayScale &&
+                bitmap.PixelFormat != PixelFormat.Format48bppRgb)
+                return false;
+
+            byte[] bytes = bitmap.Bytes;
+            bool littleEndian = bitmap.LittleEndian;
+            int valueCount = bytes.Length / 2;
+            if (valueCount <= 0)
+                return false;
+
+            // Sample large preview tiles to keep the seed cheap while still producing
+            // one stable global display range for all visible tiles.
+            int sampleStep = Math.Max(1, valueCount / 500000);
+            int[] histogram = new int[ushort.MaxValue + 1];
+            int sampleCount = 0;
+            ushort rawMin = ushort.MaxValue;
+            ushort rawMax = 0;
+
+            for (int valueIndex = 0; valueIndex < valueCount; valueIndex += sampleStep)
+            {
+                int offset = valueIndex * 2;
+                ushort value = littleEndian
+                    ? (ushort)(bytes[offset] | (bytes[offset + 1] << 8))
+                    : (ushort)((bytes[offset] << 8) | bytes[offset + 1]);
+                histogram[value]++;
+                sampleCount++;
+                if (value < rawMin) rawMin = value;
+                if (value > rawMax) rawMax = value;
+            }
+
+            if (sampleCount == 0 || rawMax <= rawMin)
+                return false;
+
+            int lowTarget = (int)(sampleCount * 0.005);
+            int highTarget = (int)(sampleCount * 0.995);
+
+            int cumulative = 0;
+            ushort low = rawMin;
+            for (int i = rawMin; i <= rawMax; i++)
+            {
+                cumulative += histogram[i];
+                if (cumulative > lowTarget)
+                {
+                    low = (ushort)i;
+                    break;
+                }
+            }
+
+            cumulative = 0;
+            ushort high = rawMax;
+            for (int i = rawMax; i >= rawMin; i--)
+            {
+                cumulative += histogram[i];
+                if (cumulative > (sampleCount - highTarget))
+                {
+                    high = (ushort)i;
+                    break;
+                }
+            }
+
+            if (high <= low)
+            {
+                low = rawMin;
+                high = rawMax;
+                if (high <= low)
+                    return false;
+            }
+
+            displayMin = low;
+            displayMax = high;
+            return true;
         }
 
         private async Task<byte[]> FetchTileAsync(TileInfo tileInfo, int level, ZCT coordinate)
