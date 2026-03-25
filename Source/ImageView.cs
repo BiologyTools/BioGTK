@@ -1284,9 +1284,9 @@ namespace BioGTK
 
         /// <summary>
         /// Initializes the overview/minimap preview for pyramidal images.
-        /// Finds the smallest pyramid level that is small enough to be quickly read
-        /// (under MAX_QUICK_PIXELS in each dimension), fetches it, and scales it to
-        /// fit within OVERVIEW_SIZE while maintaining aspect ratio.
+        /// Finds a pyramid level that is large enough to show slide structure,
+        /// fetches it, and scales it to fit within OVERVIEW_SIZE while maintaining
+        /// aspect ratio.
         /// </summary>
         private async void InitPreview()
         {
@@ -1325,8 +1325,6 @@ namespace BioGTK
         // Returns (bitmap, srcW, srcH), or (null, 0, 0) on failure.
         private async Task<(Bitmap bitmap, int w, int h)> FetchPreviewBitmap(int overviewSize)
         {
-            const int MAX_QUICK_PIXELS = 10000;
-
             if (SelectedImage.Type == BioImage.ImageType.well)
             {
                 var bmp = await SelectedImage.GetWellFieldBitmap(SelectedImage.WellIndex).ConfigureAwait(false);
@@ -1338,43 +1336,90 @@ namespace BioGTK
                 return (bmp, bmp.Width, bmp.Height);
             }
 
-            int level = FindSmallestFittingLevel(MAX_QUICK_PIXELS);
+            int level = FindOverviewLevel(overviewSize);
             if (level < 0)
             {
-                Console.WriteLine("Preview: no sufficiently small pyramid level found.");
+                Console.WriteLine("Preview: no suitable pyramid level found.");
                 var fallback = SelectedImage.Resolutions[^1];
                 var (fw, fh) = CalcOverviewSize(fallback.SizeX, fallback.SizeY, overviewSize);
                 overview = new Rectangle(0, 0, fw, fh);
                 return (null, 0, 0);
             }
 
-            var res = SelectedImage.Resolutions[level];
-            int srcW = res.SizeX, srcH = res.SizeY;
+            for (int lev = level; lev >= 0; lev--)
+            {
+                var res = SelectedImage.Resolutions[lev];
+                int srcW = res.SizeX, srcH = res.SizeY;
 
-            if (openSlide)
-            {
-                double unitsPerPx = _openSlideBase.Schema.Resolutions
-                    .OrderByDescending(r => r.Value.UnitsPerPixel)
-                    .Skip(SelectedImage.Resolutions.Count - 1 - level)
-                    .First().Value.UnitsPerPixel;
-                var sll = new OpenSlideGTK.SliceInfo(0, 0, srcW, srcH, unitsPerPx);
-                byte[] bt = SelectedImage.OpenSlideBase.GetSlice(sll, new ZCT(), level);
-                var bmp = new Bitmap(srcW, srcH, AForge.PixelFormat.Format32bppArgb, bt, GetCoordinate(), "");
-                return (bmp, srcW, srcH);
-            }
-            else
-            {
-                var tileBitmap = await SelectedImage.GetTile(SelectedImage.Coords[0, 0, 0], level, 0, 0, srcW, srcH);
-                if (tileBitmap == null)
+                if (openSlide)
                 {
-                    Console.WriteLine("Preview: GetTile returned null.");
-                    return (null, 0, 0);
+                    double unitsPerPx = _openSlideBase.Schema.Resolutions
+                        .OrderByDescending(r => r.Value.UnitsPerPixel)
+                        .Skip(SelectedImage.Resolutions.Count - 1 - lev)
+                        .First().Value.UnitsPerPixel;
+                    var sll = new OpenSlideGTK.SliceInfo(0, 0, srcW, srcH, unitsPerPx);
+                    byte[] bt = SelectedImage.OpenSlideBase.GetSlice(sll, new ZCT(), lev);
+                    var bmp = new Bitmap(srcW, srcH, AForge.PixelFormat.Format32bppArgb, bt, GetCoordinate(), "");
+                    if (!LooksBlank(bmp) || lev == 0)
+                        return (bmp, srcW, srcH);
+                    bmp.Dispose();
+                    continue;
                 }
-                return (tileBitmap, srcW, srcH);
+                else
+                {
+                    try
+                    {
+                        var tileBitmap = await SelectedImage.GetTile(
+                            SelectedImage.Coords[0, 0, 0],
+                            lev,
+                            0, 0,
+                            srcW, srcH);
+                        if (tileBitmap != null && (!LooksBlank(tileBitmap) || lev == 0))
+                            return (tileBitmap, srcW, srcH);
+                        if (tileBitmap != null)
+                            tileBitmap.Dispose();
+                        Console.WriteLine("Preview: GetTile returned blank, trying finer level.");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Preview: GetTile failed: {ex.Message}");
+                    }
+
+                    if (SelectedImage.SlideBase == null)
+                    {
+                        Console.WriteLine("Preview: SlideBase was null.");
+                        return (null, 0, 0);
+                    }
+
+                    try
+                    {
+                        var sliceInfo = new BioLib.SliceInfo(
+                            0, 0,
+                            srcW, srcH,
+                            SelectedImage.GetUnitPerPixel(lev),
+                            SelectedImage.Coordinate);
+
+                        byte[] bt = await SelectedImage.SlideBase.GetSlice(
+                            sliceInfo,
+                            new PointD(0, 0),
+                            new AForge.Size(srcW, srcH));
+
+                        var bmp = new Bitmap(srcW, srcH, AForge.PixelFormat.Format32bppArgb, bt, GetCoordinate(), "");
+                        if (!LooksBlank(bmp) || lev == 0)
+                            return (bmp, srcW, srcH);
+                        bmp.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Preview: slice fallback failed: {ex.Message}");
+                    }
+                }
             }
+
+            return (null, 0, 0);
         }
 
-        private int FindSmallestFittingLevel(int maxPixels)
+        private int FindOverviewLevel(int overviewSize)
         {
             // Exclude macro/label thumbnail levels so the overview shows tissue, not a slide label.
             int maxLevel = MacroResolution.HasValue
@@ -1382,13 +1427,30 @@ namespace BioGTK
                 : SelectedImage.Resolutions.Count - 1;
             maxLevel = Math.Clamp(maxLevel, 0, SelectedImage.Resolutions.Count - 1);
 
+            // Aim for a source preview that is a few times larger than the thumbnail.
+            // Picking the coarsest possible level can collapse the preview into a blank
+            // or nearly blank square on slides with a label / macro tail level.
+            int targetSize = Math.Max(overviewSize * 4, 256);
+
+            int bestLevel = -1;
+            int bestScore = int.MaxValue;
+
             for (int lev = maxLevel; lev >= 0; lev--)
             {
                 var res = SelectedImage.Resolutions[lev];
-                if (res.SizeX <= maxPixels && res.SizeY <= maxPixels)
-                    return lev;
+                int maxDim = Math.Max(res.SizeX, res.SizeY);
+                if (maxDim < 64)
+                    continue;
+
+                int score = Math.Abs(maxDim - targetSize);
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    bestLevel = lev;
+                }
             }
-            return -1;
+
+            return bestLevel;
         }
 
         private static (int w, int h) CalcOverviewSize(int srcW, int srcH, int maxSize)
@@ -1399,6 +1461,31 @@ namespace BioGTK
             return (Math.Max(w, 20), Math.Max(h, 20));
         }
 
+        private static bool LooksBlank(Bitmap bmp)
+        {
+            if (bmp == null || bmp.Width <= 0 || bmp.Height <= 0)
+                return true;
+
+            int stepX = Math.Max(1, bmp.Width / 16);
+            int stepY = Math.Max(1, bmp.Height / 16);
+            int samples = 0;
+            int bright = 0;
+
+            for (int y = 0; y < bmp.Height; y += stepY)
+            {
+                for (int x = 0; x < bmp.Width; x += stepX)
+                {
+                    var p = bmp.GetPixel(x, y);
+                    int lum = (p.R + p.G + p.B) / 3;
+                    if (lum >= 245)
+                        bright++;
+                    samples++;
+                }
+            }
+
+            return samples > 0 && bright * 100 / samples > 95;
+        }
+
         private SKImage ScaleToOverview(Bitmap src, int srcW, int srcH, int destW, int destH)
         {
             if (src == null)
@@ -1406,12 +1493,12 @@ namespace BioGTK
 
             Bitmap previewBitmap = src;
             Bitmap convertedBitmap = null;
-            Bitmap resizedBitmap = null;
 
             try
             {
-                // Normal 32bpp preview tiles can be resized directly. 16/48-bit
-                // sources need a displayable RGBA conversion first.
+                // Convert only the unsupported high-bit-depth formats. The
+                // overview must stay cross-platform and use the same Skia path
+                // as the rest of the viewer.
                 if (previewBitmap.PixelFormat == PixelFormat.Format16bppGrayScale ||
                     previewBitmap.PixelFormat == PixelFormat.Format48bppRgb)
                 {
@@ -1419,13 +1506,15 @@ namespace BioGTK
                     previewBitmap = convertedBitmap;
                 }
 
-                ResizeBilinear resizer = new ResizeBilinear(destW, destH);
-                resizedBitmap = resizer.Apply(previewBitmap);
-                return BitmapToSKImage(resizedBitmap);
+                using (var fullSK = BitmapToSKImage(previewBitmap))
+                {
+                    var scaled = new SKBitmap(destW, destH, SKColorType.Rgba8888, SKAlphaType.Premul);
+                    fullSK.ScalePixels(scaled.PeekPixels(), SKFilterQuality.Low);
+                    return SKImage.FromBitmap(scaled);
+                }
             }
             finally
             {
-                resizedBitmap?.Dispose();
                 convertedBitmap?.Dispose();
                 src.Dispose();
             }
@@ -3638,11 +3727,19 @@ namespace BioGTK
             {
                 if (SelectedImage.isPyramidal)
                 {
-                    double imagePixelW = SelectedImage.SizeX;
-                    double imagePixelH = SelectedImage.SizeY;
+                    double imagePixelW = SelectedImage.Resolutions.Count > 0
+                        ? SelectedImage.Resolutions[0].SizeX
+                        : SelectedImage.SizeX;
+                    double imagePixelH = SelectedImage.Resolutions.Count > 0
+                        ? SelectedImage.Resolutions[0].SizeY
+                        : SelectedImage.SizeY;
                     var schema = openSlide
                         ? _openSlideBase?.Schema
                         : _slideBase?.Schema;
+                    if (imagePixelW <= 0 && schema?.Resolutions != null && schema.Resolutions.Count > 0)
+                        imagePixelW = SelectedImage.Resolutions[0].SizeX;
+                    if (imagePixelH <= 0 && SelectedImage.Resolutions != null && schema.Resolutions.Count > 0)
+                        imagePixelH = SelectedImage.Resolutions[0].SizeY;
                     if (imagePixelW <= 0 && schema?.Extent != null)
                         imagePixelW = schema.Extent.Width;
                     if (imagePixelH <= 0 && schema?.Extent != null)
@@ -3651,16 +3748,16 @@ namespace BioGTK
                     if (imagePixelH <= 0) imagePixelH = 1;
 
                     // Fit the whole pyramidal image into the current viewport.
-                    // Resolution is image-pixels per screen pixel, so larger values
-                    // zoom out and smaller values zoom in.
-                    double fitW = imagePixelW / vpW;
-                    double fitH = imagePixelH / vpH;
-                    double res = Math.Max(fitW, fitH);
-                    if (res <= 0) res = 1;
-                    Resolution = res;
+                    // Resolution behaves like a screen scale factor here, so a
+                    // smaller value zooms out and a larger value zooms in.
+                    double fitW = (double)vpW / imagePixelW;
+                    double fitH = (double)vpH / imagePixelH;
+                    double targetRes = Math.Min(fitW, fitH);
+                    if (targetRes <= 0) targetRes = 1;
+                    Resolution = GetViewportFitResolution(targetRes);
 
-                    double viewWorldW = vpW * Resolution;
-                    double viewWorldH = vpH * Resolution;
+                    double viewWorldW = vpW / Resolution;
+                    double viewWorldH = vpH / Resolution;
                     double originX = Math.Max(0, (imagePixelW - viewWorldW) / 2.0);
                     double originY = Math.Max(0, (imagePixelH - viewWorldH) / 2.0);
                     PyramidalOrigin = new PointD(originX, originY);
@@ -3685,11 +3782,51 @@ namespace BioGTK
         }
 
         /// <summary>
-        /// Returns the UnitsPerPixel value for the coarsest real pyramid level,
-        /// reading directly from the schema so it matches what TileUtil.GetLevel
-        /// and the tile renderer expect. Excludes macro/label thumbnail levels.
-        /// Falls back to BioImage.GetUnitPerPixel if no schema is available yet.
+        /// Returns the largest real pyramid UnitsPerPixel that still fits the
+        /// current viewport. Excludes macro/label thumbnail levels and falls
+        /// back to BioImage.GetUnitPerPixel if no schema is available yet.
         /// </summary>
+        private double GetViewportFitResolution(double targetResolution)
+        {
+            if (!SelectedImage.isPyramidal || targetResolution <= 0)
+                return targetResolution <= 0 ? 1 : targetResolution;
+
+            int maxLevel = MacroResolution.HasValue
+                ? MacroResolution.Value - 1
+                : SelectedImage.Resolutions.Count - 1;
+            maxLevel = Math.Clamp(maxLevel, 0, SelectedImage.Resolutions.Count - 1);
+
+            var schema = openSlide
+                ? _openSlideBase?.Schema
+                : _slideBase?.Schema;
+
+            if (schema?.Resolutions != null && schema.Resolutions.Count > 0)
+            {
+                double? smallest = null;
+                double? best = null;
+                foreach (var kv in schema.Resolutions.OrderBy(kv => kv.Value.UnitsPerPixel))
+                {
+                    if (kv.Key > maxLevel)
+                        continue;
+
+                    double upx = kv.Value.UnitsPerPixel;
+                    smallest ??= upx;
+                    if (upx <= targetResolution)
+                    {
+                        best = upx;
+                    }
+                }
+
+                if (best.HasValue)
+                    return best.Value;
+                if (smallest.HasValue)
+                    return smallest.Value;
+            }
+
+            double fallback = SelectedImage.GetUnitPerPixel(maxLevel);
+            return fallback > 0 ? fallback : targetResolution;
+        }
+
         private double PickInitialResolution()
         {
             // Exclude macro/label levels.
