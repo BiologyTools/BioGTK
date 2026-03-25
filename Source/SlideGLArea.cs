@@ -356,10 +356,12 @@ void main()
             if (ImageScreenW > 0 && ImageScreenH > 0)
             {
                 GL.Enable(EnableCap.ScissorTest);
-                int sx = (int)Math.Max(0, ImageScreenX) * scale;
-                int sy = (int)Math.Max(0, (height - ImageScreenY - ImageScreenH)) * scale;
-                int sw = (int)Math.Min(ImageScreenW, width  - ImageScreenX) * scale;
-                int sh = (int)Math.Min(ImageScreenH, height - ImageScreenY)  * scale;
+                // Apply (int) cast AFTER multiplying by the HiDPI scale factor so
+                // sub-pixel rounding errors don't compound.
+                int sx = (int)(Math.Max(0, ImageScreenX) * scale);
+                int sy = (int)(Math.Max(0, (height - ImageScreenY - ImageScreenH)) * scale);
+                int sw = (int)(Math.Min(ImageScreenW, width  - ImageScreenX) * scale);
+                int sh = (int)(Math.Min(ImageScreenH, height - ImageScreenY)  * scale);
                 GL.Scissor(sx, sy, Math.Max(0, sw), Math.Max(0, sh));
             }
 

@@ -59,10 +59,11 @@ namespace BioGTK
                         if(re.IntersectsWith(new Rectangle((int)args.Event.X, (int)args.Event.Y,1,1)))
                         {
                             selected = s;
-                            // Set the well field index on the BioImage and viewer,
-                            // then rebuild the tile schema for the new field.
+                            // Set the well field index on the BioImage, then ask the
+                            // viewer to rebuild the tile schema and re-render.
                             ImageView.SelectedImage.WellIndex = s.Index;
                             pictureBox.QueueDraw();
+                            App.viewer?.ReinitializeWellField();
                         }
                         r += l;
                     }

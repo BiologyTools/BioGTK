@@ -76,15 +76,15 @@ namespace BioGTK
             selectedIndex = Images.Count - 1;
             if (im.Resolutions[0].SizeX < 1920 && im.Resolutions[0].SizeY < 1080)
             {
-                if (sk != null)
+                if (View != null)
                 {
-                    sk.WidthRequest = im.Resolutions[0].SizeX;
-                    sk.HeightRequest = im.Resolutions[0].SizeY;
+                    View.WidthRequest = im.Resolutions[0].SizeX;
+                    View.HeightRequest = im.Resolutions[0].SizeY;
                 }
                 else
                 {
-                    glArea.WidthRequest = im.Resolutions[0].SizeX;
-                    glArea.HeightRequest = im.Resolutions[0].SizeY;
+                    View.WidthRequest = im.Resolutions[0].SizeX;
+                    View.HeightRequest = im.Resolutions[0].SizeY;
                 }
             }
 
@@ -261,13 +261,10 @@ namespace BioGTK
         private MenuItem setValueRange;
         [Builder.Object]
         private MenuItem loop;
-
-
-
 #pragma warning restore 649
-        [Builder.Object]
-        private SKDrawingArea sk = new SKDrawingArea();
         #endregion
+        private SKDrawingArea sk = new SKDrawingArea();
+
         public SlideGLArea glArea;
         public SlideRenderer slideRenderer;
         public SKSlideRenderer sKSlideRenderer;
@@ -312,7 +309,7 @@ namespace BioGTK
             {
                 MacOS = true;
                 // Create the renderer bridge
-                sk = new SKDrawingArea();
+                View = new SKDrawingArea();
                 sKSlideRenderer = new SKSlideRenderer(sk);
             }
             else if (OperatingSystem.IsLinux())
@@ -331,11 +328,11 @@ namespace BioGTK
                 Environment.SetEnvironmentVariable("GDK_BACKEND", "x11");
                 Environment.SetEnvironmentVariable("GTK_BACKEND", "x11");
                 window = new GLWindow(gameWindowSettings, nativeSettings);
-                // Create the GLArea widget
-                glArea = new SlideGLArea();
-                glArea.OnSkiaRender += RenderSkia;
+                // Create the View widget
+                View = new SlideGLArea();
+                ((SlideGLArea)View).OnSkiaRender += RenderSkia;
                 // Create the renderer bridge
-                slideRenderer = new SlideRenderer(glArea);
+                slideRenderer = new SlideRenderer((SlideGLArea)View);
                 GLFWProvider.SetErrorCallback((error, description) =>
                 {
                     if (description.Contains("Wayland") && description.Contains("window position"))
@@ -357,11 +354,11 @@ namespace BioGTK
                     APIVersion = new Version(3, 3)
                 };
                 window = new GLWindow(gameWindowSettings, nativeSettings);
-                // Create the GLArea widget
-                glArea = new SlideGLArea();
-                glArea.OnSkiaRender += RenderSkia;
+                // Create the View widget
+                View = new SlideGLArea();
+                ((SlideGLArea)View).OnSkiaRender += RenderSkia;
                 // Create the renderer bridge
-                slideRenderer = new SlideRenderer(glArea);
+                slideRenderer = new SlideRenderer((SlideGLArea)View);
                 GLFWProvider.SetErrorCallback((error, description) =>
                 {
                     Console.WriteLine($"BioGTK GLFW Error {error}: {description}");
@@ -370,10 +367,10 @@ namespace BioGTK
 
             if (MacOS)
             {
-                // sk is the sole rendering surface on macOS for both pyramidal and non-pyramidal.
+                // View is the sole rendering surface on macOS for both pyramidal and non-pyramidal.
                 // Always attach it to the grid so the widget appears in the window layout.
-                sk.Expand = true;
-                grid.Attach(sk, 0, 0, 1, 1);
+                View.Expand = true;
+                grid.Attach(View, 0, 0, 1, 1);
 
                 if (im.isPyramidal)
                 {
@@ -401,15 +398,15 @@ namespace BioGTK
                 }
                 if (im.isPyramidal)
                 {
-                    glArea.Expand = true;
-                    grid.Attach(glArea,0,0,1,1);
+                    View.Expand = true;
+                    grid.Attach(View,0,0,1,1);
                 }                
                 else
                 {
-                    sk.Name = "sk";
-                    sk.WidthRequest = 800;
-                    sk.HeightRequest = 600;
-                    grid.Attach(sk, 0, 0, 1, 1);
+                    View.Name = "View";
+                    View.WidthRequest = 800;
+                    View.HeightRequest = 600;
+                    grid.Attach(View, 0, 0, 1, 1);
                 }
             }
             
@@ -417,17 +414,17 @@ namespace BioGTK
             {
                 if (im.isPyramidal)
                 {
-                    glArea.SetAllocation(new Gdk.Rectangle(0, 0, 800, 600));
-                    glArea.Show();
+                    View.SetAllocation(new Gdk.Rectangle(0, 0, 800, 600));
+                    View.Show();
                 }
                 else
-                    sk.ShowAll();
+                    View.ShowAll();
             }
             else
             {
-                sk.WidthRequest = 800;
-                sk.HeightRequest = 600;
-                sk.Show();
+                View.WidthRequest = 800;
+                View.HeightRequest = 600;
+                View.Show();
             }
             roi.Submenu = roiMenu;
             roi.ShowAll();
@@ -944,10 +941,10 @@ namespace BioGTK
             if (MacOS)
             {
                 AForge.Size s;
-                if (sk.AllocatedWidth <= 1 || sk.AllocatedHeight <= 1)
+                if (View.AllocatedWidth <= 1 || View.AllocatedHeight <= 1)
                     s = new AForge.Size(600, 400);
                 else
-                    s = new AForge.Size(sk.AllocatedWidth, sk.AllocatedHeight);
+                    s = new AForge.Size(View.AllocatedWidth, View.AllocatedHeight);
 
                 var brutileOrigin = new PointD(PyramidalOrigin.X, -PyramidalOrigin.Y);
                 int myGeneration = System.Threading.Interlocked.Increment(ref _renderGeneration);
@@ -964,18 +961,18 @@ namespace BioGTK
                     _ = renderTask.ContinueWith(t =>
                     {
                         if (!t.IsFaulted && _renderGeneration == myGeneration)
-                            Gtk.Application.Invoke((s2, a2) => sk?.QueueDraw());
+                            Gtk.Application.Invoke((s2, a2) => View?.QueueDraw());
                     });
                 }
             }
             else
             {
-                if (glArea.AllocatedWidth > 1 && glArea.AllocatedHeight > 1)
+                if (View.AllocatedWidth > 1 && View.AllocatedHeight > 1)
                 {
                     _ = slideRenderer?.UpdateViewAsync(
                         PyramidalOrigin,
-                        glArea.AllocatedWidth,
-                        glArea.AllocatedHeight,
+                        View.AllocatedWidth,
+                        View.AllocatedHeight,
                         Resolution,
                         GetCoordinate()
                     );
@@ -1118,7 +1115,6 @@ namespace BioGTK
             {
                 UpdateGUI();
             }
-
             if (!MacOS)
             {
                 if (SelectedImage.isPyramidal && glArea.AllocatedWidth > 1 && glArea.AllocatedHeight > 1)
@@ -1131,9 +1127,8 @@ namespace BioGTK
                         Resolution,
                         GetCoordinate()
                     );
-                    
                 }
-                else
+                else if (!SelectedImage.isPyramidal)
                 {
                     for (int i = 0; i < SKImages.Count; i++)
                     {
@@ -1176,9 +1171,14 @@ namespace BioGTK
             {
                 if (SelectedImage.isPyramidal && sk.AllocatedWidth > 1 && sk.AllocatedHeight > 1)
                 {
-                    // On macOS the Skia stitching pipeline is driven exclusively by UpdateView(),
-                    // which applies the required BruTile Y-axis negation. Do not duplicate it here.
-                    // UpdateView() is called by all setters and event handlers that need a re-render.
+                    // Use the new renderer - no more ReadPixels!
+                    _ = sKSlideRenderer.UpdateViewAsync(
+                        PyramidalOrigin,
+                        Resolution,
+                        GetCoordinate(),
+                        sk.AllocatedWidth,
+                        sk.AllocatedHeight
+                    );
                 }
                 else if (!SelectedImage.isPyramidal)
                 {
@@ -1219,8 +1219,7 @@ namespace BioGTK
                     }
                 }
             }
-        }
-        /*
+        }/*
         /// <summary>
         /// Asynchronously fetches the active well field at the coarsest pyramid level
         /// and places it in SKImages so RenderSkia can draw it.
@@ -1312,7 +1311,7 @@ namespace BioGTK
                 ShowOverview = overviewImage != null;
 
                 Console.WriteLine($"Preview initialized: {ow}x{oh} from {srcW}x{srcH}");
-                Gtk.Application.Invoke((s, e) => { sk?.QueueDraw(); glArea?.QueueDraw(); });
+                Gtk.Application.Invoke((s, e) => { View?.QueueDraw(); View?.QueueDraw(); });
             }
             catch (Exception ex)
             {
@@ -1529,16 +1528,16 @@ namespace BioGTK
             tBar.ValueChanged += ValueChangedT;
             if (MacOS)
             {
-                sk.MotionNotifyEvent += ImageView_MotionNotifyEvent;
-                sk.ButtonPressEvent += ImageView_ButtonPressEvent;
-                sk.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
-                sk.ScrollEvent += ImageView_ScrollEvent;
+                View.MotionNotifyEvent += ImageView_MotionNotifyEvent;
+                View.ButtonPressEvent += ImageView_ButtonPressEvent;
+                View.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
+                View.ScrollEvent += ImageView_ScrollEvent;
                 // OnMouseWheel is intentionally NOT registered here: ImageView_ScrollEvent already
                 // handles zoom-to-cursor via SetResolution. Registering both causes double-zoom jumps.
-                sk.PaintSurface += Sk_PaintSurface;
-                sk.SizeAllocated += PictureBox_SizeAllocated;
-                sk.SetSizeRequest(600, 400);
-                sk.AddEvents((int)(EventMask.ButtonPressMask
+                ((SKDrawingArea)View).PaintSurface += Sk_PaintSurface;
+                View.SizeAllocated += PictureBox_SizeAllocated;
+                View.SetSizeRequest(600, 400);
+                View.AddEvents((int)(EventMask.ButtonPressMask
                 | EventMask.ButtonReleaseMask
                 | EventMask.KeyPressMask
                 | EventMask.PointerMotionMask
@@ -1546,14 +1545,14 @@ namespace BioGTK
             }
             else
             {
-                glArea.MotionNotifyEvent += ImageView_MotionNotifyEvent;
-                glArea.ButtonPressEvent += ImageView_ButtonPressEvent;
-                glArea.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
-                glArea.ScrollEvent += ImageView_ScrollEvent;
+                View.MotionNotifyEvent += ImageView_MotionNotifyEvent;
+                View.ButtonPressEvent += ImageView_ButtonPressEvent;
+                View.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
+                View.ScrollEvent += ImageView_ScrollEvent;
                 // OnMouseWheel removed: ImageView_ScrollEvent handles zoom-to-cursor via SetResolution.
                 glArea.Render += GlArea_Render;
-                glArea.SizeAllocated += PictureBox_SizeAllocated;
-                glArea.AddEvents((int)(EventMask.ButtonPressMask
+                View.SizeAllocated += PictureBox_SizeAllocated;
+                View.AddEvents((int)(EventMask.ButtonPressMask
                 | EventMask.ButtonReleaseMask
                 | EventMask.KeyPressMask
                 | EventMask.PointerMotionMask
@@ -2189,8 +2188,8 @@ namespace BioGTK
         {
             if (SelectedImage == null) return;
 
-            int newW = MacOS ? sk.AllocatedWidth  : (SelectedImage.isPyramidal ? glArea.AllocatedWidth  : sk.AllocatedWidth);
-            int newH = MacOS ? sk.AllocatedHeight : (SelectedImage.isPyramidal ? glArea.AllocatedHeight : sk.AllocatedHeight);
+            int newW = MacOS ? View.AllocatedWidth  : (SelectedImage.isPyramidal ? View.AllocatedWidth  : View.AllocatedWidth);
+            int newH = MacOS ? View.AllocatedHeight : (SelectedImage.isPyramidal ? View.AllocatedHeight : View.AllocatedHeight);
 
             // Ignore trivial/degenerate sizes that GTK emits before the window is realized.
             if (newW <= 1 || newH <= 1) return;
@@ -2746,10 +2745,10 @@ namespace BioGTK
             {
                 if (AllowNavigation)
                     origin = value;
-                if (sk != null)
+                if (View != null)
                 {
                     UpdateImages();
-                    sk.QueueDraw();
+                    View.QueueDraw();
                 }
             }
         }
@@ -2758,7 +2757,7 @@ namespace BioGTK
         {
             get
             {
-                return new PointD((Origin.X - ((glArea.AllocatedWidth / 2) * pxWmicron)), (Origin.Y - ((glArea.AllocatedHeight / 2) * pxHmicron)));
+                return new PointD((Origin.X - ((View.AllocatedWidth / 2) * pxWmicron)), (Origin.Y - ((View.AllocatedHeight / 2) * pxHmicron)));
             }
         }
         private bool _updatingScrollBars = false;
@@ -2792,10 +2791,10 @@ namespace BioGTK
                     UpdateView();
                     UpdateImages();
                 }
-                else if (sk != null)
+                else if (View != null)
                 {
                     UpdateImages();
-                    sk.QueueDraw();
+                    View.QueueDraw();
                 }
             }
         }
@@ -2855,10 +2854,10 @@ namespace BioGTK
                 {
                     if (SelectedImage?.isPyramidal == true)
                         UpdateView();
-                    else if (sk != null)
+                    else if (View != null)
                     {
                         UpdateImages();
-                        sk.QueueDraw();
+                        View.QueueDraw();
                     }
                 }
             }
@@ -2894,6 +2893,12 @@ namespace BioGTK
             {
                 if (SelectedImage == null)
                     return 0;
+                if (SelectedImage.Type == BioImage.ImageType.well)
+                {
+                    l = SelectedImage.Level;
+                    UpdateScrollBars();
+                    return l;
+                }
                 if (SelectedImage.isPyramidal)
                 {
                     if (SelectedImage.SlideBase != null)
@@ -2908,6 +2913,19 @@ namespace BioGTK
             {
                 if (value < 0)
                     return;
+                if (SelectedImage?.Type == BioImage.ImageType.well)
+                {
+                    if (l != value)
+                        l = value;
+                    SelectedImage.Level = value;
+                    UpdateScrollBars();
+                    if (View != null)
+                    {
+                        UpdateImages();
+                        View.QueueDraw();
+                    }
+                    return;
+                }
                 if (l != value)
                     UpdateLevel();
                 l = value;
@@ -2966,7 +2984,7 @@ namespace BioGTK
                 if (!MacOS)
                     glArea.RequestRedraw();
                 else
-                    sk.QueueDraw();
+                    View.QueueDraw();
             }
         }
         private string mousePoint = "";
@@ -3332,14 +3350,14 @@ namespace BioGTK
         {
             get
             {
-                return glArea.AllocatedWidth;
+                return View.AllocatedWidth;
             }
         }
         private int Height
         {
             get
             {
-                return glArea.AllocatedHeight;
+                return View.AllocatedHeight;
             }
         }
 
@@ -3360,7 +3378,7 @@ namespace BioGTK
         {
             get
             {
-                double d = glArea.AllocatedWidth / Resolution;
+                double d = View.AllocatedWidth / Resolution;
                 return d;
             }
         }
@@ -3368,7 +3386,7 @@ namespace BioGTK
         {
             get
             {
-                double d = glArea.AllocatedHeight / Resolution;
+                double d = View.AllocatedHeight / Resolution;
                 return d;
             }
         }
@@ -3412,10 +3430,17 @@ namespace BioGTK
         {
             get
             {
-                if(sk != null)
+                if(MacOS)
                     return sk;
                 else
                     return glArea;
+            }
+            set
+            {
+                if (MacOS)
+                    sk = (SKDrawingArea)value;
+                else
+                    glArea = (SlideGLArea)value;
             }
         }
         public PointD ToViewSpace(double x, double y)
@@ -3727,39 +3752,47 @@ namespace BioGTK
             {
                 if (SelectedImage.isPyramidal)
                 {
-                    double imagePixelW = SelectedImage.Resolutions.Count > 0
+                    double imageWorldW = SelectedImage.Resolutions.Count > 0
                         ? SelectedImage.Resolutions[0].SizeX
                         : SelectedImage.SizeX;
-                    double imagePixelH = SelectedImage.Resolutions.Count > 0
+                    double imageWorldH = SelectedImage.Resolutions.Count > 0
                         ? SelectedImage.Resolutions[0].SizeY
                         : SelectedImage.SizeY;
                     var schema = openSlide
                         ? _openSlideBase?.Schema
                         : _slideBase?.Schema;
-                    if (imagePixelW <= 0 && schema?.Resolutions != null && schema.Resolutions.Count > 0)
-                        imagePixelW = SelectedImage.Resolutions[0].SizeX;
-                    if (imagePixelH <= 0 && SelectedImage.Resolutions != null && schema.Resolutions.Count > 0)
-                        imagePixelH = SelectedImage.Resolutions[0].SizeY;
-                    if (imagePixelW <= 0 && schema?.Extent != null)
-                        imagePixelW = schema.Extent.Width;
-                    if (imagePixelH <= 0 && schema?.Extent != null)
-                        imagePixelH = schema.Extent.Height;
-                    if (imagePixelW <= 0) imagePixelW = 1;
-                    if (imagePixelH <= 0) imagePixelH = 1;
+                    double level0UPP = 1.0;
+                    if (schema?.Resolutions != null && schema.Resolutions.Count > 0)
+                    {
+                        if (schema.Resolutions.TryGetValue(0, out var level0))
+                            level0UPP = level0.UnitsPerPixel;
+
+                        if (schema.Extent != null)
+                        {
+                            imageWorldW = schema.Extent.Width * level0UPP;
+                            imageWorldH = schema.Extent.Height * level0UPP;
+                        }
+                    }
+                    if (imageWorldW <= 0 && SelectedImage.Resolutions.Count > 0)
+                        imageWorldW = SelectedImage.Resolutions[0].SizeX * level0UPP;
+                    if (imageWorldH <= 0 && SelectedImage.Resolutions.Count > 0)
+                        imageWorldH = SelectedImage.Resolutions[0].SizeY * level0UPP;
+                    if (imageWorldW <= 0) imageWorldW = 1;
+                    if (imageWorldH <= 0) imageWorldH = 1;
 
                     // Fit the whole pyramidal image into the current viewport.
-                    // Resolution behaves like a screen scale factor here, so a
-                    // smaller value zooms out and a larger value zooms in.
-                    double fitW = (double)vpW / imagePixelW;
-                    double fitH = (double)vpH / imagePixelH;
-                    double targetRes = Math.Min(fitW, fitH);
+                    // Resolution is world-units per screen pixel, so the minimum
+                    // value that fits is imageWorld / viewportPixels.
+                    double fitW = imageWorldW / vpW;
+                    double fitH = imageWorldH / vpH;
+                    double targetRes = Math.Max(fitW, fitH);
                     if (targetRes <= 0) targetRes = 1;
                     Resolution = GetViewportFitResolution(targetRes);
 
-                    double viewWorldW = vpW / Resolution;
-                    double viewWorldH = vpH / Resolution;
-                    double originX = Math.Max(0, (imagePixelW - viewWorldW) / 2.0);
-                    double originY = Math.Max(0, (imagePixelH - viewWorldH) / 2.0);
+                    double viewWorldW = vpW * Resolution;
+                    double viewWorldH = vpH * Resolution;
+                    double originX = Math.Max(0, (imageWorldW - viewWorldW) / 2.0);
+                    double originY = Math.Max(0, (imageWorldH - viewWorldH) / 2.0);
                     PyramidalOrigin = new PointD(originX, originY);
                 }
                 else
@@ -3782,7 +3815,7 @@ namespace BioGTK
         }
 
         /// <summary>
-        /// Returns the largest real pyramid UnitsPerPixel that still fits the
+        /// Returns the smallest real pyramid UnitsPerPixel that still fits the
         /// current viewport. Excludes macro/label thumbnail levels and falls
         /// back to BioImage.GetUnitPerPixel if no schema is available yet.
         /// </summary>
@@ -3790,11 +3823,6 @@ namespace BioGTK
         {
             if (!SelectedImage.isPyramidal || targetResolution <= 0)
                 return targetResolution <= 0 ? 1 : targetResolution;
-
-            int maxLevel = MacroResolution.HasValue
-                ? MacroResolution.Value - 1
-                : SelectedImage.Resolutions.Count - 1;
-            maxLevel = Math.Clamp(maxLevel, 0, SelectedImage.Resolutions.Count - 1);
 
             var schema = openSlide
                 ? _openSlideBase?.Schema
@@ -3806,14 +3834,12 @@ namespace BioGTK
                 double? best = null;
                 foreach (var kv in schema.Resolutions.OrderBy(kv => kv.Value.UnitsPerPixel))
                 {
-                    if (kv.Key > maxLevel)
-                        continue;
-
                     double upx = kv.Value.UnitsPerPixel;
                     smallest ??= upx;
-                    if (upx <= targetResolution)
+                    if (upx >= targetResolution)
                     {
                         best = upx;
+                        break;
                     }
                 }
 
@@ -3823,7 +3849,7 @@ namespace BioGTK
                     return smallest.Value;
             }
 
-            double fallback = SelectedImage.GetUnitPerPixel(maxLevel);
+            double fallback = SelectedImage.GetUnitPerPixel(SelectedImage.Resolutions.Count - 1);
             return fallback > 0 ? fallback : targetResolution;
         }
 
@@ -3864,6 +3890,26 @@ namespace BioGTK
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
+        /// <summary>
+        /// Rebuilds the tile schema and renderer source for a well image when the
+        /// active well field (WellIndex) has been changed from outside (e.g. the
+        /// PlateTool UI).  Call this after setting SelectedImage.WellIndex.
+        /// </summary>
+        public void ReinitializeWellField()
+        {
+            if (SelectedImage?.Type != BioImage.ImageType.well) return;
+            if (_slideBase == null) return;
+
+            _slideBase.RebuildSchemaForWell(SelectedImage);
+            Log($"[ReinitializeWellField] Schema rebuilt. WellIndex={SelectedImage.WellIndex} Extent={_slideBase.Schema?.Extent.MinX:F0},{_slideBase.Schema?.Extent.MinY:F0},{_slideBase.Schema?.Extent.MaxX:F0},{_slideBase.Schema?.Extent.MaxY:F0}");
+
+            if (MacOS) sKSlideRenderer?.SetSource(_slideBase);
+            else       slideRenderer?.SetSource(_slideBase);
+
+            // GoToImage resets the viewport to fit the new field and triggers a render.
+            GoToImage(selectedIndex);
+        }
+
         private void Initialize()
         {
             // Well and zarr pyramidal images both use SlideBase + tile renderer.
