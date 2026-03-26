@@ -98,9 +98,12 @@ namespace BioGTK
                 _currentLevel = level;
             }
 
-            // Calculate world extent for the viewport
-            double minX = pyramidalOrigin.X * resolution;
-            double minY = -pyramidalOrigin.Y * resolution;
+            // Calculate the visible extent in the schema's top-level pixel space.
+            // PyramidalOrigin is already stored in level-0 pixel coordinates, so
+            // applying resolution here would shrink the visible window and drop
+            // tiles on the right/bottom edges.
+            double minX = pyramidalOrigin.X;
+            double minY = -pyramidalOrigin.Y;
             double width = viewportWidth * resolution;
             double height = viewportHeight * resolution;
             var worldExtent = new Extent(minX, minY - height, minX + width, minY);

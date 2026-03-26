@@ -857,35 +857,40 @@ namespace BioGTK
             {
                 if (token.IsCancellationRequested) break;
 
-                var info = new Info(SelectedImage.Coordinate, tileInfo.Index, tileInfo.Extent, level);
-                // Check if tile is already in cache
+                var coord = SelectedImage.Coordinate;
+                var info = new Info(coord, tileInfo.Index, tileInfo.Extent, level);
+                string pendingKey = $"{coord.Z}:{coord.C}:{coord.T}:{tileInfo.Index.Level}:{tileInfo.Index.Col}:{tileInfo.Index.Row}";
 
-                if (_openSlideBase != null)
+                // Check the active source cache before scheduling another fetch.
+                if (SelectedImage.OpenSlideBase != null)
                 {
-                    if (_openSlideBase.cache.GetTile(info) != null) continue;
+                    if (SelectedImage.OpenSlideBase.cache.GetTile(info) != null)
+                        continue;
                 }
                 else
                 {
                     BioLib.TileInformation tf = new TileInformation(tileInfo.Index, tileInfo.Extent, SelectedImage.Coordinate);
-                    if (_slideBase.cache.GetTile(tf) != null) continue;
+                    if (SelectedImage.SlideBase.cache.GetTile(tf) != null)
+                        continue;
                 }
+
                 // Start async fetch if not already pending
-                if (!_pendingTileFetches.ContainsKey(tileInfo.Index))
+                if (!_pendingTileFetches.ContainsKey(pendingKey))
                 {
                     var fetchTask = Task.Run(async () =>
                     {
                         try
                         {
-                            if (_openSlideBase == null)
+                            if (SelectedImage.OpenSlideBase != null)
                             {
-                                Info inf = new Info(SelectedImage.Coordinate, tileInfo.Index, tileInfo.Extent, tileInfo.Index.Level);
-                                var tile = await _openSlideBase.cache.GetTile(inf);
+                                Info inf = new Info(coord, tileInfo.Index, tileInfo.Extent, tileInfo.Index.Level);
+                                var tile = await SelectedImage.OpenSlideBase.cache.GetTile(inf);
                                 return tile;
                             }
                             else
                             {
-                                TileInformation tf = new TileInformation(tileInfo.Index, tileInfo.Extent, SelectedImage.Coordinate);
-                                var tile = await _slideBase.cache.GetTile(tf);
+                                TileInformation tf = new TileInformation(tileInfo.Index, tileInfo.Extent, coord);
+                                var tile = await SelectedImage.SlideBase.cache.GetTile(tf);
                                 return tile;
                             }
                         }
@@ -896,7 +901,7 @@ namespace BioGTK
                         }
                     }, token);
 
-                    _pendingTileFetches[tileInfo.Index] = fetchTask;
+                    _pendingTileFetches[pendingKey] = fetchTask;
                     fetchTasks.Add(fetchTask);
                 }
             }
@@ -988,17 +993,40 @@ namespace BioGTK
 
             try
             {
-                // 1. PyramidalOrigin is stored in full-resolution (level-0) pixel space.
-                // AllocatedWidth/Height are screen pixels; multiply by Resolution
-                // (full-res pixels per screen pixel) to get the viewport size in full-res pixels.
+                double fullResWidth = Math.Max(1, SelectedImage.Resolutions[0].SizeX);
+                double fullResHeight = Math.Max(1, SelectedImage.Resolutions[0].SizeY);
+
+                // The overview image is drawn in the same top-left image coordinate
+                // system used by PyramidalOrigin and ToViewSpace.
                 double fullResX = PyramidalOrigin.X;
                 double fullResY = PyramidalOrigin.Y;
-                double fullResW = AllocatedWidth  * Resolution;
-                double fullResH = AllocatedHeight * Resolution;
+                double fullResW = View.AllocatedWidth * Resolution;
+                double fullResH = View.AllocatedHeight * Resolution;
 
-                // 3. Project Full Res to Overview Space
-                float ovScaleX = (float)overview.Width / SelectedImage.SizeX;
-                float ovScaleY = (float)overview.Height / SelectedImage.SizeY;
+                // If the current viewport already shows the entire image, the
+                // overview indicator should fill the whole overview rather than
+                // shrinking to the image's raw extent inside the viewport.
+                double visibleLeft = fullResX;
+                double visibleTop = fullResY;
+                double visibleRight = fullResX + fullResW;
+                double visibleBottom = fullResY + fullResH;
+
+                if (visibleLeft <= 0 &&
+                    visibleTop <= 0 &&
+                    visibleRight >= fullResWidth &&
+                    visibleBottom >= fullResHeight)
+                {
+                    paint.Style = SKPaintStyle.Stroke;
+                    paint.StrokeWidth = 1f;
+                    paint.Color = SKColors.Gray;
+                    paint.IsAntialias = true;
+
+                    canvas.DrawRect(0, 0, overview.Width, overview.Height, paint);
+                    return;
+                }
+
+                float ovScaleX = (float)overview.Width / (float)fullResWidth;
+                float ovScaleY = (float)overview.Height / (float)fullResHeight;
 
                 float ovX = (float)(fullResX * ovScaleX);
                 float ovY = (float)(fullResY * ovScaleY);
@@ -1102,7 +1130,7 @@ namespace BioGTK
         // so that intermediate setter calls don't each fire a separate UpdateView.
         private bool _suppressViewUpdates = false;
         private CancellationTokenSource _tileFetchCancellation;
-        private Dictionary<TileIndex, Task<byte[]>> _pendingTileFetches = new Dictionary<TileIndex, Task<byte[]>>();
+        private Dictionary<string, Task<byte[]>> _pendingTileFetches = new Dictionary<string, Task<byte[]>>();
         private List<SKImage> SKImages = new List<SKImage>();
         private List<Bitmap> Bitmaps = new List<Bitmap>();
         /// It updates the images.
@@ -1611,7 +1639,6 @@ namespace BioGTK
             if (_updatingScrollBars) return;
             if (MacOS) return;  // scrollbars hidden on macOS; ignore stale callbacks
             PyramidalOrigin = new PointD(hScroll.Value, PyramidalOrigin.Y);
-            UpdateView();
         }
 
         private void VScroll_ValueChanged(object sender, EventArgs e)
@@ -1619,7 +1646,6 @@ namespace BioGTK
             if (_updatingScrollBars) return;
             if (MacOS) return;  // scrollbars hidden on macOS; ignore stale callbacks
             PyramidalOrigin = new PointD(PyramidalOrigin.X, vScroll.Value);
-            UpdateView();
         }
 
         private void Sk_PaintSurface(object sender, SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs e)
@@ -2199,7 +2225,10 @@ namespace BioGTK
             _lastAllocatedHeight = newH;
 
             if (SelectedImage.isPyramidal)
+            {
                 SelectedImage.PyramidalSize = new AForge.Size(newW, newH);
+                UpdateScrollBars();
+            }
             else
                 UpdateImage();
 
@@ -2321,7 +2350,6 @@ namespace BioGTK
             Plugins.KeyDownEvent(o, e);
             keyDown = e.Event.Key;
             double moveAmount = 5 * Scale.Width;
-            double zoom = Level;
             double movepyr = 50 * (Level + 1);
             if (e.Event.Key == Gdk.Key.c && e.Event.State == ModifierType.ControlMask)
             {
@@ -2335,7 +2363,7 @@ namespace BioGTK
             {
                 if (SelectedImage.isPyramidal)
                 {
-                    Resolution--;
+                    SetResolution(Resolution * 1.25, new PointD(View.AllocatedWidth / 2.0, View.AllocatedHeight / 2.0));
                 }
                 else
                     Scale = new SizeF(Scale.Width - 0.1f, Scale.Height - 0.1f);
@@ -2344,7 +2372,7 @@ namespace BioGTK
             {
                 if (SelectedImage.isPyramidal)
                 {
-                    Resolution++;
+                    SetResolution(Resolution * 0.8, new PointD(View.AllocatedWidth / 2.0, View.AllocatedHeight / 2.0));
                 }
                 else
                     Scale = new SizeF(Scale.Width + 0.1f, Scale.Height + 0.1f);
@@ -2384,14 +2412,6 @@ namespace BioGTK
                 }
                 else
                     Origin = new PointD(Origin.X - moveAmount, Origin.Y);
-            }
-            if (e.Event.Key == Gdk.Key.e)
-            {
-                Resolution += zoom;
-            }
-            if (e.Event.Key == Gdk.Key.q)
-            {
-                Resolution -= zoom;
             }
             foreach (Function item in Function.Functions.Values)
             {
@@ -2518,10 +2538,28 @@ namespace BioGTK
                 }
                 hScroll.ShowAll();
                 vScroll.ShowAll();
-                // Use level-0 (full-resolution) dimensions so the scrollbar range matches
-                // PyramidalOrigin, which is always stored in full-resolution pixel space.
-                hScroll.Adjustment.Upper = SelectedImage.Resolutions[0].SizeX;
-                vScroll.Adjustment.Upper = SelectedImage.Resolutions[0].SizeY;
+
+                // Keep the scrollbar adjustment coherent with the viewport size.
+                // PyramidalOrigin is stored in full-resolution pixel space, so the
+                // adjustment range and page size must also be in full-resolution pixels.
+                double viewportW = Math.Max(1, View?.AllocatedWidth ?? 1) * Resolution;
+                double viewportH = Math.Max(1, View?.AllocatedHeight ?? 1) * Resolution;
+
+                var hAdj = hScroll.Adjustment;
+                var vAdj = vScroll.Adjustment;
+
+                hAdj.Lower = 0;
+                hAdj.Upper = SelectedImage.Resolutions[0].SizeX;
+                hAdj.PageSize = Math.Min(viewportW, hAdj.Upper);
+
+                vAdj.Lower = 0;
+                vAdj.Upper = SelectedImage.Resolutions[0].SizeY;
+                vAdj.PageSize = Math.Min(viewportH, vAdj.Upper);
+
+                hAdj.StepIncrement = Math.Max(1, hAdj.PageSize / 20.0);
+                hAdj.PageIncrement = Math.Max(1, hAdj.PageSize / 2.0);
+                vAdj.StepIncrement = Math.Max(1, vAdj.PageSize / 20.0);
+                vAdj.PageIncrement = Math.Max(1, vAdj.PageSize / 2.0);
             }
             else
             {
@@ -2781,11 +2819,21 @@ namespace BioGTK
                 SelectedImage.PyramidalOrigin = value;
                 if (!MacOS)
                 {
+                    double maxX = Math.Max(0, hScroll.Adjustment.Upper - hScroll.Adjustment.PageSize);
+                    double maxY = Math.Max(0, vScroll.Adjustment.Upper - vScroll.Adjustment.PageSize);
+                    double clampedX = Math.Clamp(value.X, hScroll.Adjustment.Lower, maxX);
+                    double clampedY = Math.Clamp(value.Y, vScroll.Adjustment.Lower, maxY);
+
                     _updatingScrollBars = true;
-                    hScroll.Value = value.X;
-                    vScroll.Value = value.Y;
+                    if (hScroll.Value != clampedX)
+                        hScroll.Value = clampedX;
+                    if (vScroll.Value != clampedY)
+                        vScroll.Value = clampedY;
                     _updatingScrollBars = false;
                 }
+                if (_suppressViewUpdates)
+                    return;
+
                 if (SelectedImage?.isPyramidal == true)
                 {
                     UpdateView();
@@ -2896,7 +2944,6 @@ namespace BioGTK
                 if (SelectedImage.Type == BioImage.ImageType.well)
                 {
                     l = SelectedImage.Level;
-                    UpdateScrollBars();
                     return l;
                 }
                 if (SelectedImage.isPyramidal)
@@ -2906,7 +2953,6 @@ namespace BioGTK
                     else if (SelectedImage.OpenSlideBase != null)
                         l = OpenSlideGTK.TileUtil.GetLevel(SelectedImage.OpenSlideBase.Schema.Resolutions, Resolution);
                 }
-                UpdateScrollBars();
                 return l;
             }
             set
@@ -3118,15 +3164,25 @@ namespace BioGTK
             if (SelectedImage.isPyramidal && overview.IntersectsWith(e.Event.X, e.Event.Y) &&
                 e.Event.State.HasFlag(ModifierType.Button1Mask) && ShowOverview)
             {
-                // PyramidalOrigin is in full-resolution pixel space.
-                // Map the click to full-res coords then centre the viewport on that point.
-                double fullResX = ((double)e.Event.X / overview.Width)  * SelectedImage.SizeX;
-                double fullResY = ((double)e.Event.Y / overview.Height) * SelectedImage.SizeY;
-                double halfW = (AllocatedWidth  * Resolution) / 2.0;
-                double halfH = (AllocatedHeight * Resolution) / 2.0;
+                double fullResWidth = Math.Max(1, SelectedImage.Resolutions[0].SizeX);
+                double fullResHeight = Math.Max(1, SelectedImage.Resolutions[0].SizeY);
+                double viewWorldW = View.AllocatedWidth * Resolution;
+                double viewWorldH = View.AllocatedHeight * Resolution;
+
+                // Map the click into the overview's image coordinate system.
+                double fullResX = ((double)e.Event.X / overview.Width) * fullResWidth;
+                double fullResY = ((double)e.Event.Y / overview.Height) * fullResHeight;
+
+                // Center the main viewport on the clicked point, then clamp so the
+                // visible region stays within the image bounds.
+                double originX = fullResX - (viewWorldW / 2.0);
+                double originY = fullResY - (viewWorldH / 2.0);
+                double maxX = Math.Max(0, fullResWidth - viewWorldW);
+                double maxY = Math.Max(0, fullResHeight - viewWorldH);
+
                 PyramidalOrigin = new PointD(
-                    Math.Max(0, fullResX - halfW),
-                    Math.Max(0, fullResY - halfH));
+                    Math.Max(0, Math.Min(originX, maxX)),
+                    Math.Max(0, Math.Min(originY, maxY)));
                 RequestDeferredRender();
             }
             else
@@ -3738,19 +3794,19 @@ namespace BioGTK
             }
 
             bool imageChanged = selectedIndex != i;
-            if (imageChanged)
-            {
-                selectedIndex = i;
-                Initialize();
-                InitPreview();
-                UpdateGUI();
-            }
-
-            RefreshPyramidalTiles();
-
             _suppressViewUpdates = true;
             try
             {
+                if (imageChanged)
+                {
+                    selectedIndex = i;
+                    Initialize();
+                    InitPreview();
+                    UpdateGUI();
+                }
+
+                RefreshPyramidalTiles();
+
                 if (SelectedImage.isPyramidal)
                 {
                     // --- Determine world size ---
