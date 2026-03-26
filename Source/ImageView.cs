@@ -3718,21 +3718,21 @@ namespace BioGTK
             if (i < 0 || Images.Count <= i)
                 return;
 
-            // Both pyramidal and non-pyramidal paths need valid viewport dimensions:
-            // - Pyramidal: fitRes = imageWorldW / vpW would be wrong with a zero/tiny viewport.
-            // - Non-pyramidal: Scale = vpH / ToScreenH(...) would be 0 and nothing would render.
-            // Defer until SizeAllocated fires if the widget hasn't been laid out yet.
+            // Ensure viewport is valid before doing any math
             int vpW = View.AllocatedWidth;
             int vpH = View.AllocatedHeight;
+
             if (vpW < 10 || vpH < 10)
             {
                 void OnAllocated(object sender, SizeAllocatedArgs args)
                 {
                     if (args.Allocation.Width < 10 || args.Allocation.Height < 10)
                         return;
+
                     View.SizeAllocated -= OnAllocated;
                     GoToImage(i);
                 }
+
                 View.SizeAllocated += OnAllocated;
                 return;
             }
@@ -3747,21 +3747,27 @@ namespace BioGTK
             }
 
             RefreshPyramidalTiles();
+
             _suppressViewUpdates = true;
             try
             {
                 if (SelectedImage.isPyramidal)
                 {
+                    // --- Determine world size ---
                     double imageWorldW = SelectedImage.Resolutions.Count > 0
                         ? SelectedImage.Resolutions[0].SizeX
                         : SelectedImage.SizeX;
+
                     double imageWorldH = SelectedImage.Resolutions.Count > 0
                         ? SelectedImage.Resolutions[0].SizeY
                         : SelectedImage.SizeY;
+
                     var schema = openSlide
                         ? _openSlideBase?.Schema
                         : _slideBase?.Schema;
+
                     double level0UPP = 1.0;
+
                     if (schema?.Resolutions != null && schema.Resolutions.Count > 0)
                     {
                         if (schema.Resolutions.TryGetValue(0, out var level0))
@@ -3773,37 +3779,52 @@ namespace BioGTK
                             imageWorldH = schema.Extent.Height * level0UPP;
                         }
                     }
+
                     if (imageWorldW <= 0 && SelectedImage.Resolutions.Count > 0)
                         imageWorldW = SelectedImage.Resolutions[0].SizeX * level0UPP;
+
                     if (imageWorldH <= 0 && SelectedImage.Resolutions.Count > 0)
                         imageWorldH = SelectedImage.Resolutions[0].SizeY * level0UPP;
+
                     if (imageWorldW <= 0) imageWorldW = 1;
                     if (imageWorldH <= 0) imageWorldH = 1;
 
-                    // Fit the whole pyramidal image into the current viewport.
-                    // Resolution is world-units per screen pixel, so the minimum
-                    // value that fits is imageWorld / viewportPixels.
+                    // --- FIT (zoom IN to fill viewport) ---
                     double fitW = imageWorldW / vpW;
                     double fitH = imageWorldH / vpH;
-                    double targetRes = Math.Max(fitW, fitH);
+
+                    // Use MIN for "fill viewport" (zoom-in)
+                    double targetRes = Math.Min(fitW, fitH);
                     if (targetRes <= 0) targetRes = 1;
+
                     Resolution = GetViewportFitResolution(targetRes);
 
+                    // --- Centering (works for both zoom-in and zoom-out) ---
                     double viewWorldW = vpW * Resolution;
                     double viewWorldH = vpH * Resolution;
-                    double originX = Math.Max(0, (imageWorldW - viewWorldW) / 2.0);
-                    double originY = Math.Max(0, (imageWorldH - viewWorldH) / 2.0);
+
+                    double originX = (imageWorldW - viewWorldW) / 2.0;
+                    double originY = (imageWorldH - viewWorldH) / 2.0;
+
                     PyramidalOrigin = new PointD(originX, originY);
                 }
                 else
                 {
+                    // --- Non-pyramidal path (unchanged, already correct) ---
                     double dx = Images[i].Volume.Width / 2;
                     double dy = Images[i].Volume.Height / 2;
-                    Origin = new PointD(-(Images[i].Volume.Location.X + dx), -(Images[i].Volume.Location.Y + dy));
+
+                    Origin = new PointD(
+                        -(Images[i].Volume.Location.X + dx),
+                        -(Images[i].Volume.Location.Y + dy)
+                    );
+
                     double wx = vpW / ToScreenW(SelectedImage.Volume.Width);
                     double wy = vpH / ToScreenH(SelectedImage.Volume.Height);
+
                     float fitScale = (float)Math.Min(wx, wy);
                     if (fitScale <= 0) fitScale = 1;
+
                     Scale = new SizeF(fitScale, fitScale);
                 }
             }
@@ -3811,6 +3832,7 @@ namespace BioGTK
             {
                 _suppressViewUpdates = false;
             }
+
             UpdateView();
         }
 
