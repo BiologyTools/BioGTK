@@ -86,6 +86,20 @@ namespace BioGTK
                 return;
             if (viewportWidth <= 1 && viewportHeight <= 1)
                 return;
+
+            // Only allow one render pass at a time. Without this gate, rapid pan
+            // events can pile up overlapping async tile fetches and keep large
+            // byte[] buffers alive until every stale render finishes.
+            if (!_renderSemaphore.Wait(0))
+            {
+                LastRenderSkipped = true;
+                return;
+            }
+
+            LastRenderSkipped = false;
+
+            try
+            {
             var schema = _useOpenSlide ? _openSlideBase.Schema : _slideBase.Schema;
 
             int level = TileUtil.GetLevel(schema.Resolutions, resolution);
@@ -97,6 +111,13 @@ namespace BioGTK
                 _glArea.ReleaseLevelTextures(_currentLevel);
                 _currentLevel = level;
             }
+
+            // Keep renderer-side bookkeeping scoped to the current viewport.
+            // The GL area already owns the actual texture cache; these collections
+            // are only used for the current render pass and should not accumulate
+            // every tile ever seen while panning.
+            _uploadedTiles.Clear();
+            _uploadedTileInfos.Clear();
 
             // Calculate the visible extent in the schema's top-level pixel space.
             // PyramidalOrigin is already stored in level-0 pixel coordinates, so
@@ -117,21 +138,12 @@ namespace BioGTK
                 tileInfos = schema.GetTileInfos(pixelExtent, level).ToList();
             }
 
-            if (_openSlideBase != null)
-                await _openSlideBase.FetchTilesAsync(tileInfos.ToList(), level, coordinate);
-            else
-                await _slideBase.FetchTilesAsync(tileInfos.ToList(), level, coordinate, pyramidalOrigin, new Size(viewportWidth, viewportHeight));
-
             var renderInfos = new List<TileRenderInfo>();
             foreach (var tileInfo in tileInfos)
             {
                 if (!_glArea.HasTileTexture(tileInfo.Index))
                 {
-                    byte[] tileData;
-                    if (_useOpenSlide)
-                        tileData = await _openSlideBase.GetTileAsync(tileInfo);
-                    else
-                        tileData = await _slideBase.GetTileAsync(tileInfo, coordinate);
+                    byte[] tileData = await FetchTileAsync(tileInfo, level, coordinate);
                     if (tileData != null)
                     {
                         // Fix: Calculate actual tile dimensions from extent, do not hardcode 256.
@@ -141,6 +153,7 @@ namespace BioGTK
 
                         _glArea.UploadTileTexture(tileInfo.Index, tileData, tW, tH);
                         _uploadedTiles.Add(tileInfo.Index);
+                        _uploadedTileInfos[tileInfo.Index] = tileInfo;
                     }
                 }
 
@@ -158,7 +171,19 @@ namespace BioGTK
 
             _glArea.SetTilesToRender(renderInfos);
             _glArea.RequestRedraw();
+            }
+            finally
+            {
+                _renderSemaphore.Release();
+
+                if (LastRenderSkipped)
+                {
+                    LastRenderSkipped = false;
+                    Gtk.Application.Invoke((s, a) => App.viewer?.RequestDeferredRender());
+                }
+            }
         }
+
         private async Task EnsureGlobalDisplayRangeAsync(ZCT coordinate)
         {
             if (_useOpenSlide || _slideBase?.Image?.BioImage == null)

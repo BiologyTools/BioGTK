@@ -19,6 +19,7 @@ namespace BioGTK
     /// </summary>
     public class SkiaStitchingPipeline : IDisposable
     {
+        private const bool VerboseLogging = false;
         #region Fields and Properties
 
         private readonly SlideBase _slideSource;
@@ -309,7 +310,7 @@ namespace BioGTK
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Fetch error for tile {key}: {ex.Message} + {ex.StackTrace}");
+                    if (VerboseLogging) Console.WriteLine($"Fetch error for tile {key}: {ex.Message} + {ex.StackTrace}");
                 }
                 finally
                 {
@@ -354,7 +355,7 @@ namespace BioGTK
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error fetching tile sync {cacheKey}: {ex.Message}");
+                if (VerboseLogging) Console.WriteLine($"Error fetching tile sync {cacheKey}: {ex.Message}");
                 return null;
             }
         }
@@ -364,8 +365,11 @@ namespace BioGTK
         /// </summary>
         private async Task<byte[]> FetchTileDataAsync(TileRequest request)
         {
-            Console.WriteLine($"\n--- Fetching tile data for Level {request.Level}, Index[{request.Index.Col},{request.Index.Row}] ---");
-            Console.WriteLine($"  Extent: ({request.Extent.MinX:F0}, {request.Extent.MinY:F0}) to ({request.Extent.MaxX:F0}, {request.Extent.MaxY:F0})");
+            if (VerboseLogging)
+            {
+                Console.WriteLine($"\n--- Fetching tile data for Level {request.Level}, Index[{request.Index.Col},{request.Index.Row}] ---");
+                Console.WriteLine($"  Extent: ({request.Extent.MinX:F0}, {request.Extent.MinY:F0}) to ({request.Extent.MaxX:F0}, {request.Extent.MaxY:F0})");
+            }
 
             try
             {
@@ -376,11 +380,11 @@ namespace BioGTK
 
                     if (tileData == null || tileData.Length == 0)
                     {
-                        Console.WriteLine($"  ERROR: OpenSlide returned null/empty tile data");
+                        if (VerboseLogging) Console.WriteLine($"  ERROR: OpenSlide returned null/empty tile data");
                         return null;
                     }
 
-                    Console.WriteLine($"  OpenSlide returned {tileData.Length} bytes");
+                    if (VerboseLogging) Console.WriteLine($"  OpenSlide returned {tileData.Length} bytes");
                     return tileData;
                 }
                 else
@@ -402,18 +406,21 @@ namespace BioGTK
 
                     if (tileData == null || tileData.Length == 0)
                     {
-                        Console.WriteLine($"  ERROR: SlideBase returned null/empty tile data");
+                        if (VerboseLogging) Console.WriteLine($"  ERROR: SlideBase returned null/empty tile data");
                         return null;
                     }
 
-                    Console.WriteLine($"  SlideBase returned {tileData.Length} bytes");
+                    if (VerboseLogging) Console.WriteLine($"  SlideBase returned {tileData.Length} bytes");
                     return tileData;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"  EXCEPTION in FetchTileDataAsync: {ex.Message}");
-                Console.WriteLine($"  {ex.StackTrace}");
+                if (VerboseLogging)
+                {
+                    Console.WriteLine($"  EXCEPTION in FetchTileDataAsync: {ex.Message}");
+                    Console.WriteLine($"  {ex.StackTrace}");
+                }
                 return null;
             }
         }
@@ -698,7 +705,7 @@ namespace BioGTK
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error converting tile data: {ex.Message}");
+                if (VerboseLogging) Console.WriteLine($"Error converting tile data: {ex.Message}");
                 return null;
             }
         }

@@ -18,6 +18,7 @@ namespace BioGTK
     /// </summary>
     public class SlideGLArea : GLArea
     {
+        private const bool VerboseLogging = false;
         // ============================================================================
         // GL Resources
         // ============================================================================
@@ -41,7 +42,9 @@ namespace BioGTK
 
         private Dictionary<TileIndex, int> _textureCache = new();
         private Dictionary<TileIndex, (int w, int h)> _textureSizes = new();
-        private const int MAX_CACHED_TEXTURES = 500;
+        private long _textureBytes;
+        private const int MAX_CACHED_TEXTURES = 128;
+        private const long MAX_CACHED_TEXTURE_BYTES = 96L * 1024 * 1024;
 
         // ============================================================================
         // Skia GL Backend for annotations
@@ -148,7 +151,7 @@ void main()
 
             if (Error != 0)
             {
-                Console.WriteLine($"GLArea error on realize.");
+                if (VerboseLogging) Console.WriteLine($"GLArea error on realize.");
                 return;
             }
 
@@ -342,11 +345,11 @@ void main()
 
             if (TilesToRender.Count == 0)
             {
-                Console.WriteLine("WARNING: No tiles to render!");
+                if (VerboseLogging) Console.WriteLine("WARNING: No tiles to render!");
                 return;
             }
 
-            Console.WriteLine($"Rendering {TilesToRender.Count} tiles at viewport {width}x{height}");
+            if (VerboseLogging) Console.WriteLine($"Rendering {TilesToRender.Count} tiles at viewport {width}x{height}");
 
             GL.Enable(EnableCap.Blend);
             GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
@@ -377,7 +380,7 @@ void main()
             {
                 if (!_textureCache.TryGetValue(tile.Index, out int texId))
                 {
-                    Console.WriteLine($"WARNING: Tile {tile.Index} not in texture cache!");
+                    if (VerboseLogging) Console.WriteLine($"WARNING: Tile {tile.Index} not in texture cache!");
                     continue;
                 }
 
@@ -386,14 +389,14 @@ void main()
                 GL.Uniform2(_locUvMin, tile.U0, tile.V0);
                 GL.Uniform2(_locUvMax, tile.U1, tile.V1);
 
-                Console.WriteLine($"Rendering tile {tile.Index}: pos=({tile.ScreenX}, {tile.ScreenY}), size=({tile.ScreenWidth}, {tile.ScreenHeight})");
+                if (VerboseLogging) Console.WriteLine($"Rendering tile {tile.Index}: pos=({tile.ScreenX}, {tile.ScreenY}), size=({tile.ScreenWidth}, {tile.ScreenHeight})");
 
                 GL.BindTexture(TextureTarget.Texture2D, texId);
                 GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
                 renderedCount++;
             }
 
-            Console.WriteLine($"Successfully rendered {renderedCount} tiles");
+            if (VerboseLogging) Console.WriteLine($"Successfully rendered {renderedCount} tiles");
 
             GL.Disable(EnableCap.ScissorTest);
             GL.BindVertexArray(0);
@@ -422,13 +425,13 @@ void main()
         {
             if (!_glInitialized)
             {
-                Console.WriteLine("WARNING: GL not initialized, cannot upload texture");
+                if (VerboseLogging) Console.WriteLine("WARNING: GL not initialized, cannot upload texture");
                 return;
             }
 
             if (pixelData == null || pixelData.Length == 0)
             {
-                Console.WriteLine($"WARNING: Empty pixel data for tile {index}");
+                if (VerboseLogging) Console.WriteLine($"WARNING: Empty pixel data for tile {index}");
                 return;
             }
 
@@ -439,14 +442,14 @@ void main()
             // on any genuine mismatch rather than trying to guess new dimensions.
             if (tileWidth <= 0 || tileHeight <= 0)
             {
-                Console.WriteLine($"WARNING: Tile {index} has invalid dimensions {tileWidth}x{tileHeight}, skipping.");
+                if (VerboseLogging) Console.WriteLine($"WARNING: Tile {index} has invalid dimensions {tileWidth}x{tileHeight}, skipping.");
                 return;
             }
 
             int expectedBytes = tileWidth * tileHeight * 4;
             if (pixelData.Length < expectedBytes)
             {
-                Console.WriteLine($"ERROR: Tile {index} buffer too small — need {expectedBytes}B, got {pixelData.Length}B, skipping.");
+                if (VerboseLogging) Console.WriteLine($"ERROR: Tile {index} buffer too small — need {expectedBytes}B, got {pixelData.Length}B, skipping.");
                 return;
             }
 
@@ -455,14 +458,19 @@ void main()
             // Check if already cached
             if (_textureCache.ContainsKey(index))
             {
-                Console.WriteLine($"Tile {index} already cached");
+                if (VerboseLogging) Console.WriteLine($"Tile {index} already cached");
                 return;
             }
 
-            // Evict old textures if cache is full
-            if (_textureCache.Count >= MAX_CACHED_TEXTURES)
+            long newTextureBytes = (long)tileWidth * tileHeight * 4;
+
+            // Evict old textures if the cache is full or if the new upload would
+            // push the total texture budget over its byte cap.
+            while (_textureCache.Count > 0 &&
+                   (_textureCache.Count >= MAX_CACHED_TEXTURES ||
+                    _textureBytes + newTextureBytes > MAX_CACHED_TEXTURE_BYTES))
             {
-                EvictOldestTextures(MAX_CACHED_TEXTURES / 4);
+                EvictOldestTextures(1);
             }
 
             // Create and upload texture.
@@ -495,7 +503,8 @@ void main()
 
             _textureCache[index] = tex;
             _textureSizes[index] = (tileWidth, tileHeight);
-            Console.WriteLine($"Uploaded tile {index} as texture {tex} ({tileWidth}x{tileHeight}, {pixelData.Length} bytes)");
+            _textureBytes += newTextureBytes;
+            if (VerboseLogging) Console.WriteLine($"Uploaded tile {index} as texture {tex} ({tileWidth}x{tileHeight}, {pixelData.Length} bytes)");
         }
 
         /// <summary>
@@ -528,6 +537,11 @@ void main()
                 MakeCurrent();
                 GL.DeleteTexture(tex);
                 _textureCache.Remove(index);
+                if (_textureSizes.TryGetValue(index, out var sz))
+                {
+                    _textureBytes -= (long)sz.w * sz.h * 4;
+                    _textureSizes.Remove(index);
+                }
             }
         }
 
@@ -544,8 +558,12 @@ void main()
             foreach (var kvp in toRemove)
             {
                 GL.DeleteTexture(kvp.Value);
+                if (_textureSizes.TryGetValue(kvp.Key, out var sz))
+                {
+                    _textureBytes -= (long)sz.w * sz.h * 4;
+                    _textureSizes.Remove(kvp.Key);
+                }
                 _textureCache.Remove(kvp.Key);
-                _textureSizes.Remove(kvp.Key);
             }
         }
 
@@ -564,6 +582,7 @@ void main()
             }
             _textureCache.Clear();
             _textureSizes.Clear();
+            _textureBytes = 0;
         }
 
         private void EvictOldestTextures(int count)
@@ -573,6 +592,11 @@ void main()
             foreach (var kvp in toRemove)
             {
                 GL.DeleteTexture(kvp.Value);
+                if (_textureSizes.TryGetValue(kvp.Key, out var sz))
+                {
+                    _textureBytes -= (long)sz.w * sz.h * 4;
+                    _textureSizes.Remove(kvp.Key);
+                }
                 _textureCache.Remove(kvp.Key);
             }
         }
@@ -597,7 +621,7 @@ void main()
         {
             TilesToRender.Clear();
             TilesToRender.AddRange(tiles);
-            Console.WriteLine($"Set {TilesToRender.Count} tiles to render");
+            if (VerboseLogging) Console.WriteLine($"Set {TilesToRender.Count} tiles to render");
         }
 
         /// <summary>

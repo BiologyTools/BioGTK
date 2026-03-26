@@ -404,8 +404,8 @@ namespace BioGTK
                 else
                 {
                     View.Name = "View";
-                    View.WidthRequest = 800;
-                    View.HeightRequest = 600;
+                    View.WidthRequest = 600;
+                    View.HeightRequest = 400;
                     grid.Attach(View, 0, 0, 1, 1);
                 }
             }
@@ -414,7 +414,8 @@ namespace BioGTK
             {
                 if (im.isPyramidal)
                 {
-                    View.SetAllocation(new Gdk.Rectangle(0, 0, 800, 600));
+                    View.WidthRequest = 600;
+                    View.HeightRequest = 400;
                     View.Show();
                 }
                 else
@@ -422,8 +423,8 @@ namespace BioGTK
             }
             else
             {
-                View.WidthRequest = 800;
-                View.HeightRequest = 600;
+                View.WidthRequest = 600;
+                View.HeightRequest = 400;
                 View.Show();
             }
             roi.Submenu = roiMenu;
@@ -448,6 +449,7 @@ namespace BioGTK
             bBox.PackStart(rendererb, false);
             bBox.AddAttribute(rendererb, "text", 0);
             UpdateScrollBars();
+
             //App.ApplyStyles(this);
         }
         /*
@@ -822,6 +824,29 @@ namespace BioGTK
             UpdateView(true);
         }
 
+        private void CleanupViewerResources()
+        {
+            if (_viewerCleanupDone)
+                return;
+
+            _viewerCleanupDone = true;
+
+            _tileFetchCancellation?.Cancel();
+            _tileFetchCancellation?.Dispose();
+            _tileFetchCancellation = null;
+
+            lock (_pendingTileFetches)
+            {
+                _pendingTileFetches.Clear();
+            }
+
+            overviewImage?.Dispose();
+            overviewImage = null;
+
+            slideRenderer?.ClearCache();
+            sKSlideRenderer?.Dispose();
+        }
+
         private static SkiaSharp.SKRect ToRectangle(float x1, float y1, float x2, float y2)
         {
             return new SkiaSharp.SKRect()
@@ -832,6 +857,7 @@ namespace BioGTK
         }
         private bool refresh = false;
         SKImage overviewSKImage;
+        private bool _viewerCleanupDone = false;
         private async Task PrefetchSurroundingTiles(Extent viewportExtent, int level)
         {
             // Cancel any pending prefetch operations
@@ -1329,12 +1355,14 @@ namespace BioGTK
                 if (sourceBitmap == null)
                 {
                     ShowOverview = false;
+                    overviewImage?.Dispose();
                     overviewImage = null;
                     return;
                 }
 
                 var (ow, oh) = CalcOverviewSize(srcW, srcH, OVERVIEW_SIZE);
                 overview = new Rectangle(0, 0, ow, oh);
+                overviewImage?.Dispose();
                 overviewImage = ScaleToOverview(sourceBitmap, srcW, srcH, ow, oh);
                 ShowOverview = overviewImage != null;
 
@@ -1345,6 +1373,7 @@ namespace BioGTK
             {
                 Console.WriteLine($"Error initializing preview: {ex.Message}");
                 ShowOverview = false;
+                overviewImage?.Dispose();
                 overviewImage = null;
             }
         }
@@ -1535,7 +1564,7 @@ namespace BioGTK
 
                 using (var fullSK = BitmapToSKImage(previewBitmap))
                 {
-                    var scaled = new SKBitmap(destW, destH, SKColorType.Rgba8888, SKAlphaType.Premul);
+                    using var scaled = new SKBitmap(destW, destH, SKColorType.Rgba8888, SKAlphaType.Premul);
                     fullSK.ScalePixels(scaled.PeekPixels(), SKFilterQuality.Low);
                     return SKImage.FromBitmap(scaled);
                 }
@@ -1699,6 +1728,7 @@ namespace BioGTK
             if (!stillRegistered) return;
 
             App.tabsView.RemoveViewer(this);
+            CleanupViewerResources();
             foreach (var item in this.Images)
             {
                 BioLib.Images.RemoveImage(item);
@@ -2099,6 +2129,7 @@ namespace BioGTK
             // Remove this viewer from the TabsView list BEFORE disposing images,
             // so no event handler can re-present it while we're tearing down.
             App.tabsView.RemoveViewer(this);
+            CleanupViewerResources();
 
             for (int i = 0; i < this.Images.Count; i++)
             {
@@ -3183,7 +3214,6 @@ namespace BioGTK
                 PyramidalOrigin = new PointD(
                     Math.Max(0, Math.Min(originX, maxX)),
                     Math.Max(0, Math.Min(originY, maxY)));
-                RequestDeferredRender();
             }
             else
             {
