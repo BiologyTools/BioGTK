@@ -1351,7 +1351,7 @@ namespace BioGTK
             try
             {
                 refresh = false;
-            const int OVERVIEW_SIZE = 320;
+                int OVERVIEW_SIZE = View.ScaleFactor * 160;
 
                 var (sourceBitmap, srcW, srcH) = await FetchPreviewBitmap(OVERVIEW_SIZE);
                 if (sourceBitmap == null)
@@ -3895,7 +3895,15 @@ namespace BioGTK
                     double targetRes = Math.Max(fitW, fitH);
                     if (targetRes <= 0) targetRes = 1;
 
-                    Resolution = GetViewportFitResolution(targetRes);
+                    // Use the exact fit resolution here rather than snapping to an
+                    // existing pyramid level. Tile selection already picks the best
+                    // level for the current resolution, and snapping here can leave
+                    // the image smaller than the available viewport.
+                    Resolution = targetRes;
+
+                    // Refresh scrollbar page sizes after changing resolution so the
+                    // centering origin is clamped against the correct viewport span.
+                    UpdateScrollBars();
 
                     // --- Centering (works for both zoom-in and zoom-out) ---
                     double viewWorldW = vpW * Resolution;

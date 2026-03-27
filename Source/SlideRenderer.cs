@@ -246,26 +246,27 @@ namespace BioGTK
 
             int frameIndex = bioImage.GetFrameIndex(coordinate.Z, coordinate.C, coordinate.T);
             var seedBitmap = await bioImage.GetTile(frameIndex, seedLevel, 0, 0, width, height);
-            if (TryComputeRobustDisplayRange(seedBitmap, out ushort displayMin, out ushort displayMax))
+            if (TryComputeDisplayRangeFromUsedBits(seedBitmap, out ushort displayMin, out ushort displayMax))
             {
                 bioImage.ZarrDisplayMin = displayMin;
-                bioImage.ZarrDisplayMax = SnapMicroscopyCeiling(displayMax);
+                bioImage.ZarrDisplayMax = displayMax;
             }
             seedBitmap?.Dispose();
         }
 
-        private static ushort SnapMicroscopyCeiling(ushort value)
+        private static ushort SnapUsedBitCeiling(ushort value)
         {
-            if (value <= 255)
-                return 255;
-            if (value <= 4095)
-                return 4095;
-            if (value <= 16383)
-                return 16383;
-            return ushort.MaxValue;
+            if (value == 0)
+                return 0;
+
+            uint ceiling = 1;
+            while (ceiling - 1 < value && ceiling < (1u << 16))
+                ceiling <<= 1;
+
+            return (ushort)Math.Min(ushort.MaxValue, ceiling - 1);
         }
 
-        private static bool TryComputeRobustDisplayRange(Bitmap bitmap, out ushort displayMin, out ushort displayMax)
+        private static bool TryComputeDisplayRangeFromUsedBits(Bitmap bitmap, out ushort displayMin, out ushort displayMax)
         {
             displayMin = 0;
             displayMax = 0;
@@ -282,66 +283,26 @@ namespace BioGTK
             if (valueCount <= 0)
                 return false;
 
-            // Sample large preview tiles to keep the seed cheap while still producing
-            // one stable global display range for all visible tiles.
-            int sampleStep = Math.Max(1, valueCount / 500000);
-            int[] histogram = new int[ushort.MaxValue + 1];
-            int sampleCount = 0;
-            ushort rawMin = ushort.MaxValue;
+            // Determine the effective bit depth from the highest used sample
+            // value rather than percentiles. A 16-bit container often stores
+            // 10/12/14-bit microscopy data and should be normalized to that
+            // simple max-bit ceiling (for example 4095 for 12-bit data).
             ushort rawMax = 0;
 
-            for (int valueIndex = 0; valueIndex < valueCount; valueIndex += sampleStep)
+            for (int valueIndex = 0; valueIndex < valueCount; valueIndex++)
             {
                 int offset = valueIndex * 2;
                 ushort value = littleEndian
                     ? (ushort)(bytes[offset] | (bytes[offset + 1] << 8))
                     : (ushort)((bytes[offset] << 8) | bytes[offset + 1]);
-                histogram[value]++;
-                sampleCount++;
-                if (value < rawMin) rawMin = value;
                 if (value > rawMax) rawMax = value;
             }
 
-            if (sampleCount == 0 || rawMax <= rawMin)
+            if (rawMax == 0)
                 return false;
 
-            int lowTarget = (int)(sampleCount * 0.005);
-            int highTarget = (int)(sampleCount * 0.995);
-
-            int cumulative = 0;
-            ushort low = rawMin;
-            for (int i = rawMin; i <= rawMax; i++)
-            {
-                cumulative += histogram[i];
-                if (cumulative > lowTarget)
-                {
-                    low = (ushort)i;
-                    break;
-                }
-            }
-
-            cumulative = 0;
-            ushort high = rawMax;
-            for (int i = rawMax; i >= rawMin; i--)
-            {
-                cumulative += histogram[i];
-                if (cumulative > (sampleCount - highTarget))
-                {
-                    high = (ushort)i;
-                    break;
-                }
-            }
-
-            if (high <= low)
-            {
-                low = rawMin;
-                high = rawMax;
-                if (high <= low)
-                    return false;
-            }
-
-            displayMin = low;
-            displayMax = high;
+            displayMin = 0;
+            displayMax = SnapUsedBitCeiling(rawMax);
             return true;
         }
 
