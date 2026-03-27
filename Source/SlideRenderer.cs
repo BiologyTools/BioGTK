@@ -12,6 +12,7 @@ namespace BioGTK
 {
     public class SlideRenderer
     {
+        private const bool DiagnosticLogging = true;
         private readonly SlideGLArea _glArea;
         private OpenSlideBase _openSlideBase;
         private SlideBase _slideBase;
@@ -100,11 +101,15 @@ namespace BioGTK
 
             try
             {
+            await EnsureGlobalDisplayRangeAsync(coordinate);
+
             var schema = _useOpenSlide ? _openSlideBase.Schema : _slideBase.Schema;
 
             int level = TileUtil.GetLevel(schema.Resolutions, resolution);
             var levelRes = schema.Resolutions[level];
             double levelUnitsPerPixel = levelRes.UnitsPerPixel;
+
+            LogDiag($"[UpdateViewAsync] type={(_useOpenSlide ? "openslide" : "slidebase")} level={level} res={resolution:F3} upp={levelUnitsPerPixel:F3} viewport={viewportWidth}x{viewportHeight} origin=({pyramidalOrigin.X:F2},{pyramidalOrigin.Y:F2}) schemaExtent=({schema.Extent.MinX:F0},{schema.Extent.MinY:F0},{schema.Extent.MaxX:F0},{schema.Extent.MaxY:F0})");
 
             if (level != _currentLevel)
             {
@@ -119,48 +124,75 @@ namespace BioGTK
             _uploadedTiles.Clear();
             _uploadedTileInfos.Clear();
 
-            // Calculate the visible extent in the schema's top-level pixel space.
-            // PyramidalOrigin is already stored in level-0 pixel coordinates, so
-            // applying resolution here would shrink the visible window and drop
-            // tiles on the right/bottom edges.
             double minX = pyramidalOrigin.X;
-            double minY = -pyramidalOrigin.Y;
             double width = viewportWidth * resolution;
             double height = viewportHeight * resolution;
-            var worldExtent = new Extent(minX, minY - height, minX + width, minY);
+            var viewportExtent = new Extent(minX, -pyramidalOrigin.Y - height, minX + width, -pyramidalOrigin.Y);
 
-            // Get tiles that intersect the viewport
-            var tileInfos = schema.GetTileInfos(worldExtent, level).ToList();
+            // Prefetch one tile beyond each viewport edge so partially visible
+            // edge tiles are available without overfetching an arbitrary 2x area.
+            double tileMarginX = levelRes.TileWidth * levelUnitsPerPixel;
+            double tileMarginY = levelRes.TileHeight * levelUnitsPerPixel;
+            var fetchExtent = new Extent(
+                viewportExtent.MinX - tileMarginX,
+                viewportExtent.MinY - tileMarginY,
+                viewportExtent.MaxX + tileMarginX,
+                viewportExtent.MaxY + tileMarginY);
 
-            if (tileInfos.Count == 0)
+            // BioLib's own tile-query path converts the viewer extent into the
+            // schema's pixel-space, inverted-Y coordinates before calling BruTile.
+            // Using the raw world extent first can return a non-empty but incorrect
+            // subset of tiles for Zarr, so prefer the converted extent and only
+            // fall back to the raw world extent if it still yields nothing.
+            var lookupExtent = BioLib.ExtentEx.WorldToPixelInvertedY(fetchExtent, levelUnitsPerPixel);
+            var tileInfos = schema.GetTileInfos(lookupExtent, level).ToList();
+            var fallbackInfos = schema.GetTileInfos(fetchExtent, level).ToList();
+
+            if (fallbackInfos.Count > 0)
             {
-                var pixelExtent = OpenSlideGTK.ExtentEx.WorldToPixelInvertedY(worldExtent, resolution);
-                tileInfos = schema.GetTileInfos(pixelExtent, level).ToList();
+                var seen = new HashSet<TileIndex>(tileInfos.Select(t => t.Index));
+                foreach (var info in fallbackInfos)
+                {
+                    if (seen.Add(info.Index))
+                        tileInfos.Add(info);
+                }
             }
+
+            LogDiag($"[UpdateViewAsync] fetchExtent=({fetchExtent.MinX:F0},{fetchExtent.MinY:F0},{fetchExtent.MaxX:F0},{fetchExtent.MaxY:F0}) lookupExtent=({lookupExtent.MinX:F0},{lookupExtent.MinY:F0},{lookupExtent.MaxX:F0},{lookupExtent.MaxY:F0}) tileInfos={tileInfos.Count} fallbackInfos={fallbackInfos.Count}");
 
             var renderInfos = new List<TileRenderInfo>();
             foreach (var tileInfo in tileInfos)
             {
-                if (!_glArea.HasTileTexture(tileInfo.Index))
+                var fetchTileInfo = tileInfo;
+                var renderTileInfo = tileInfo;
+
+                if (!_glArea.HasTileTexture(fetchTileInfo.Index))
                 {
-                    byte[] tileData = await FetchTileAsync(tileInfo, level, coordinate);
+                    byte[] tileData = await FetchTileAsync(fetchTileInfo, level, coordinate);
                     if (tileData != null)
                     {
-                        // Fix: Calculate actual tile dimensions from extent, do not hardcode 256.
-                        // This handles edge tiles that might be smaller.
-                        int tW = (int)Math.Round(tileInfo.Extent.Width / levelUnitsPerPixel);
-                        int tH = (int)Math.Round(tileInfo.Extent.Height / levelUnitsPerPixel);
+                        // Upload using the schema tile size for this level.
+                        // The fetch path already pads edge tiles to the full tile
+                        // buffer, so deriving dimensions from the extent can shrink
+                        // the GL texture and show only the top-left corner.
+                        int tW = levelRes.TileWidth;
+                        int tH = levelRes.TileHeight;
 
-                        _glArea.UploadTileTexture(tileInfo.Index, tileData, tW, tH);
-                        _uploadedTiles.Add(tileInfo.Index);
-                        _uploadedTileInfos[tileInfo.Index] = tileInfo;
+                        _glArea.UploadTileTexture(fetchTileInfo.Index, tileData, tW, tH);
+                        _uploadedTiles.Add(fetchTileInfo.Index);
+                        _uploadedTileInfos[fetchTileInfo.Index] = renderTileInfo;
+                        LogDiag($"[UpdateViewAsync] uploaded tile={fetchTileInfo.Index} bytes={tileData.Length} texSize={tW}x{tH} extent=({fetchTileInfo.Extent.MinX:F0},{fetchTileInfo.Extent.MinY:F0},{fetchTileInfo.Extent.MaxX:F0},{fetchTileInfo.Extent.MaxY:F0})");
+                    }
+                    else
+                    {
+                        LogDiag($"[UpdateViewAsync] fetch returned null tile={fetchTileInfo.Index} extent=({fetchTileInfo.Extent.MinX:F0},{fetchTileInfo.Extent.MinY:F0},{fetchTileInfo.Extent.MaxX:F0},{fetchTileInfo.Extent.MaxY:F0})");
                     }
                 }
 
-                if (_glArea.HasTileTexture(tileInfo.Index))
+                if (_glArea.HasTileTexture(fetchTileInfo.Index))
                 {
                     var renderInfo = CalculateScreenPosition(
-                        tileInfo,
+                        renderTileInfo,
                         pyramidalOrigin,
                         resolution,
                         level,
@@ -169,6 +201,7 @@ namespace BioGTK
                 }
             }
 
+            LogDiag($"[UpdateViewAsync] renderInfos={renderInfos.Count} cachedTextures={_glArea.CachedTextureCount}");
             _glArea.SetTilesToRender(renderInfos);
             _glArea.RequestRedraw();
             }
@@ -333,6 +366,20 @@ namespace BioGTK
             }
         }
 
+        private static void LogDiag(string message)
+        {
+            if (!DiagnosticLogging)
+                return;
+
+            try
+            {
+                System.IO.File.AppendAllText(@"C:\Users\Public\biolog.txt", message + Environment.NewLine);
+            }
+            catch
+            {
+            }
+        }
+
         private TileRenderInfo CalculateScreenPosition(
             TileInfo tile,
             PointD pyramidalOrigin,
@@ -356,40 +403,28 @@ namespace BioGTK
             double imgMaxY =  schema.Extent.MaxY * level0UPP; // 0
             double imgMinY =  schema.Extent.MinY * level0UPP; // negative
 
-            // Tile extent converted to the same world units.
-            double tMinX = tile.Extent.MinX * level0UPP;
-            double tMaxX = tile.Extent.MaxX * level0UPP;
-            double tMinY = tile.Extent.MinY * level0UPP;
-            double tMaxY = tile.Extent.MaxY * level0UPP;
+            var tileExtent = tile.Extent;
+            double tMinX = tileExtent.MinX;
+            double tMaxX = tileExtent.MaxX;
+            double tMinY = tileExtent.MinY;
+            double tMaxY = tileExtent.MaxY;
 
-            // Clamp to image boundary.
-            double clampedMinX = Math.Max(tMinX, imgMinX);
-            double clampedMaxX = Math.Min(tMaxX, imgMaxX);
-            double clampedMinY = Math.Max(tMinY, imgMinY);
-            double clampedMaxY = Math.Min(tMaxY, imgMaxY);
-
-            if (clampedMaxX <= clampedMinX || clampedMaxY <= clampedMinY)
+            // Render the full tile quad. The tile fetch already limits us to
+            // real intersecting tiles, and clipping here can shave off the last
+            // visible edge when the viewport sits near a tile boundary.
+            if (tMaxX <= tMinX || tMaxY <= tMinY)
                 return new TileRenderInfo(tile.Index, -9999, -9999, 0, 0);
-
-            // UV sub-region within the texture for the clamped portion.
-            // Use the world-unit tile dimensions so UV ratios stay correct.
-            double tw = tMaxX - tMinX;
-            double th = tMaxY - tMinY;
-            float u0 = tw > 0 ? (float)((clampedMinX - tMinX) / tw) : 0;
-            float u1 = tw > 0 ? (float)((clampedMaxX - tMinX) / tw) : 1;
-            float v0 = th > 0 ? (float)((tMaxY - clampedMaxY) / th) : 0;
-            float v1 = th > 0 ? (float)((tMaxY - clampedMinY) / th) : 1;
 
             // Screen position: divide world coords by viewResolution to get pixels.
             double originScreenX = pyramidalOrigin.X / viewResolution;
             double originScreenY = pyramidalOrigin.Y / viewResolution;
 
-            float screenX      = (float)(clampedMinX /  viewResolution - originScreenX);
-            float screenY      = (float)(-clampedMaxY / viewResolution - originScreenY);
-            float screenWidth  = (float)((clampedMaxX - clampedMinX) / viewResolution);
-            float screenHeight = (float)((clampedMaxY - clampedMinY) / viewResolution);
+            float screenX      = (float)(tMinX /  viewResolution - originScreenX);
+            float screenY      = (float)(-tMaxY / viewResolution - originScreenY);
+            float screenWidth  = (float)((tMaxX - tMinX) / viewResolution);
+            float screenHeight = (float)((tMaxY - tMinY) / viewResolution);
 
-            return new TileRenderInfo(tile.Index, screenX, screenY, screenWidth, screenHeight, u0, v0, u1, v1);
+            return new TileRenderInfo(tile.Index, screenX, screenY, screenWidth, screenHeight);
         }
 
         public int CurrentLevel => _currentLevel;

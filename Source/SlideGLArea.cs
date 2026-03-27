@@ -19,6 +19,7 @@ namespace BioGTK
     public class SlideGLArea : GLArea
     {
         private const bool VerboseLogging = false;
+        private const bool DiagnosticLogging = true;
         // ============================================================================
         // GL Resources
         // ============================================================================
@@ -345,11 +346,11 @@ void main()
 
             if (TilesToRender.Count == 0)
             {
-                if (VerboseLogging) Console.WriteLine("WARNING: No tiles to render!");
+                LogDiag($"[RenderTiles] no tiles to render viewport={width}x{height} imageScreen=({ImageScreenX},{ImageScreenY},{ImageScreenW},{ImageScreenH})");
                 return;
             }
 
-            if (VerboseLogging) Console.WriteLine($"Rendering {TilesToRender.Count} tiles at viewport {width}x{height}");
+            LogDiag($"[RenderTiles] tiles={TilesToRender.Count} viewport={width}x{height} imageScreen=({ImageScreenX},{ImageScreenY},{ImageScreenW},{ImageScreenH})");
 
             GL.Enable(EnableCap.Blend);
             GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
@@ -380,7 +381,7 @@ void main()
             {
                 if (!_textureCache.TryGetValue(tile.Index, out int texId))
                 {
-                    if (VerboseLogging) Console.WriteLine($"WARNING: Tile {tile.Index} not in texture cache!");
+                    LogDiag($"[RenderTiles] missing texture tile={tile.Index}");
                     continue;
                 }
 
@@ -389,14 +390,14 @@ void main()
                 GL.Uniform2(_locUvMin, tile.U0, tile.V0);
                 GL.Uniform2(_locUvMax, tile.U1, tile.V1);
 
-                if (VerboseLogging) Console.WriteLine($"Rendering tile {tile.Index}: pos=({tile.ScreenX}, {tile.ScreenY}), size=({tile.ScreenWidth}, {tile.ScreenHeight})");
+                LogDiag($"[RenderTiles] draw tile={tile.Index} pos=({tile.ScreenX:F1},{tile.ScreenY:F1}) size=({tile.ScreenWidth:F1},{tile.ScreenHeight:F1}) tex={texId}");
 
                 GL.BindTexture(TextureTarget.Texture2D, texId);
                 GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
                 renderedCount++;
             }
 
-            if (VerboseLogging) Console.WriteLine($"Successfully rendered {renderedCount} tiles");
+            LogDiag($"[RenderTiles] rendered={renderedCount}");
 
             GL.Disable(EnableCap.ScissorTest);
             GL.BindVertexArray(0);
@@ -425,13 +426,13 @@ void main()
         {
             if (!_glInitialized)
             {
-                if (VerboseLogging) Console.WriteLine("WARNING: GL not initialized, cannot upload texture");
+                LogDiag($"[UploadTileTexture] gl-not-initialized tile={index}");
                 return;
             }
 
             if (pixelData == null || pixelData.Length == 0)
             {
-                if (VerboseLogging) Console.WriteLine($"WARNING: Empty pixel data for tile {index}");
+                LogDiag($"[UploadTileTexture] empty pixel data tile={index}");
                 return;
             }
 
@@ -442,14 +443,14 @@ void main()
             // on any genuine mismatch rather than trying to guess new dimensions.
             if (tileWidth <= 0 || tileHeight <= 0)
             {
-                if (VerboseLogging) Console.WriteLine($"WARNING: Tile {index} has invalid dimensions {tileWidth}x{tileHeight}, skipping.");
+                LogDiag($"[UploadTileTexture] invalid dimensions tile={index} size={tileWidth}x{tileHeight}");
                 return;
             }
 
             int expectedBytes = tileWidth * tileHeight * 4;
             if (pixelData.Length < expectedBytes)
             {
-                if (VerboseLogging) Console.WriteLine($"ERROR: Tile {index} buffer too small — need {expectedBytes}B, got {pixelData.Length}B, skipping.");
+                LogDiag($"[UploadTileTexture] buffer too small tile={index} need={expectedBytes} got={pixelData.Length}");
                 return;
             }
 
@@ -458,7 +459,7 @@ void main()
             // Check if already cached
             if (_textureCache.ContainsKey(index))
             {
-                if (VerboseLogging) Console.WriteLine($"Tile {index} already cached");
+                LogDiag($"[UploadTileTexture] already cached tile={index}");
                 return;
             }
 
@@ -504,7 +505,7 @@ void main()
             _textureCache[index] = tex;
             _textureSizes[index] = (tileWidth, tileHeight);
             _textureBytes += newTextureBytes;
-            if (VerboseLogging) Console.WriteLine($"Uploaded tile {index} as texture {tex} ({tileWidth}x{tileHeight}, {pixelData.Length} bytes)");
+            LogDiag($"[UploadTileTexture] uploaded tile={index} tex={tex} size={tileWidth}x{tileHeight} bytes={pixelData.Length}");
         }
 
         /// <summary>
@@ -621,8 +622,10 @@ void main()
         {
             TilesToRender.Clear();
             TilesToRender.AddRange(tiles);
-            if (VerboseLogging) Console.WriteLine($"Set {TilesToRender.Count} tiles to render");
+            LogDiag($"[SetTilesToRender] count={TilesToRender.Count}");
         }
+
+        public int CachedTextureCount => _textureCache.Count;
 
         /// <summary>
         /// Read pixels from the current framebuffer (for export/save operations).
@@ -641,6 +644,20 @@ void main()
             GL.ReadPixels(0, 0, width, height, PixelFormat.Rgba, PixelType.UnsignedByte, pixels);
 
             return pixels;
+        }
+
+        private static void LogDiag(string message)
+        {
+            if (!DiagnosticLogging)
+                return;
+
+            try
+            {
+                System.IO.File.AppendAllText(@"C:\Users\Public\biolog.txt", message + Environment.NewLine);
+            }
+            catch
+            {
+            }
         }
     }
 
