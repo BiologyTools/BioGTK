@@ -1122,7 +1122,21 @@ namespace BioGTK
                 Console.WriteLine("New tab added for " + im.Filename);
                 App.nodeView.UpdateItems();
                 tabsView.ShowAll();
-                v.Show();
+                v.ShowAll();
+                GLib.Timeout.Add(16, () =>
+                {
+                    if (v.View == null || !v.View.IsRealized || v.View.AllocatedWidth <= 1 || v.View.AllocatedHeight <= 1)
+                        return true;
+
+                    App.viewer = v;
+                    v.GoToImage();
+                    v.UpdateView();
+                    if (!ImageView.MacOS)
+                        v.glArea?.RequestRedraw();
+                    else
+                        v.View.QueueDraw();
+                    return false;
+                });
             }
             catch (Exception e)
             {
@@ -1150,7 +1164,21 @@ namespace BioGTK
                     Console.WriteLine("New tab added for " + im.Filename);
                     App.nodeView.UpdateItems();
                     tabsView.ShowAll();
-                    v.Show();
+                    v.ShowAll();
+                    GLib.Timeout.Add(16, () =>
+                    {
+                        if (v.View == null || !v.View.IsRealized || v.View.AllocatedWidth <= 1 || v.View.AllocatedHeight <= 1)
+                            return true;
+
+                        App.viewer = v;
+                        v.GoToImage();
+                        v.UpdateView();
+                        if (!ImageView.MacOS)
+                            v.glArea?.RequestRedraw();
+                        else
+                            v.View.QueueDraw();
+                        return false;
+                    });
                 });
             }
         }

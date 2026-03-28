@@ -160,6 +160,7 @@ void main()
             InitializeSkia();
 
             _glInitialized = true;
+            Gtk.Application.Invoke((s, a) => App.viewer?.RequestDeferredRender());
         }
 
         private void OnResized(object sender, EventArgs e)
@@ -173,6 +174,7 @@ void main()
             InitializeSkia();
 
             NeedsRedraw = true;
+            Gtk.Application.Invoke((s, a) => App.viewer?.RequestDeferredRender());
         }
 
         // ============================================================================

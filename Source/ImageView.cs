@@ -93,7 +93,6 @@ namespace BioGTK
             InitPreview();
             UpdateImages(true);
             UpdateGUI();
-            GoToImage(Images.Count - 1);
         }
         double pxWmicron = 5;
         double pxHmicron = 5;
@@ -435,6 +434,7 @@ namespace BioGTK
             pxWmicron = SelectedImage.PhysicalSizeX;
             pxHmicron = SelectedImage.PhysicalSizeY;
             SetupHandlers();
+            EnsureInitialPyramidalRender();
             //pictureBox.WidthRequest = im.SizeX;
             //pictureBox.HeightRequest = im.SizeY;
             Function.InitializeContextMenu();
@@ -450,6 +450,12 @@ namespace BioGTK
             bBox.PackStart(rendererb, false);
             bBox.AddAttribute(rendererb, "text", 0);
             UpdateScrollBars();
+
+            Gtk.Application.Invoke((s, e) =>
+            {
+                if (SelectedImage != null)
+                    GoToImage(SelectedIndex);
+            });
 
             //App.ApplyStyles(this);
         }
@@ -1038,7 +1044,7 @@ namespace BioGTK
                 double visibleTop = fullResY;
                 double visibleRight = fullResX + fullResW;
                 double visibleBottom = fullResY + fullResH;
-
+                paint.Color = SKColors.Yellow;
                 if (visibleLeft <= 0 &&
                     visibleTop <= 0 &&
                     visibleRight >= fullResWidth &&
@@ -1046,9 +1052,7 @@ namespace BioGTK
                 {
                     paint.Style = SKPaintStyle.Stroke;
                     paint.StrokeWidth = 1f;
-                    paint.Color = SKColors.Gray;
                     paint.IsAntialias = true;
-
                     canvas.DrawRect(0, 0, overview.Width, overview.Height, paint);
                     return;
                 }
@@ -1072,7 +1076,6 @@ namespace BioGTK
                 {
                     paint.Style = SKPaintStyle.Stroke;
                     paint.StrokeWidth = 1f;
-                    paint.Color = SKColors.Gray;
                     paint.IsAntialias = true;
 
                     canvas.DrawRect(rectLeft, rectTop, rectRight - rectLeft, rectBottom - rectTop, paint);
@@ -1580,6 +1583,8 @@ namespace BioGTK
         /// <summary> Sets up the handlers. </summary>
         protected void SetupHandlers()
         {
+            View.Realized += View_Realized;
+            this.Shown += ImageView_Shown;
             zBar.ValueChanged += ValueChangedZ;
             cBar.ValueChanged += ValueChangedC;
             tBar.ValueChanged += ValueChangedT;
@@ -1646,6 +1651,52 @@ namespace BioGTK
             tBar.ButtonPressEvent += TBar_ButtonPressEvent;
             cBar.ButtonPressEvent += CBar_ButtonPressEvent;
 
+        }
+
+        private bool _initialPyramidalRenderQueued = false;
+
+        private void EnsureInitialPyramidalRender()
+        {
+            if (_initialPyramidalRenderQueued || SelectedImage?.isPyramidal != true)
+                return;
+
+            _initialPyramidalRenderQueued = true;
+            int attempts = 0;
+            GLib.Timeout.Add(75, () =>
+            {
+                if (SelectedImage?.isPyramidal != true)
+                    return false;
+
+                bool hasRenderedImage = MacOS
+                    ? (sKSlideRenderer?.HasValidImage ?? false)
+                    : ((slideRenderer?.CachedTextureCount ?? 0) > 0);
+                if (hasRenderedImage)
+                    return false;
+
+                if (View == null || !View.IsRealized || View.AllocatedWidth <= 1 || View.AllocatedHeight <= 1)
+                    return true;
+
+                App.viewer = this;
+                GoToImage(SelectedIndex);
+                RequestDeferredRender();
+                if (!MacOS)
+                    glArea?.RequestRedraw();
+                else
+                    View.QueueDraw();
+
+                attempts++;
+                return attempts < 20;
+            });
+        }
+
+        private void View_Realized(object sender, EventArgs e)
+        {
+            EnsureInitialPyramidalRender();
+        }
+
+        private void ImageView_Shown(object sender, EventArgs e)
+        {
+            EnsureInitialPyramidalRender();
         }
 
         private void OverView_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -2259,6 +2310,25 @@ namespace BioGTK
             {
                 SelectedImage.PyramidalSize = new AForge.Size(newW, newH);
                 UpdateScrollBars();
+
+                // The first reliable moment we know the actual drawable size is
+                // the first real SizeAllocated callback. Kick the initial fit +
+                // render from here so startup does not depend on earlier window
+                // lifecycle ordering.
+                if (!initrend)
+                {
+                    initrend = true;
+                    GLib.Idle.Add(() =>
+                    {
+                        if (SelectedImage?.isPyramidal != true || View == null ||
+                            View.AllocatedWidth <= 1 || View.AllocatedHeight <= 1)
+                            return false;
+
+                        GoToImage(SelectedIndex);
+                        RequestDeferredRender();
+                        return false;
+                    });
+                }
             }
             else
                 UpdateImage();
@@ -3202,31 +3272,15 @@ namespace BioGTK
             mousePoint = "(" + (p.X.ToString("F")) + ", " + (p.Y.ToString("F")) + ")";
             if (SelectedImage == null)
                 return;
-            // Handle pyramidal overview navigation
-            if (SelectedImage.isPyramidal && overview.IntersectsWith(e.Event.X, e.Event.Y) &&
-                e.Event.State.HasFlag(ModifierType.Button1Mask) && ShowOverview)
+            // Handle pyramidal overview navigation while dragging.
+            if (e.Event.State.HasFlag(ModifierType.Button1Mask)) 
             {
-                double baseUnitsPerPx = Math.Max(SelectedImage.GetUnitPerPixel(0), double.Epsilon);
-                double fullResWidth = Math.Max(1, SelectedImage.Resolutions[0].SizeX * baseUnitsPerPx);
-                double fullResHeight = Math.Max(1, SelectedImage.Resolutions[0].SizeY * baseUnitsPerPx);
-                double viewWorldW = View.AllocatedWidth * Resolution;
-                double viewWorldH = View.AllocatedHeight * Resolution;
-
-                // Map the click into the overview's image coordinate system.
-                double fullResX = ((double)e.Event.X / overview.Width) * fullResWidth;
-                double fullResY = ((double)e.Event.Y / overview.Height) * fullResHeight;
-
-                // Center the main viewport on the clicked point, then clamp so the
-                // visible region stays within the image bounds.
-                double originX = fullResX - (viewWorldW / 2.0);
-                double originY = fullResY - (viewWorldH / 2.0);
-                double maxX = Math.Max(0, fullResWidth - viewWorldW);
-                double maxY = Math.Max(0, fullResHeight - viewWorldH);
-
-                PyramidalOrigin = new PointD(
-                    Math.Max(0, Math.Min(originX, maxX)),
-                    Math.Max(0, Math.Min(originY, maxY)));
+                TryNavigateFromOverview(e.Event.X, e.Event.Y);
+                UpdateStatus();
+                pd = p;
+                return;
             }
+
             else
             {
                 // On macOS with a pyramidal image, ToolMove (external library) does not know about
@@ -3250,6 +3304,37 @@ namespace BioGTK
             }
             UpdateStatus();
             pd = p;
+        }
+
+        private bool TryNavigateFromOverview(double eventX, double eventY)
+        {
+            if (SelectedImage?.isPyramidal != true || !ShowOverview || overview.Width <= 0 || overview.Height <= 0)
+                return false;
+
+            double overviewScale = Math.Max(1, View?.ScaleFactor ?? 1);
+            double overviewX = eventX * overviewScale;
+            double overviewY = eventY * overviewScale;
+            if (!overview.IntersectsWith(overviewX, overviewY))
+                return false;
+
+            double baseUnitsPerPx = Math.Max(SelectedImage.GetUnitPerPixel(0), double.Epsilon);
+            double fullResWidth = Math.Max(1, SelectedImage.Resolutions[0].SizeX * baseUnitsPerPx);
+            double fullResHeight = Math.Max(1, SelectedImage.Resolutions[0].SizeY * baseUnitsPerPx);
+            double viewWorldW = View.AllocatedWidth * Resolution;
+            double viewWorldH = View.AllocatedHeight * Resolution;
+
+            double fullResX = ((overviewX - overview.X) / overview.Width) * fullResWidth;
+            double fullResY = ((overviewY - overview.Y) / overview.Height) * fullResHeight;
+
+            double originX = fullResX - (viewWorldW / 2.0);
+            double originY = fullResY - (viewWorldH / 2.0);
+            double maxX = Math.Max(0, fullResWidth - viewWorldW);
+            double maxY = Math.Max(0, fullResHeight - viewWorldH);
+
+            PyramidalOrigin = new PointD(
+                Math.Max(0, Math.Min(originX, maxX)),
+                Math.Max(0, Math.Min(originY, maxY)));
+            return true;
         }
 
         /// <summary>
@@ -3300,6 +3385,9 @@ namespace BioGTK
                 return;
 
             mouseD = SelectedImage.ToImageSpace(pd);
+
+            if (e.Event.Button == 1 && TryNavigateFromOverview(e.Event.X, e.Event.Y))
+                return;
 
             // Handle well plate level navigation
             if (ImageView.SelectedImage.Type == BioImage.ImageType.well)

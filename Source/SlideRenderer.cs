@@ -37,6 +37,24 @@ namespace BioGTK
             _glArea = glArea;
         }
 
+        private static Task RunOnGtkThreadAsync(System.Action action)
+        {
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Gtk.Application.Invoke((s, a) =>
+            {
+                try
+                {
+                    action();
+                    tcs.TrySetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    tcs.TrySetException(ex);
+                }
+            });
+            return tcs.Task;
+        }
+
         public void SetSource(OpenSlideBase source)
         {
             _openSlideBase = source;
@@ -178,7 +196,8 @@ namespace BioGTK
                         int tW = levelRes.TileWidth;
                         int tH = levelRes.TileHeight;
 
-                        _glArea.UploadTileTexture(fetchTileInfo.Index, tileData, tW, tH);
+                        await RunOnGtkThreadAsync(() =>
+                            _glArea.UploadTileTexture(fetchTileInfo.Index, tileData, tW, tH));
                         _uploadedTiles.Add(fetchTileInfo.Index);
                         _uploadedTileInfos[fetchTileInfo.Index] = renderTileInfo;
                         LogDiag($"[UpdateViewAsync] uploaded tile={fetchTileInfo.Index} bytes={tileData.Length} texSize={tW}x{tH} extent=({fetchTileInfo.Extent.MinX:F0},{fetchTileInfo.Extent.MinY:F0},{fetchTileInfo.Extent.MaxX:F0},{fetchTileInfo.Extent.MaxY:F0})");
@@ -202,8 +221,11 @@ namespace BioGTK
             }
 
             LogDiag($"[UpdateViewAsync] renderInfos={renderInfos.Count} cachedTextures={_glArea.CachedTextureCount}");
-            _glArea.SetTilesToRender(renderInfos);
-            _glArea.RequestRedraw();
+            await RunOnGtkThreadAsync(() =>
+            {
+                _glArea.SetTilesToRender(renderInfos);
+                _glArea.RequestRedraw();
+            });
             }
             finally
             {
