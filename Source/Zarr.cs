@@ -643,21 +643,17 @@ namespace BioLib
             if (!Directory.Exists(outputDir) && !outputDir.EndsWith(".zarr", StringComparison.OrdinalIgnoreCase))
                 return;
 
-            var maskRois = overlays
-                .Where(r => r != null &&
-                            r.type == ROI.Type.Mask &&
-                            r.roiMask != null &&
-                            !string.IsNullOrWhiteSpace(r.roiID) &&
-                            r.roiID.StartsWith("zarr-label:", StringComparison.OrdinalIgnoreCase))
+            var labelRois = overlays
+                .Where(IsSupportedLabelRoi)
                 .ToList();
 
-            if (maskRois.Count == 0)
+            if (labelRois.Count == 0)
                 return;
 
             try
             {
                 File.AppendAllText(@"C:\Users\Public\biolog.txt",
-                    "[SaveLabelOverlaysAsync] maskRois=" + maskRois.Count +
+                    "[SaveLabelOverlaysAsync] labelRois=" + labelRois.Count +
                     " outputDir=" + outputDir +
                     " image=" + image?.Filename + "\n");
             }
@@ -687,12 +683,8 @@ namespace BioLib
             int fallbackLabel = 1;
             int probeCount = 0;
 
-            foreach (var roi in maskRois)
+            foreach (var roi in labelRois)
             {
-                var mask = roi.roiMask;
-                if (mask == null)
-                    continue;
-
                 int labelId = ParseLabelId(roi.Text, fallbackLabel++);
                 if (labelId <= 0)
                     continue;
@@ -721,41 +713,53 @@ namespace BioLib
                         int firstPosY = -1;
                         int firstDstX = -1;
                         int firstDstY = -1;
-                        for (int py = 0; py < mask.Height; py++)
+                        if (roi.type == ROI.Type.Mask && roi.roiMask != null)
                         {
-                            for (int px = 0; px < mask.Width; px++)
+                            var mask = roi.roiMask;
+                            for (int py = 0; py < mask.Height; py++)
                             {
-                                if (mask.GetValue(px, py) <= 0)
-                                    continue;
-
-                                positiveCount++;
-                                if (firstPosX < 0)
+                                for (int px = 0; px < mask.Width; px++)
                                 {
-                                    firstPosX = px;
-                                    firstPosY = py;
-                                    firstDstX = (int)Math.Round((mask.X + px) * scaleX);
-                                    firstDstY = (int)Math.Round((mask.Y + py) * scaleY);
+                                    if (mask.GetValue(px, py) <= 0)
+                                        continue;
+
+                                    positiveCount++;
+                                    if (firstPosX < 0)
+                                    {
+                                        firstPosX = px;
+                                        firstPosY = py;
+                                        firstDstX = (int)Math.Round((mask.X + px) * scaleX);
+                                        firstDstY = (int)Math.Round((mask.Y + py) * scaleY);
+                                    }
                                 }
                             }
+                        }
+                        else if (TryGetRoiProbePoint(roi, scaleX, scaleY, out firstDstX, out firstDstY))
+                        {
+                            firstPosX = 0;
+                            firstPosY = 0;
+                            positiveCount = 1;
                         }
 
                         File.AppendAllText(@"C:\Users\Public\biolog.txt",
                             "[SaveLabelOverlaysAsync.MaskProbe] roi=" + roi.roiID +
+                            " type=" + roi.type +
                             " coord=" + z + "," + c + "," + t +
-                            " maskXYWH=" + mask.X + "," + mask.Y + "," + mask.Width + "," + mask.Height +
-                            " phys=" + mask.PhysicalSizeX + "," + mask.PhysicalSizeY +
+                            " bbox=" + roi.BoundingBox.X + "," + roi.BoundingBox.Y + "," + roi.BoundingBox.W + "," + roi.BoundingBox.H +
                             " scale=" + scaleX + "," + scaleY +
                             " pos=" + positiveCount +
                             " firstSrc=" + firstPosX + "," + firstPosY +
                             " firstDst=" + firstDstX + "," + firstDstY +
-                            " sample=" + mask.GetValue(0, 0) + "," +
-                            mask.GetValue(Math.Min(1, Math.Max(0, mask.Width - 1)), Math.Min(1, Math.Max(0, mask.Height - 1))) +
+                            (roi.type == ROI.Type.Mask && roi.roiMask != null
+                                ? " sample=" + roi.roiMask.GetValue(0, 0) + "," +
+                                  roi.roiMask.GetValue(Math.Min(1, Math.Max(0, roi.roiMask.Width - 1)), Math.Min(1, Math.Max(0, roi.roiMask.Height - 1)))
+                                : "") +
                             "\n");
                     }
                     catch { }
                     probeCount++;
                 }
-                RasterizeMask(labelVolume, width, height, mask, labelId, offset, scaleX, scaleY);
+                RasterizeRoi(labelVolume, width, height, roi, labelId, offset, scaleX, scaleY);
             }
 
             try
@@ -998,7 +1002,7 @@ namespace BioLib
                 Path.Combine(outputDir, "labels", "0", ".zattrs"),
                 JsonSerializer.Serialize(labelAttrs, new JsonSerializerOptions { WriteIndented = true }));
 
-            Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, image, outputDir, maskRois.Count);
+                Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, image, outputDir, labelRois.Count);
         }
 
         /// <summary>
@@ -1180,6 +1184,313 @@ namespace BioLib
             }
 
             return fallback;
+        }
+
+        private static bool IsSupportedLabelRoi(ROI roi)
+        {
+            if (roi == null)
+                return false;
+
+            return roi.type == ROI.Type.Mask ||
+                   roi.type == ROI.Type.Point ||
+                   roi.type == ROI.Type.Line ||
+                   roi.type == ROI.Type.Rectangle ||
+                   roi.type == ROI.Type.Ellipse ||
+                   roi.type == ROI.Type.Polygon ||
+                   roi.type == ROI.Type.Polyline ||
+                   roi.type == ROI.Type.Freeform ||
+                   roi.type == ROI.Type.Label;
+        }
+
+        private static bool TryGetRoiProbePoint(ROI roi, double scaleX, double scaleY, out int x, out int y)
+        {
+            x = -1;
+            y = -1;
+
+            if (roi == null)
+                return false;
+
+            if (roi.type == ROI.Type.Point || roi.type == ROI.Type.Label)
+            {
+                var p = roi.Point;
+                x = (int)Math.Round(p.X * scaleX);
+                y = (int)Math.Round(p.Y * scaleY);
+                return true;
+            }
+
+            var pts = roi.GetPoints();
+            if (pts != null && pts.Length > 0)
+            {
+                x = (int)Math.Round(pts[0].X * scaleX);
+                y = (int)Math.Round(pts[0].Y * scaleY);
+                return true;
+            }
+
+            var bb = roi.BoundingBox;
+            x = (int)Math.Round((bb.X + (bb.W / 2.0)) * scaleX);
+            y = (int)Math.Round((bb.Y + (bb.H / 2.0)) * scaleY);
+            return true;
+        }
+
+        private static void RasterizeRoi(short[] labelPlane, int imageWidth, int imageHeight, ROI roi, int labelId, int planeOffset, double scaleX, double scaleY)
+        {
+            if (roi == null || labelPlane == null || labelPlane.Length == 0)
+                return;
+
+            if (roi.type == ROI.Type.Mask && roi.roiMask != null)
+            {
+                RasterizeMask(labelPlane, imageWidth, imageHeight, roi.roiMask, labelId, planeOffset, scaleX, scaleY);
+                return;
+            }
+
+            int thickness = Math.Max(1, (int)Math.Round(Math.Max(1.0, roi.strokeWidth)));
+
+            switch (roi.type)
+            {
+                case ROI.Type.Point:
+                case ROI.Type.Label:
+                    {
+                        var p = roi.Point;
+                        int px = (int)Math.Round(p.X * scaleX);
+                        int py = (int)Math.Round(p.Y * scaleY);
+                        PlotThickPoint(labelPlane, imageWidth, imageHeight, planeOffset, px, py, labelId, Math.Max(1, thickness));
+                        return;
+                    }
+
+                case ROI.Type.Line:
+                    {
+                        var pts = roi.GetPoints();
+                        if (pts == null || pts.Length < 2)
+                            return;
+
+                        DrawLine(labelPlane, imageWidth, imageHeight, planeOffset,
+                            (int)Math.Round(pts[0].X * scaleX), (int)Math.Round(pts[0].Y * scaleY),
+                            (int)Math.Round(pts[1].X * scaleX), (int)Math.Round(pts[1].Y * scaleY),
+                            labelId, thickness);
+                        return;
+                    }
+
+                case ROI.Type.Rectangle:
+                    FillRectangle(labelPlane, imageWidth, imageHeight, planeOffset, roi.BoundingBox, labelId, scaleX, scaleY);
+                    return;
+
+                case ROI.Type.Ellipse:
+                    FillEllipse(labelPlane, imageWidth, imageHeight, planeOffset, roi.BoundingBox, labelId, scaleX, scaleY);
+                    return;
+
+                case ROI.Type.Polygon:
+                    RasterizePolygonLike(labelPlane, imageWidth, imageHeight, planeOffset, roi, labelId, scaleX, scaleY, thickness);
+                    return;
+
+                case ROI.Type.Polyline:
+                    RasterizePolyline(labelPlane, imageWidth, imageHeight, planeOffset, roi, labelId, scaleX, scaleY, thickness);
+                    return;
+
+                case ROI.Type.Freeform:
+                    RasterizePolygonLike(labelPlane, imageWidth, imageHeight, planeOffset, roi, labelId, scaleX, scaleY, thickness);
+                    return;
+            }
+        }
+
+        private static void RasterizePolyline(short[] labelPlane, int imageWidth, int imageHeight, int planeOffset, ROI roi, int labelId, double scaleX, double scaleY, int thickness)
+        {
+            var pts = roi.GetPoints();
+            if (pts == null || pts.Length < 2)
+                return;
+
+            for (int i = 0; i < pts.Length - 1; i++)
+            {
+                DrawLine(labelPlane, imageWidth, imageHeight, planeOffset,
+                    (int)Math.Round(pts[i].X * scaleX), (int)Math.Round(pts[i].Y * scaleY),
+                    (int)Math.Round(pts[i + 1].X * scaleX), (int)Math.Round(pts[i + 1].Y * scaleY),
+                    labelId, thickness);
+            }
+        }
+
+        private static void RasterizePolygonLike(short[] labelPlane, int imageWidth, int imageHeight, int planeOffset, ROI roi, int labelId, double scaleX, double scaleY, int thickness)
+        {
+            var pts = roi.GetPoints();
+            if (pts == null || pts.Length == 0)
+                return;
+
+            if (pts.Length < 3)
+            {
+                RasterizePolyline(labelPlane, imageWidth, imageHeight, planeOffset, roi, labelId, scaleX, scaleY, thickness);
+                return;
+            }
+
+            if (roi.type == ROI.Type.Freeform || roi.closed)
+            {
+                var scaled = pts.Select(p => new PointD(p.X * scaleX, p.Y * scaleY)).ToArray();
+                FillPolygon(labelPlane, imageWidth, imageHeight, planeOffset, scaled, labelId);
+            }
+            else
+            {
+                RasterizePolyline(labelPlane, imageWidth, imageHeight, planeOffset, roi, labelId, scaleX, scaleY, thickness);
+            }
+        }
+
+        private static void FillRectangle(short[] labelPlane, int imageWidth, int imageHeight, int planeOffset, AForge.RectangleD rect, int labelId, double scaleX, double scaleY)
+        {
+            double x0 = rect.X * scaleX;
+            double y0 = rect.Y * scaleY;
+            double x1 = (rect.X + rect.W) * scaleX;
+            double y1 = (rect.Y + rect.H) * scaleY;
+
+            int minX = Math.Max(0, (int)Math.Floor(Math.Min(x0, x1)));
+            int maxX = Math.Min(imageWidth - 1, (int)Math.Ceiling(Math.Max(x0, x1)));
+            int minY = Math.Max(0, (int)Math.Floor(Math.Min(y0, y1)));
+            int maxY = Math.Min(imageHeight - 1, (int)Math.Ceiling(Math.Max(y0, y1)));
+
+            for (int y = minY; y <= maxY; y++)
+            {
+                int rowOffset = planeOffset + (y * imageWidth);
+                for (int x = minX; x <= maxX; x++)
+                {
+                    if (rowOffset + x >= 0 && rowOffset + x < labelPlane.Length)
+                        labelPlane[rowOffset + x] = (short)Math.Clamp(labelId, short.MinValue, short.MaxValue);
+                }
+            }
+        }
+
+        private static void FillEllipse(short[] labelPlane, int imageWidth, int imageHeight, int planeOffset, AForge.RectangleD rect, int labelId, double scaleX, double scaleY)
+        {
+            double x0 = rect.X * scaleX;
+            double y0 = rect.Y * scaleY;
+            double x1 = (rect.X + rect.W) * scaleX;
+            double y1 = (rect.Y + rect.H) * scaleY;
+
+            double left = Math.Min(x0, x1);
+            double top = Math.Min(y0, y1);
+            double right = Math.Max(x0, x1);
+            double bottom = Math.Max(y0, y1);
+            double rx = (right - left) / 2.0;
+            double ry = (bottom - top) / 2.0;
+            if (rx <= 0 || ry <= 0)
+            {
+                FillRectangle(labelPlane, imageWidth, imageHeight, planeOffset, rect, labelId, scaleX, scaleY);
+                return;
+            }
+
+            double cx = left + rx;
+            double cy = top + ry;
+            int minX = Math.Max(0, (int)Math.Floor(left));
+            int maxX = Math.Min(imageWidth - 1, (int)Math.Ceiling(right));
+            int minY = Math.Max(0, (int)Math.Floor(top));
+            int maxY = Math.Min(imageHeight - 1, (int)Math.Ceiling(bottom));
+
+            for (int y = minY; y <= maxY; y++)
+            {
+                int rowOffset = planeOffset + (y * imageWidth);
+                double ny = ((y + 0.5) - cy) / ry;
+                for (int x = minX; x <= maxX; x++)
+                {
+                    double nx = ((x + 0.5) - cx) / rx;
+                    if ((nx * nx) + (ny * ny) <= 1.0 && rowOffset + x >= 0 && rowOffset + x < labelPlane.Length)
+                        labelPlane[rowOffset + x] = (short)Math.Clamp(labelId, short.MinValue, short.MaxValue);
+                }
+            }
+        }
+
+        private static void FillPolygon(short[] labelPlane, int imageWidth, int imageHeight, int planeOffset, PointD[] points, int labelId)
+        {
+            if (points == null || points.Length < 3)
+                return;
+
+            double minX = points.Min(p => p.X);
+            double maxX = points.Max(p => p.X);
+            double minY = points.Min(p => p.Y);
+            double maxY = points.Max(p => p.Y);
+
+            int iMinX = Math.Max(0, (int)Math.Floor(minX));
+            int iMaxX = Math.Min(imageWidth - 1, (int)Math.Ceiling(maxX));
+            int iMinY = Math.Max(0, (int)Math.Floor(minY));
+            int iMaxY = Math.Min(imageHeight - 1, (int)Math.Ceiling(maxY));
+
+            for (int y = iMinY; y <= iMaxY; y++)
+            {
+                int rowOffset = planeOffset + (y * imageWidth);
+                for (int x = iMinX; x <= iMaxX; x++)
+                {
+                    if (!PointInPolygon(x + 0.5, y + 0.5, points))
+                        continue;
+
+                    if (rowOffset + x >= 0 && rowOffset + x < labelPlane.Length)
+                        labelPlane[rowOffset + x] = (short)Math.Clamp(labelId, short.MinValue, short.MaxValue);
+                }
+            }
+        }
+
+        private static bool PointInPolygon(double x, double y, PointD[] points)
+        {
+            bool inside = false;
+            int j = points.Length - 1;
+
+            for (int i = 0; i < points.Length; i++)
+            {
+                double xi = points[i].X;
+                double yi = points[i].Y;
+                double xj = points[j].X;
+                double yj = points[j].Y;
+
+                bool intersect = ((yi > y) != (yj > y)) &&
+                                 (x < (xj - xi) * (y - yi) / Math.Max(1e-12, yj - yi) + xi);
+                if (intersect)
+                    inside = !inside;
+
+                j = i;
+            }
+
+            return inside;
+        }
+
+        private static void DrawLine(short[] labelPlane, int imageWidth, int imageHeight, int planeOffset, int x0, int y0, int x1, int y1, int labelId, int thickness)
+        {
+            int dx = Math.Abs(x1 - x0);
+            int sx = x0 < x1 ? 1 : -1;
+            int dy = -Math.Abs(y1 - y0);
+            int sy = y0 < y1 ? 1 : -1;
+            int err = dx + dy;
+
+            while (true)
+            {
+                PlotThickPoint(labelPlane, imageWidth, imageHeight, planeOffset, x0, y0, labelId, thickness);
+                if (x0 == x1 && y0 == y1)
+                    break;
+
+                int e2 = 2 * err;
+                if (e2 >= dy)
+                {
+                    err += dy;
+                    x0 += sx;
+                }
+                if (e2 <= dx)
+                {
+                    err += dx;
+                    y0 += sy;
+                }
+            }
+        }
+
+        private static void PlotThickPoint(short[] labelPlane, int imageWidth, int imageHeight, int planeOffset, int x, int y, int labelId, int thickness)
+        {
+            int radius = Math.Max(0, (thickness - 1) / 2);
+            for (int yy = y - radius; yy <= y + radius; yy++)
+            {
+                if (yy < 0 || yy >= imageHeight)
+                    continue;
+
+                int rowOffset = planeOffset + (yy * imageWidth);
+                for (int xx = x - radius; xx <= x + radius; xx++)
+                {
+                    if (xx < 0 || xx >= imageWidth)
+                        continue;
+
+                    int index = rowOffset + xx;
+                    if (index >= 0 && index < labelPlane.Length)
+                        labelPlane[index] = (short)Math.Clamp(labelId, short.MinValue, short.MaxValue);
+                }
+            }
         }
 
         private static void RasterizeMask(short[] labelPlane, int imageWidth, int imageHeight, ROI.Mask mask, int labelId, int planeOffset, double scaleX, double scaleY)

@@ -514,18 +514,11 @@ namespace BioGTK
             if (ImageView.SelectedImage == null)
                 ImageView.SelectedImage = await BioImage.OpenFile(filechooser.Filename);
 
-            var zarrLabelOverlays = App.viewer?.GetZarrLabelOverlaysForImage(ImageView.SelectedImage) ?? new List<ROI>();
             BioImage.SaveZarr(ImageView.SelectedImage, filechooser.Filename);
             BioLib.Zarr.SaveV2Compatibility(ImageView.SelectedImage, filechooser.Filename);
+            MergeZarrLabelOverlaysIntoAnnotations(ImageView.SelectedImage);
             TrySaveZarrROIs(ImageView.SelectedImage, filechooser.Filename);
-            if (zarrLabelOverlays.Count > 0)
-            {
-                BioLib.Zarr.SaveLabelOverlays(ImageView.SelectedImage, zarrLabelOverlays, filechooser.Filename);
-            }
-            else
-            {
-                TrySaveZarrLabelOverlays(ImageView.SelectedImage, App.viewer, filechooser.Filename);
-            }
+            TrySaveZarrLabelOverlays(ImageView.SelectedImage, filechooser.Filename);
         }
 
         private async void OpenZarr_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -1273,11 +1266,11 @@ namespace BioGTK
             }
         }
 
-        private static void TrySaveZarrLabelOverlays(BioImage image, ImageView viewer, string? overrideDir = null)
+        private static void TrySaveZarrLabelOverlays(BioImage image, string? overrideDir = null)
         {
             try
             {
-                if (image == null || viewer == null)
+                if (image == null)
                     return;
 
                 string zarrDir = overrideDir ?? image.file;
@@ -1287,11 +1280,10 @@ namespace BioGTK
                 if (!Directory.Exists(zarrDir) && !zarrDir.EndsWith(".zarr", StringComparison.OrdinalIgnoreCase))
                     return;
 
-                var overlays = viewer.GetZarrLabelOverlaysForImage(image);
-                if (overlays.Count == 0)
+                if (image.Annotations == null || image.Annotations.Count == 0)
                     return;
 
-                BioLib.Zarr.SaveLabelOverlays(image, overlays, zarrDir);
+                BioLib.Zarr.SaveLabelOverlays(image, image.Annotations, zarrDir);
             }
             catch (Exception ex)
             {
