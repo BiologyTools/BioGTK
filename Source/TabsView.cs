@@ -514,7 +514,18 @@ namespace BioGTK
             if (ImageView.SelectedImage == null)
                 ImageView.SelectedImage = await BioImage.OpenFile(filechooser.Filename);
 
+            var zarrLabelOverlays = App.viewer?.GetZarrLabelOverlaysForImage(ImageView.SelectedImage) ?? new List<ROI>();
             BioImage.SaveZarr(ImageView.SelectedImage, filechooser.Filename);
+            BioLib.Zarr.SaveV2Compatibility(ImageView.SelectedImage, filechooser.Filename);
+            TrySaveZarrROIs(ImageView.SelectedImage, filechooser.Filename);
+            if (zarrLabelOverlays.Count > 0)
+            {
+                BioLib.Zarr.SaveLabelOverlays(ImageView.SelectedImage, zarrLabelOverlays, filechooser.Filename);
+            }
+            else
+            {
+                TrySaveZarrLabelOverlays(ImageView.SelectedImage, App.viewer, filechooser.Filename);
+            }
         }
 
         private async void OpenZarr_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -740,6 +751,7 @@ namespace BioGTK
             {
                 foreach (var b in v.Images) 
                 {
+                    TrySaveZarrROIs(b);
                     Images.RemoveImage(b);
                 }
                 v.Close();
@@ -860,6 +872,7 @@ namespace BioGTK
             ImageView v = App.viewer;
             foreach (BioImage item in v.Images)
             {
+                TrySaveZarrROIs(item);
                 Images.RemoveImage(item);
                 RemoveTab(item.Filename);
                 item.Dispose();
@@ -1096,7 +1109,7 @@ namespace BioGTK
         /// It adds a new tab to the tab control
         /// 
         /// @param BioImage This is the image that you want to display.
-        public void AddTab(BioImage im)
+        public void AddTab(BioImage im, string? sourcePath = null)
         {
             
             try
@@ -1111,7 +1124,9 @@ namespace BioGTK
                             return;
                     }
                 }
+                TryLoadZarrROIs(im);
                 ImageView v = ImageView.Create(im);
+                v.RefreshZarrLabelOverlays(sourcePath ?? im.file);
                 viewers.Add(v);
                 Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file.Replace("\\", "/")) + "/" + im.Filename);
                 dummy.Text = im.file.Replace("\\", "/") + "/" + im.Filename;
@@ -1147,14 +1162,15 @@ namespace BioGTK
                         return;
                     for (int vi = 0; vi < viewers.Count; vi++)
                     {
-                        for (int i = 0; i < viewers[vi].Images.Count; i++)
-                        {
-                            if (viewers[vi].Images[i].Filename == im.Filename)
-                                return;
-                        }
+                    for (int i = 0; i < viewers[vi].Images.Count; i++)
+                    {
+                        if (viewers[vi].Images[i].Filename == im.Filename)
+                            return;
                     }
-                    ImageView v = ImageView.Create(im);
-                    viewers.Add(v);
+                }
+                ImageView v = ImageView.Create(im);
+                viewers.Add(v);
+                v.RefreshZarrLabelOverlays(sourcePath ?? im.file);
                     Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file.Replace("\\", "/")) + "/" + im.Filename);
                     dummy.Text = im.file.Replace("\\", "/") + "/" + im.Filename;
                     dummy.Visible = false;
@@ -1182,6 +1198,107 @@ namespace BioGTK
                 });
             }
         }
+
+        private static void TryLoadZarrROIs(BioImage image)
+        {
+            try
+            {
+                string zarrDir = image.file;
+                if (string.IsNullOrWhiteSpace(zarrDir))
+                    return;
+
+                if (!Directory.Exists(zarrDir) && !zarrDir.EndsWith(".zarr", StringComparison.OrdinalIgnoreCase))
+                    return;
+
+                var rois = BioLib.Zarr.LoadROIs(zarrDir);
+                if (rois.Count > 0)
+                {
+                    image.Annotations.AddRange(rois.Where(r =>
+                        r != null &&
+                        (string.IsNullOrWhiteSpace(r.roiID) ||
+                         !r.roiID.StartsWith("zarr-label:", StringComparison.OrdinalIgnoreCase))));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Load Zarr ROIs failed: {ex.Message}");
+            }
+        }
+
+        private static void TrySaveZarrROIs(BioImage image, string? overrideDir = null)
+        {
+            try
+            {
+                if (image == null)
+                    return;
+
+                string zarrDir = overrideDir ?? image.file;
+                if (string.IsNullOrWhiteSpace(zarrDir))
+                    return;
+
+                if (!Directory.Exists(zarrDir) && !zarrDir.EndsWith(".zarr", StringComparison.OrdinalIgnoreCase))
+                    return;
+
+                BioLib.Zarr.SaveROIs(image, zarrDir);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Save Zarr ROIs failed: {ex.Message}");
+            }
+        }
+
+        private static void MergeZarrLabelOverlaysIntoAnnotations(BioImage image)
+        {
+            if (image == null || App.viewer == null)
+                return;
+
+            var overlays = App.viewer.GetZarrLabelOverlaysForImage(image);
+            if (overlays == null || overlays.Count == 0)
+                return;
+
+            foreach (var overlay in overlays)
+            {
+                if (overlay == null)
+                    continue;
+
+                if (string.IsNullOrWhiteSpace(overlay.roiID) ||
+                    !overlay.roiID.StartsWith("zarr-label:", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                bool exists = image.Annotations.Any(a => a != null && a.roiID == overlay.roiID);
+                if (exists)
+                    continue;
+
+                image.Annotations.Add(overlay);
+            }
+        }
+
+        private static void TrySaveZarrLabelOverlays(BioImage image, ImageView viewer, string? overrideDir = null)
+        {
+            try
+            {
+                if (image == null || viewer == null)
+                    return;
+
+                string zarrDir = overrideDir ?? image.file;
+                if (string.IsNullOrWhiteSpace(zarrDir))
+                    return;
+
+                if (!Directory.Exists(zarrDir) && !zarrDir.EndsWith(".zarr", StringComparison.OrdinalIgnoreCase))
+                    return;
+
+                var overlays = viewer.GetZarrLabelOverlaysForImage(image);
+                if (overlays.Count == 0)
+                    return;
+
+                BioLib.Zarr.SaveLabelOverlays(image, overlays, zarrDir);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Save Zarr label overlays failed: {ex.Message}");
+            }
+        }
+
         Gtk.FileChooserDialog filechooser;
         /// It opens a file chooser dialog, and when the user selects a file, it creates a new BioImage
        /// object, creates a new ImageView object, and adds the ImageView object to the list of viewers
@@ -1203,7 +1320,7 @@ namespace BioGTK
                 StartProgress("Open File", "Opening");
                 await BioImage.OpenAsync(item,false,true,true,0);
                 BioImage im = Images.GetImage(item);
-                AddTab(im);
+                AddTab(im, item);
                 StopProgress();
             }
         }
@@ -1226,7 +1343,7 @@ namespace BioGTK
                 StartProgress("Open OME", "Opening");
                 await BioImage.OpenAsync(item, true, true, true,0);
                 BioImage im = Images.GetImage(item);
-                AddTab(im);
+                AddTab(im, item);
                 StopProgress();
             }
         }
@@ -1252,7 +1369,7 @@ namespace BioGTK
                 {
                     await BioImage.OpenAsync(item, true, true, true, i);
                     BioImage im = Images.GetImage(item);
-                    AddTab(im);
+                    AddTab(im, item);
                 }
             }
             tabsView.ShowAll();
@@ -1277,7 +1394,7 @@ namespace BioGTK
                 StartProgress("Open OME Series", "Opening");
                 await BioImage.OpenAsync(item, false, true, true, 0);
                 BioImage im = Images.GetImage(item);
-                AddTab(im);
+                AddTab(im, item);
                 StopProgress();
             }
             tabsView.Show();
@@ -1294,7 +1411,7 @@ namespace BioGTK
             {
                 string file = item.ServerBuilder.Uri.Replace("file:/", "");
                 BioImage bm = await BioImage.OpenFile(file);
-                AddTab(bm);
+                AddTab(bm, file);
                 string[] rs = Directory.GetFiles(System.IO.Path.GetDirectoryName(file));
                 foreach (string s in rs)
                 {
@@ -1347,7 +1464,7 @@ namespace BioGTK
                 StartProgress("Add Image to Tab", "Opening");
                 await BioImage.OpenAsync(item, false, false, true, 0);
                 BioImage im = Images.GetImage(item);
-                AddTab(im);
+                AddTab(im, item);
                 StopProgress();
             }
             this.ShowAll();
@@ -1371,7 +1488,7 @@ namespace BioGTK
                 StartProgress("Add Image to Tab", "Opening");
                 await BioImage.OpenAsync(item, true, false, true, 0);
                 BioImage im = Images.GetImage(item);
-                AddTab(im);
+                AddTab(im, item);
                 StopProgress();
             }
             this.Show();

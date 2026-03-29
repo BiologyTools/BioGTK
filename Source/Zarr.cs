@@ -1,10 +1,14 @@
 using AForge;
 using BioLib;
 using ZarrNET.Core;
+using ZarrNET.Core.Nodes;
+using ZarrNET.Core.Helpers;
+using ZarrNET.Core.OmeZarr.Metadata;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ZarrNET;
@@ -28,6 +32,22 @@ namespace BioLib
     /// </summary>
     public static class Zarr
     {
+        private static int s_debugTileLogs;
+
+        private static void Log(string msg)
+        {
+            try { System.IO.File.AppendAllText(@"C:\\Users\\Public\\biolog.txt", msg + "\n"); }
+            catch { }
+        }
+
+        private static string SampleBytes(byte[] data, int count = 16)
+        {
+            if (data == null || data.Length == 0)
+                return "<empty>";
+            int len = Math.Min(count, data.Length);
+            return BitConverter.ToString(data, 0, len);
+        }
+
         // =====================================================================
         // Public entry point
         // =====================================================================
@@ -50,63 +70,17 @@ namespace BioLib
                     $"BioImage has invalid dimensions: X={b.SizeX} Y={b.SizeY} Z={b.SizeZ} C={b.SizeC} T={b.SizeT}. " +
                     "Ensure the image is fully loaded before saving as Zarr.");
 
-            // Derive bits-per-sample and RGB channel count directly from the
-            // buffer PixelFormat — the same pattern used throughout the codebase
-            // (Fiji.cs, QuPath.cs).  This is more reliable than b.RGBChannelCount
-            // or b.bitsPerPixel, which can disagree with the actual buffer layout.
-            //
-            // Format32bppArgb / Format32bppRgb:
-            //   In-memory layout is BGRA (B at byte 0, A at byte 3).
-            //   We write only the 3 colour channels remapped to R,G,B order
-            //   and discard alpha.  srcChannelCount=4 so stride arithmetic is
-            //   correct; outChannelCount=3 is what we write to the Zarr array.
-            var pixelFormat    = b.Buffers[0].PixelFormat;
-            int bitsPerSample;
-            int srcChannelCount;   // channels packed in the raw buffer
-            int outChannelCount;   // channels written to Zarr
-            bool isBGRA = false;
-
-            switch (pixelFormat)
-            {
-                case PixelFormat.Format8bppIndexed:
-                    bitsPerSample   = 8;
-                    srcChannelCount = 1;
-                    outChannelCount = 1;
-                    break;
-                case PixelFormat.Format16bppGrayScale:
-                    bitsPerSample   = 16;
-                    srcChannelCount = 1;
-                    outChannelCount = 1;
-                    break;
-                case PixelFormat.Format24bppRgb:
-                    bitsPerSample   = 8;
-                    srcChannelCount = 3;
-                    outChannelCount = 3;
-                    break;
-                case PixelFormat.Format32bppArgb:
-                case PixelFormat.Format32bppRgb:
-                    // Raw buffer is BGRA (4 bytes/pixel).
-                    // We extract 3 channels remapped to R,G,B order and drop A.
-                    bitsPerSample   = 8;
-                    srcChannelCount = 4;
-                    outChannelCount = 3;
-                    isBGRA          = true;
-                    break;
-                case PixelFormat.Format48bppRgb:
-                    bitsPerSample   = 16;
-                    srcChannelCount = 3;
-                    outChannelCount = 3;
-                    break;
-                default:
-                    srcChannelCount = 1;
-                    outChannelCount = 1;
-                    bitsPerSample   = Math.Max(b.bitsPerPixel, 8);
-                    break;
-            }
+            int bitsPerSample = DetermineSourceBitsPerSample(b);
 
             var bytesPerSample = bitsPerSample / 8;
             var zarrDataType   = MapDataType(bitsPerSample);
-            var totalChannels  = b.SizeC * outChannelCount;
+            var totalChannels  = b.SizeC;
+            s_debugTileLogs = 0;
+
+            Log($"[SaveZarr] file={b.Filename} out={outputDir} size={b.SizeX}x{b.SizeY} zct={b.SizeZ}/{b.SizeC}/{b.SizeT} " +
+                $"bits={bitsPerSample} bytesPerSample={bytesPerSample} srcPixFmt={DetermineSourcePixelFormat(b)} " +
+                $"interleavedRgb={IsInterleavedRgbFormat(DetermineSourcePixelFormat(b))} bands={(IsInterleavedRgbFormat(DetermineSourcePixelFormat(b)) ? BioImage.GetBands(DetermineSourcePixelFormat(b)) : 1)} " +
+                $"resLevels={b.Resolutions.Count}");
 
             int tileW = 512;
             int tileH = 512;
@@ -161,6 +135,7 @@ namespace BioLib
                 for (int levelIndex = 0; levelIndex < levelDescriptors.Count; levelIndex++)
                 {
                     var lvlDesc = levelDescriptors[levelIndex];
+                    Log($"[SaveZarr] level={levelIndex} size={lvlDesc.SizeX}x{lvlDesc.SizeY} downsample={lvlDesc.Downsample}");
 
                     for (int t = 0; t < b.SizeT; t++)
                     {
@@ -168,31 +143,11 @@ namespace BioLib
                         {
                             for (int c = 0; c < b.SizeC; c++)
                             {
-                                if (outChannelCount == 1)
-                                {
-                                    WritePlaneInTiles(
-                                        writer, b, lvlDesc,
-                                        t, c, z,
-                                        bytesPerSample, tileW, tileH,
-                                        levelIndex: levelIndex);
-                                }
-                                else
-                                {
-                                    for (int rgb = 0; rgb < outChannelCount; rgb++)
-                                    {
-                                        int globalC = c * outChannelCount + rgb;
-
-                                        WritePlaneInTiles(
-                                            writer, b, lvlDesc,
-                                            t, globalC, z,
-                                            bytesPerSample, tileW, tileH,
-                                            levelIndex: levelIndex,
-                                            rgbChannelIndex: rgb,
-                                            srcChannelCount: srcChannelCount,
-                                            isBGRA: isBGRA,
-                                            logicalC: c);
-                                    }
-                                }
+                                WritePlaneInTiles(
+                                    writer, b, lvlDesc,
+                                    t, c, z,
+                                    bytesPerSample, tileW, tileH,
+                                    levelIndex: levelIndex).GetAwaiter().GetResult();
                             }
                         }
                     }
@@ -215,7 +170,7 @@ namespace BioLib
         /// chunks at the given resolution level, fetching each tile via
         /// BioImage.GetTile and writing it as a sub-region into the Zarr array.
         /// </summary>
-        private async static void WritePlaneInTiles(
+        private static async Task WritePlaneInTiles(
             OmeZarrWriter              writer,
             BioImage                   b,
             ResolutionLevelDescriptor  lvlDesc,
@@ -242,11 +197,19 @@ namespace BioLib
                     int interleavedBytes   = pixelCount * srcChannelCount * bytesPerSample;
                     int singleChannelBytes = pixelCount * bytesPerSample;
 
-                    // Fetch tile from BioLib at the requested pyramid level.
-                    var tileBitmap = await b.GetTile(
-                        b.Coords[z, srcC, t], levelIndex, tileX, tileY, actualW, actualH);
+                    // Fetch raw tile bytes from BioLib at the requested pyramid level.
+                    byte[] pixelBytes = await b.GetTileBytesRaw(
+                        b.GetFrameIndex(z, srcC, t), levelIndex, tileX, tileY, actualW, actualH,
+                        new AForge.ZCT(z, srcC, t)).ConfigureAwait(false);
 
-                    byte[] pixelBytes = tileBitmap.Bytes;
+                    bool logTile = tileX == 0 && tileY == 0 && s_debugTileLogs < 12;
+                    if (logTile)
+                    {
+                        Log($"[WritePlane] level={levelIndex} t={t} c={c} z={z} srcC={srcC} tile={tileX},{tileY} size={actualW}x{actualH} " +
+                            $"rawLen={pixelBytes?.Length ?? 0} expSingle={singleChannelBytes} expInterleaved={interleavedBytes} " +
+                            $"needsDeinterleave={needsDeinterleave} srcBands={srcChannelCount} bytesPerSample={bytesPerSample} " +
+                            $"rawSample={SampleBytes(pixelBytes)}");
+                    }
 
                     if (needsDeinterleave)
                     {
@@ -267,6 +230,9 @@ namespace BioLib
                         pixelBytes = DeinterleaveChannel(
                             pixelBytes, srcByteIndex, srcChannelCount,
                             bytesPerSample, pixelCount);
+
+                        if (logTile)
+                            Log($"[WritePlane] deint c={c} srcByteIndex={srcByteIndex} outLen={pixelBytes.Length} sample={SampleBytes(pixelBytes)}");
                     }
                     else
                     {
@@ -278,14 +244,23 @@ namespace BioLib
                                 Math.Min(pixelBytes.Length, singleChannelBytes));
                             pixelBytes = trimmed;
                         }
+
+                        if (logTile)
+                            Log($"[WritePlane] single c={c} outLen={pixelBytes.Length} sample={SampleBytes(pixelBytes)}");
                     }
 
-                    writer.WriteRegionAsync(
+                    await writer.WriteRegionAsync(
                         t, c, z,
                         tileY, tileX,
                         actualH, actualW,
                         pixelBytes,
-                        levelIndex: levelIndex).Wait();
+                        levelIndex: levelIndex).ConfigureAwait(false);
+
+                    if (logTile)
+                    {
+                        s_debugTileLogs++;
+                        Log($"[WritePlane] wrote level={levelIndex} t={t} c={c} z={z} tile={tileX},{tileY}");
+                    }
                 }
             }
         }
@@ -331,6 +306,58 @@ namespace BioLib
                 32 => "float32",
                 _  => "uint16"
             };
+        }
+
+        private static int DetermineSourceBitsPerSample(BioImage b)
+        {
+            if (b.Resolutions.Count > 0)
+            {
+                return b.Resolutions[0].PixelFormat switch
+                {
+                    AForge.PixelFormat.Format8bppIndexed => 8,
+                    AForge.PixelFormat.Format24bppRgb => 8,
+                    AForge.PixelFormat.Format32bppArgb => 8,
+                    AForge.PixelFormat.Format32bppRgb => 8,
+                    AForge.PixelFormat.Format16bppGrayScale => 16,
+                    AForge.PixelFormat.Format48bppRgb => 16,
+                    AForge.PixelFormat.Format64bppArgb => 16,
+                    AForge.PixelFormat.Format64bppPArgb => 16,
+                    _ => Math.Max(8, b.bitsPerPixel)
+                };
+            }
+
+            return Math.Max(8, b.bitsPerPixel);
+        }
+
+        private static AForge.PixelFormat DetermineSourcePixelFormat(BioImage image)
+        {
+            if (image.Resolutions.Count > 0)
+                return image.Resolutions[0].PixelFormat;
+
+            if (image.Buffers.Count > 0)
+                return image.Buffers[0].PixelFormat;
+
+            return AForge.PixelFormat.Format16bppGrayScale;
+        }
+
+        private static bool IsInterleavedRgbFormat(AForge.PixelFormat format)
+        {
+            return format == AForge.PixelFormat.Format24bppRgb ||
+                   format == AForge.PixelFormat.Format32bppArgb ||
+                   format == AForge.PixelFormat.Format32bppPArgb ||
+                   format == AForge.PixelFormat.Format32bppRgb ||
+                   format == AForge.PixelFormat.Format48bppRgb ||
+                   format == AForge.PixelFormat.Format64bppArgb ||
+                   format == AForge.PixelFormat.Format64bppPArgb;
+        }
+
+        private static bool IsBGRAFormat(AForge.PixelFormat format)
+        {
+            return format == AForge.PixelFormat.Format32bppArgb ||
+                   format == AForge.PixelFormat.Format32bppPArgb ||
+                   format == AForge.PixelFormat.Format32bppRgb ||
+                   format == AForge.PixelFormat.Format64bppArgb ||
+                   format == AForge.PixelFormat.Format64bppPArgb;
         }
 
         /// <summary>
@@ -387,6 +414,15 @@ namespace BioLib
 
             foreach (ROI an in b.Annotations)
             {
+                if (an == null)
+                    continue;
+
+                if (!string.IsNullOrWhiteSpace(an.roiID) &&
+                    an.roiID.StartsWith("zarr-label:", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
                 // Encode points as "x,y x,y …" (invariant culture) — same
                 // format used by BioImage.ROIToString / stringToPoints.
                 PointD[] pts  = an.GetPoints();
@@ -431,6 +467,84 @@ namespace BioLib
         }
 
         /// <summary>
+        /// Writes v2-compatible OME-Zarr sidecar metadata alongside the v3
+        /// files produced by the main exporter.
+        /// This improves compatibility with readers that still expect .zgroup
+        /// / .zattrs / .zarray metadata.
+        /// </summary>
+        public static void SaveV2Compatibility(BioImage image, string outputDir)
+        {
+            if (image == null)
+                return;
+
+            if (string.IsNullOrWhiteSpace(outputDir))
+                return;
+
+            if (!Directory.Exists(outputDir) && !outputDir.EndsWith(".zarr", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            try
+            {
+                WriteText(Path.Combine(outputDir, ".zgroup"), JsonSerializer.Serialize(new { zarr_format = 2 }, new JsonSerializerOptions { WriteIndented = true }));
+
+                var multiscales = new[]
+                {
+                    new
+                    {
+                        version = "0.4",
+                        name = Path.GetFileNameWithoutExtension(image.Filename),
+                        axes = new object[]
+                        {
+                            new { name = "t", type = "time" },
+                            new { name = "c", type = "channel" },
+                            new { name = "z", type = "space", unit = "micrometer" },
+                            new { name = "y", type = "space", unit = "micrometer" },
+                            new { name = "x", type = "space", unit = "micrometer" }
+                        },
+                        datasets = BuildV2Datasets(image)
+                    }
+                };
+
+                WriteText(Path.Combine(outputDir, ".zattrs"), JsonSerializer.Serialize(new { multiscales }, new JsonSerializerOptions { WriteIndented = true }));
+
+                for (int i = 0; i < image.Resolutions.Count; i++)
+                {
+                    var res = image.Resolutions[i];
+                    var dtype = MapV2Dtype(DetermineSourcePixelFormat(image));
+                    var chunks = new[]
+                    {
+                        1,
+                        1,
+                        Math.Max(1, image.SizeZ),
+                        Math.Min(512, res.SizeY),
+                        Math.Min(512, res.SizeX)
+                    };
+
+                    var arrayDoc = new
+                    {
+                        zarr_format = 2,
+                        shape = new long[] { image.SizeT, image.SizeC, image.SizeZ, res.SizeY, res.SizeX },
+                        chunks,
+                        dtype,
+                        compressor = BuildV2BloscCompressor(DetermineSourcePixelFormat(image)),
+                        fill_value = 0,
+                        order = "C",
+                        filters = (object?)null,
+                        dimension_separator = "/"
+                    };
+
+                    var levelDir = Path.Combine(outputDir, i.ToString());
+                    WriteText(Path.Combine(levelDir, ".zarray"), JsonSerializer.Serialize(arrayDoc, new JsonSerializerOptions { WriteIndented = true }));
+                    WriteText(Path.Combine(levelDir, ".zattrs"), "{}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Save Zarr v2 compatibility failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Reads <c>&lt;zarrDir&gt;/rois.json</c> and returns the deserialized
         /// list of <see cref="ROI"/> objects.  Returns an empty list when no
         /// sidecar file exists.
@@ -450,6 +564,12 @@ namespace BioLib
 
             foreach (var dto in dtos)
             {
+                if (!string.IsNullOrWhiteSpace(dto.RoiId) &&
+                    dto.RoiId.StartsWith("zarr-label:", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
                 var an = new ROI
                 {
                     roiID      = dto.RoiId,
@@ -495,6 +615,839 @@ namespace BioLib
 
             Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, zarrDir);
             return result;
+        }
+
+        /// <summary>
+        /// Saves the current Zarr label overlays as an OME-Zarr labels image.
+        /// </summary>
+        public static void SaveLabelOverlays(BioImage image, IReadOnlyList<ROI> overlays, string outputDir)
+        {
+            SaveLabelOverlaysAsync(image, overlays, outputDir).GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Async implementation for writing Zarr label overlays.
+        /// </summary>
+        public static async System.Threading.Tasks.Task SaveLabelOverlaysAsync(
+            BioImage image,
+            IReadOnlyList<ROI> overlays,
+            string outputDir,
+            CancellationToken ct = default)
+        {
+            if (image == null || overlays == null || overlays.Count == 0)
+                return;
+
+            if (string.IsNullOrWhiteSpace(outputDir))
+                return;
+
+            if (!Directory.Exists(outputDir) && !outputDir.EndsWith(".zarr", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var maskRois = overlays
+                .Where(r => r != null &&
+                            r.type == ROI.Type.Mask &&
+                            r.roiMask != null &&
+                            !string.IsNullOrWhiteSpace(r.roiID) &&
+                            r.roiID.StartsWith("zarr-label:", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (maskRois.Count == 0)
+                return;
+
+            try
+            {
+                File.AppendAllText(@"C:\Users\Public\biolog.txt",
+                    "[SaveLabelOverlaysAsync] maskRois=" + maskRois.Count +
+                    " outputDir=" + outputDir +
+                    " image=" + image?.Filename + "\n");
+            }
+            catch { }
+
+            int width = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeX : image.SizeX;
+            int height = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeY : image.SizeY;
+            if (width <= 0 || height <= 0)
+                return;
+
+            int sourceWidth = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeX : width;
+            int sourceHeight = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeY : height;
+            double scaleX = sourceWidth > 0 ? width / (double)sourceWidth : 1.0;
+            double scaleY = sourceHeight > 0 ? height / (double)sourceHeight : 1.0;
+
+            int sizeT = Math.Max(1, image.SizeT);
+            int sizeC = Math.Max(1, image.SizeC);
+            int sizeZ = Math.Max(1, image.SizeZ);
+            int planePixels = width * height;
+            int planeStride = planePixels;
+            int zStride = planeStride;
+            int cStride = zStride * sizeZ;
+            int tStride = cStride * sizeC;
+
+            short[] labelVolume = new short[planePixels * sizeZ * sizeC * sizeT];
+            var labelColors = new Dictionary<int, AForge.Color>();
+            int fallbackLabel = 1;
+            int probeCount = 0;
+
+            foreach (var roi in maskRois)
+            {
+                var mask = roi.roiMask;
+                if (mask == null)
+                    continue;
+
+                int labelId = ParseLabelId(roi.Text, fallbackLabel++);
+                if (labelId <= 0)
+                    continue;
+
+                if (!labelColors.ContainsKey(labelId))
+                {
+                    var col = roi.fillColor;
+                    if (col.A == 0)
+                        col = roi.strokeColor;
+                    if (col.A == 0)
+                        col = AForge.Color.FromArgb(96, 0, 255, 0);
+                    labelColors[labelId] = col;
+                }
+
+                int z = Math.Clamp(roi.coord.Z, 0, sizeZ - 1);
+                int c = Math.Clamp(roi.coord.C, 0, sizeC - 1);
+                int t = Math.Clamp(roi.coord.T, 0, sizeT - 1);
+                int offset = (t * tStride) + (c * cStride) + (z * zStride);
+
+                if (probeCount < 4)
+                {
+                    try
+                    {
+                        int positiveCount = 0;
+                        int firstPosX = -1;
+                        int firstPosY = -1;
+                        int firstDstX = -1;
+                        int firstDstY = -1;
+                        for (int py = 0; py < mask.Height; py++)
+                        {
+                            for (int px = 0; px < mask.Width; px++)
+                            {
+                                if (mask.GetValue(px, py) <= 0)
+                                    continue;
+
+                                positiveCount++;
+                                if (firstPosX < 0)
+                                {
+                                    firstPosX = px;
+                                    firstPosY = py;
+                                    firstDstX = (int)Math.Round((mask.X + px) * scaleX);
+                                    firstDstY = (int)Math.Round((mask.Y + py) * scaleY);
+                                }
+                            }
+                        }
+
+                        File.AppendAllText(@"C:\Users\Public\biolog.txt",
+                            "[SaveLabelOverlaysAsync.MaskProbe] roi=" + roi.roiID +
+                            " coord=" + z + "," + c + "," + t +
+                            " maskXYWH=" + mask.X + "," + mask.Y + "," + mask.Width + "," + mask.Height +
+                            " phys=" + mask.PhysicalSizeX + "," + mask.PhysicalSizeY +
+                            " scale=" + scaleX + "," + scaleY +
+                            " pos=" + positiveCount +
+                            " firstSrc=" + firstPosX + "," + firstPosY +
+                            " firstDst=" + firstDstX + "," + firstDstY +
+                            " sample=" + mask.GetValue(0, 0) + "," +
+                            mask.GetValue(Math.Min(1, Math.Max(0, mask.Width - 1)), Math.Min(1, Math.Max(0, mask.Height - 1))) +
+                            "\n");
+                    }
+                    catch { }
+                    probeCount++;
+                }
+                RasterizeMask(labelVolume, width, height, mask, labelId, offset, scaleX, scaleY);
+            }
+
+            try
+            {
+                int nonZero = 0;
+                for (int i = 0; i < labelVolume.Length; i++)
+                {
+                    if (labelVolume[i] != 0)
+                        nonZero++;
+                }
+                File.AppendAllText(@"C:\Users\Public\biolog.txt",
+                    "[SaveLabelOverlaysAsync] nonZero=" + nonZero +
+                    " volume=" + labelVolume.Length + "\n");
+            }
+            catch { }
+
+            if (labelColors.Count == 0)
+                return;
+
+            using var store = new ZarrNET.Core.Zarr.Store.LocalFileSystemStore(outputDir);
+            var rootGroup = await ZarrNET.Core.Zarr.ZarrGroup.OpenRootAsync(store, ct).ConfigureAwait(false);
+
+            await WriteJsonAsync(
+                store,
+                "labels/zarr.json",
+                new
+                {
+                    zarr_format = 3,
+                    node_type   = "group",
+                    attributes   = new { labels = new[] { "0" } }
+                },
+                ct).ConfigureAwait(false);
+
+            var colors = labelColors
+                .OrderBy(kv => kv.Key)
+                .Select(kv => new Dictionary<string, object?>
+                {
+                    ["label-value"] = kv.Key,
+                    ["rgba"] = new[] { kv.Value.R, kv.Value.G, kv.Value.B, kv.Value.A }
+                })
+                .ToArray();
+
+            var labelImageGroupDoc = new Dictionary<string, object?>
+            {
+                ["multiscales"] = new[]
+                {
+                    new
+                    {
+                        version = "0.5",
+                        name = "0",
+                        axes = new object[]
+                        {
+                            new { name = "c", type = "channel" },
+                            new { name = "z", type = "space", unit = "micrometer" },
+                            new { name = "y", type = "space", unit = "micrometer" },
+                            new { name = "x", type = "space", unit = "micrometer" }
+                        },
+                        datasets = new[]
+                        {
+                            new
+                            {
+                                path = "0",
+                                coordinateTransformations = new object[]
+                                {
+                                    new
+                                    {
+                                        type = "scale",
+                                        scale = new[]
+                                        {
+                                            1.0,
+                                            image.PhysicalSizeZ > 0 ? image.PhysicalSizeZ : 1.0,
+                                            image.PhysicalSizeY > 0 ? image.PhysicalSizeY : 1.0,
+                                            image.PhysicalSizeX > 0 ? image.PhysicalSizeX : 1.0
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                ["image-label"] = new Dictionary<string, object?>
+                {
+                    ["version"] = "0.5",
+                    ["source"] = new Dictionary<string, object?>
+                    {
+                        ["href"] = "../.."
+                    },
+                    ["colors"] = colors,
+                    ["properties"] = Array.Empty<object>()
+                }
+            };
+
+            var labelArrayDoc = new
+            {
+                zarr_format = 3,
+                node_type   = "array",
+                shape       = new long[] { sizeT, sizeC, sizeZ, height, width },
+                data_type   = "int16",
+                chunk_grid  = new
+                {
+                    name = "regular",
+                    configuration = new
+                    {
+                        chunk_shape = new[]
+                        {
+                            1,
+                            1,
+                            1,
+                            Math.Min(512, height),
+                            Math.Min(512, width)
+                        }
+                    }
+                },
+                chunk_key_encoding = new
+                {
+                    name = "default",
+                    configuration = new { separator = "/" }
+                },
+                fill_value = 0,
+                dimension_names = new[] { "t", "c", "z", "y", "x" },
+                codecs = new object[]
+                {
+                    new
+                    {
+                        name = "blosc",
+                        configuration = new
+                        {
+                            cname = "lz4",
+                            clevel = 5,
+                            shuffle = "byteshuffle",
+                            typesize = 2,
+                            blocksize = 0
+                        }
+                    }
+                },
+                attributes = labelImageGroupDoc
+            };
+
+            await WriteJsonAsync(store, "labels/0/zarr.json", new
+            {
+                zarr_format = 3,
+                node_type   = "group",
+                attributes  = labelImageGroupDoc
+            }, ct).ConfigureAwait(false);
+
+            await WriteJsonAsync(store, "labels/0/0/zarr.json", labelArrayDoc, ct).ConfigureAwait(false);
+
+            var labelGroup = await rootGroup.OpenGroupAsync("labels", ct).ConfigureAwait(false);
+            var labelImageGroup = await labelGroup.OpenGroupAsync("0", ct).ConfigureAwait(false);
+            var labelArray = await labelImageGroup.OpenArrayAsync("0", ct).ConfigureAwait(false);
+
+            var labelBytes = new byte[labelVolume.Length * sizeof(short)];
+            Buffer.BlockCopy(labelVolume, 0, labelBytes, 0, labelBytes.Length);
+
+            await labelArray.WriteRegionAsync(
+                new long[] { 0, 0, 0, 0, 0 },
+                new long[] { sizeT, sizeC, sizeZ, height, width },
+                labelBytes,
+                ct).ConfigureAwait(false);
+
+            WriteText(Path.Combine(outputDir, "labels", ".zgroup"), JsonSerializer.Serialize(new { zarr_format = 2 }, new JsonSerializerOptions { WriteIndented = true }));
+            WriteText(Path.Combine(outputDir, "labels", ".zattrs"), JsonSerializer.Serialize(new { labels = new[] { "0" } }, new JsonSerializerOptions { WriteIndented = true }));
+
+            WriteText(Path.Combine(outputDir, "labels", "0", ".zgroup"), JsonSerializer.Serialize(new { zarr_format = 2 }, new JsonSerializerOptions { WriteIndented = true }));
+
+            var labelV2Array = new
+            {
+                zarr_format = 2,
+                shape = new long[] { sizeT, sizeC, sizeZ, height, width },
+                chunks = new[] { 1, 1, 1, Math.Min(512, height), Math.Min(512, width) },
+                dtype = "<i2",
+                compressor = new
+                {
+                    id = "blosc",
+                    cname = "lz4",
+                    clevel = 5,
+                    shuffle = 1,
+                    blocksize = 0
+                },
+                fill_value = 0,
+                order = "C",
+                filters = (object?)null,
+                dimension_separator = "/"
+            };
+
+            WriteText(Path.Combine(outputDir, "labels", "0", "0", ".zarray"), JsonSerializer.Serialize(labelV2Array, new JsonSerializerOptions { WriteIndented = true }));
+            var labelAttrs = new Dictionary<string, object?>
+            {
+                ["multiscales"] = new[]
+                {
+                    new
+                    {
+                        version = "0.4",
+                        name = "0",
+                        axes = new object[]
+                        {
+                            new { name = "t", type = "time" },
+                            new { name = "c", type = "channel" },
+                            new { name = "z", type = "space", unit = "micrometer" },
+                            new { name = "y", type = "space", unit = "micrometer" },
+                            new { name = "x", type = "space", unit = "micrometer" }
+                        },
+                        datasets = new[]
+                        {
+                            new
+                            {
+                                path = "0",
+                                coordinateTransformations = new object[]
+                                {
+                                    new
+                                    {
+                                        type = "scale",
+                                        scale = new[]
+                                        {
+                                            1.0,
+                                            1.0,
+                                            image.PhysicalSizeZ > 0 ? image.PhysicalSizeZ : 1.0,
+                                            image.PhysicalSizeY > 0 ? image.PhysicalSizeY : 1.0,
+                                            image.PhysicalSizeX > 0 ? image.PhysicalSizeX : 1.0
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                ["image-label"] = new Dictionary<string, object?>
+                {
+                    ["version"] = "0.4",
+                    ["source"] = new Dictionary<string, object?>
+                    {
+                        ["href"] = "../.."
+                    },
+                    ["colors"] = colors,
+                    ["properties"] = Array.Empty<object>()
+                }
+            };
+
+            WriteText(
+                Path.Combine(outputDir, "labels", "0", ".zattrs"),
+                JsonSerializer.Serialize(labelAttrs, new JsonSerializerOptions { WriteIndented = true }));
+
+            Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, image, outputDir, maskRois.Count);
+        }
+
+        /// <summary>
+        /// Loads OME-Zarr label arrays as temporary mask overlays for display.
+        /// These overlays are not part of the saved ROI sidecar.
+        /// </summary>
+        public static async System.Threading.Tasks.Task<List<ROI>> LoadLabelOverlaysAsync(BioImage image, string? sourceOverride = null)
+        {
+            var overlays = new List<ROI>();
+
+            if (image == null)
+                return overlays;
+
+            string source = sourceOverride ?? image.file;
+            if (string.IsNullOrWhiteSpace(source))
+                source = image.Filename;
+
+            if (string.IsNullOrWhiteSpace(source) ||
+                (!source.Contains(".zarr", StringComparison.OrdinalIgnoreCase) && !Directory.Exists(source)))
+                return overlays;
+
+            try
+            {
+                var reader = await OmeZarrReader.OpenAsync(source).ConfigureAwait(false);
+                var imageNode = await reader.AsMultiscaleImageAsync().ConfigureAwait(false);
+
+                if (!await imageNode.HasLabelsAsync().ConfigureAwait(false))
+                    return overlays;
+
+                var labelGroup = await imageNode.OpenLabelsAsync().ConfigureAwait(false);
+                foreach (var labelName in labelGroup.LabelNames)
+                {
+                    try
+                    {
+                        var labelNode = await labelGroup.OpenLabelAsync(labelName).ConfigureAwait(false);
+                        var multiscale = labelNode.Multiscales.FirstOrDefault();
+                        if (multiscale == null || multiscale.Datasets.Length == 0)
+                            continue;
+
+                        var level = await labelNode.OpenResolutionLevelAsync(datasetIndex: 0).ConfigureAwait(false);
+                        var axes = level.EffectiveAxes;
+                        var rawShape = level.Shape;
+                        var shape = rawShape;
+                        bool hasLeadingSingletonT = shape.Length == axes.Length + 1 && shape[0] == 1;
+                        if (hasLeadingSingletonT)
+                        {
+                            // Local Zarr label exports currently include an
+                            // extra leading singleton t dimension even though
+                            // the label metadata only exposes c/z/y/x axes.
+                            // Normalize that here so existing saved datasets
+                            // can be read without misaligning axes and shape.
+                            shape = shape.Skip(1).ToArray();
+                        }
+
+                        int sizeX = GetAxisSizeStatic(axes, shape, "x");
+                        int sizeY = GetAxisSizeStatic(axes, shape, "y");
+                        int sizeZ = Math.Max(1, GetAxisSizeStatic(axes, shape, "z", 1));
+                        int sizeC = Math.Max(1, GetAxisSizeStatic(axes, shape, "c", 1));
+                        int sizeT = Math.Max(1, GetAxisSizeStatic(axes, shape, "t", 1));
+                        Log("[Zarr.LoadLabelOverlaysAsync] label=" + labelName +
+                            " axes=" + string.Join("", axes.Select(a => a.Name)) +
+                            " shape=" + string.Join("x", shape) +
+                            " imageCoord=" + image.Coordinate.Z + "," + image.Coordinate.C + "," + image.Coordinate.T +
+                            " labelSizes=Z" + sizeZ + " C" + sizeC + " T" + sizeT);
+
+                        if (sizeX <= 0 || sizeY <= 0)
+                            continue;
+
+                        double physX = image.PhysicalSizeX > 0 ? image.PhysicalSizeX : 1.0;
+                        double physY = image.PhysicalSizeY > 0 ? image.PhysicalSizeY : 1.0;
+                        var color = PickLabelColor(labelNode.ImageLabelMetadata);
+
+                        try
+                        {
+                            int shapeIdx = 0;
+                            for (int t = 0; t < sizeT; t++)
+                            {
+                                for (int z = 0; z < sizeZ; z++)
+                                {
+                                    for (int c = 0; c < sizeC; c++)
+                                    {
+                                        int sourceC = c;
+                                        int viewerC = c;
+                                        if (sizeZ == 1 && sizeC == 1 && sizeT == 1 && image.SizeC > 1)
+                                            viewerC = image.SizeC - 1;
+                                        Log("[Zarr.LoadLabelOverlaysAsync] label=" + labelName +
+                                            " viewerC=" + viewerC +
+                                            " sourceC=" + sourceC +
+                                            " z=" + z +
+                                            " t=" + t);
+
+                                        long[] start = hasLeadingSingletonT
+                                            ? new long[] { t, sourceC, z, 0, 0 }
+                                            : BuildStart(axes, shape, t, sourceC, z);
+                                        long[] end = hasLeadingSingletonT
+                                            ? new long[] { t + 1, sourceC + 1, z + 1, sizeY, sizeX }
+                                            : BuildEnd(axes, shape, t, sourceC, z, sizeX, sizeY);
+                                        var region = new ZarrNET.Core.OmeZarr.Coordinates.PixelRegion(start, end);
+                                        var regionData = await level.ReadPixelRegionAsync(region).ConfigureAwait(false);
+                                        if (regionData == null || regionData.Data == null || regionData.Data.Length == 0)
+                                            continue;
+
+                                        int totalPixels = sizeX * sizeY;
+                                        if (totalPixels <= 0)
+                                            continue;
+
+                                        int bytesPerPixel = Math.Max(1, regionData.Data.Length / totalPixels);
+                                        var labelMasks = SplitLabelPlane(regionData.Data, sizeX, sizeY, bytesPerPixel);
+                                        if (labelMasks.Count == 0)
+                                            continue;
+                                        Log("[Zarr.LoadLabelOverlaysAsync] label=" + labelName +
+                                            " coord=" + z + "," + viewerC + "," + t +
+                                            " sourceC=" + sourceC +
+                                            " labels=" + labelMasks.Count);
+
+                                        var zct = new AForge.ZCT(z, viewerC, t);
+                                        foreach (var kv in labelMasks)
+                                        {
+                                            int labelId = kv.Key;
+                                            float[] maskData = kv.Value;
+
+                                            var mask = new ROI.Mask(maskData, sizeX, sizeY, physX, physY, 0, 0);
+                                            var roi = new ROI
+                                            {
+                                                type = ROI.Type.Mask,
+                                                roiID = $"zarr-label:{labelName}_{labelId}",
+                                                roiName = labelName,
+                                                Text = labelId.ToString(),
+                                                coord = zct,
+                                                shapeIndex = shapeIdx++,
+                                                strokeColor = color,
+                                                fillColor = color,
+                                                strokeWidth = 1,
+                                                roiMask = mask,
+                                            };
+                                            roi.UpdateBoundingBox();
+                                            overlays.Add(roi);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Zarr label '{labelName}' plane t={image.Coordinate.T} c={image.Coordinate.C} z={image.Coordinate.Z} failed: {ex.Message}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Load Zarr labels failed for '{labelName}': {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Load Zarr labels failed: {ex.Message}");
+            }
+
+            return overlays;
+        }
+
+        private static async System.Threading.Tasks.Task WriteJsonAsync(
+            ZarrNET.Core.Zarr.Store.IZarrStore store,
+            string key,
+            object document,
+            CancellationToken ct = default)
+        {
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            var json = JsonSerializer.SerializeToUtf8Bytes(document, options);
+            await store.WriteAsync(key, json, ct).ConfigureAwait(false);
+        }
+
+        private static int ParseLabelId(string? text, int fallback)
+        {
+            if (!string.IsNullOrWhiteSpace(text) &&
+                int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed))
+            {
+                return parsed;
+            }
+
+            return fallback;
+        }
+
+        private static void RasterizeMask(short[] labelPlane, int imageWidth, int imageHeight, ROI.Mask mask, int labelId, int planeOffset, double scaleX, double scaleY)
+        {
+            if (scaleX <= 0) scaleX = 1.0;
+            if (scaleY <= 0) scaleY = 1.0;
+
+            int startY = 0;
+            int startX = 0;
+            int endY = mask.Height;
+            int endX = mask.Width;
+
+            for (int y = startY; y < endY; y++)
+            {
+                int dstY = (int)Math.Round((mask.Y + y) * scaleY);
+                if (dstY < 0 || dstY >= imageHeight)
+                    continue;
+
+                int rowOffset = dstY * imageWidth;
+
+                for (int x = startX; x < endX; x++)
+                {
+                    if (mask.GetValue(x, y) <= 0)
+                        continue;
+
+                    int dstX = (int)Math.Round((mask.X + x) * scaleX);
+                    if (dstX < 0 || dstX >= imageWidth)
+                        continue;
+
+                    int index = planeOffset + rowOffset + dstX;
+                    if (index >= 0 && index < labelPlane.Length)
+                        labelPlane[index] = (short)Math.Clamp(labelId, short.MinValue, short.MaxValue);
+                }
+            }
+        }
+
+        private static int GetAxisLength(AxisMetadata[] axes, long[] shape, string axisName)
+        {
+            for (int i = 0; i < axes.Length && i < shape.Length; i++)
+            {
+                if (string.Equals(axes[i].Name, axisName, StringComparison.OrdinalIgnoreCase))
+                    return (int)shape[i];
+            }
+            return 0;
+        }
+
+        private static Dictionary<int, float[]> SplitLabelPlane(byte[] raw, int w, int h, int bytesPerPixel)
+        {
+            int total = w * h;
+            var result = new Dictionary<int, float[]>();
+
+            for (int i = 0; i < total; i++)
+            {
+                int labelId = ReadLabelId(raw, i, bytesPerPixel);
+                if (labelId == 0)
+                    continue;
+
+                if (!result.TryGetValue(labelId, out float[]? mask))
+                {
+                    mask = new float[total];
+                    result[labelId] = mask;
+                }
+
+                mask[i] = 1.0f;
+            }
+
+            return result;
+        }
+
+        private static int ReadLabelId(byte[] raw, int pixelIndex, int bytesPerPixel)
+        {
+            int byteOffset = pixelIndex * bytesPerPixel;
+            if (byteOffset < 0 || byteOffset >= raw.Length)
+                return 0;
+
+            return bytesPerPixel switch
+            {
+                1 => raw[byteOffset],
+                2 => BitConverter.ToUInt16(raw, byteOffset),
+                4 => BitConverter.ToInt32(raw, byteOffset),
+                _ => raw[byteOffset],
+            };
+        }
+
+        private static long[] BuildStart(AxisMetadata[] axes, long[] shape, int t, int c, int z)
+        {
+            long[] start = new long[axes.Length];
+            for (int i = 0; i < axes.Length; i++)
+            {
+                start[i] = axes[i].Name.ToLowerInvariant() switch
+                {
+                    "t" => t,
+                    "c" => c,
+                    "z" => z,
+                    _ => 0,
+                };
+            }
+            return start;
+        }
+
+        private static long[] BuildEnd(AxisMetadata[] axes, long[] shape, int t, int c, int z, int sizeX, int sizeY)
+        {
+            long[] end = new long[axes.Length];
+            for (int i = 0; i < axes.Length; i++)
+            {
+                end[i] = axes[i].Name.ToLowerInvariant() switch
+                {
+                    "t" => t + 1,
+                    "c" => c + 1,
+                    "z" => z + 1,
+                    "x" => sizeX,
+                    "y" => sizeY,
+                    _ => shape[i],
+                };
+            }
+            return end;
+        }
+
+        private static int GetAxisSizeStatic(AxisMetadata[] axes, long[] shape, string name, int fallback = 0)
+        {
+            for (int i = 0; i < axes.Length; i++)
+            {
+                if (axes[i].Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                    return (int)shape[i];
+            }
+            return fallback;
+        }
+
+        private static byte[] ToBinaryMask(byte[] data, string dataType, int pixelCount)
+        {
+            int bytesPerPixel = dataType switch
+            {
+                "int8" => 1,
+                "uint8" => 1,
+                "int16" => 2,
+                "uint16" => 2,
+                "int32" => 4,
+                "uint32" => 4,
+                "float32" => 4,
+                "int64" => 8,
+                "uint64" => 8,
+                "float64" => 8,
+                _ => pixelCount > 0 ? Math.Max(1, data.Length / pixelCount) : 1
+            };
+
+            if (pixelCount <= 0 || data.Length == 0)
+                return Array.Empty<byte>();
+
+            var mask = new byte[pixelCount];
+            for (int i = 0; i < pixelCount; i++)
+            {
+                int offset = i * bytesPerPixel;
+                if (offset >= data.Length)
+                    break;
+
+                bool nonZero = false;
+                for (int b = 0; b < bytesPerPixel && (offset + b) < data.Length; b++)
+                {
+                    if (data[offset + b] != 0)
+                    {
+                        nonZero = true;
+                        break;
+                    }
+                }
+
+                if (nonZero)
+                    mask[i] = 255;
+            }
+
+            return mask;
+        }
+
+        private static object[] BuildV2Datasets(BioImage image)
+        {
+            var datasets = new List<object>();
+            for (int i = 0; i < image.Resolutions.Count; i++)
+            {
+                var res = image.Resolutions[i];
+                datasets.Add(new
+                {
+                    path = i.ToString(),
+                    coordinateTransformations = new object[]
+                    {
+                        new
+                        {
+                            type = "scale",
+                            scale = new[]
+                            {
+                                1.0,
+                                1.0,
+                                image.PhysicalSizeZ > 0 ? image.PhysicalSizeZ : 1.0,
+                                image.PhysicalSizeY > 0 ? image.PhysicalSizeY : 1.0,
+                                image.PhysicalSizeX > 0 ? image.PhysicalSizeX : 1.0
+                            }
+                        }
+                    }
+                });
+            }
+
+            return datasets.ToArray();
+        }
+
+        private static string MapV2Dtype(AForge.PixelFormat pixelFormat)
+        {
+            return pixelFormat switch
+            {
+                AForge.PixelFormat.Format8bppIndexed => "|u1",
+                AForge.PixelFormat.Format24bppRgb    => "|u1",
+                AForge.PixelFormat.Format32bppArgb   => "|u1",
+                AForge.PixelFormat.Format32bppRgb    => "|u1",
+                AForge.PixelFormat.Format16bppGrayScale => "<u2",
+                AForge.PixelFormat.Format48bppRgb    => "<u2",
+                _ => "<u2"
+            };
+        }
+
+        private static object BuildV2BloscCompressor(AForge.PixelFormat pixelFormat)
+        {
+            return new
+            {
+                id = "blosc",
+                cname = "lz4",
+                clevel = 5,
+                shuffle = 1,
+                blocksize = 0
+            };
+        }
+
+        private static void WriteText(string path, string content)
+        {
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrWhiteSpace(directory))
+                Directory.CreateDirectory(directory);
+
+            File.WriteAllText(path, content);
+        }
+
+        private static bool IsSupportedLabelDataType(string dataType)
+        {
+            return string.Equals(dataType, "bool", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(dataType, "int8", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(dataType, "uint8", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(dataType, "int16", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(dataType, "uint16", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(dataType, "int32", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(dataType, "uint32", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(dataType, "int64", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(dataType, "uint64", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(dataType, "float32", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(dataType, "float64", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static Color PickLabelColor(ImageLabelMetadata metadata)
+        {
+            if (metadata?.Colors != null)
+            {
+                foreach (var entry in metadata.Colors)
+                {
+                    var rgba = entry.Rgba;
+                    if (rgba != null && rgba.Length >= 4 &&
+                        (rgba[0] != 0 || rgba[1] != 0 || rgba[2] != 0 || rgba[3] != 0))
+                    {
+                        return Color.FromArgb(rgba[3], rgba[0], rgba[1], rgba[2]);
+                    }
+                }
+            }
+
+            return Color.FromArgb(96, 0, 255, 0);
         }
 
         // =====================================================================
