@@ -20,6 +20,8 @@ namespace BioGTK
         private Gtk.Button cancelBut;
         [Builder.Object]
         private Gtk.ComboBox comboBox;
+        [Builder.Object]
+        private Gtk.Label label;
 #pragma warning restore 649
 
         #endregion
@@ -35,6 +37,16 @@ namespace BioGTK
             Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ComboPicker.glade", FileMode.Open));
             return new ComboPicker(builder, builder.GetObject("comboPicker").Handle, sts);
         }
+
+        /// It creates a new ComboPicker object, which is a Gtk.Window, and returns it
+        /// 
+        /// @return A new instance of the ComboPicker class.
+        public static ComboPicker Create(string l,string[] sts)
+        {
+            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ComboPicker.glade", FileMode.Open));
+            return new ComboPicker(builder, builder.GetObject("comboPicker").Handle,l, sts);
+        }
+
         /// It creates a new ComboPicker object, which is a Gtk.Window, and returns it
         /// 
         /// @return A new instance of the ComboPicker class.
@@ -74,6 +86,28 @@ namespace BioGTK
         }
         /* The constructor for the ComboPicker class. */
         protected ComboPicker(Builder builder, IntPtr handle, string[] sts) : base(handle)
+        {
+            _builder = builder;
+            builder.Autoconnect(this);
+            okBut.ButtonPressEvent += OkBut_ButtonPressEvent;
+            cancelBut.ButtonPressEvent += CancelBut_ButtonPressEvent;
+            var states = new ListStore(typeof(string));
+            //We add button states to buttonState box.
+            foreach (string val in sts)
+            {
+                states.AppendValues(val);
+            }
+            // Set the model for the ComboBox
+            comboBox.Model = states;
+            // Set the text column to display
+            var renderer2 = new CellRendererText();
+            comboBox.PackStart(renderer2, false);
+            comboBox.AddAttribute(renderer2, "text", 0);
+            comboBox.Active = 0;
+            App.ApplyStyles(this);
+        }
+        /* The constructor for the ComboPicker class. */
+        protected ComboPicker(Builder builder, IntPtr handle,string l, string[] sts) : base(handle)
         {
             _builder = builder;
             builder.Autoconnect(this);

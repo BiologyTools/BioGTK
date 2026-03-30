@@ -138,12 +138,10 @@ namespace BioGTK
             string st = BioLib.Settings.GetSettings("ImageJPath");
             if (st != "")
             {
-                if (st.Contains("Fiji"))
-                {
-                    BioLib.Fiji.ImageJPath = st;
-                }
-                else
-                    BioLib.ImageJ.ImageJPath = st;
+                BioLib.Fiji.ImageJPath = st;
+                BioLib.ImageJ.ImageJPath = st;
+                Fiji.Initialize(st);
+                ImageJ.Initialize(st);
                 return true;
             }
             string title = "Select ImageJ Executable Location";
@@ -157,10 +155,10 @@ namespace BioGTK
             filechooser.SetCurrentFolder(System.IO.Path.GetDirectoryName(Environment.ProcessPath));
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return false;
-            if(filechooser.Filename.Contains("Fiji"))
-                Fiji.ImageJPath = filechooser.Filename;
-            else
-                ImageJ.ImageJPath = filechooser.Filename;
+            Fiji.Initialize(filechooser.Filename);
+            ImageJ.Initialize(filechooser.Filename);
+            Fiji.ImageJPath = filechooser.Filename;
+            ImageJ.ImageJPath = filechooser.Filename;
             BioLib.Settings.AddSettings("ImageJPath", filechooser.Filename);
             filechooser.Destroy();
             BioLib.Settings.Save();
@@ -194,15 +192,15 @@ namespace BioGTK
             AppLog.Clear();
             Console.WriteLine("Initializing components.");
             SetFijiOrImageJPath();
-            if (Fiji.ImageJPath == "")
-            {
-                ImageJ.Initialize(ImageJ.ImageJPath);
-                BioImage.Initialize(ImageJ.ImageJPath);
-            }
-            else
+            if (UseFiji)
             {
                 Fiji.Initialize(Fiji.ImageJPath);
                 BioImage.Initialize(Fiji.ImageJPath);
+            }
+            else
+            {
+                ImageJ.Initialize(ImageJ.ImageJPath);
+                BioImage.Initialize(ImageJ.ImageJPath);
             }
             Console.WriteLine("Loading settings.");
             BioLib.Settings.Load();

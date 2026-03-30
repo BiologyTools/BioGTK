@@ -76,6 +76,11 @@
 		<PackageCopyToOutput>true</PackageCopyToOutput>
 		<Pack>True</Pack>
     </Content>
+	  <Content Include="Glade\YesNoDialog.glade">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		  <PackageCopyToOutput>true</PackageCopyToOutput>
+		  <Pack>True</Pack>
+	  </Content>
     <Content Include="Glade\NumberPicker.glade">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Pack>True</Pack>

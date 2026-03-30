@@ -243,7 +243,7 @@ namespace BioGTK
                         if (App.UseFiji)
                             await Fiji.RunStringFiji(ImageView.SelectedImage,rn.scriptString, "", false);
                         else
-                            ImageJ.RunString(rn.scriptString, "", false);
+                            ImageJ.RunString(ImageView.SelectedImage, rn.scriptString, "", false);
                         rn.done = true;
                     }
                     catch (Exception e)
@@ -684,7 +684,7 @@ namespace BioGTK
                 if (App.UseFiji)
                     Fiji.RunStringFiji(ImageView.SelectedImage,view.Buffer.Text, ImageView.SelectedImage.ID, headlessBox.Active);
                 else
-                    ImageJ.RunString(view.Buffer.Text, ImageView.SelectedImage.ID, headlessBox.Active);
+                    ImageJ.RunString(ImageView.SelectedImage, view.Buffer.Text, ImageView.SelectedImage.ID, headlessBox.Active);
             }
             else
                 Run();

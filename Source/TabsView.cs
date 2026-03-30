@@ -361,22 +361,51 @@ namespace BioGTK
         {
             if (ImageView.SelectedImage == null) return;
             MenuItem m = (MenuItem)o;
-            BioImage bm = await Fiji.RunOnImage(ImageView.SelectedImage, "run(\"" + m.Label + "\");", BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
-            MenuItem mi = new MenuItem(m.Label);
-            mi.ButtonPressEvent += CommandMenuItem_ButtonPressEvent;
+            BioImage bm;
+            if (ImageView.SelectedImage.isPyramidal)
+            {
+                YesNoDialog pd = YesNoDialog.Create("Run on all pyramidal levels?");
+                if (pd.Run() == (int)ResponseType.Yes)
+                {
+                    bm = await ImageJ.RunOnAllPyramidLevels(ImageView.SelectedImage, m.Label, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
+                    AddToRecent(m.Label);
+                }
+                else
+                {
+                    ComboPicker cpd = ComboPicker.Create("Select pyramidal level to run command on.", ImageView.SelectedImage.Resolutions.Select(l => l.ToString()).ToArray());
+                    if(cpd.Run() == (int)ResponseType.Ok)
+                    {
+                        int level = cpd.SelectedIndex;
+                        bm = await ImageJ.RunOnPyramidalImage(ImageView.SelectedImage, m.Label, level, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
+                        AddToRecent(m.Label);
+                    }
+                    else
+                    {
+                        return;
+                    }
+                }
+            }
+            bm = await Fiji.RunOnImage(ImageView.SelectedImage, "run(\"" + m.Label + "\");", BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
+            AddToRecent(m.Label);
+            AddTab(bm);
+        }
+
+        void AddToRecent(string name)
+        {
             bool con = false;
             foreach (MenuItem item in recent.Children)
             {
-                if (item.Label == m.Label)
+                if (item.Label == name)
                 {
                     con = true;
                     break;
                 }
             }
-            if(!con)
-            recent.Append(mi);
+            MenuItem mi = new MenuItem(name);
+            if (!con)
+                recent.Append(mi);
+            mi.ButtonPressEvent += CommandMenuItem_ButtonPressEvent;
             recentMenu.ShowAll();
-            AddTab(bm);
         }
 
         /// When the user clicks on a menu item, the selected image is rotated or flipped according to
@@ -737,18 +766,7 @@ namespace BioGTK
                 }
             }
         }
-        void RenameNotebookTab(int pageIndex, string newTitle)
-        {
-            if (pageIndex >= 0 && pageIndex < tabsView.NPages)
-            {
-                // Get the tab widget for the page and set the new title
-                Widget tabLabel = tabsView.GetTabLabel(tabsView.GetNthPage(pageIndex));
-                if (tabLabel is Label label)
-                {
-                    label.Text = newTitle;
-                }
-            }
-        }
+
         private void TabsView_FocusInEvent(object o, FocusInEventArgs args)
         {
             App.tabsView = this;
