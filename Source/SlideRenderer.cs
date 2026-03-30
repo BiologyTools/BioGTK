@@ -354,13 +354,7 @@ namespace BioGTK
             if (!DiagnosticLogging)
                 return;
 
-            try
-            {
-                System.IO.File.AppendAllText(@"C:\Users\Public\biolog.txt", message + Environment.NewLine);
-            }
-            catch
-            {
-            }
+            AppLog.Append(message);
         }
 
         private TileRenderInfo CalculateScreenPosition(

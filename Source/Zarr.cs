@@ -4,6 +4,7 @@ using ZarrNET.Core;
 using ZarrNET.Core.Nodes;
 using ZarrNET.Core.Helpers;
 using ZarrNET.Core.OmeZarr.Metadata;
+using BioGTK;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -36,8 +37,7 @@ namespace BioLib
 
         private static void Log(string msg)
         {
-            try { System.IO.File.AppendAllText(@"C:\\Users\\Public\\biolog.txt", msg + "\n"); }
-            catch { }
+            AppLog.Append(msg);
         }
 
         private static string SampleBytes(byte[] data, int count = 16)
@@ -652,10 +652,9 @@ namespace BioLib
 
             try
             {
-                File.AppendAllText(@"C:\Users\Public\biolog.txt",
-                    "[SaveLabelOverlaysAsync] labelRois=" + labelRois.Count +
+                AppLog.Append("[SaveLabelOverlaysAsync] labelRois=" + labelRois.Count +
                     " outputDir=" + outputDir +
-                    " image=" + image?.Filename + "\n");
+                    " image=" + image?.Filename);
             }
             catch { }
 
@@ -741,8 +740,7 @@ namespace BioLib
                             positiveCount = 1;
                         }
 
-                        File.AppendAllText(@"C:\Users\Public\biolog.txt",
-                            "[SaveLabelOverlaysAsync.MaskProbe] roi=" + roi.roiID +
+                        AppLog.Append("[SaveLabelOverlaysAsync.MaskProbe] roi=" + roi.roiID +
                             " type=" + roi.type +
                             " coord=" + z + "," + c + "," + t +
                             " bbox=" + roi.BoundingBox.X + "," + roi.BoundingBox.Y + "," + roi.BoundingBox.W + "," + roi.BoundingBox.H +
@@ -753,8 +751,7 @@ namespace BioLib
                             (roi.type == ROI.Type.Mask && roi.roiMask != null
                                 ? " sample=" + roi.roiMask.GetValue(0, 0) + "," +
                                   roi.roiMask.GetValue(Math.Min(1, Math.Max(0, roi.roiMask.Width - 1)), Math.Min(1, Math.Max(0, roi.roiMask.Height - 1)))
-                                : "") +
-                            "\n");
+                                : ""));
                     }
                     catch { }
                     probeCount++;
@@ -770,9 +767,8 @@ namespace BioLib
                     if (labelVolume[i] != 0)
                         nonZero++;
                 }
-                File.AppendAllText(@"C:\Users\Public\biolog.txt",
-                    "[SaveLabelOverlaysAsync] nonZero=" + nonZero +
-                    " volume=" + labelVolume.Length + "\n");
+                AppLog.Append("[SaveLabelOverlaysAsync] nonZero=" + nonZero +
+                    " volume=" + labelVolume.Length);
             }
             catch { }
 
@@ -1122,7 +1118,7 @@ namespace BioLib
                                         foreach (var kv in labelMasks)
                                         {
                                             int labelId = kv.Key;
-                                            float[] maskData = kv.Value;
+                                            byte[] maskData = kv.Value;
 
                                             var mask = new ROI.Mask(maskData, sizeX, sizeY, physX, physY, 0, 0);
                                             var roi = new ROI
@@ -1537,10 +1533,10 @@ namespace BioLib
             return 0;
         }
 
-        private static Dictionary<int, float[]> SplitLabelPlane(byte[] raw, int w, int h, int bytesPerPixel)
+        private static Dictionary<int, byte[]> SplitLabelPlane(byte[] raw, int w, int h, int bytesPerPixel)
         {
             int total = w * h;
-            var result = new Dictionary<int, float[]>();
+            var result = new Dictionary<int, byte[]>();
 
             for (int i = 0; i < total; i++)
             {
@@ -1548,13 +1544,13 @@ namespace BioLib
                 if (labelId == 0)
                     continue;
 
-                if (!result.TryGetValue(labelId, out float[]? mask))
+                if (!result.TryGetValue(labelId, out byte[]? mask))
                 {
-                    mask = new float[total];
+                    mask = new byte[total];
                     result[labelId] = mask;
                 }
 
-                mask[i] = 1.0f;
+                mask[i] = 255;
             }
 
             return result;

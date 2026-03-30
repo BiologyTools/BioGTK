@@ -343,14 +343,14 @@ void main()
         {
             int scale = ScaleFactor;
             GL.Viewport(0, 0, width * scale, height * scale);
-            GL.ClearColor(0.2f, 0.2f, 0.2f, 1f);
-            GL.Clear(ClearBufferMask.ColorBufferBit);
-
             if (TilesToRender.Count == 0)
             {
                 LogDiag($"[RenderTiles] no tiles to render viewport={width}x{height} imageScreen=({ImageScreenX},{ImageScreenY},{ImageScreenW},{ImageScreenH})");
                 return;
             }
+
+            GL.ClearColor(0.2f, 0.2f, 0.2f, 1f);
+            GL.Clear(ClearBufferMask.ColorBufferBit);
 
             LogDiag($"[RenderTiles] tiles={TilesToRender.Count} viewport={width}x{height} imageScreen=({ImageScreenX},{ImageScreenY},{ImageScreenW},{ImageScreenH})");
 
@@ -653,13 +653,7 @@ void main()
             if (!DiagnosticLogging)
                 return;
 
-            try
-            {
-                System.IO.File.AppendAllText(@"C:\Users\Public\biolog.txt", message + Environment.NewLine);
-            }
-            catch
-            {
-            }
+            AppLog.Append(message);
         }
     }
 

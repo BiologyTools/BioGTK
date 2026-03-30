@@ -498,7 +498,6 @@ namespace BioGTK
             this.DragDataReceived += TabsView_DragDataReceived;
 
         }
-        Progress prog = null;
         private async void SaveZarr_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Gtk.FileChooserDialog filechooser =
@@ -510,15 +509,22 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
-            prog = Progress.Create("Saving Zarr", "Saving " + ImageView.SelectedImage.ID + " as Zarr file.", filechooser.Filename);
+            StartProgress("Saving Zarr", "Saving " + ImageView.SelectedImage.ID + " as Zarr file.");
+            BioImage.Progress = 0;
+            await Task.Yield();
             if (ImageView.SelectedImage == null)
                 ImageView.SelectedImage = await BioImage.OpenFile(filechooser.Filename);
 
-            BioImage.SaveZarr(ImageView.SelectedImage, filechooser.Filename);
-            BioLib.Zarr.SaveV2Compatibility(ImageView.SelectedImage, filechooser.Filename);
-            MergeZarrLabelOverlaysIntoAnnotations(ImageView.SelectedImage);
-            TrySaveZarrROIs(ImageView.SelectedImage, filechooser.Filename);
-            TrySaveZarrLabelOverlays(ImageView.SelectedImage, filechooser.Filename);
+            await Task.Run(() =>
+            {
+                BioImage.SaveZarr(ImageView.SelectedImage, filechooser.Filename);
+                BioLib.Zarr.SaveV2Compatibility(ImageView.SelectedImage, filechooser.Filename);
+                MergeZarrLabelOverlaysIntoAnnotations(ImageView.SelectedImage);
+                TrySaveZarrROIs(ImageView.SelectedImage, filechooser.Filename);
+                TrySaveZarrLabelOverlays(ImageView.SelectedImage, filechooser.Filename);
+            });
+            StopProgress();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, filechooser.Filename);
         }
 
         private async void OpenZarr_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -532,12 +538,18 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
+            await Task.Yield();
+            string[] sts = filechooser.Filenames;
+            StartProgressHidden("Open Zarr", "Opening");
+            await Task.Yield();
             foreach (string f in filechooser.Filenames)
             {
                 BioImage b = await BioImage.OpenFile(f, new ZCT());
                 if (b != null)
                     AddTab(b);
             }
+            StopProgress();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, sts);
         }
 
         private async void OpenURLMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -545,8 +557,13 @@ namespace BioGTK
             OpenUrlBox box = OpenUrlBox.Create();
             if (box.Run() == (int)ResponseType.Ok)
             {
-                BioImage b = await BioImage.OpenFile(box.GetUrl());
+                string url = box.GetUrl();
+                StartProgressHidden("Open URL", "Opening");
+                await Task.Yield();
+                BioImage b = await BioImage.OpenFile(url);
                 AddTab(b);
+                StopProgress();
+                BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, url);
             }
             box.Destroy();
         }
@@ -562,6 +579,7 @@ namespace BioGTK
             filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
+            string[] sts = filechooser.Filenames;
             Napari.Initialize(ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY,ImageView.SelectedImage.SizeT > 1);
             foreach (var f in filechooser.Filenames)
             {
@@ -569,6 +587,7 @@ namespace BioGTK
                     ImageView.SelectedImage.Annotations.AddRange(Napari.ParsePointsFile(f));
             }
             filechooser.Destroy();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, sts);
         }
 
         private void ExportROINapari_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -581,9 +600,11 @@ namespace BioGTK
             "Open", ResponseType.Accept);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
+            string file = filechooser.Filename;
             Napari.Initialize(ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY, ImageView.SelectedImage.SizeT > 1);
-            Napari.WriteNapariFiles(filechooser.Filename + "_points.csv", filechooser.Filename + "_shapes.csv", ImageView.SelectedImage.Annotations);
+            Napari.WriteNapariFiles(file + "_points.csv", file + "_shapes.csv", ImageView.SelectedImage.Annotations);
             filechooser.Destroy();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, file);
         }
 
         private void ImportShapesNapari_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -625,6 +646,7 @@ namespace BioGTK
             {
                 Console.WriteLine(e.Message);
             }
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, b?.ID ?? string.Empty, userId);
             if(imgid == 0)
             {
                 BioLib.OMERO.Upload(b, userId);
@@ -642,6 +664,7 @@ namespace BioGTK
         private void AiMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             AI.Create();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false);
         }
 
         private async void TabsView_DragDataReceived(object o, DragDataReceivedArgs args)
@@ -672,6 +695,7 @@ namespace BioGTK
                 OMERO omr = OMERO.Create();
                 omr.Show();
             }
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, status);
         }
 
         private void SaveNumPyBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -687,6 +711,7 @@ namespace BioGTK
                 return;
             NumPy.SaveNumPy(ImageView.SelectedImage,filechooser.Filename);
             filechooser.Hide();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, filechooser.Filename);
         }
 
         private void RunMicroSAMMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -695,6 +720,7 @@ namespace BioGTK
             if (sam.init)
                 sam.Show();
             App.samTool = sam;
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false);
         }
 
         public void RenameTab(string name, string newName)
@@ -736,6 +762,7 @@ namespace BioGTK
             {
                 App.Rename(ti.Text);
             }
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, ti.Text);
         }
 
         private void TabsView_DeleteEvent(object o, DeleteEventArgs args)
@@ -795,6 +822,7 @@ namespace BioGTK
         private void PlateToolMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             PlateTool pl = PlateTool.Create();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false);
         }
 
         private void ExportROIQuPath_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -810,6 +838,7 @@ namespace BioGTK
                 return;
             QuPath.SaveROI(filechooser.Filename, ImageView.SelectedImage);
             filechooser.Hide();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, filechooser.Filename);
         }
 
         private void ImportROIQuPath_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -832,12 +861,14 @@ namespace BioGTK
                 }
             }
             filechooser.Hide();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, filechooser.Filenames);
         }
 
         private void SearchMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             Search search = Search.Create();
             search.Show();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false);
         }
 
         private void TabsView_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -857,6 +888,7 @@ namespace BioGTK
                 Images.AddImage(bm[i]);
                 AddTab(bm[i]);
             }
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, App.viewer.Images.Count);
         }
 
         private void TabClose_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -873,6 +905,7 @@ namespace BioGTK
             RemoveViewer(v);
             v.Hide();
             v.Destroy();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, v.Images.Count);
         }
 
         private void RunSAMMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -904,6 +937,7 @@ namespace BioGTK
             if (numpicker.Run() != (int)ResponseType.Ok)
                 return;
             await BioImage.SavePyramidalAsync(App.viewer.Images.ToArray(), filechooser.Filename, (NetVips.Enums.ForeignTiffCompression)picker.SelectedIndex, (int)numpicker.SelectedValue);
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, filechooser.Filename, picker.SelectedIndex, (int)numpicker.SelectedValue);
         }
 
         private void FocusMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -913,6 +947,7 @@ namespace BioGTK
             int f = BioImage.FindFocus(ImageView.SelectedImage, co.C, co.T);
             ZCT z = ImageView.SelectedImage.Buffers[f].Coordinate;
             App.viewer.SetCoordinate(z.Z, z.C, z.T);
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, co.Z, co.C, co.T, f);
         }
 
         /// When the user clicks on the Script Recorder menu item, the Script Recorder window is shown
@@ -925,6 +960,7 @@ namespace BioGTK
             App.recorder = Recorder.Create();
             App.recorder.Show();
             App.recorder.Present();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false);
         }
 
         /// It saves all the ROIs in the current image to a file
@@ -957,6 +993,7 @@ namespace BioGTK
                 i++;
             }
             filechooser.Hide();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, filechooser.Filename, ImageView.SelectedImage.Annotations.Count);
         }
 
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file as an
@@ -983,6 +1020,7 @@ namespace BioGTK
                 ImageView.SelectedImage.Annotations.Add(roi);
             }
             filechooser.Hide();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, filechooser.Filenames);
         }
 
         /// If the window is minimized, hide all the image viewers. If the window is restored, show all
@@ -1041,6 +1079,7 @@ namespace BioGTK
             rawMenu.Active = false;
             rgbMenu.Active = false;
             App.viewer.Mode = ImageView.ViewMode.Emission;
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false);
         }
         /// If the rawMenu is active, then set it to inactive. Otherwise, set it to active
         /// 
@@ -1057,6 +1096,7 @@ namespace BioGTK
             rgbMenu.Active = false;
             emissionMenu.Active = false;
             App.viewer.Mode = ImageView.ViewMode.Raw;
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false);
         }
         /// If the filtered menu is active, then deactivate it. Otherwise, activate it. Deactivate all
         /// other menus
@@ -1074,6 +1114,7 @@ namespace BioGTK
             rawMenu.Active = false;
             emissionMenu.Active = false;
             App.viewer.Mode = ImageView.ViewMode.Filtered;
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false);
         }
         /// If the rgbMenu is active, then set it to inactive. Otherwise, set it to active
         /// 
@@ -1090,6 +1131,7 @@ namespace BioGTK
             rawMenu.Active = false;
             emissionMenu.Active = false;
             App.viewer.Mode = ImageView.ViewMode.RGBImage;
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false);
         }
         /// <summary>
         /// Sets the current tab index.
@@ -1098,6 +1140,7 @@ namespace BioGTK
         public void SetTab(int i)
         {
             tabsView.Page = i;
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, i);
         }
         /// It adds a new tab to the tab control
         /// 
@@ -1131,6 +1174,7 @@ namespace BioGTK
                 App.nodeView.UpdateItems();
                 tabsView.ShowAll();
                 v.ShowAll();
+                BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, im?.file ?? string.Empty, sourcePath ?? string.Empty);
                 GLib.Timeout.Add(16, () =>
                 {
                     if (v.View == null || !v.View.IsRealized || v.View.AllocatedWidth <= 1 || v.View.AllocatedHeight <= 1)
@@ -1148,6 +1192,7 @@ namespace BioGTK
             }
             catch (Exception e)
             {
+                BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, im?.file ?? string.Empty, sourcePath ?? string.Empty);
                 // Execute on UI thread
                 Gtk.Application.Invoke((sender, args) =>
                 {
@@ -1315,6 +1360,7 @@ namespace BioGTK
                 AddTab(im, item);
                 StopProgress();
             }
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, sts);
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file and adds
         /// it to the list of open images
@@ -1330,6 +1376,7 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
+            string[] sts = filechooser.Filenames;
             foreach (string item in filechooser.Filenames)
             {
                 StartProgress("Open OME", "Opening");
@@ -1338,6 +1385,7 @@ namespace BioGTK
                 AddTab(im, item);
                 StopProgress();
             }
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, sts);
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file as a
         /// BioImage, creates an ImageView for it, and adds the ImageView to the notebook
@@ -1353,6 +1401,7 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
+            string[] sts = filechooser.Filenames;
             foreach (string item in filechooser.Filenames)
             {
                 StartProgress("Open OME", "Opening");
@@ -1365,6 +1414,7 @@ namespace BioGTK
                 }
             }
             tabsView.ShowAll();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, sts);
             
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file as a
@@ -1381,6 +1431,7 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
+            string[] sts = filechooser.Filenames;
             foreach (string item in filechooser.Filenames)
             {
                 StartProgress("Open OME Series", "Opening");
@@ -1390,6 +1441,7 @@ namespace BioGTK
                 StopProgress();
             }
             tabsView.Show();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, sts);
         }
         private async void openQuPathProjectMenuClick(object sender, EventArgs a)
         {
@@ -1414,6 +1466,7 @@ namespace BioGTK
                     }
                 }
             }
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, filechooser.Filename);
         }
         private void saveQuPathProject_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
@@ -1436,6 +1489,7 @@ namespace BioGTK
                 bms.Add(bs.ToArray());
             }
             QuPath.Project.SaveProject(filechooser.Filename, bms);
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, filechooser.Filename, bms.Count);
         }
         /// It opens a file chooser dialog, and then adds the selected images to the currently selected
         /// viewer
@@ -1451,6 +1505,7 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
+            string[] sts = filechooser.Filenames;
             foreach (string item in filechooser.Filenames)
             {
                 StartProgress("Add Image to Tab", "Opening");
@@ -1460,6 +1515,7 @@ namespace BioGTK
                 StopProgress();
             }
             this.ShowAll();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, sts);
         }
         /// It opens a file chooser dialog, and when the user selects a file, it opens the file as an
         /// OME image, and adds it to the currently selected viewer
@@ -1475,6 +1531,7 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
+            string[] sts = filechooser.Filenames;
             foreach (string item in filechooser.Filenames)
             {
                 StartProgress("Add Image to Tab", "Opening");
@@ -1484,23 +1541,53 @@ namespace BioGTK
                 StopProgress();
             }
             this.Show();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, sts);
         }
         private static bool done = false;
+        private static bool progressShown = false;
+        private static int progressShowThreshold = 0;
+        private static int progressDisplayOffset = 0;
         private static Progress progress;
         private static string title;
         private static void ProgressUpdate()
         {
             do
             {
+                float displayProgress = BioImage.Progress;
+                if (progressDisplayOffset > 0)
+                {
+                    float normalized = (BioImage.Progress - progressDisplayOffset) * 100f / Math.Max(1, 100 - progressDisplayOffset);
+                    displayProgress = Math.Max(0, Math.Min(100, normalized));
+                }
                 progress.Title = title;
-                progress.Status = BioImage.Status;
-                progress.ProgressValue = BioImage.Progress;
+                if (!string.IsNullOrEmpty(BioImage.Status))
+                    progress.Status = BioImage.Status;
+                if (!progressShown && BioImage.Progress >= progressShowThreshold)
+                {
+                    progressShown = true;
+                    Gtk.Application.Invoke(delegate
+                    {
+                        progress.ShowAll();
+                    });
+                }
+                progress.ProgressValue = displayProgress;
                 Thread.Sleep(250);
             } while (!done);
         }
         private static void StartProgress(string titl, string status)
         {
+            StartProgressInternal(titl, status, true, 0, 0);
+        }
+        private static void StartProgressHidden(string titl, string status)
+        {
+            StartProgressInternal(titl, status, false, 85, 85);
+        }
+        private static void StartProgressInternal(string titl, string status, bool showImmediately, int showThreshold, int displayOffset)
+        {
             done = false;
+            progressShown = showImmediately;
+            progressShowThreshold = showThreshold;
+            progressDisplayOffset = displayOffset;
             title = titl;
             BioImage.Progress = 0;
             progress.Status = status;
@@ -1510,7 +1597,10 @@ namespace BioGTK
             else
                 progress.Status = BioImage.Status;
             progress.ProgressValue = BioImage.Progress;
-            progress.Show();
+            if (showImmediately)
+                progress.ShowAll();
+            else
+                progress.Hide();
             Thread th = new Thread(ProgressUpdate);
             th.Start();
         }
@@ -1535,6 +1625,7 @@ namespace BioGTK
             StartProgress("Save Selected Tiff","Saving");
             await BioImage.SaveAsync(filechooser.Filename,ImageView.SelectedImage.Filename, 0, false);
             StopProgress();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, filechooser.Filename);
         }
         /// This function saves the selected image in the OME-TIFF format
         /// 
@@ -1551,6 +1642,7 @@ namespace BioGTK
             StartProgress("Save Selected OME", "Saving");
             await BioImage.SaveAsync(filechooser.Filename, ImageView.SelectedImage.ID, 0, true);
             StopProgress();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, filechooser.Filename);
         }
         /// This function saves the current series of images to an OME-TIFF file
         /// 
@@ -1567,6 +1659,7 @@ namespace BioGTK
             StartProgress("Save Selected OME", "Saving");
             await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, true);
             StopProgress();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, filechooser.Filename, App.viewer.Images.Count);
         }
         /// It saves the current tab as a tiff file
         /// 
@@ -1583,6 +1676,7 @@ namespace BioGTK
             StartProgress("Save Selected Tiff", "Saving");
             await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, false);     
             StopProgress();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, filechooser.Filename, App.viewer.Images.Count);
         }
         /// This function is called when the user clicks the "Save Series" menu item
         /// 
@@ -1597,6 +1691,7 @@ namespace BioGTK
             StartProgress("Save Selected Tiff", "Saving");
             await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, true);
             StopProgress();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, filechooser.Filename, App.viewer.Images.Count);
         }
         /// This function is called when the user clicks the "Images to Stack" button
         /// 
@@ -1614,8 +1709,10 @@ namespace BioGTK
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             filechooser.Hide();
-            BioImage b = BioImage.ImagesToStack(filechooser.Filenames, true);
+            string[] sts = filechooser.Filenames;
+            BioImage b = BioImage.ImagesToStack(sts, true);
             AddTab(b);
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, sts);
         }
 
         /// If the tools window is not open, open it
@@ -1667,6 +1764,7 @@ namespace BioGTK
                 return;
             BioImage.ExportROIsCSV(filechooser.Filename, ImageView.SelectedImage.Annotations);
             filechooser.Hide();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, filechooser.Filename);
         }
         /// This function is called when the user clicks on the "Import ROIs from CSV" menu item
         /// 
@@ -1682,11 +1780,13 @@ namespace BioGTK
             filechooser.SelectMultiple = true;
             if (filechooser.Run() != (int)ResponseType.Ok)
                 return;
+            string[] sts = filechooser.Filenames;
             foreach (string item in filechooser.Filenames)
             {
                 ImageView.SelectedImage.Annotations.AddRange(BioImage.ImportROIsCSV(item));
             }
             filechooser.Hide();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, sts);
         }
         /// This function is called when the user clicks on the "Export ROIs of Folder of Images" menu
         /// item

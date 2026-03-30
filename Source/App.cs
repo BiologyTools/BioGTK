@@ -191,6 +191,7 @@ namespace BioGTK
         /// Initialize() is a function that initializes the BioImage Suite Web
         public static void Initialize()
         {
+            AppLog.Clear();
             Console.WriteLine("Initializing components.");
             SetFijiOrImageJPath();
             if (Fiji.ImageJPath == "")

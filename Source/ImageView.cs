@@ -31,8 +31,7 @@ namespace BioGTK
         public List<BioImage> Images = new List<BioImage>();
         private static void Log(string msg)
         {
-            try { System.IO.File.AppendAllText(@"C:\\Users\\Public\\biolog.txt", msg + "\n"); }
-            catch { }
+            AppLog.Append(msg);
         }
 
         private bool _updatingCoordinate = false;
@@ -71,6 +70,7 @@ namespace BioGTK
             }
 
             UpdateImages();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, z, c, t);
         }
         /// It returns the coordinate of the selected image
         /// 
@@ -79,6 +79,7 @@ namespace BioGTK
         {
             if (SelectedImage == null)
                 return new ZCT();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, SelectedImage.Coordinate.Z, SelectedImage.Coordinate.C, SelectedImage.Coordinate.T);
             return SelectedImage.Coordinate;
         }
 
@@ -107,6 +108,7 @@ namespace BioGTK
             InitPreview();
             UpdateImages(true);
             UpdateGUI();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, im?.file ?? string.Empty);
         }
 
         public void SetZarrLabelOverlays(BioImage image, List<ROI> overlays, string? keyOverride = null)
@@ -119,6 +121,7 @@ namespace BioGTK
                 return;
 
             zarrLabelOverlays[key] = overlays ?? new List<ROI>();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, image?.file ?? string.Empty, overlays?.Count ?? 0, keyOverride ?? string.Empty);
         }
 
         public void RefreshZarrLabelOverlays(string? sourceOverride = null)
@@ -136,14 +139,11 @@ namespace BioGTK
 
             try
             {
-                System.IO.File.AppendAllText(@"C:\Users\Public\biolog.txt",
-                    "[RefreshZarrLabelOverlays] source=" + source +
+                AppLog.Append("[RefreshZarrLabelOverlays] source=" + source +
                     " image=" + SelectedImage.Filename +
-                    " coord=" + SelectedImage.Coordinate.Z + "," + SelectedImage.Coordinate.C + "," + SelectedImage.Coordinate.T +
-                    "\n");
+                    " coord=" + SelectedImage.Coordinate.Z + "," + SelectedImage.Coordinate.C + "," + SelectedImage.Coordinate.T);
                 var overlays = BioLib.Zarr.LoadLabelOverlaysAsync(SelectedImage, source).GetAwaiter().GetResult();
-                System.IO.File.AppendAllText(@"C:\Users\Public\biolog.txt",
-                    "[RefreshZarrLabelOverlays] primaryCount=" + (overlays?.Count ?? 0) + "\n");
+                AppLog.Append("[RefreshZarrLabelOverlays] primaryCount=" + (overlays?.Count ?? 0));
                 if (overlays == null || overlays.Count == 0)
                 {
                     // Some saved Zarrs expose the labels on disk but do not
@@ -154,29 +154,26 @@ namespace BioGTK
                     var method = zarrType?.GetMethod(
                         "LoadLabelsAsROIs",
                         System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                    System.IO.File.AppendAllText(@"C:\Users\Public\biolog.txt",
-                        "[RefreshZarrLabelOverlays] fallbackMethod=" + (method != null) + "\n");
+                    AppLog.Append("[RefreshZarrLabelOverlays] fallbackMethod=" + (method != null));
                     if (method != null)
                     {
                         var result = method.Invoke(null, new object[] { SelectedImage, source }) as List<ROI>;
-                        System.IO.File.AppendAllText(@"C:\Users\Public\biolog.txt",
-                            "[RefreshZarrLabelOverlays] fallbackCount=" + (result?.Count ?? 0) + "\n");
+                        AppLog.Append("[RefreshZarrLabelOverlays] fallbackCount=" + (result?.Count ?? 0));
                         if (result != null && result.Count > 0)
                             overlays = result;
                     }
                 }
                 SetZarrLabelOverlays(SelectedImage, overlays);
                 SetZarrLabelOverlays(SelectedImage, overlays, source);
-                System.IO.File.AppendAllText(@"C:\Users\Public\biolog.txt",
-                    "[RefreshZarrLabelOverlays] storedCount=" + (overlays?.Count ?? 0) + "\n");
+                AppLog.Append("[RefreshZarrLabelOverlays] storedCount=" + (overlays?.Count ?? 0));
+                BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, source);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Refresh Zarr label overlays failed: {ex.Message}");
                 try
                 {
-                    System.IO.File.AppendAllText(@"C:\Users\Public\biolog.txt",
-                        "[RefreshZarrLabelOverlays] EXCEPTION: " + ex.GetType().Name + ": " + ex.Message + "\n");
+                    AppLog.Append("[RefreshZarrLabelOverlays] EXCEPTION: " + ex.GetType().Name + ": " + ex.Message);
                 }
                 catch { }
             }
@@ -761,6 +758,8 @@ namespace BioGTK
                         canvas.Translate(-(width / 2f), -(height / 2f));
                     foreach (ROI an in rois)
                         {
+                            if (an.coord != GetCoordinate())
+                                continue;
                             if (Mode == ViewMode.RGBImage)
                             {
                                 if (!showRROIs && an.coord.C == 0)
@@ -780,7 +779,7 @@ namespace BioGTK
                             paint.Style = SKPaintStyle.Stroke;
                             PointF pc = new PointF((float)(an.BoundingBox.X + (an.BoundingBox.W / 2)), (float)(an.BoundingBox.Y + (an.BoundingBox.H / 2)));
                             float widths = ROI.selectBoxSize * (float)Resolution;
-
+                            
                             if (an.type == ROI.Type.Mask && ShowMasks &&
                                 an.coord == co)
                             {
@@ -1473,6 +1472,7 @@ namespace BioGTK
         public void UpdateImage()
         {
             UpdateImages();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false);
         }
         /// <summary>
         /// Clears cached pyramidal tiles so channel/threshold changes take effect
@@ -1487,6 +1487,7 @@ namespace BioGTK
             SelectedImage.InvalidateTileCache();
             slideRenderer?.ClearCache();
             SelectedImage.ZarrDisplayMax = 0;
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, SelectedImage?.file ?? string.Empty);
         }
         Rectangle overview;
         SKImage overviewImage;
@@ -1918,14 +1919,16 @@ namespace BioGTK
                 var canvas = e.Surface.Canvas;
                 var width = e.Info.Width;
                 var height = e.Info.Height;
-                canvas.Clear(SKColors.Black);
                 if (SelectedImage?.isPyramidal == true && sKSlideRenderer != null)
                 {
+                    if (sKSlideRenderer.HasValidImage)
+                        canvas.Clear(SKColors.Black);
                     sKSlideRenderer.DrawToCanvas(canvas, width, height);
                     RenderSkiaAnnotations(canvas, width, height);
                 }
                 else
                 {
+                    canvas.Clear(SKColors.Black);
                     // Render non-pyramidal images and annotations
                     RenderSkia(canvas, width, height);
                 }
@@ -3186,6 +3189,7 @@ namespace BioGTK
                 Math.Max(0, Math.Min(newOriginX, CurrentLevelWidth - AllocatedWidth)),
                 Math.Max(0, Math.Min(newOriginY, CurrentLevelHeight - AllocatedHeight))
             );
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, mouseX, mouseY, zoomIn);
         }
         public double Resolution
         {
@@ -3333,6 +3337,7 @@ namespace BioGTK
                 else
                     View.QueueDraw();
             }
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, updateImages);
         }
         private string mousePoint = "";
         private string mouseColor = "";
@@ -3441,6 +3446,7 @@ namespace BioGTK
                 Math.Max(0, Math.Min(newOriginX, SelectedImage.Resolutions[SelectedImage.Level].SizeX - AllocatedWidth)),
                 Math.Max(0, Math.Min(newOriginY, SelectedImage.Resolutions[SelectedImage.Level].SizeY - AllocatedHeight))
             );
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, mouseX, mouseY, zoomIn);
         }
         /// <summary>
         /// Mouse motion event - delegates to Tools.cs for all tool logic
@@ -4221,6 +4227,7 @@ namespace BioGTK
             }
 
             UpdateView();
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, i);
         }
 
         /// <summary>
@@ -4317,6 +4324,7 @@ namespace BioGTK
 
             // GoToImage resets the viewport to fit the new field and triggers a render.
             GoToImage(selectedIndex);
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, SelectedImage?.file ?? string.Empty, SelectedImage.WellIndex);
         }
 
         private void Initialize()
@@ -4425,6 +4433,7 @@ namespace BioGTK
             }
 
             SelectedImage.OpenSlideBase.Schema = newSchema;
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, b?.file ?? string.Empty, b?.Level ?? 0);
         }
 
         private static void GetFieldDims(ResolutionLevelNode node, out int w, out int h)
