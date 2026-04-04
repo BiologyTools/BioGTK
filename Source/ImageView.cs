@@ -3303,13 +3303,7 @@ namespace BioGTK
         {
             if (SelectedImage.Buffers.Count == 0 && SelectedImage.Type != BioImage.ImageType.well)
                 return;
-            if (SelectedImage.Type == BioImage.ImageType.well)
-            {
-                statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
-                mousePoint + mouseColor + ", " + SelectedImage.Resolutions[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") "
-                + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2") + " , Well:" + SelectedImage.Level;
-            }
-            else if (SelectedImage.Type == BioImage.ImageType.stack)
+            if (SelectedImage.Type == BioImage.ImageType.stack)
                 statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
                     mousePoint + mouseColor + ", " + SelectedImage.Resolutions[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") "
                     + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2") + ", Res:" + Resolution + " Level:" + Level;

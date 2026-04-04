@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Library</OutputType>
@@ -21,7 +21,7 @@
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>Fixed overview viewport rectangle, edge tile rendering crash when panning to image boundaries, and added ImageJ/Fiji compatibility for Zarr files.</PackageReleaseNotes>
+    <PackageReleaseNotes>Fixed overview, added Fiji.NET as well as full Zarr support.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
@@ -463,7 +463,8 @@
   <ItemGroup>
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
-    <PackageReference Include="ImageJ.NET" Version="154.0.0.2" />
+    <PackageReference Include="Fiji.NET" Version="0.1.0" Aliases="FijiNet" />
+    <PackageReference Include="OMERO.NET" Version="1.0.5" />
     <PackageReference Include="ManagedCuda.NETStandard" Version="9.1.300" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.24.1" />
@@ -519,3 +520,7 @@
 	<ApplicationIcon>Bio.ico</ApplicationIcon>
   </PropertyGroup>
 </Project>
+
+
+
+
