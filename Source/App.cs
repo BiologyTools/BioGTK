@@ -140,8 +140,11 @@ namespace BioGTK
             {
                 BioLib.Fiji.ImageJPath = st;
                 BioLib.ImageJ.ImageJPath = st;
-                Fiji.Initialize(st);
-                ImageJ.Initialize(st);
+                if (!OperatingSystem.IsMacOS())
+                {
+                    Fiji.Initialize(st);
+                    ImageJ.Initialize(st);
+                }
                 return true;
             }
             string title = "Select ImageJ Executable Location";
@@ -155,10 +158,13 @@ namespace BioGTK
             filechooser.SetCurrentFolder(System.IO.Path.GetDirectoryName(Environment.ProcessPath));
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return false;
-            Fiji.Initialize(filechooser.Filename);
-            ImageJ.Initialize(filechooser.Filename);
             Fiji.ImageJPath = filechooser.Filename;
             ImageJ.ImageJPath = filechooser.Filename;
+            if (!OperatingSystem.IsMacOS())
+            {
+                Fiji.Initialize(filechooser.Filename);
+                ImageJ.Initialize(filechooser.Filename);
+            }
             BioLib.Settings.AddSettings("ImageJPath", filechooser.Filename);
             filechooser.Destroy();
             BioLib.Settings.Save();
@@ -192,12 +198,12 @@ namespace BioGTK
             AppLog.Clear();
             Console.WriteLine("Initializing components.");
             SetFijiOrImageJPath();
-            if (UseFiji)
+            if (!OperatingSystem.IsMacOS() && UseFiji)
             {
                 Fiji.Initialize(Fiji.ImageJPath);
                 BioImage.Initialize(Fiji.ImageJPath);
             }
-            else
+            else if (!OperatingSystem.IsMacOS())
             {
                 ImageJ.Initialize(ImageJ.ImageJPath);
                 BioImage.Initialize(ImageJ.ImageJPath);
