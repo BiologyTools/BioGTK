@@ -61,6 +61,7 @@ namespace BioGTK
 
         public List<TileRenderInfo> TilesToRender { get; } = new();
         public bool NeedsRedraw { get; set; } = true;
+        public bool PreservePreviousFrameWhileIncomplete { get; set; } = false;
 
         // Screen-space boundary of the image (in pixels from top-left).
         // Tiles are scissored to this rect so nothing renders outside the image.
@@ -346,6 +347,16 @@ void main()
             if (TilesToRender.Count == 0)
             {
                 LogDiag($"[RenderTiles] no tiles to render viewport={width}x{height} imageScreen=({ImageScreenX},{ImageScreenY},{ImageScreenW},{ImageScreenH})");
+                return;
+            }
+
+            bool hasAllRenderableTextures = TilesToRender.All(tile => _textureCache.ContainsKey(tile.Index));
+            if (!hasAllRenderableTextures && PreservePreviousFrameWhileIncomplete)
+            {
+                // Keep the previous frame visible while the current visible set
+                // is still incomplete. Clearing here exposes the background for a
+                // frame whenever a view change lands before every tile is ready.
+                LogDiag($"[RenderTiles] waiting for complete tile set viewport={width}x{height} tileCount={TilesToRender.Count}");
                 return;
             }
 

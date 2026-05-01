@@ -24,13 +24,25 @@ namespace BioGTK
         // so the render list can be rebuilt from all cached tiles, not just those fetched this frame.
         private Dictionary<TileIndex, TileInfo> _uploadedTileInfos = new();
         private int _currentLevel = -1;
+        private readonly object _pendingLevelSwitchLock = new object();
+        private List<TileRenderInfo> _pendingLevelRenderInfos;
+        private int _pendingLevel = -1;
+        private int _pendingPreviousLevel = -1;
         private readonly SemaphoreSlim _renderSemaphore = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _fetchSemaphore = new SemaphoreSlim(6, 6);
+        private static readonly TimeSpan RemoteTileFetchTimeout = TimeSpan.FromSeconds(60);
         // Bumped whenever image state changes in a way that invalidates the
         // current render result, such as threshold or channel-range updates.
         private volatile int _renderStateVersion = 0;
         public bool LastRenderSkipped { get; private set; }
         // Latest args saved when a render is skipped so the re-queued render uses current state.
         private volatile bool _pendingRequeue = false;
+        // Tracks tiles already being fetched so repeated render passes do not
+        // launch duplicate remote requests for the same tile.
+        private readonly HashSet<TileIndex> _pendingTileFetches = new();
+        private readonly object _pendingTileFetchLock = new object();
+        private int _redrawQueued = 0;
+        private int _displayRangeProbeStarted = 0;
 
         public SlideRenderer(SlideGLArea glArea)
         {
@@ -75,6 +87,11 @@ namespace BioGTK
 
         public void ClearCache()
         {
+            // Clearing the visible tile cache must also invalidate any in-flight
+            // fetches. Otherwise an old Z/C/T request can finish after the
+            // coordinate changes and repopulate the GPU cache with stale tiles.
+            Interlocked.Increment(ref _renderStateVersion);
+
             _glArea.ClearTextureCache();
             _uploadedTiles.Clear();
             _uploadedTileInfos.Clear();
@@ -83,6 +100,18 @@ namespace BioGTK
             _openTileCache?.Clear();
             _slideBase?.cache?.Clear();
             _openSlideBase?.cache?.Clear();
+
+            lock (_pendingLevelSwitchLock)
+            {
+                _pendingLevelRenderInfos = null;
+                _pendingLevel = -1;
+                _pendingPreviousLevel = -1;
+            }
+
+            lock (_pendingTileFetchLock)
+            {
+                _pendingTileFetches.Clear();
+            }
         }
 
         /// <summary>
@@ -119,7 +148,9 @@ namespace BioGTK
 
             try
             {
-            await EnsureGlobalDisplayRangeAsync(coordinate);
+            int renderVersion = _renderStateVersion;
+            using var tileFetchCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            _ = EnsureGlobalDisplayRangeAsync(coordinate, renderVersion);
 
             var schema = _useOpenSlide ? _openSlideBase.Schema : _slideBase.Schema;
 
@@ -129,11 +160,7 @@ namespace BioGTK
 
             LogDiag($"[UpdateViewAsync] type={(_useOpenSlide ? "openslide" : "slidebase")} level={level} res={resolution:F3} upp={levelUnitsPerPixel:F3} viewport={viewportWidth}x{viewportHeight} origin=({pyramidalOrigin.X:F2},{pyramidalOrigin.Y:F2}) schemaExtent=({schema.Extent.MinX:F0},{schema.Extent.MinY:F0},{schema.Extent.MaxX:F0},{schema.Extent.MaxY:F0})");
 
-            if (level != _currentLevel)
-            {
-                _glArea.ReleaseLevelTextures(_currentLevel);
-                _currentLevel = level;
-            }
+            bool levelChanged = level != _currentLevel;
 
             // Keep renderer-side bookkeeping scoped to the current viewport.
             // The GL area already owns the actual texture cache; these collections
@@ -179,48 +206,93 @@ namespace BioGTK
             LogDiag($"[UpdateViewAsync] fetchExtent=({fetchExtent.MinX:F0},{fetchExtent.MinY:F0},{fetchExtent.MaxX:F0},{fetchExtent.MaxY:F0}) lookupExtent=({lookupExtent.MinX:F0},{lookupExtent.MinY:F0},{lookupExtent.MaxX:F0},{lookupExtent.MaxY:F0}) tileInfos={tileInfos.Count} fallbackInfos={fallbackInfos.Count}");
 
             var renderInfos = new List<TileRenderInfo>();
+            var pendingFetches = new List<(TileInfo Tile, Task<byte[]> FetchTask)>();
             foreach (var tileInfo in tileInfos)
             {
+                if (renderVersion != _renderStateVersion)
+                    return;
+
                 var fetchTileInfo = tileInfo;
                 var renderTileInfo = tileInfo;
 
+                var renderInfo = CalculateScreenPosition(
+                    renderTileInfo,
+                    pyramidalOrigin,
+                    resolution,
+                    level,
+                    schema);
+                renderInfos.Add(renderInfo);
+
                 if (!_glArea.HasTileTexture(fetchTileInfo.Index))
                 {
-                    byte[] tileData = await FetchTileAsync(fetchTileInfo, level, coordinate);
-                    if (tileData != null)
+                    bool alreadyPending;
+                    lock (_pendingTileFetchLock)
                     {
-                        // Upload using the schema tile size for this level.
-                        // The fetch path already pads edge tiles to the full tile
-                        // buffer, so deriving dimensions from the extent can shrink
-                        // the GL texture and show only the top-left corner.
-                        int tW = levelRes.TileWidth;
-                        int tH = levelRes.TileHeight;
-
-                        await RunOnGtkThreadAsync(() =>
-                            _glArea.UploadTileTexture(fetchTileInfo.Index, tileData, tW, tH));
-                        _uploadedTiles.Add(fetchTileInfo.Index);
-                        _uploadedTileInfos[fetchTileInfo.Index] = renderTileInfo;
-                        LogDiag($"[UpdateViewAsync] uploaded tile={fetchTileInfo.Index} bytes={tileData.Length} texSize={tW}x{tH} extent=({fetchTileInfo.Extent.MinX:F0},{fetchTileInfo.Extent.MinY:F0},{fetchTileInfo.Extent.MaxX:F0},{fetchTileInfo.Extent.MaxY:F0})");
+                        alreadyPending = !_pendingTileFetches.Add(fetchTileInfo.Index);
                     }
-                    else
-                    {
-                        LogDiag($"[UpdateViewAsync] fetch returned null tile={fetchTileInfo.Index} extent=({fetchTileInfo.Extent.MinX:F0},{fetchTileInfo.Extent.MinY:F0},{fetchTileInfo.Extent.MaxX:F0},{fetchTileInfo.Extent.MaxY:F0})");
-                    }
-                }
 
-                if (_glArea.HasTileTexture(fetchTileInfo.Index))
-                {
-                    var renderInfo = CalculateScreenPosition(
-                        renderTileInfo,
-                        pyramidalOrigin,
-                        resolution,
-                        level,
-                        schema);
-                    renderInfos.Add(renderInfo);
+                    if (!alreadyPending)
+                        pendingFetches.Add((fetchTileInfo, FetchTileAsync(fetchTileInfo, level, coordinate, tileFetchCts.Token)));
                 }
             }
 
+            if (pendingFetches.Count > 0)
+            {
+                foreach (var pending in pendingFetches)
+                    _ = ProcessPendingFetchAsync(pending.Tile, pending.FetchTask, tileFetchCts.Token, renderVersion, pyramidalOrigin, resolution, level, schema);
+            }
+
             LogDiag($"[UpdateViewAsync] renderInfos={renderInfos.Count} cachedTextures={_glArea.CachedTextureCount}");
+
+            if (renderVersion != _renderStateVersion)
+                return;
+
+            bool hasRenderableTexture = renderInfos.Any(tile => _glArea.HasTileTexture(tile.Index));
+            if (levelChanged)
+            {
+                if (hasRenderableTexture)
+                {
+                    bool canSwapNow = renderInfos.All(tile => _glArea.HasTileTexture(tile.Index));
+                    if (canSwapNow)
+                    {
+                        _glArea.PreservePreviousFrameWhileIncomplete = false;
+                        _glArea.ReleaseLevelTextures(_currentLevel);
+                        _currentLevel = level;
+                        lock (_pendingLevelSwitchLock)
+                        {
+                            _pendingLevelRenderInfos = null;
+                            _pendingLevel = -1;
+                            _pendingPreviousLevel = -1;
+                        }
+                    }
+                    else
+                    {
+                        _glArea.PreservePreviousFrameWhileIncomplete = true;
+                        lock (_pendingLevelSwitchLock)
+                        {
+                            _pendingLevelRenderInfos = new List<TileRenderInfo>(renderInfos);
+                            _pendingLevel = level;
+                            _pendingPreviousLevel = _currentLevel;
+                        }
+                        return;
+                    }
+                }
+                else
+                {
+                    _glArea.PreservePreviousFrameWhileIncomplete = true;
+                    lock (_pendingLevelSwitchLock)
+                    {
+                        _pendingLevelRenderInfos = new List<TileRenderInfo>(renderInfos);
+                        _pendingLevel = level;
+                        _pendingPreviousLevel = _currentLevel;
+                    }
+                    return;
+                }
+            }
+
+            if (renderVersion != _renderStateVersion)
+                return;
+
             await RunOnGtkThreadAsync(() =>
             {
                 _glArea.SetTilesToRender(renderInfos);
@@ -239,7 +311,98 @@ namespace BioGTK
             }
         }
 
-        private async Task EnsureGlobalDisplayRangeAsync(ZCT coordinate)
+        private async Task ProcessPendingFetchAsync(
+            TileInfo tile,
+            Task<byte[]> fetchTask,
+            CancellationToken ct,
+            int renderVersion,
+            PointD pyramidalOrigin,
+            double resolution,
+            int level,
+            ITileSchema schema)
+        {
+            try
+            {
+                byte[] tileData = await fetchTask.ConfigureAwait(false);
+                if (ct.IsCancellationRequested || renderVersion != _renderStateVersion)
+                    return;
+
+                if (tileData == null)
+                {
+                    LogDiag($"[UpdateViewAsync] fetch returned null tile={tile.Index} extent=({tile.Extent.MinX:F0},{tile.Extent.MinY:F0},{tile.Extent.MaxX:F0},{tile.Extent.MaxY:F0})");
+                    return;
+                }
+
+                int tW = schema.Resolutions[level].TileWidth;
+                int tH = schema.Resolutions[level].TileHeight;
+
+                await RunOnGtkThreadAsync(() =>
+                    _glArea.UploadTileTexture(tile.Index, tileData, tW, tH));
+                _uploadedTiles.Add(tile.Index);
+                _uploadedTileInfos[tile.Index] = tile;
+                LogDiag($"[UpdateViewAsync] uploaded tile={tile.Index} bytes={tileData.Length} texSize={tW}x{tH} extent=({tile.Extent.MinX:F0},{tile.Extent.MinY:F0},{tile.Extent.MaxX:F0},{tile.Extent.MaxY:F0})");
+
+                List<TileRenderInfo> pendingLevelRenderInfos = null;
+                int pendingPreviousLevel = -1;
+                bool applyPendingLevel = false;
+                lock (_pendingLevelSwitchLock)
+                {
+                    if (_pendingLevelRenderInfos != null &&
+                        level == _pendingLevel &&
+                        _pendingLevelRenderInfos.All(info => _glArea.HasTileTexture(info.Index)))
+                    {
+                        applyPendingLevel = true;
+                        pendingLevelRenderInfos = _pendingLevelRenderInfos;
+                        pendingPreviousLevel = _pendingPreviousLevel;
+                        _pendingLevelRenderInfos = null;
+                        _pendingLevel = -1;
+                        _pendingPreviousLevel = -1;
+                        _currentLevel = level;
+                    }
+                }
+
+                if (applyPendingLevel)
+                {
+                    await RunOnGtkThreadAsync(() =>
+                    {
+                        if (pendingPreviousLevel >= 0)
+                            _glArea.ReleaseLevelTextures(pendingPreviousLevel);
+                        _glArea.PreservePreviousFrameWhileIncomplete = false;
+                        _glArea.SetTilesToRender(pendingLevelRenderInfos);
+                        _glArea.RequestRedraw();
+                    });
+                }
+
+                if (renderVersion == _renderStateVersion &&
+                    Interlocked.Exchange(ref _redrawQueued, 1) == 0)
+                {
+                    await RunOnGtkThreadAsync(() =>
+                    {
+                        try
+                        {
+                            _glArea.RequestRedraw();
+                        }
+                        finally
+                        {
+                            Interlocked.Exchange(ref _redrawQueued, 0);
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                LogDiag($"[UpdateViewAsync] pending fetch failed tile={tile.Index} err={ex.Message}");
+            }
+            finally
+            {
+                lock (_pendingTileFetchLock)
+                {
+                    _pendingTileFetches.Remove(tile.Index);
+                }
+            }
+        }
+
+        private async Task EnsureGlobalDisplayRangeAsync(ZCT coordinate, int renderVersion)
         {
             if (_useOpenSlide || _slideBase?.Image?.BioImage == null)
                 return;
@@ -247,13 +410,21 @@ namespace BioGTK
             var bioImage = _slideBase.Image.BioImage;
             if (bioImage.ZarrDisplayMax > bioImage.ZarrDisplayMin)
                 return;
-            if (bioImage.Resolutions == null || bioImage.Resolutions.Count == 0)
+            if (Interlocked.Exchange(ref _displayRangeProbeStarted, 1) != 0)
                 return;
+            if (bioImage.Resolutions == null || bioImage.Resolutions.Count == 0)
+            {
+                Interlocked.Exchange(ref _displayRangeProbeStarted, 0);
+                return;
+            }
 
             var pixelFormat = bioImage.Resolutions[0].PixelFormat;
             if (pixelFormat != PixelFormat.Format16bppGrayScale &&
                 pixelFormat != PixelFormat.Format48bppRgb)
+            {
+                Interlocked.Exchange(ref _displayRangeProbeStarted, 0);
                 return;
+            }
 
             int seedLevel = bioImage.MacroResolution.HasValue
                 ? Math.Max(0, bioImage.MacroResolution.Value - 1)
@@ -264,16 +435,30 @@ namespace BioGTK
             int width = bioImage.Resolutions[seedLevel].SizeX;
             int height = bioImage.Resolutions[seedLevel].SizeY;
             if (width <= 0 || height <= 0)
+            {
+                Interlocked.Exchange(ref _displayRangeProbeStarted, 0);
                 return;
+            }
+
+            // Probe only a small sample tile so remote pyramids do not spend a
+            // full-image read budget just to derive display contrast.
+            width = Math.Min(width, 256);
+            height = Math.Min(height, 256);
 
             int frameIndex = bioImage.GetFrameIndex(coordinate.Z, coordinate.C, coordinate.T);
-            var seedBitmap = await bioImage.GetTile(frameIndex, seedLevel, 0, 0, width, height);
+            // Use the raw tile path here so the display-range probe sees the
+            // original 16-bit / 48-bit pixels instead of the already-normalized
+            // RGBA output returned by the regular renderer path.
+            var seedBitmap = await bioImage.GetTile(frameIndex, seedLevel, 0, 0, width, height, null, true);
             if (TryComputeDisplayRangeFromUsedBits(seedBitmap, out ushort displayMin, out ushort displayMax))
             {
                 bioImage.ZarrDisplayMin = displayMin;
                 bioImage.ZarrDisplayMax = displayMax;
+                if (renderVersion == _renderStateVersion)
+                    await RunOnGtkThreadAsync(() => _glArea.RequestRedraw());
             }
             seedBitmap?.Dispose();
+            Interlocked.Exchange(ref _displayRangeProbeStarted, 0);
         }
 
         private static ushort SnapUsedBitCeiling(ushort value)
@@ -328,24 +513,43 @@ namespace BioGTK
             return true;
         }
 
-        private async Task<byte[]> FetchTileAsync(TileInfo tileInfo, int level, ZCT coordinate)
+        private async Task<byte[]> FetchTileAsync(TileInfo tileInfo, int level, ZCT coordinate, CancellationToken ct)
         {
+            await _fetchSemaphore.WaitAsync(ct).ConfigureAwait(false);
             try
             {
+                var fetchCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                var fetchTask = _useOpenSlide
+                    ? Task.Run(() => _openTileCache.GetTile(new OpenSlideGTK.Info(coordinate, tileInfo.Index, tileInfo.Extent, level)))
+                    : _tileCache.GetTile(new BioLib.TileInformation(tileInfo.Index, tileInfo.Extent, coordinate), fetchCts.Token);
+
+                var timeoutTask = Task.Delay(RemoteTileFetchTimeout, ct);
+                var completed = await Task.WhenAny(fetchTask, timeoutTask).ConfigureAwait(false);
+                if (completed != fetchTask)
+                {
+                    LogDiag($"[FetchTileAsync] timeout tile={tileInfo.Index} level={level} extent=({tileInfo.Extent.MinX:F0},{tileInfo.Extent.MinY:F0},{tileInfo.Extent.MaxX:F0},{tileInfo.Extent.MaxY:F0})");
+                    fetchCts.Cancel();
+                    return null;
+                }
+
                 if (_useOpenSlide)
                 {
-                    var bt = await _openTileCache.GetTile(new OpenSlideGTK.Info(coordinate, tileInfo.Index, tileInfo.Extent, level));
+                    var bt = await fetchTask.ConfigureAwait(false);
                     return bt;
                 }
                 else
                 {
-                    return await _tileCache.GetTile(new BioLib.TileInformation(tileInfo.Index, tileInfo.Extent, coordinate));
+                    return await fetchTask.ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error fetching tile {tileInfo.Index}: {ex.Message}");
                 return null;
+            }
+            finally
+            {
+                _fetchSemaphore.Release();
             }
         }
 

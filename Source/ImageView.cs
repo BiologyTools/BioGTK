@@ -70,6 +70,13 @@ namespace BioGTK
             }
 
             UpdateImages();
+            if (SelectedImage?.isPyramidal != true && View != null)
+            {
+                if (!MacOS)
+                    glArea?.RequestRedraw();
+                else
+                    View.QueueDraw();
+            }
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, z, c, t);
         }
         /// It returns the coordinate of the selected image
@@ -3079,7 +3086,10 @@ namespace BioGTK
                 if (View != null)
                 {
                     UpdateImages();
-                    View.QueueDraw();
+                    if (!MacOS)
+                        glArea?.RequestRedraw();
+                    else
+                        View.QueueDraw();
                 }
             }
         }
@@ -3210,7 +3220,10 @@ namespace BioGTK
                     else if (View != null)
                     {
                         UpdateImages();
-                        View.QueueDraw();
+                        if (!MacOS)
+                            glArea?.RequestRedraw();
+                        else
+                            View.QueueDraw();
                     }
                 }
             }
@@ -3461,36 +3474,17 @@ namespace BioGTK
             mousePoint = "(" + (p.X.ToString("F")) + ", " + (p.Y.ToString("F")) + ")";
             if (SelectedImage == null)
                 return;
-            // Handle pyramidal overview navigation while dragging.
-            if (e.Event.State.HasFlag(ModifierType.Button1Mask)) 
+            // Handle pyramidal overview navigation only when the drag is inside
+            // the overview widget. Otherwise the active tool needs the event.
+            if (e.Event.State.HasFlag(ModifierType.Button1Mask) &&
+                TryNavigateFromOverview(e.Event.X, e.Event.Y))
             {
-                TryNavigateFromOverview(e.Event.X, e.Event.Y);
                 UpdateStatus();
                 pd = p;
                 return;
             }
 
-            else
-            {
-                // On macOS with a pyramidal image, ToolMove (external library) does not know about
-                // PyramidalOrigin, so we handle pan directly here using raw screen-pixel deltas.
-                if (MacOS && SelectedImage?.isPyramidal == true
-                    && Tools.currentTool.type == Tools.Tool.Type.pan
-                    && e.Event.State.HasFlag(ModifierType.Button1Mask))
-                {
-                    // Delta in screen pixels since last event, converted to image pixels via Resolution.
-                    double dx = (e.Event.X - prevScreenPos.X) * Resolution;
-                    double dy = (e.Event.Y - prevScreenPos.Y) * Resolution;
-                    double newX = Math.Max(0, PyramidalOrigin.X - dx);
-                    double newY = Math.Max(0, PyramidalOrigin.Y - dy);
-                    // PyramidalOrigin setter triggers UpdateView -> immediate render.
-                    PyramidalOrigin = new PointD(newX, newY);
-                }
-                else
-                {
-                    App.tools.ToolMove(p, e);
-                }
-            }
+            App.tools.ToolMove(p, e);
             UpdateStatus();
             pd = p;
         }

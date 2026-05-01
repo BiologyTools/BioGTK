@@ -1193,7 +1193,7 @@ namespace BioGTK
                 }
                 TryLoadZarrROIs(im);
                 ImageView v = ImageView.Create(im);
-                v.RefreshZarrLabelOverlays(sourcePath ?? im.file);
+                //v.QueueRefreshZarrLabelOverlays(sourcePath ?? im.file);
                 viewers.Add(v);
                 Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file.Replace("\\", "/")) + "/" + im.Filename);
                 dummy.Text = im.file.Replace("\\", "/") + "/" + im.Filename;
@@ -1239,7 +1239,7 @@ namespace BioGTK
                 }
                 ImageView v = ImageView.Create(im);
                 viewers.Add(v);
-                v.RefreshZarrLabelOverlays(sourcePath ?? im.file);
+                //v.QueueRefreshZarrLabelOverlays(sourcePath ?? im.file);
                     Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file.Replace("\\", "/")) + "/" + im.Filename);
                     dummy.Text = im.file.Replace("\\", "/") + "/" + im.Filename;
                     dummy.Visible = false;
@@ -1386,7 +1386,7 @@ namespace BioGTK
             foreach (string item in sts)
             {
                 StartProgress("Open File", "Opening");
-                await BioImage.OpenAsync(item,false,true,true,0);
+                await BioImage.OpenAsync(item,true,true,true,0);
                 BioImage im = Images.GetImage(item);
                 AddTab(im, item);
                 StopProgress();
