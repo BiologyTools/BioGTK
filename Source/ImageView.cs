@@ -680,6 +680,7 @@ namespace BioGTK
                 int i = 0;
                 foreach (BioImage im in Images)
                 {
+                    canvas.Save();
                     List<ROI> rois = new List<ROI>();
                     rois.AddRange(im.Annotations);
                     rois.AddRange(GetZarrLabelOverlays(im));
@@ -694,6 +695,7 @@ namespace BioGTK
                         RenderSkiaAnnotations(canvas, width, height);
                     }
                     i++;
+                    canvas.Restore();
                 }
                 canvas.Restore();
                 // Draw overview if enabled
@@ -752,6 +754,7 @@ namespace BioGTK
                 int i = 0;
                 foreach (BioImage im in Images)
                 {
+                    canvas.Save();
                     List<ROI> rois = new List<ROI>();
                     rois.AddRange(im.Annotations);
                     rois.AddRange(GetZarrLabelOverlays(im));
@@ -922,9 +925,9 @@ namespace BioGTK
                             }
                             ri++;
                         }
-                        canvas.Translate(0, 0);
                     }
                     i++;
+                    canvas.Restore();
                 }
                 SKImageInfo inf = new SKImageInfo(width, height);
                 // Plugin rendering hook
@@ -1185,12 +1188,11 @@ namespace BioGTK
 
             try
             {
-                double baseUnitsPerPx = Math.Max(SelectedImage.GetUnitPerPixel(0), double.Epsilon);
-                double fullResWidth = Math.Max(1, SelectedImage.Resolutions[0].SizeX * baseUnitsPerPx);
-                double fullResHeight = Math.Max(1, SelectedImage.Resolutions[0].SizeY * baseUnitsPerPx);
+                double fullResWidth = Math.Max(1, SelectedImage.Resolutions[0].SizeX);
+                double fullResHeight = Math.Max(1, SelectedImage.Resolutions[0].SizeY);
 
-                // The overview image is drawn in the same top-left image coordinate
-                // system used by PyramidalOrigin and ToViewSpace.
+                // The overview bitmap is a scaled representation of the full image,
+                // so the viewport rectangle must be mapped using level-0 pixel space.
                 double fullResX = PyramidalOrigin.X;
                 double fullResY = PyramidalOrigin.Y;
                 double fullResW = View.AllocatedWidth * Resolution;
@@ -2660,7 +2662,7 @@ namespace BioGTK
                     SetResolution(Resolution * 1.25, new PointD(View.AllocatedWidth / 2.0, View.AllocatedHeight / 2.0));
                 }
                 else
-                    Scale = new SizeF(Scale.Width - 0.1f, Scale.Height - 0.1f);
+                    ZoomStackAtPoint(new PointD(View.AllocatedWidth / 2.0, View.AllocatedHeight / 2.0), 0.9);
             }
             if (e.Event.Key == Gdk.Key.q)
             {
@@ -2669,7 +2671,7 @@ namespace BioGTK
                     SetResolution(Resolution * 0.8, new PointD(View.AllocatedWidth / 2.0, View.AllocatedHeight / 2.0));
                 }
                 else
-                    Scale = new SizeF(Scale.Width + 0.1f, Scale.Height + 0.1f);
+                    ZoomStackAtPoint(new PointD(View.AllocatedWidth / 2.0, View.AllocatedHeight / 2.0), 1.1);
             }
             if (e.Event.Key == Gdk.Key.s || e.Event.Key == Gdk.Key.S)
             {
@@ -2765,6 +2767,21 @@ namespace BioGTK
                     SetResolution(Resolution * 0.8, anchor);   // zoom in
                 else if (e.Event.Direction == ScrollDirection.Down)
                     SetResolution(Resolution * 1.25, anchor);  // zoom out
+            }
+            else
+            {
+                PointD anchor = MouseMove;
+                if (e.Event.Direction == ScrollDirection.Smooth)
+                {
+                    double delta = e.Event.DeltaY;
+                    if (delta == 0) return;
+                    double factor = Math.Pow(2.0, delta * 0.1);
+                    ZoomStackAtPoint(anchor, factor);
+                }
+                else if (e.Event.Direction == ScrollDirection.Up)
+                    ZoomStackAtPoint(anchor, 1.1);
+                else if (e.Event.Direction == ScrollDirection.Down)
+                    ZoomStackAtPoint(anchor, 0.9);
             }
         }
 
@@ -3257,21 +3274,7 @@ namespace BioGTK
         {
             get
             {
-                if (SelectedImage == null)
-                    return 0;
-                if (SelectedImage.Type == BioImage.ImageType.well)
-                {
-                    l = SelectedImage.Level;
-                    return l;
-                }
-                if (SelectedImage.isPyramidal)
-                {
-                    if (SelectedImage.SlideBase != null)
-                        l = OpenSlideGTK.TileUtil.GetLevel(SelectedImage.SlideBase.Schema.Resolutions, Resolution);
-                    else if (SelectedImage.OpenSlideBase != null)
-                        l = OpenSlideGTK.TileUtil.GetLevel(SelectedImage.OpenSlideBase.Schema.Resolutions, Resolution);
-                }
-                return l;
+                return SelectedImage.LevelFromResolution(SelectedImage.Resolution);
             }
             set
             {
@@ -3455,6 +3458,37 @@ namespace BioGTK
             );
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, mouseX, mouseY, zoomIn);
         }
+
+        private void ZoomStackAtPoint(PointD mouseScreenPos, double factor)
+        {
+            if (SelectedImage == null || SelectedImage.isPyramidal)
+                return;
+            if (factor <= 0 || double.IsNaN(factor) || double.IsInfinity(factor))
+                return;
+
+            double oldScaleX = Math.Max(double.Epsilon, Scale.Width);
+            double oldScaleY = Math.Max(double.Epsilon, Scale.Height);
+            // Keep zoom-out effectively unbounded while avoiding zero/negative
+            // scale values that would break coordinate conversion.
+            double newScaleX = Math.Clamp(oldScaleX * factor, 1e-6, 4096.0);
+            double newScaleY = Math.Clamp(oldScaleY * factor, 1e-6, 4096.0);
+
+            double viewCenterX = View?.AllocatedWidth > 0 ? View.AllocatedWidth / 2.0 : 0;
+            double viewCenterY = View?.AllocatedHeight > 0 ? View.AllocatedHeight / 2.0 : 0;
+
+            double worldX = ((mouseScreenPos.X - viewCenterX) / (PxWmicron * oldScaleX)) - Origin.X;
+            double worldY = ((mouseScreenPos.Y - viewCenterY) / (PxHmicron * oldScaleY)) - Origin.Y;
+
+            Scale = new SizeF((float)newScaleX, (float)newScaleY);
+
+            double newOriginX = ((mouseScreenPos.X - viewCenterX) / (PxWmicron * newScaleX)) - worldX;
+            double newOriginY = ((mouseScreenPos.Y - viewCenterY) / (PxHmicron * newScaleY)) - worldY;
+
+            Origin = new PointD(newOriginX, newOriginY);
+            UpdateView(true);
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, mouseScreenPos.X, mouseScreenPos.Y, factor);
+        }
+
         /// <summary>
         /// Mouse motion event - delegates to Tools.cs for all tool logic
         /// </summary>
@@ -3474,6 +3508,11 @@ namespace BioGTK
             mousePoint = "(" + (p.X.ToString("F")) + ", " + (p.Y.ToString("F")) + ")";
             if (SelectedImage == null)
                 return;
+            if (e.Event.State.HasFlag(ModifierType.Button2Mask) &&
+                Tools.currentTool.type != Tools.Tool.Type.pan)
+            {
+                Tools.currentTool = Tools.GetTool("pan");
+            }
             // Handle pyramidal overview navigation only when the drag is inside
             // the overview widget. Otherwise the active tool needs the event.
             if (e.Event.State.HasFlag(ModifierType.Button1Mask) &&
@@ -3500,9 +3539,8 @@ namespace BioGTK
             if (!overview.IntersectsWith(overviewX, overviewY))
                 return false;
 
-            double baseUnitsPerPx = Math.Max(SelectedImage.GetUnitPerPixel(0), double.Epsilon);
-            double fullResWidth = Math.Max(1, SelectedImage.Resolutions[0].SizeX * baseUnitsPerPx);
-            double fullResHeight = Math.Max(1, SelectedImage.Resolutions[0].SizeY * baseUnitsPerPx);
+            double fullResWidth = Math.Max(1, SelectedImage.Resolutions[0].SizeX);
+            double fullResHeight = Math.Max(1, SelectedImage.Resolutions[0].SizeY);
             double viewWorldW = View.AllocatedWidth * Resolution;
             double viewWorldH = View.AllocatedHeight * Resolution;
 
@@ -3562,7 +3600,7 @@ namespace BioGTK
             MouseDownInt = new PointD(e.Event.X, e.Event.Y);
             pd = pointer;
             mouseDown = pd;
-            if (Tools.currentTool.type == Tools.Tool.Type.move && e.Event.Button == 2)
+            if (e.Event.Button == 2)
                 Tools.currentTool = Tools.GetTool("pan");
             if (SelectedImage == null)
                 return;
@@ -4420,7 +4458,14 @@ namespace BioGTK
                 Log($"[RebuildSchemaForWell]   level {lev}: w={wL} h={hL} unitsPerPixel={downsample}");
             }
 
-            SelectedImage.OpenSlideBase.Schema = newSchema;
+            var slideBase = SelectedImage?.OpenSlideBase;
+            if (slideBase == null)
+            {
+                Log($"[RebuildSchemaForWell] OpenSlideBase was null — schema not applied");
+                return;
+            }
+
+            slideBase.Schema = newSchema;
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, b?.file ?? string.Empty, b?.Level ?? 0);
         }
 

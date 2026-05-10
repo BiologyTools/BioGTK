@@ -373,13 +373,15 @@ namespace BioGTK
         {
             if (ImageView.SelectedImage == null) return;
             MenuItem m = (MenuItem)o;
+            BioImage sourceImage = ImageView.SelectedImage;
             BioImage bm;
+            string command = "run(\"" + m.Label + "\");";
             if (ImageView.SelectedImage.isPyramidal)
             {
                 YesNoDialog pd = YesNoDialog.Create("Run on all pyramidal levels?");
                 if (pd.Run() == (int)ResponseType.Yes)
                 {
-                    bm = await ImageJ.RunOnAllPyramidLevels(ImageView.SelectedImage, m.Label, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
+                    bm = await ImageJ.RunOnAllPyramidLevels(ImageView.SelectedImage, command, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
                     AddToRecent(m.Label);
                 }
                 else
@@ -388,7 +390,7 @@ namespace BioGTK
                     if(cpd.Run() == (int)ResponseType.Ok)
                     {
                         int level = cpd.SelectedIndex;
-                        bm = await ImageJ.RunOnPyramidalImage(ImageView.SelectedImage, m.Label, level, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
+                        bm = await ImageJ.RunOnPyramidalImage(ImageView.SelectedImage, command, level, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
                         AddToRecent(m.Label);
                     }
                     else
@@ -403,7 +405,28 @@ namespace BioGTK
             bm = await Fiji.RunOnImage(ImageView.SelectedImage, "run(\"" + m.Label + "\");", BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
             Console.WriteLine($"[TabsView.CommandMenuItem] stack result={(bm == null ? "null" : bm.ID)}");
             AddToRecent(m.Label);
+            PreserveSourceAnnotations(sourceImage, bm);
             AddTab(bm);
+        }
+
+        private static void PreserveSourceAnnotations(BioImage source, BioImage target)
+        {
+            if (source == null || target == null)
+                return;
+
+            if (source.Annotations == null || source.Annotations.Count == 0)
+                return;
+
+            if (target.Annotations == null)
+                target.Annotations = new List<ROI>();
+
+            foreach (ROI roi in source.Annotations)
+            {
+                if (roi == null)
+                    continue;
+
+                target.Annotations.Add(roi.Copy());
+            }
         }
 
         void AddToRecent(string name)
@@ -562,8 +585,8 @@ namespace BioGTK
 
             await Task.Run(() =>
             {
-                BioImage.SaveZarr(ImageView.SelectedImage, filechooser.Filename);
-                BioLib.Zarr.SaveV2Compatibility(ImageView.SelectedImage, filechooser.Filename);
+                Zarr.SaveZarr(ImageView.SelectedImage, filechooser.Filename);
+                Zarr.SaveV2Compatibility(ImageView.SelectedImage, filechooser.Filename);
                 MergeZarrLabelOverlaysIntoAnnotations(ImageView.SelectedImage);
                 TrySaveZarrROIs(ImageView.SelectedImage, filechooser.Filename);
                 TrySaveZarrLabelOverlays(ImageView.SelectedImage, filechooser.Filename);

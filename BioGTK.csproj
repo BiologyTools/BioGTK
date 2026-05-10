@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Library</OutputType>
@@ -467,7 +467,7 @@
     <PackageReference Include="OMERO.NET" Version="1.0.5" />
     <PackageReference Include="ManagedCuda.NETStandard" Version="9.1.300" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.24.1" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.25.1" />
     <PackageReference Include="Microsoft.ML.TorchSharp" Version="0.23.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="NuGet.Build.Tasks.Pack" Version="6.14.0">
@@ -478,14 +478,14 @@
     <PackageReference Include="OpenTK.Graphics" Version="4.9.4" />
     <PackageReference Include="OpenTK.Windowing.Common" Version="4.9.4" />
     <PackageReference Include="OpenTK.Windowing.Desktop" Version="4.9.4" />
-    <PackageReference Include="ScottPlot" Version="5.1.57" />
+    <PackageReference Include="ScottPlot" Version="5.1.58" />
     <PackageReference Include="SkiaSharp" Version="3.119.2" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.2" />
     <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.119.2" />
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.2" />
     <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.119.2" />
-    <PackageReference Include="TorchSharp-cpu" Version="0.105.2" />
-    <PackageReference Include="YamlDotNet" Version="16.3.0" />  
+    <PackageReference Include="TorchSharp-cpu" Version="0.106.0" />
+    <PackageReference Include="YamlDotNet" Version="17.1.0" />  
   </ItemGroup>
 
   <ItemGroup>

@@ -1317,7 +1317,9 @@ namespace BioGTK
             currentTool = GetTool(Tool.Type.pan);
             panStartX = buts.Event.X;
             panStartY = buts.Event.Y;
-            initialPanScale = App.viewer.Resolution;
+            initialPanScale = ImageView.SelectedImage.isPyramidal
+                ? App.viewer.Resolution
+                : App.viewer.Scale.Width;
 
             if (ImageView.SelectedImage.isPyramidal)
             {
@@ -1362,13 +1364,14 @@ namespace BioGTK
             }
             else
             {
-                // Non-pyramidal: Origin is in world (micron) units; keep the
-                // previous scale-based formula so existing behaviour is unchanged.
-                double deltaX = (dx / initialPanScale) * PanSpeed;
-                double deltaY = (dy / initialPanScale) * PanSpeed;
+                // Non-pyramidal: convert screen pixels back into world units so
+                // a 1 px drag produces a 1 px screen move at the current zoom.
+                double scale = Math.Max(initialPanScale, double.Epsilon);
+                double deltaX = dx / (App.viewer.PxWmicron * scale);
+                double deltaY = dy / (App.viewer.PxHmicron * scale);
                 App.viewer.Origin = new PointD(
-                    initialPanOrigin.X - deltaX,
-                    initialPanOrigin.Y - deltaY);
+                    initialPanOrigin.X + deltaX,
+                    initialPanOrigin.Y + deltaY);
             }
         }
 

@@ -19,7 +19,7 @@ namespace BioGTK
     public class SlideGLArea : GLArea
     {
         private const bool VerboseLogging = false;
-        private const bool DiagnosticLogging = true;
+        private static readonly bool DiagnosticLogging = false;
         // ============================================================================
         // GL Resources
         // ============================================================================
@@ -346,6 +346,11 @@ void main()
             GL.Viewport(0, 0, width * scale, height * scale);
             if (TilesToRender.Count == 0)
             {
+                if (!PreservePreviousFrameWhileIncomplete)
+                {
+                    GL.ClearColor(0.2f, 0.2f, 0.2f, 1f);
+                    GL.Clear(ClearBufferMask.ColorBufferBit);
+                }
                 LogDiag($"[RenderTiles] no tiles to render viewport={width}x{height} imageScreen=({ImageScreenX},{ImageScreenY},{ImageScreenW},{ImageScreenH})");
                 return;
             }
@@ -358,6 +363,12 @@ void main()
                 // frame whenever a view change lands before every tile is ready.
                 LogDiag($"[RenderTiles] waiting for complete tile set viewport={width}x{height} tileCount={TilesToRender.Count}");
                 return;
+            }
+
+            if (!hasAllRenderableTextures)
+            {
+                GL.ClearColor(0.2f, 0.2f, 0.2f, 1f);
+                GL.Clear(ClearBufferMask.ColorBufferBit);
             }
 
             GL.ClearColor(0.2f, 0.2f, 0.2f, 1f);

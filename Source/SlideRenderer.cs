@@ -12,7 +12,7 @@ namespace BioGTK
 {
     public class SlideRenderer
     {
-        private const bool DiagnosticLogging = true;
+        private static readonly bool DiagnosticLogging = false;
         private readonly SlideGLArea _glArea;
         private OpenSlideBase _openSlideBase;
         private SlideBase _slideBase;
@@ -43,6 +43,7 @@ namespace BioGTK
         private readonly object _pendingTileFetchLock = new object();
         private int _redrawQueued = 0;
         private int _displayRangeProbeStarted = 0;
+        private int _displayRangeSeedLevel = -1;
 
         public SlideRenderer(SlideGLArea glArea)
         {
@@ -100,6 +101,7 @@ namespace BioGTK
             _openTileCache?.Clear();
             _slideBase?.cache?.Clear();
             _openSlideBase?.cache?.Clear();
+            _displayRangeSeedLevel = -1;
 
             lock (_pendingLevelSwitchLock)
             {
@@ -150,13 +152,14 @@ namespace BioGTK
             {
             int renderVersion = _renderStateVersion;
             using var tileFetchCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-            _ = EnsureGlobalDisplayRangeAsync(coordinate, renderVersion);
 
             var schema = _useOpenSlide ? _openSlideBase.Schema : _slideBase.Schema;
 
             int level = TileUtil.GetLevel(schema.Resolutions, resolution);
             var levelRes = schema.Resolutions[level];
             double levelUnitsPerPixel = levelRes.UnitsPerPixel;
+
+            _ = EnsureGlobalDisplayRangeAsync(coordinate, renderVersion, level);
 
             LogDiag($"[UpdateViewAsync] type={(_useOpenSlide ? "openslide" : "slidebase")} level={level} res={resolution:F3} upp={levelUnitsPerPixel:F3} viewport={viewportWidth}x{viewportHeight} origin=({pyramidalOrigin.X:F2},{pyramidalOrigin.Y:F2}) schemaExtent=({schema.Extent.MinX:F0},{schema.Extent.MinY:F0},{schema.Extent.MaxX:F0},{schema.Extent.MaxY:F0})");
 
@@ -402,13 +405,16 @@ namespace BioGTK
             }
         }
 
-        private async Task EnsureGlobalDisplayRangeAsync(ZCT coordinate, int renderVersion)
+        private async Task EnsureGlobalDisplayRangeAsync(ZCT coordinate, int renderVersion, int renderLevel)
         {
             if (_useOpenSlide || _slideBase?.Image?.BioImage == null)
                 return;
 
             var bioImage = _slideBase.Image.BioImage;
-            if (bioImage.ZarrDisplayMax > bioImage.ZarrDisplayMin)
+            int seedLevel = 0;
+
+            if (bioImage.ZarrDisplayMax > bioImage.ZarrDisplayMin &&
+                _displayRangeSeedLevel == seedLevel)
                 return;
             if (Interlocked.Exchange(ref _displayRangeProbeStarted, 1) != 0)
                 return;
@@ -426,12 +432,6 @@ namespace BioGTK
                 return;
             }
 
-            int seedLevel = bioImage.MacroResolution.HasValue
-                ? Math.Max(0, bioImage.MacroResolution.Value - 1)
-                : bioImage.Resolutions.Count - 1;
-            if (seedLevel >= bioImage.Resolutions.Count)
-                seedLevel = bioImage.Resolutions.Count - 1;
-
             int width = bioImage.Resolutions[seedLevel].SizeX;
             int height = bioImage.Resolutions[seedLevel].SizeY;
             if (width <= 0 || height <= 0)
@@ -440,24 +440,64 @@ namespace BioGTK
                 return;
             }
 
-            // Probe only a small sample tile so remote pyramids do not spend a
-            // full-image read budget just to derive display contrast.
-            width = Math.Min(width, 256);
-            height = Math.Min(height, 256);
-
             int frameIndex = bioImage.GetFrameIndex(coordinate.Z, coordinate.C, coordinate.T);
-            // Use the raw tile path here so the display-range probe sees the
-            // original 16-bit / 48-bit pixels instead of the already-normalized
-            // RGBA output returned by the regular renderer path.
-            var seedBitmap = await bioImage.GetTile(frameIndex, seedLevel, 0, 0, width, height, null, true);
-            if (TryComputeDisplayRangeFromUsedBits(seedBitmap, out ushort displayMin, out ushort displayMax))
+
+            // Probe a small grid of tiles from level 0 so the display range is
+            // stable across zoom levels and does not depend on the current view.
+            int sampleW = Math.Min(width, 128);
+            int sampleH = Math.Min(height, 128);
+            int[] xs = new[]
             {
-                bioImage.ZarrDisplayMin = displayMin;
-                bioImage.ZarrDisplayMax = displayMax;
-                if (renderVersion == _renderStateVersion)
-                    await RunOnGtkThreadAsync(() => _glArea.RequestRedraw());
+                0,
+                Math.Max(0, (width - sampleW) / 2),
+                Math.Max(0, width - sampleW)
+            };
+            int[] ys = new[]
+            {
+                0,
+                Math.Max(0, (height - sampleH) / 2),
+                Math.Max(0, height - sampleH)
+            };
+
+            ushort bestMax = 0;
+            bool gotRange = false;
+            foreach (int sampleY in ys)
+            {
+                foreach (int sampleX in xs)
+                {
+                    var seedBitmap = await bioImage.GetTile(frameIndex, seedLevel, sampleX, sampleY, sampleW, sampleH, null, true);
+                    if (TryComputeDisplayRangeFromUsedBits(seedBitmap, out ushort displayMin, out ushort displayMax))
+                    {
+                        if (displayMax > bestMax)
+                            bestMax = displayMax;
+                        gotRange = true;
+                    }
+                    seedBitmap?.Dispose();
+                }
             }
-            seedBitmap?.Dispose();
+
+            if (gotRange && bestMax > 0)
+            {
+                bool rangeChanged = bioImage.ZarrDisplayMin != 0 ||
+                                    bioImage.ZarrDisplayMax != bestMax;
+                bioImage.ZarrDisplayMin = 0;
+                bioImage.ZarrDisplayMax = bestMax;
+                _displayRangeSeedLevel = seedLevel;
+
+                if (rangeChanged)
+                {
+                    await RunOnGtkThreadAsync(() =>
+                    {
+                        ClearCache();
+                        _displayRangeSeedLevel = seedLevel;
+                        _glArea.RequestRedraw();
+                    });
+                }
+                else if (renderVersion == _renderStateVersion)
+                {
+                    await RunOnGtkThreadAsync(() => _glArea.RequestRedraw());
+                }
+            }
             Interlocked.Exchange(ref _displayRangeProbeStarted, 0);
         }
 
@@ -577,12 +617,6 @@ namespace BioGTK
             double r = schema.Resolutions[level].UnitsPerPixel;
             double level0UPP = schema.Resolutions.ContainsKey(0)
                 ? schema.Resolutions[0].UnitsPerPixel : r;
-
-            // Image boundary in world units.
-            double imgMaxX =  schema.Extent.MaxX * level0UPP;
-            double imgMinX =  schema.Extent.MinX * level0UPP;
-            double imgMaxY =  schema.Extent.MaxY * level0UPP; // 0
-            double imgMinY =  schema.Extent.MinY * level0UPP; // negative
 
             var tileExtent = tile.Extent;
             double tMinX = tileExtent.MinX;

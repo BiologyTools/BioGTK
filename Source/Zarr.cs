@@ -35,6 +35,23 @@ namespace BioLib
     {
         private static int s_debugTileLogs;
 
+        private sealed record ExportLevelInfo(
+            int SourceIndex,
+            int SizeX,
+            int SizeY,
+            ResolutionLevelDescriptor Descriptor,
+            double ScaleX,
+            double ScaleY)
+        {
+            public double AverageScale => (ScaleX + ScaleY) / 2.0;
+        }
+
+        private sealed record AssociatedLevelInfo(
+            string Name,
+            int SourceIndex,
+            int SizeX,
+            int SizeY);
+
         private static void Log(string msg)
         {
             AppLog.Append(msg);
@@ -46,6 +63,13 @@ namespace BioLib
                 return "<empty>";
             int len = Math.Min(count, data.Length);
             return BitConverter.ToString(data, 0, len);
+        }
+
+        private static double NormalizePhysicalSize(double value)
+        {
+            return value > 0 && !double.IsNaN(value) && !double.IsInfinity(value)
+                ? value
+                : 1.0;
         }
 
         // =====================================================================
@@ -71,37 +95,41 @@ namespace BioLib
                     "Ensure the image is fully loaded before saving as Zarr.");
 
             int bitsPerSample = DetermineSourceBitsPerSample(b);
+            var sourcePixelFormat = DetermineSourcePixelFormat(b);
+            bool sourceIsInterleavedRgb = IsInterleavedRgbFormat(sourcePixelFormat);
+            int sourceChannelCount = sourceIsInterleavedRgb ? BioImage.GetBands(sourcePixelFormat) : 1;
+            bool sourceIsBGRA = IsBGRAFormat(sourcePixelFormat);
+            int exportChannelCount = sourceIsInterleavedRgb && b.SizeC == 1
+                ? Math.Min(3, sourceChannelCount)
+                : b.SizeC;
 
             var bytesPerSample = bitsPerSample / 8;
             var zarrDataType   = MapDataType(bitsPerSample);
-            var totalChannels  = b.SizeC;
+            var totalChannels  = exportChannelCount;
             s_debugTileLogs = 0;
 
             Log($"[SaveZarr] file={b.Filename} out={outputDir} size={b.SizeX}x{b.SizeY} zct={b.SizeZ}/{b.SizeC}/{b.SizeT} " +
-                $"bits={bitsPerSample} bytesPerSample={bytesPerSample} srcPixFmt={DetermineSourcePixelFormat(b)} " +
-                $"interleavedRgb={IsInterleavedRgbFormat(DetermineSourcePixelFormat(b))} bands={(IsInterleavedRgbFormat(DetermineSourcePixelFormat(b)) ? BioImage.GetBands(DetermineSourcePixelFormat(b)) : 1)} " +
+                $"bits={bitsPerSample} bytesPerSample={bytesPerSample} srcPixFmt={sourcePixelFormat} " +
+                $"interleavedRgb={sourceIsInterleavedRgb} bands={sourceChannelCount} " +
                 $"resLevels={b.Resolutions.Count}");
 
             int tileW = 512;
             int tileH = 512;
 
             // ------------------------------------------------------------------
-            // 2. Build per-level descriptors from b.Resolutions
-            //    Level 0 is always the full-resolution image (b.SizeX / b.SizeY).
-            //    Subsequent levels are taken directly from b.Resolutions[1..N].
+            // 2. Build a real multiscale pyramid from b.Resolutions.
+            //    The raw list can contain non-pyramid associated images or
+            //    out-of-order levels, so keep only entries whose X/Y scales
+            //    agree closely and sort them by increasing downsample.
             // ------------------------------------------------------------------
 
-            var levelDescriptors = new List<ResolutionLevelDescriptor>();
-            for (int lvl = 0; lvl < b.Resolutions.Count; lvl++)
-            {
-                var res        = b.Resolutions[lvl];
-                double dsample = b.GetLevelDownsample(lvl);   // 1.0 for level 0
-                levelDescriptors.Add(new ResolutionLevelDescriptor(res.SizeX, res.SizeY, dsample));
-            }
-
-            // Fallback: if there is somehow no Resolutions list, use the image dims.
+            var exportLevels = BuildExportLevels(b);
+            var levelDescriptors = exportLevels.Select(l => l.Descriptor).ToList();
             if (levelDescriptors.Count == 0)
+            {
                 levelDescriptors.Add(new ResolutionLevelDescriptor(b.SizeX, b.SizeY, 1.0));
+                exportLevels.Add(new ExportLevelInfo(0, b.SizeX, b.SizeY, levelDescriptors[0], 1.0, 1.0));
+            }
 
             // ------------------------------------------------------------------
             // 3. Build the base descriptor (T/C/Z/dtype — shared by all levels)
@@ -113,9 +141,9 @@ namespace BioLib
             {
                 Name          = Path.GetFileNameWithoutExtension(b.Filename),
                 DataType      = zarrDataType,
-                PhysicalSizeX = b.PhysicalSizeX,
-                PhysicalSizeY = b.PhysicalSizeY,
-                PhysicalSizeZ = b.PhysicalSizeZ,
+                PhysicalSizeX = NormalizePhysicalSize(b.PhysicalSizeX),
+                PhysicalSizeY = NormalizePhysicalSize(b.PhysicalSizeY),
+                PhysicalSizeZ = NormalizePhysicalSize(b.PhysicalSizeZ),
                 ChunkY        = tileH,
                 ChunkX        = tileW,
             };
@@ -132,30 +160,77 @@ namespace BioLib
                 // ------------------------------------------------------------------
                 // 5. Stream tiles into each resolution level
                 // ------------------------------------------------------------------
-                for (int levelIndex = 0; levelIndex < levelDescriptors.Count; levelIndex++)
+                for (int exportLevelIndex = 0; exportLevelIndex < exportLevels.Count; exportLevelIndex++)
                 {
-                    var lvlDesc = levelDescriptors[levelIndex];
-                    Log($"[SaveZarr] level={levelIndex} size={lvlDesc.SizeX}x{lvlDesc.SizeY} downsample={lvlDesc.Downsample}");
+                    var exportLevel = exportLevels[exportLevelIndex];
+                    var lvlDesc = exportLevel.Descriptor;
+                    Log($"[SaveZarr] level={exportLevelIndex} srcLevel={exportLevel.SourceIndex} size={lvlDesc.SizeX}x{lvlDesc.SizeY} downsample={lvlDesc.Downsample} " +
+                        $"scaleX={exportLevel.ScaleX} scaleY={exportLevel.ScaleY}");
 
                     for (int t = 0; t < b.SizeT; t++)
                     {
                         for (int z = 0; z < b.SizeZ; z++)
                         {
-                            for (int c = 0; c < b.SizeC; c++)
+                            for (int c = 0; c < exportChannelCount; c++)
                             {
-                                WritePlaneInTiles(
-                                    writer, b, lvlDesc,
-                                    t, c, z,
-                                    bytesPerSample, tileW, tileH,
-                                    levelIndex: levelIndex).GetAwaiter().GetResult();
+                                if (sourceIsInterleavedRgb)
+                                {
+                                    WritePlaneInTiles(
+                                        writer, b, lvlDesc,
+                                        t, c, z,
+                                        bytesPerSample, tileW, tileH,
+                                        sourceLevelIndex: exportLevel.SourceIndex,
+                                        scaleX: exportLevel.ScaleX,
+                                        scaleY: exportLevel.ScaleY,
+                                        levelIndex: exportLevelIndex,
+                                        rgbChannelIndex: c,
+                                        srcChannelCount: sourceChannelCount,
+                                        isBGRA: sourceIsBGRA,
+                                        logicalC: 0).GetAwaiter().GetResult();
+                                }
+                                else
+                                {
+                                    WritePlaneInTiles(
+                                        writer, b, lvlDesc,
+                                        t, c, z,
+                                        bytesPerSample, tileW, tileH,
+                                        sourceLevelIndex: exportLevel.SourceIndex,
+                                        scaleX: exportLevel.ScaleX,
+                                        scaleY: exportLevel.ScaleY,
+                                        levelIndex: exportLevelIndex).GetAwaiter().GetResult();
+                                }
                             }
                         }
                     }
                 }
+
+                // ------------------------------------------------------------------
+                // 6. Export macro/label levels as associated images, if present.
+                // ------------------------------------------------------------------
+                SaveAssociatedResolutionImages(
+                    b,
+                    outputDir,
+                    zarrDataType,
+                    baseDescriptor,
+                    bytesPerSample,
+                    tileW,
+                    tileH,
+                    sourcePixelFormat,
+                    sourceIsInterleavedRgb,
+                    sourceChannelCount,
+                    exportChannelCount,
+                    sourceIsBGRA);
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.ToString());
+                try
+                {
+                    File.WriteAllText(Path.Combine(outputDir, "save-error.txt"), e.ToString());
+                }
+                catch
+                {
+                }
             }
 
             Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, b);
@@ -177,6 +252,9 @@ namespace BioLib
             int t, int c, int z,
             int bytesPerSample,
             int tileW, int tileH,
+            int sourceLevelIndex   = 0,
+            double scaleX          = 1.0,
+            double scaleY          = 1.0,
             int levelIndex      = 0,
             int rgbChannelIndex = -1,
             int srcChannelCount = 1,
@@ -197,15 +275,59 @@ namespace BioLib
                     int interleavedBytes   = pixelCount * srcChannelCount * bytesPerSample;
                     int singleChannelBytes = pixelCount * bytesPerSample;
 
-                    // Fetch raw tile bytes from BioLib at the requested pyramid level.
-                    byte[] pixelBytes = await b.GetTileBytesRaw(
-                        b.GetFrameIndex(z, srcC, t), levelIndex, tileX, tileY, actualW, actualH,
-                        new AForge.ZCT(z, srcC, t)).ConfigureAwait(false);
+                    int frameIndex = b.GetFrameIndex(z, srcC, t);
+
+                    byte[]? pixelBytes = null;
+                    AForge.PixelFormat tilePixelFormat = DetermineSourcePixelFormat(b);
+
+                    if (needsDeinterleave)
+                    {
+                        if (sourceLevelIndex <= 0)
+                        {
+                            using Bitmap tileBitmap = await b.GetTile(
+                                frameIndex, 0, tileX, tileY, actualW, actualH,
+                                new AForge.ZCT(z, srcC, t), true).ConfigureAwait(false);
+
+                            tilePixelFormat = tileBitmap.PixelFormat;
+                            pixelBytes = tileBitmap.Bytes;
+                        }
+                        else
+                        {
+                            int srcX = Math.Max(0, (int)Math.Round(tileX * scaleX));
+                            int srcY = Math.Max(0, (int)Math.Round(tileY * scaleY));
+                            int srcW = Math.Max(1, (int)Math.Round(actualW * scaleX));
+                            int srcH = Math.Max(1, (int)Math.Round(actualH * scaleY));
+
+                            using Bitmap tileBitmap = await b.GetTile(
+                                frameIndex, 0, srcX, srcY, srcW, srcH,
+                                new AForge.ZCT(z, srcC, t), true).ConfigureAwait(false);
+
+                            tilePixelFormat = tileBitmap.PixelFormat;
+                            pixelBytes = DownsampleBgraNearest(tileBitmap.Bytes, srcW, srcH, actualW, actualH);
+                        }
+                    }
+                    else
+                    {
+                        // Always read V3 export tiles through the backend tile reader.
+                        // The raw in-memory buffer shortcut is image-dependent and can
+                        // diverge from the actual source pyramid, especially on local
+                        // saved Zarrs where the top-left level 0 tiles were showing
+                        // striping.  Keeping V3 export on the reader path makes local
+                        // and remote saves consistent.
+                        pixelBytes = await b.GetTileBytesRaw(
+                            frameIndex, sourceLevelIndex, tileX, tileY, actualW, actualH,
+                            new AForge.ZCT(z, srcC, t)).ConfigureAwait(false);
+                    }
+
+                    if (pixelBytes == null || pixelBytes.Length == 0)
+                    {
+                        pixelBytes = new byte[needsDeinterleave ? interleavedBytes : singleChannelBytes];
+                    }
 
                     bool logTile = tileX == 0 && tileY == 0 && s_debugTileLogs < 12;
                     if (logTile)
                     {
-                        Log($"[WritePlane] level={levelIndex} t={t} c={c} z={z} srcC={srcC} tile={tileX},{tileY} size={actualW}x{actualH} " +
+                        Log($"[WritePlane] level={levelIndex} srcLevel={sourceLevelIndex} t={t} c={c} z={z} srcC={srcC} tile={tileX},{tileY} size={actualW}x{actualH} " +
                             $"rawLen={pixelBytes?.Length ?? 0} expSingle={singleChannelBytes} expInterleaved={interleavedBytes} " +
                             $"needsDeinterleave={needsDeinterleave} srcBands={srcChannelCount} bytesPerSample={bytesPerSample} " +
                             $"rawSample={SampleBytes(pixelBytes)}");
@@ -213,22 +335,33 @@ namespace BioLib
 
                     if (needsDeinterleave)
                     {
+                        int inferredChannelCount = srcChannelCount;
+                        if (pixelCount > 0 && pixelBytes.Length > 0)
+                        {
+                            int inferred = pixelBytes.Length / (pixelCount * bytesPerSample);
+                            if (inferred >= 1 && inferred <= 4)
+                                inferredChannelCount = inferred;
+                        }
+
                         // Ensure the buffer is the full interleaved size before
                         // extracting a single channel from it.
-                        if (pixelBytes.Length != interleavedBytes)
+                        int expectedInterleavedBytes = pixelCount * inferredChannelCount * bytesPerSample;
+                        if (pixelBytes.Length != expectedInterleavedBytes)
                         {
-                            var trimmed = new byte[interleavedBytes];
+                            var trimmed = new byte[expectedInterleavedBytes];
                             Buffer.BlockCopy(pixelBytes, 0, trimmed, 0,
-                                Math.Min(pixelBytes.Length, interleavedBytes));
+                                Math.Min(pixelBytes.Length, expectedInterleavedBytes));
                             pixelBytes = trimmed;
                         }
 
                         // For BGRA buffers the byte order is [B, G, R, A].
-                        // Map output channel index:  0→R(byte2), 1→G(byte1), 2→B(byte0)
-                        int srcByteIndex = isBGRA ? (2 - rgbChannelIndex) : rgbChannelIndex;
+                        // OpenSlide SVS tiles commonly arrive as BGRA even when the
+                        // nominal source pixel format is reported as 24bpp RGB.
+                        bool actualIsBGRA = isBGRA || inferredChannelCount == 4 || IsBGRAFormat(tilePixelFormat);
+                        int srcByteIndex = actualIsBGRA ? (2 - rgbChannelIndex) : rgbChannelIndex;
 
                         pixelBytes = DeinterleaveChannel(
-                            pixelBytes, srcByteIndex, srcChannelCount,
+                            pixelBytes, srcByteIndex, inferredChannelCount,
                             bytesPerSample, pixelCount);
 
                         if (logTile)
@@ -259,7 +392,7 @@ namespace BioLib
                     if (logTile)
                     {
                         s_debugTileLogs++;
-                        Log($"[WritePlane] wrote level={levelIndex} t={t} c={c} z={z} tile={tileX},{tileY}");
+                        Log($"[WritePlane] wrote level={levelIndex} srcLevel={sourceLevelIndex} t={t} c={c} z={z} tile={tileX},{tileY}");
                     }
                 }
             }
@@ -353,7 +486,8 @@ namespace BioLib
 
         private static bool IsBGRAFormat(AForge.PixelFormat format)
         {
-            return format == AForge.PixelFormat.Format32bppArgb ||
+            return format == AForge.PixelFormat.Format24bppRgb ||
+                   format == AForge.PixelFormat.Format32bppArgb ||
                    format == AForge.PixelFormat.Format32bppPArgb ||
                    format == AForge.PixelFormat.Format32bppRgb ||
                    format == AForge.PixelFormat.Format64bppArgb ||
@@ -485,8 +619,16 @@ namespace BioLib
 
             try
             {
+                var sourcePixelFormat = DetermineSourcePixelFormat(image);
+                bool sourceIsInterleavedRgb = IsInterleavedRgbFormat(sourcePixelFormat);
+                int sourceChannelCount = sourceIsInterleavedRgb ? BioImage.GetBands(sourcePixelFormat) : 1;
+                int exportChannelCount = sourceIsInterleavedRgb && image.SizeC == 1
+                    ? Math.Min(3, sourceChannelCount)
+                    : image.SizeC;
+
                 WriteText(Path.Combine(outputDir, ".zgroup"), JsonSerializer.Serialize(new { zarr_format = 2 }, new JsonSerializerOptions { WriteIndented = true }));
 
+                var exportLevels = BuildExportLevels(image);
                 var multiscales = new[]
                 {
                     new
@@ -501,32 +643,33 @@ namespace BioLib
                             new { name = "y", type = "space", unit = "micrometer" },
                             new { name = "x", type = "space", unit = "micrometer" }
                         },
-                        datasets = BuildV2Datasets(image)
+                        datasets = BuildV2Datasets(image, exportLevels)
                     }
                 };
 
-                WriteText(Path.Combine(outputDir, ".zattrs"), JsonSerializer.Serialize(new { multiscales }, new JsonSerializerOptions { WriteIndented = true }));
+                var omeroNode = ZarrMetadataFixup.CreateRgbDisplayMetadata(image);
+                WriteText(Path.Combine(outputDir, ".zattrs"), JsonSerializer.Serialize(new { multiscales, omero = omeroNode }, new JsonSerializerOptions { WriteIndented = true }));
 
-                for (int i = 0; i < image.Resolutions.Count; i++)
+                for (int i = 0; i < exportLevels.Count; i++)
                 {
-                    var res = image.Resolutions[i];
-                    var dtype = MapV2Dtype(DetermineSourcePixelFormat(image));
+                    var exportLevel = exportLevels[i];
+                    var dtype = MapV2Dtype(sourcePixelFormat);
                     var chunks = new[]
                     {
                         1,
                         1,
                         Math.Max(1, image.SizeZ),
-                        Math.Min(512, res.SizeY),
-                        Math.Min(512, res.SizeX)
+                        Math.Min(512, exportLevel.SizeY),
+                        Math.Min(512, exportLevel.SizeX)
                     };
 
                     var arrayDoc = new
                     {
                         zarr_format = 2,
-                        shape = new long[] { image.SizeT, image.SizeC, image.SizeZ, res.SizeY, res.SizeX },
+                        shape = new long[] { image.SizeT, exportChannelCount, image.SizeZ, exportLevel.SizeY, exportLevel.SizeX },
                         chunks,
                         dtype,
-                        compressor = BuildV2BloscCompressor(DetermineSourcePixelFormat(image)),
+                        compressor = (object?)null,
                         fill_value = 0,
                         order = "C",
                         filters = (object?)null,
@@ -535,13 +678,442 @@ namespace BioLib
 
                     var levelDir = Path.Combine(outputDir, i.ToString());
                     WriteText(Path.Combine(levelDir, ".zarray"), JsonSerializer.Serialize(arrayDoc, new JsonSerializerOptions { WriteIndented = true }));
-                    WriteText(Path.Combine(levelDir, ".zattrs"), "{}");
+                    WriteText(Path.Combine(levelDir, ".zattrs"), JsonSerializer.Serialize(new { omero = omeroNode }, new JsonSerializerOptions { WriteIndented = true }));
                 }
+
+                WriteV2Chunks(outputDir, image, exportLevels, sourcePixelFormat, sourceIsInterleavedRgb, sourceChannelCount, exportChannelCount);
+                ZarrMetadataFixup.AddRgbDisplayMetadata(outputDir, image);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Save Zarr v2 compatibility failed: {ex.Message}");
+                try
+                {
+                    File.WriteAllText(Path.Combine(outputDir, "save-v2-error.txt"), ex.ToString());
+                }
+                catch
+                {
+                }
             }
+        }
+
+        private static void SaveAssociatedResolutionImages(
+            BioImage image,
+            string outputDir,
+            string dataType,
+            BioImageDescriptor baseDescriptor,
+            int bytesPerSample,
+            int tileW,
+            int tileH,
+            AForge.PixelFormat sourcePixelFormat,
+            bool sourceIsInterleavedRgb,
+            int sourceChannelCount,
+            int exportChannelCount,
+            bool sourceIsBGRA)
+        {
+            var associatedLevels = BuildAssociatedLevelInfos(image);
+            if (associatedLevels.Count == 0)
+                return;
+
+            var manifest = new List<object>();
+            foreach (var associated in associatedLevels)
+            {
+                try
+                {
+                    string associatedDir = Path.Combine(outputDir, associated.Name);
+                    var associatedDescriptor = new BioImageDescriptor(associated.SizeX, associated.SizeY, new ZarrNET.Core.ZCT(image.SizeZ, exportChannelCount, image.SizeT))
+                    {
+                        Name          = $"{Path.GetFileNameWithoutExtension(image.Filename)}_{associated.Name}",
+                        DataType      = dataType,
+                        PhysicalSizeX = baseDescriptor.PhysicalSizeX,
+                        PhysicalSizeY = baseDescriptor.PhysicalSizeY,
+                        PhysicalSizeZ = baseDescriptor.PhysicalSizeZ,
+                        ChunkY        = tileH,
+                        ChunkX        = tileW,
+                    };
+
+                    var associatedWriter = OmeZarrWriter.CreateAsync(
+                        associatedDir,
+                        associatedDescriptor,
+                        new[]
+                        {
+                            new ResolutionLevelDescriptor(associated.SizeX, associated.SizeY, 1.0)
+                        }).Result;
+
+                    try
+                    {
+                        for (int t = 0; t < image.SizeT; t++)
+                        {
+                            for (int z = 0; z < image.SizeZ; z++)
+                            {
+                                for (int c = 0; c < exportChannelCount; c++)
+                                {
+                                    if (sourceIsInterleavedRgb)
+                                    {
+                                        WritePlaneInTiles(
+                                            associatedWriter, image, new ResolutionLevelDescriptor(associated.SizeX, associated.SizeY, 1.0),
+                                            t, c, z,
+                                            bytesPerSample, tileW, tileH,
+                                            sourceLevelIndex: associated.SourceIndex,
+                                            scaleX: 1.0,
+                                            scaleY: 1.0,
+                                            levelIndex: 0,
+                                            rgbChannelIndex: c,
+                                            srcChannelCount: sourceChannelCount,
+                                            isBGRA: sourceIsBGRA,
+                                            logicalC: 0).GetAwaiter().GetResult();
+                                    }
+                                    else
+                                    {
+                                        WritePlaneInTiles(
+                                            associatedWriter, image, new ResolutionLevelDescriptor(associated.SizeX, associated.SizeY, 1.0),
+                                            t, c, z,
+                                            bytesPerSample, tileW, tileH,
+                                            sourceLevelIndex: associated.SourceIndex,
+                                            scaleX: 1.0,
+                                            scaleY: 1.0,
+                                            levelIndex: 0).GetAwaiter().GetResult();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        associatedWriter.DisposeAsync().GetAwaiter().GetResult();
+                    }
+
+                    ZarrMetadataFixup.AddRgbDisplayMetadata(associatedDir, image);
+                    manifest.Add(new
+                    {
+                        name = associated.Name,
+                        path = associated.Name,
+                        sourceIndex = associated.SourceIndex,
+                        sizeX = associated.SizeX,
+                        sizeY = associated.SizeY
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Save associated Zarr '{associated.Name}' failed: {ex.Message}");
+                    try
+                    {
+                        File.WriteAllText(Path.Combine(outputDir, $"save-associated-{associated.Name}-error.txt"), ex.ToString());
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+
+            if (manifest.Count > 0)
+            {
+                WriteText(
+                    Path.Combine(outputDir, "associated-images.json"),
+                    JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+            }
+        }
+
+        private static List<AssociatedLevelInfo> BuildAssociatedLevelInfos(BioImage image)
+        {
+            var levels = new List<AssociatedLevelInfo>();
+            if (image == null || image.Resolutions == null || image.Resolutions.Count == 0)
+                return levels;
+
+            void AddLevel(string name, int? index)
+            {
+                if (!index.HasValue)
+                    return;
+
+                int sourceIndex = index.Value;
+                if (sourceIndex < 0 || sourceIndex >= image.Resolutions.Count)
+                    return;
+
+                if (levels.Any(l => l.SourceIndex == sourceIndex))
+                    return;
+
+                var res = image.Resolutions[sourceIndex];
+                if (res.SizeX <= 0 || res.SizeY <= 0)
+                    return;
+
+                levels.Add(new AssociatedLevelInfo(name, sourceIndex, res.SizeX, res.SizeY));
+            }
+
+            AddLevel("macro", image.MacroResolution);
+            AddLevel("label", image.LabelResolution);
+            return levels;
+        }
+
+        private static void WriteV2Chunks(
+            string outputDir,
+            BioImage image,
+            List<ExportLevelInfo> exportLevels,
+            AForge.PixelFormat sourcePixelFormat,
+            bool sourceIsInterleavedRgb,
+            int sourceChannelCount,
+            int exportChannelCount)
+        {
+            for (int exportLevelIndex = 0; exportLevelIndex < exportLevels.Count; exportLevelIndex++)
+            {
+                var exportLevel = exportLevels[exportLevelIndex];
+                int bytesPerSample = Math.Max(1, DetermineSourceBitsPerSample(image) / 8);
+
+                for (int t = 0; t < image.SizeT; t++)
+                {
+                    for (int z = 0; z < image.SizeZ; z++)
+                    {
+                        for (int tileY = 0; tileY < exportLevel.SizeY; tileY += 512)
+                        {
+                            for (int tileX = 0; tileX < exportLevel.SizeX; tileX += 512)
+                            {
+                                int actualW = Math.Min(512, exportLevel.SizeX - tileX);
+                                int actualH = Math.Min(512, exportLevel.SizeY - tileY);
+                                if (actualW <= 0 || actualH <= 0)
+                                    continue;
+
+                                for (int c = 0; c < exportChannelCount; c++)
+                                {
+                                    byte[] planeBytes = GetV2PlaneBytes(
+                                        image, exportLevel.SourceIndex, t, z, c,
+                                        tileX, tileY, actualW, actualH,
+                                        exportLevel.ScaleX, exportLevel.ScaleY,
+                                        sourceIsInterleavedRgb, sourceChannelCount, bytesPerSample, sourcePixelFormat).GetAwaiter().GetResult();
+
+                                    byte[] chunkBytes = BuildV2ChunkBytes(
+                                        planeBytes,
+                                        actualW,
+                                        actualH,
+                                        bytesPerSample,
+                                        512,
+                                        512);
+
+                                    string chunkPath = Path.Combine(
+                                        outputDir,
+                                        exportLevelIndex.ToString(),
+                                        t.ToString(),
+                                        c.ToString(),
+                                        z.ToString(),
+                                        (tileY / 512).ToString(),
+                                        (tileX / 512).ToString());
+                                    string? chunkDir = Path.GetDirectoryName(chunkPath);
+                                    if (!string.IsNullOrWhiteSpace(chunkDir))
+                                        Directory.CreateDirectory(chunkDir);
+
+                                    File.WriteAllBytes(chunkPath, chunkBytes);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private static async Task<byte[]> GetV2PlaneBytes(
+            BioImage image,
+            int levelIndex,
+            int t,
+            int z,
+            int c,
+            int tileX,
+            int tileY,
+            int actualW,
+            int actualH,
+            double scaleX,
+            double scaleY,
+            bool sourceIsInterleavedRgb,
+            int sourceChannelCount,
+            int bytesPerSample,
+            AForge.PixelFormat sourcePixelFormat)
+        {
+            if (!sourceIsInterleavedRgb)
+            {
+                return await image.GetTileBytesRaw(
+                    image.GetFrameIndex(z, c, t),
+                    levelIndex,
+                    tileX,
+                    tileY,
+                    actualW,
+                    actualH,
+                    new AForge.ZCT(z, c, t)).ConfigureAwait(false);
+            }
+
+            int frameIndex = image.GetFrameIndex(z, 0, t);
+            Bitmap? srcTile = null;
+            byte[]? pixelBytes = null;
+            AForge.PixelFormat tilePixelFormat = sourcePixelFormat;
+            try
+            {
+                if (levelIndex <= 0)
+                {
+                    using Bitmap tileBitmap = await image.GetTile(
+                        frameIndex,
+                        0,
+                        tileX,
+                        tileY,
+                        actualW,
+                        actualH,
+                        new AForge.ZCT(z, 0, t),
+                        true).ConfigureAwait(false);
+                    tilePixelFormat = tileBitmap.PixelFormat;
+                    pixelBytes = tileBitmap.Bytes;
+                }
+                else
+                {
+                    int srcX = Math.Max(0, (int)Math.Round(tileX * scaleX));
+                    int srcY = Math.Max(0, (int)Math.Round(tileY * scaleY));
+                    int srcW = Math.Max(1, (int)Math.Round(actualW * scaleX));
+                    int srcH = Math.Max(1, (int)Math.Round(actualH * scaleY));
+                    srcTile = await image.GetTile(
+                        frameIndex,
+                        0,
+                        srcX,
+                        srcY,
+                        srcW,
+                        srcH,
+                        new AForge.ZCT(z, 0, t),
+                        true).ConfigureAwait(false);
+                    tilePixelFormat = srcTile.PixelFormat;
+                    pixelBytes = DownsampleBgraNearest(srcTile.Bytes, srcW, srcH, actualW, actualH);
+                }
+
+                pixelBytes ??= Array.Empty<byte>();
+
+                int pixelCount = actualW * actualH;
+                if (pixelBytes == null || pixelBytes.Length == 0)
+                    return new byte[pixelCount * bytesPerSample];
+
+                int singleChannelBytes = pixelCount * bytesPerSample;
+                if (pixelBytes.Length == singleChannelBytes)
+                    return pixelBytes;
+
+                int inferredChannelCount = sourceChannelCount;
+                if (pixelCount > 0 && pixelBytes.Length > 0)
+                {
+                    int inferred = pixelBytes.Length / (pixelCount * bytesPerSample);
+                    if (inferred >= 1 && inferred <= 4)
+                        inferredChannelCount = inferred;
+                }
+
+                int expectedInterleavedBytes = pixelCount * inferredChannelCount * bytesPerSample;
+                if (pixelBytes.Length != expectedInterleavedBytes)
+                {
+                    var trimmed = new byte[expectedInterleavedBytes];
+                    Buffer.BlockCopy(pixelBytes, 0, trimmed, 0, Math.Min(pixelBytes.Length, expectedInterleavedBytes));
+                    pixelBytes = trimmed;
+                }
+
+                bool actualIsBGRA = IsBGRAFormat(sourcePixelFormat) || inferredChannelCount == 4 || IsBGRAFormat(tilePixelFormat);
+                int srcByteIndex = actualIsBGRA ? (2 - c) : c;
+                return DeinterleaveChannel(pixelBytes, srcByteIndex, inferredChannelCount, bytesPerSample, pixelCount);
+            }
+            finally
+            {
+                srcTile?.Dispose();
+            }
+        }
+
+        private static byte[] DownsampleBgraNearest(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight)
+        {
+            if (targetWidth <= 0 || targetHeight <= 0)
+                return Array.Empty<byte>();
+
+            int targetBytes = targetWidth * targetHeight * 4;
+            if (source == null || source.Length == 0 || sourceWidth <= 0 || sourceHeight <= 0)
+                return new byte[targetBytes];
+
+            if (sourceWidth == targetWidth && sourceHeight == targetHeight)
+            {
+                if (source.Length == targetBytes)
+                    return source;
+
+                var exact = new byte[targetBytes];
+                Buffer.BlockCopy(source, 0, exact, 0, Math.Min(source.Length, targetBytes));
+                return exact;
+            }
+
+            var dst = new byte[targetBytes];
+            double scaleX = (double)sourceWidth / targetWidth;
+            double scaleY = (double)sourceHeight / targetHeight;
+
+            for (int y = 0; y < targetHeight; y++)
+            {
+                int srcY = Math.Min(sourceHeight - 1, (int)Math.Floor(y * scaleY));
+                int srcRow = srcY * sourceWidth * 4;
+                int dstRow = y * targetWidth * 4;
+                for (int x = 0; x < targetWidth; x++)
+                {
+                    int srcX = Math.Min(sourceWidth - 1, (int)Math.Floor(x * scaleX));
+                    int srcOff = srcRow + srcX * 4;
+                    int dstOff = dstRow + x * 4;
+                    if (srcOff + 3 < source.Length)
+                    {
+                        dst[dstOff + 0] = source[srcOff + 0];
+                        dst[dstOff + 1] = source[srcOff + 1];
+                        dst[dstOff + 2] = source[srcOff + 2];
+                        dst[dstOff + 3] = source[srcOff + 3];
+                    }
+                }
+            }
+
+            return dst;
+        }
+
+        private static Task<byte[]?> TryGetRawTileFromBufferAsync(
+            BioImage image,
+            int index,
+            int tileX,
+            int tileY,
+            int actualW,
+            int actualH)
+        {
+            try
+            {
+                var method = typeof(BioImage).GetMethod(
+                    "TryGetRawTileFromBuffer",
+                    System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.NonPublic);
+
+                if (method == null)
+                    return Task.FromResult<byte[]?>(null);
+
+                var result = method.Invoke(image, new object[] { index, tileX, tileY, actualW, actualH });
+                return Task.FromResult(result as byte[]);
+            }
+            catch
+            {
+                return Task.FromResult<byte[]?>(null);
+            }
+        }
+
+        private static byte[] BuildV2ChunkBytes(
+            byte[] planeBytes,
+            int actualW,
+            int actualH,
+            int bytesPerSample,
+            int chunkW,
+            int chunkH)
+        {
+            if (planeBytes == null)
+                return Array.Empty<byte>();
+
+            int chunkPixels = Math.Max(0, chunkW) * Math.Max(0, chunkH);
+            var output = new byte[chunkPixels * bytesPerSample];
+
+            int actualRowBytes = Math.Max(0, actualW) * bytesPerSample;
+            int paddedRowBytes = Math.Max(0, chunkW) * bytesPerSample;
+            int copyHeight = Math.Min(actualH, chunkH);
+            int copyWidth = Math.Min(actualW, chunkW);
+
+            for (int row = 0; row < copyHeight; row++)
+            {
+                int srcOffset = row * actualRowBytes;
+                int dstOffset = row * paddedRowBytes;
+                int copyBytes = Math.Min(copyWidth * bytesPerSample, Math.Max(0, planeBytes.Length - srcOffset));
+                if (copyBytes > 0)
+                    Buffer.BlockCopy(planeBytes, srcOffset, output, dstOffset, copyBytes);
+            }
+
+            return output;
         }
 
         /// <summary>
@@ -1659,12 +2231,13 @@ namespace BioLib
             return mask;
         }
 
-        private static object[] BuildV2Datasets(BioImage image)
+        private static object[] BuildV2Datasets(BioImage image, List<ExportLevelInfo> exportLevels)
         {
             var datasets = new List<object>();
-            for (int i = 0; i < image.Resolutions.Count; i++)
+            for (int i = 0; i < exportLevels.Count; i++)
             {
-                var res = image.Resolutions[i];
+                var exportLevel = exportLevels[i];
+                double downsample = exportLevel.AverageScale;
                 datasets.Add(new
                 {
                     path = i.ToString(),
@@ -1678,8 +2251,8 @@ namespace BioLib
                                 1.0,
                                 1.0,
                                 image.PhysicalSizeZ > 0 ? image.PhysicalSizeZ : 1.0,
-                                image.PhysicalSizeY > 0 ? image.PhysicalSizeY : 1.0,
-                                image.PhysicalSizeX > 0 ? image.PhysicalSizeX : 1.0
+                                (image.PhysicalSizeY > 0 ? image.PhysicalSizeY : 1.0) * downsample,
+                                (image.PhysicalSizeX > 0 ? image.PhysicalSizeX : 1.0) * downsample
                             }
                         }
                     }
@@ -1687,6 +2260,77 @@ namespace BioLib
             }
 
             return datasets.ToArray();
+        }
+
+        private static List<ExportLevelInfo> BuildExportLevels(BioImage b)
+        {
+            var exportLevels = new List<ExportLevelInfo>();
+            if (b == null)
+                return exportLevels;
+
+            var associatedIndexes = new HashSet<int>();
+            if (b.MacroResolution.HasValue)
+                associatedIndexes.Add(b.MacroResolution.Value);
+            if (b.LabelResolution.HasValue)
+                associatedIndexes.Add(b.LabelResolution.Value);
+
+            int baseWidth = b.Resolutions.Count > 0 ? b.Resolutions[0].SizeX : b.SizeX;
+            int baseHeight = b.Resolutions.Count > 0 ? b.Resolutions[0].SizeY : b.SizeY;
+            if (baseWidth <= 0 || baseHeight <= 0)
+                return exportLevels;
+
+            foreach (var (res, sourceIndex) in b.Resolutions.Select((res, idx) => (res, idx)))
+            {
+                if (res.SizeX <= 0 || res.SizeY <= 0)
+                    continue;
+
+                if (associatedIndexes.Contains(sourceIndex))
+                    continue;
+
+                double scaleX = (double)baseWidth / res.SizeX;
+                double scaleY = (double)baseHeight / res.SizeY;
+                if (!double.IsFinite(scaleX) || !double.IsFinite(scaleY))
+                    continue;
+
+                if (sourceIndex > 0)
+                {
+                    if (scaleX <= 1.0 || scaleY <= 1.0)
+                        continue;
+
+                    double mismatch = Math.Abs(scaleX - scaleY) / Math.Max(scaleX, scaleY);
+                    if (mismatch > 0.08)
+                        continue;
+                }
+
+                exportLevels.Add(new ExportLevelInfo(
+                    sourceIndex,
+                    res.SizeX,
+                    res.SizeY,
+                    new ResolutionLevelDescriptor(res.SizeX, res.SizeY, (scaleX + scaleY) / 2.0),
+                    scaleX,
+                    scaleY));
+            }
+
+            exportLevels.Sort((a, b2) =>
+            {
+                int cmp = a.Descriptor.Downsample.CompareTo(b2.Descriptor.Downsample);
+                if (cmp != 0)
+                    return cmp;
+                return a.SourceIndex.CompareTo(b2.SourceIndex);
+            });
+
+            if (exportLevels.Count == 0 && b.SizeX > 0 && b.SizeY > 0)
+            {
+                exportLevels.Add(new ExportLevelInfo(
+                    0,
+                    b.SizeX,
+                    b.SizeY,
+                    new ResolutionLevelDescriptor(b.SizeX, b.SizeY, 1.0),
+                    1.0,
+                    1.0));
+            }
+
+            return exportLevels;
         }
 
         private static string MapV2Dtype(AForge.PixelFormat pixelFormat)
