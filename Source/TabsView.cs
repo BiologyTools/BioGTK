@@ -62,6 +62,150 @@ namespace BioGTK
             viewers.Add(v);
         }
 
+        private static string GetSeriesDisplayName(string file, int series, int seriesCount)
+        {
+            if (seriesCount <= 1)
+                return System.IO.Path.GetFileName(file);
+
+            string baseName = System.IO.Path.GetFileNameWithoutExtension(file);
+            string ext = System.IO.Path.GetExtension(file);
+            if (string.IsNullOrWhiteSpace(ext))
+                ext = string.Empty;
+            return $"{baseName}_s{series}{ext}";
+        }
+
+        private async Task<BioImage?> OpenSeriesAsTabAsync(
+            string file,
+            int series,
+            int seriesCount,
+            bool tab,
+            bool tile,
+            int tileX,
+            int tileY,
+            int tileSizeX,
+            int tileSizeY,
+            bool addToRegistry = true)
+        {
+            BioImage im = await BioImage.OpenFile(file, series, tab, false, tile, tileX, tileY, tileSizeX, tileSizeY);
+            if (im == null)
+                return null;
+
+            if (seriesCount > 1)
+                im.Rename(GetSeriesDisplayName(file, series, seriesCount));
+
+            if (addToRegistry)
+                Images.AddImage(im);
+
+            AddTab(im, file);
+            return im;
+        }
+
+        private async Task<BioImage?> OpenSeriesAsViewAsync(
+            string file,
+            int series,
+            int seriesCount)
+        {
+            BioImage im = await BioImage.OpenFile(file, series, false, false, false, 0, 0, 0, 0);
+            if (im == null)
+                return null;
+
+            ShowImageView(im, file, series, seriesCount);
+            return im;
+        }
+
+        private async Task<List<BioImage>> CollectPyramidRootsAsync(string file)
+        {
+            int seriesCount = 1;
+            try
+            {
+                seriesCount = Math.Max(1, BioImage.GetSeriesCount(file));
+            }
+            catch
+            {
+                seriesCount = 1;
+            }
+
+            List<BioImage?> seriesImages = new List<BioImage?>(seriesCount);
+            for (int series = 0; series < seriesCount; series++)
+            {
+                BioImage? im = await BioImage.OpenFile(file, series, false, false, false, 0, 0, 0, 0);
+                seriesImages.Add(im);
+            }
+
+            List<BioImage> roots = new List<BioImage>();
+            for (int series = 0; series < seriesImages.Count; series++)
+            {
+                BioImage? cur = seriesImages[series];
+                BioImage? prev = series > 0 ? seriesImages[series - 1] : null;
+                if (series > 0 && IsContinuationSeries(prev, cur))
+                {
+                    cur?.Dispose();
+                    continue;
+                }
+
+                if (cur != null)
+                    roots.Add(cur);
+            }
+
+            return roots;
+        }
+
+        private static bool IsContinuationSeries(BioImage? prev, BioImage? cur)
+        {
+            if (prev == null || cur == null)
+                return false;
+            if (prev.Resolutions.Count == 0 || cur.Resolutions.Count == 0)
+                return false;
+
+            Resolution pr = prev.Resolutions[0];
+            Resolution cr = cur.Resolutions[0];
+            return pr.SizeX > cr.SizeX &&
+                   pr.SizeY > cr.SizeY &&
+                   pr.PixelFormat == cr.PixelFormat;
+        }
+
+        private void ShowImageView(BioImage im, string file, int series, int seriesCount)
+        {
+            if (seriesCount > 1)
+                im.Rename(GetSeriesDisplayName(file, series, seriesCount));
+
+            ImageView view = ImageView.Create(im);
+            if (!viewers.Contains(view))
+                viewers.Add(view);
+
+            Label dummy = new Gtk.Label(im.Filename);
+            dummy.Text = im.Filename;
+            dummy.UseMarkup = false;
+            dummy.Visible = false;
+            Label l = new Gtk.Label(im.Filename);
+            l.Text = im.Filename;
+            l.UseMarkup = false;
+            tabsView.AppendPage(dummy, l);
+            view.Present();
+        }
+
+        private async Task OpenPyramidRootsAsViewsAsync(string file)
+        {
+            List<BioImage> roots = await CollectPyramidRootsAsync(file);
+            for (int series = 0; series < roots.Count; series++)
+            {
+                ShowImageView(roots[series], file, series, roots.Count);
+            }
+        }
+
+        private async Task OpenPyramidRootsAsTabsAsync(string file)
+        {
+            List<BioImage> roots = await CollectPyramidRootsAsync(file);
+            for (int series = 0; series < roots.Count; series++)
+            {
+                BioImage im = roots[series];
+                if (roots.Count > 1)
+                    im.Rename(GetSeriesDisplayName(file, series, roots.Count));
+                Images.AddImage(im);
+                AddTab(im, file);
+            }
+        }
+
 #pragma warning disable 649
         [Builder.Object]
         public MenuBar ImageJMenu;
@@ -611,9 +755,7 @@ namespace BioGTK
             await Task.Yield();
             foreach (string f in filechooser.Filenames)
             {
-                BioImage b = await BioImage.OpenFile(f, new ZCT());
-                if (b != null)
-                    AddTab(b);
+                await OpenPyramidRootsAsViewsAsync(f);
             }
             StopProgress();
         }
@@ -626,8 +768,7 @@ namespace BioGTK
                 string url = box.GetUrl();
                 StartProgressHidden("Open URL", "Opening");
                 await Task.Yield();
-                BioImage b = await BioImage.OpenFile(url);
-                AddTab(b);
+                await OpenPyramidRootsAsViewsAsync(url);
                 StopProgress();
             }
             box.Destroy();
@@ -744,7 +885,7 @@ namespace BioGTK
                 if (Uri.TryCreate(uri, UriKind.Absolute, out Uri fileUri) && fileUri.IsFile)
                 {
                     string filePath = fileUri.LocalPath;
-                    AddTab(await BioImage.OpenFile(filePath));
+                    await OpenPyramidRootsAsTabsAsync(filePath);
                 }
             }
 
@@ -1409,9 +1550,7 @@ namespace BioGTK
             foreach (string item in sts)
             {
                 StartProgress("Open File", "Opening");
-                await BioImage.OpenAsync(item,true,true,true,0);
-                BioImage im = Images.GetImage(item);
-                AddTab(im, item);
+                await OpenPyramidRootsAsTabsAsync(item);
                 StopProgress();
             }
             BioLib.Recorder.Record("BioImage.OpenAsync(" + StrArray(sts) + ", false, true, true);");
@@ -1434,9 +1573,7 @@ namespace BioGTK
             foreach (string item in filechooser.Filenames)
             {
                 StartProgress("Open OME", "Opening");
-                await BioImage.OpenAsync(item, true, true, true,0);
-                BioImage im = Images.GetImage(item);
-                AddTab(im, item);
+                await OpenPyramidRootsAsTabsAsync(item);
                 StopProgress();
             }
             BioLib.Recorder.Record("BioImage.OpenAsync(" + StrArray(sts) + ", true, true, true);");
@@ -1459,13 +1596,7 @@ namespace BioGTK
             foreach (string item in filechooser.Filenames)
             {
                 StartProgress("Open OME", "Opening");
-                int s = BioImage.GetSeriesCount(item);
-                for (int i = 0; i < s; i++)
-                {
-                    await BioImage.OpenAsync(item, true, true, true, i);
-                    BioImage im = Images.GetImage(item);
-                    AddTab(im, item);
-                }
+                await OpenPyramidRootsAsTabsAsync(item);
             }
             tabsView.ShowAll();
             BioLib.Recorder.Record("BioImage.OpenAsync(" + StrArray(sts) + ", true, true, true);");
@@ -1489,9 +1620,7 @@ namespace BioGTK
             foreach (string item in filechooser.Filenames)
             {
                 StartProgress("Open OME Series", "Opening");
-                await BioImage.OpenAsync(item, false, true, true, 0);
-                BioImage im = Images.GetImage(item);
-                AddTab(im, item);
+                await OpenPyramidRootsAsTabsAsync(item);
                 StopProgress();
             }
             tabsView.Show();
@@ -2051,19 +2180,7 @@ namespace BioGTK
         /// @param tabName The filename of the image to add to tabcontrol
         public async void Open(string file)
         {
-            BioImage b = await BioImage.OpenFile(file);
-            ImageView view = ImageView.Create(b);
-            if (!viewers.Contains(App.viewer))
-                viewers.Add(view);
-            Label dummy = new Gtk.Label(b.Filename);
-            dummy.Text = b.Filename;
-            dummy.UseMarkup = false;
-            dummy.Visible = false;
-            Label l = new Gtk.Label(b.Filename);
-            l.Text = b.Filename;
-            l.UseMarkup = false;
-            tabsView.AppendPage(dummy, l);
-            view.Present();
+            await OpenPyramidRootsAsViewsAsync(file);
         }
         #endregion
 

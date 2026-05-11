@@ -19,6 +19,7 @@ namespace BioGTK
         /// <summary>True if the last UpdateViewAsync call was skipped because a render was already in progress.</summary>
         public bool LastRenderSkipped { get; private set; }
         private SkiaStitchingPipeline _stitchingPipeline;
+        private bool _disposed;
 
         // Current rendering state
         private SKImage _currentRenderedImage;
@@ -152,7 +153,7 @@ namespace BioGTK
             int width = 600,
             int height = 400)
         {
-            if (!_hasSource || _stitchingPipeline == null)
+            if (_disposed || !_hasSource || _stitchingPipeline == null)
                 return;
 
             // If a render is already in progress, record the skip and return.
@@ -190,7 +191,7 @@ namespace BioGTK
 
                 // If a request was skipped while we were running, reschedule so the
                 // view always ends up showing the latest coordinates.
-                if (LastRenderSkipped)
+                if (!_disposed && LastRenderSkipped)
                     Gtk.Application.Invoke((s, a) => App.viewer?.RequestDeferredRender());
             }
         }
@@ -473,6 +474,10 @@ namespace BioGTK
 
         public void Dispose()
         {
+            if (_disposed)
+                return;
+
+            _disposed = true;
             _currentRenderedImage?.Dispose();       
             _stitchingPipeline?.Dispose();
             _currentRenderedImage = null;

@@ -1013,7 +1013,9 @@ namespace BioGTK
             overviewImage = null;
 
             slideRenderer?.ClearCache();
+            slideRenderer = null;
             sKSlideRenderer?.Dispose();
+            sKSlideRenderer = null;
         }
 
         private static SkiaSharp.SKRect ToRectangle(float x1, float y1, float x2, float y2)
@@ -1027,8 +1029,11 @@ namespace BioGTK
         private bool refresh = false;
         SKImage overviewSKImage;
         private bool _viewerCleanupDone = false;
+        private bool _destroyRequested = false;
         private async Task PrefetchSurroundingTiles(Extent viewportExtent, int level)
         {
+            if (_viewerCleanupDone)
+                return;
             // Cancel any pending prefetch operations
             _tileFetchCancellation?.Cancel();
             _tileFetchCancellation = new CancellationTokenSource();
@@ -1123,10 +1128,14 @@ namespace BioGTK
         }
         public void RequestDeferredRender()
         {
+            if (_viewerCleanupDone)
+                return;
             ExecuteDeferredRender();
         }
         private void ExecuteDeferredRender()
         {
+            if (_viewerCleanupDone)
+                return;
             // Run directly if already on the GTK main thread so panning and zooming
             // update immediately. Post via Invoke only for background-thread callers.
             if (Thread.CurrentThread == _gtkMainThread)
@@ -1136,6 +1145,8 @@ namespace BioGTK
         }
         private void DoRender()
         {
+            if (_viewerCleanupDone)
+                return;
             if (SelectedImage?.isPyramidal != true) return;
 
             if (MacOS)
@@ -1160,7 +1171,7 @@ namespace BioGTK
                 {
                     _ = renderTask.ContinueWith(t =>
                     {
-                        if (!t.IsFaulted && _renderGeneration == myGeneration)
+                        if (!t.IsFaulted && !_viewerCleanupDone && _renderGeneration == myGeneration)
                             Gtk.Application.Invoke((s2, a2) => View?.QueueDraw());
                     });
                 }
@@ -1188,28 +1199,39 @@ namespace BioGTK
 
             try
             {
-                double fullResWidth = Math.Max(1, SelectedImage.Resolutions[0].SizeX);
-                double fullResHeight = Math.Max(1, SelectedImage.Resolutions[0].SizeY);
+                double imageWorldW = SelectedImage.Resolutions.Count > 0
+                    ? SelectedImage.Resolutions[0].SizeX
+                    : SelectedImage.SizeX;
+                double imageWorldH = SelectedImage.Resolutions.Count > 0
+                    ? SelectedImage.Resolutions[0].SizeY
+                    : SelectedImage.SizeY;
+
+                var schema = openSlide
+                    ? _openSlideBase?.Schema
+                    : _slideBase?.Schema;
+
+                if (schema?.Extent != null)
+                {
+                    imageWorldW = schema.Extent.Width;
+                    imageWorldH = schema.Extent.Height;
+                }
+
+                if (imageWorldW <= 0) imageWorldW = 1;
+                if (imageWorldH <= 0) imageWorldH = 1;
 
                 // The overview bitmap is a scaled representation of the full image,
-                // so the viewport rectangle must be mapped using level-0 pixel space.
-                double fullResX = PyramidalOrigin.X;
-                double fullResY = PyramidalOrigin.Y;
-                double fullResW = View.AllocatedWidth * Resolution;
-                double fullResH = View.AllocatedHeight * Resolution;
+                // so the viewport rectangle must be mapped in the same world-space
+                // units that GoToImage and the zoom/pan logic use.
+                double visibleLeft = PyramidalOrigin.X;
+                double visibleTop = PyramidalOrigin.Y;
+                double visibleRight = visibleLeft + (View.AllocatedWidth * Resolution);
+                double visibleBottom = visibleTop + (View.AllocatedHeight * Resolution);
 
-                // If the current viewport already shows the entire image, the
-                // overview indicator should fill the whole overview rather than
-                // shrinking to the image's raw extent inside the viewport.
-                double visibleLeft = fullResX;
-                double visibleTop = fullResY;
-                double visibleRight = fullResX + fullResW;
-                double visibleBottom = fullResY + fullResH;
                 paint.Color = SKColors.Yellow;
                 if (visibleLeft <= 0 &&
                     visibleTop <= 0 &&
-                    visibleRight >= fullResWidth &&
-                    visibleBottom >= fullResHeight)
+                    visibleRight >= imageWorldW &&
+                    visibleBottom >= imageWorldH)
                 {
                     paint.Style = SKPaintStyle.Stroke;
                     paint.StrokeWidth = 1f;
@@ -1218,13 +1240,13 @@ namespace BioGTK
                     return;
                 }
 
-                float ovScaleX = (float)overview.Width / (float)fullResWidth;
-                float ovScaleY = (float)overview.Height / (float)fullResHeight;
+                float ovScaleX = (float)overview.Width / (float)imageWorldW;
+                float ovScaleY = (float)overview.Height / (float)imageWorldH;
 
-                float ovX = (float)(fullResX * ovScaleX);
-                float ovY = (float)(fullResY * ovScaleY);
-                float ovW = (float)(fullResW * ovScaleX);
-                float ovH = (float)(fullResH * ovScaleY);
+                float ovX = (float)(visibleLeft * ovScaleX);
+                float ovY = (float)(visibleTop * ovScaleY);
+                float ovW = (float)((visibleRight - visibleLeft) * ovScaleX);
+                float ovH = (float)((visibleBottom - visibleTop) * ovScaleY);
 
                 // 4. Clamp to overview bounds
                 float rectLeft = Math.Max(0, ovX);
@@ -1535,7 +1557,13 @@ namespace BioGTK
                 ShowOverview = overviewImage != null;
 
                 Console.WriteLine($"Preview initialized: {ow}x{oh} from {srcW}x{srcH}");
-                Gtk.Application.Invoke((s, e) => { View?.QueueDraw(); View?.QueueDraw(); });
+                Gtk.Application.Invoke((s, e) =>
+                {
+                    if (_viewerCleanupDone)
+                        return;
+                    View?.QueueDraw();
+                    View?.QueueDraw();
+                });
             }
             catch (Exception ex)
             {
@@ -1957,6 +1985,7 @@ namespace BioGTK
 
         private void ImageView_DestroyEvent(object o, DestroyEventArgs args)
         {
+            _destroyRequested = true;
             // Guard: DeleteEvent already performed full cleanup. Only run if
             // this viewer is still registered (e.g. programmatic Destroy()
             // without going through the close button).
@@ -2366,6 +2395,13 @@ namespace BioGTK
         /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-events-delete.html.en
         private void ImageView_DeleteEvent(object o, DeleteEventArgs args)
         {
+            if (_destroyRequested)
+            {
+                args.RetVal = true;
+                return;
+            }
+
+            _destroyRequested = true;
             // Prevent GTK's default delete handling — we manage teardown ourselves.
             // Without this, GTK proceeds to destroy and then the TabsView
             // WindowStateEvent sees a non-visible viewer and calls Present(),
@@ -2384,9 +2420,7 @@ namespace BioGTK
                 App.tabsView.RemoveTab(item.Filename);
                 item.Dispose();
             }
-
-            this.Hide();
-            this.Destroy();
+            Hide();
         }
 
         /// When the user clicks on the "ID" button, a text input dialog is created and displayed. If
@@ -3180,42 +3214,41 @@ namespace BioGTK
         // Mouse wheel handler
         public void OnMouseWheel(object sender, ScrollEventArgs e)
         {
+            double mouseX = e?.Event?.X ?? PyramidalOrigin.X;
+            double mouseY = e?.Event?.Y ?? PyramidalOrigin.Y;
             if (e.Event.Direction == ScrollDirection.Up)
-                ZoomAtPoint(PyramidalOrigin.X, PyramidalOrigin.Y, false);
+                ZoomAtPoint(mouseX, mouseY, false);
             else if (e.Event.Direction == ScrollDirection.Down)
-                ZoomAtPoint(PyramidalOrigin.X, PyramidalOrigin.Y, true);
+                ZoomAtPoint(mouseX, mouseY, true);
         }
         public void ZoomAtPoint(double mouseX, double mouseY, bool zoomIn)
         {
-            if (SelectedImage == null) return;
-            float CurrentLevelWidth = SelectedImage.Resolutions[Level].SizeX;
-            float CurrentLevelHeight = SelectedImage.Resolutions[Level].SizeY;
-            // 1. Define zoom factor (e.g., 2.0x zoom steps)
-            float zoomFactor = zoomIn ? 2.0f : 0.5f;
+            if (SelectedImage == null || !SelectedImage.isPyramidal) return;
 
-            // 2. Get the current level's scale relative to Full Res (Level 0)
-            // Formula: CurrentLevelWidth / FullResWidth
-            double currentLevelScale = (double)CurrentLevelWidth / SelectedImage.Resolutions[0].SizeX;
+            int currentLevel = Level;
+            int nextLevel = zoomIn
+                ? Math.Max(0, currentLevel - 1)
+                : Math.Min(SelectedImage.Resolutions.Count - 1, currentLevel + 1);
 
-            // 3. Find the "World Point" (Full Res Level 0) currently under the mouse
-            // We add the origin to the mouse offset and then scale up to Level 0
-            double worldX = (PyramidalOrigin.X + mouseX) / currentLevelScale;
-            double worldY = (PyramidalOrigin.Y + mouseY) / currentLevelScale;
+            if (nextLevel == currentLevel)
+                return;
 
-            // 5. Get the NEW level's scale relative to Full Res
-            double newLevelScale = (double)CurrentLevelWidth / SelectedImage.Resolutions[0].SizeX;
+            double currentResolution = SelectedImage.GetUnitPerPixel(currentLevel);
+            double nextResolution = SelectedImage.GetUnitPerPixel(nextLevel);
+            if (currentResolution <= 0 || nextResolution <= 0)
+                return;
 
-            // 6. Calculate the NEW PyramidalOrigin
-            // To keep the world point at the same mouse position:
-            // NewOrigin = (WorldPoint * NewScale) - MouseOffset
-            float newOriginX = (float)(worldX * newLevelScale - mouseX);
-            float newOriginY = (float)(worldY * newLevelScale - mouseY);
+            // Preserve the world point under the cursor while stepping one level.
+            double worldX = PyramidalOrigin.X + (mouseX * currentResolution);
+            double worldY = PyramidalOrigin.Y + (mouseY * currentResolution);
 
-            // 7. Apply and Clamp (to ensure we don't scroll past image edges)
+            SelectedImage.Resolution = nextResolution;
             PyramidalOrigin = new PointD(
-                Math.Max(0, Math.Min(newOriginX, CurrentLevelWidth - AllocatedWidth)),
-                Math.Max(0, Math.Min(newOriginY, CurrentLevelHeight - AllocatedHeight))
+                worldX - (mouseX * nextResolution),
+                worldY - (mouseY * nextResolution)
             );
+
+            UpdateView();
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, mouseX, mouseY, zoomIn);
         }
         public double Resolution
@@ -4186,8 +4219,8 @@ namespace BioGTK
 
                         if (schema.Extent != null)
                         {
-                            imageWorldW = schema.Extent.Width * level0UPP;
-                            imageWorldH = schema.Extent.Height * level0UPP;
+                            imageWorldW = schema.Extent.Width;
+                            imageWorldH = schema.Extent.Height;
                         }
                     }
 
