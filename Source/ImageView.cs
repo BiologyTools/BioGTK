@@ -972,7 +972,7 @@ namespace BioGTK
         /// </summary>
         private void DrawOverview(SKCanvas canvas, SKPaint paint)
         {
-            var ims = BitmapToSKImage(overviewImage.GetImageRGBA());
+            var ims = BitmapToSKImage(overviewImage.GetImageRGBA(overviewImage.LittleEndian));
             paint.Style = SKPaintStyle.Fill;
             canvas.DrawImage(ims, 0, 0, paint);
 
@@ -1402,7 +1402,7 @@ namespace BioGTK
                         }
                         if (bitmap == null)
                             return;
-                        var bm = bitmap.GetImageRGBA();
+                        var bm = bitmap.GetImageRGBA(bitmap.LittleEndian);
                         SKImage skim = BitmapToSKImage(bm);
                         SKImages.Add(skim);
                         Bitmaps.Add(bm);
@@ -1454,7 +1454,7 @@ namespace BioGTK
                         }
                         if (bitmap == null)
                             return;
-                        var bm = bitmap.GetImageRGBA();
+                        var bm = bitmap.GetImageRGBA(bitmap.LittleEndian);
                         SKImage skim = BitmapToSKImage(bm);
                         SKImages.Add(skim);
                         Bitmaps.Add(bm);

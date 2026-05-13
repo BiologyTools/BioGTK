@@ -338,6 +338,37 @@ namespace BioGTK
 
                 int tW = schema.Resolutions[level].TileWidth;
                 int tH = schema.Resolutions[level].TileHeight;
+                int actualW = tW;
+                int actualH = tH;
+                try
+                {
+                    var levelRes = schema.Resolutions[level];
+                    double upp = levelRes.UnitsPerPixel;
+                    double clipMinX = Math.Max(tile.Extent.MinX, schema.Extent.MinX);
+                    double clipMaxX = Math.Min(tile.Extent.MaxX, schema.Extent.MaxX);
+                    double clipMinY = Math.Max(tile.Extent.MinY, schema.Extent.MinY);
+                    double clipMaxY = Math.Min(tile.Extent.MaxY, schema.Extent.MaxY);
+                    if (clipMaxX > clipMinX && clipMaxY > clipMinY && upp > 0)
+                    {
+                        actualW = Math.Max(1, (int)Math.Round((clipMaxX - clipMinX) / upp));
+                        actualH = Math.Max(1, (int)Math.Round((clipMaxY - clipMinY) / upp));
+                        actualW = Math.Min(actualW, tW);
+                        actualH = Math.Min(actualH, tH);
+                    }
+                }
+                catch
+                {
+                    actualW = tW;
+                    actualH = tH;
+                }
+
+                if (tileData.Length >= (long)tW * tH * 4 &&
+                    (actualW != tW || actualH != tH))
+                {
+                    tileData = CropBgraTile(tileData, tW, tH, actualW, actualH);
+                    tW = actualW;
+                    tH = actualH;
+                }
 
                 await RunOnGtkThreadAsync(() =>
                     _glArea.UploadTileTexture(tile.Index, tileData, tW, tH));
@@ -403,6 +434,22 @@ namespace BioGTK
                     _pendingTileFetches.Remove(tile.Index);
                 }
             }
+        }
+
+        private static byte[] CropBgraTile(byte[] src, int srcW, int srcH, int dstW, int dstH)
+        {
+            if (src == null || src.Length == 0 || srcW <= 0 || srcH <= 0 || dstW <= 0 || dstH <= 0)
+                return Array.Empty<byte>();
+            if (srcW == dstW && srcH == dstH)
+                return src;
+
+            int srcRowBytes = srcW * 4;
+            int dstRowBytes = dstW * 4;
+            byte[] cropped = new byte[dstRowBytes * dstH];
+            int copyRows = Math.Min(dstH, srcH);
+            for (int y = 0; y < copyRows; y++)
+                Buffer.BlockCopy(src, y * srcRowBytes, cropped, y * dstRowBytes, dstRowBytes);
+            return cropped;
         }
 
         private async Task EnsureGlobalDisplayRangeAsync(ZCT coordinate, int renderVersion, int renderLevel)
@@ -617,29 +664,48 @@ namespace BioGTK
             double r = schema.Resolutions[level].UnitsPerPixel;
             double level0UPP = schema.Resolutions.ContainsKey(0)
                 ? schema.Resolutions[0].UnitsPerPixel : r;
+            int tileWidthPx = schema.Resolutions[level].TileWidth;
+            int tileHeightPx = schema.Resolutions[level].TileHeight;
 
             var tileExtent = tile.Extent;
+            var clippedExtent = new Extent(
+                Math.Max(tileExtent.MinX, schema.Extent.MinX),
+                Math.Max(tileExtent.MinY, schema.Extent.MinY),
+                Math.Min(tileExtent.MaxX, schema.Extent.MaxX),
+                Math.Min(tileExtent.MaxY, schema.Extent.MaxY));
+            if (clippedExtent.MaxX <= clippedExtent.MinX || clippedExtent.MaxY <= clippedExtent.MinY)
+                return new TileRenderInfo(tile.Index, -9999, -9999, 0, 0);
+
+            float u0 = (float)Math.Clamp((clippedExtent.MinX - tileExtent.MinX) / (tileExtent.MaxX - tileExtent.MinX), 0.0, 1.0);
+            float u1 = (float)Math.Clamp((clippedExtent.MaxX - tileExtent.MinX) / (tileExtent.MaxX - tileExtent.MinX), 0.0, 1.0);
+            float v0 = (float)Math.Clamp((tileExtent.MaxY - clippedExtent.MaxY) / (tileExtent.MaxY - tileExtent.MinY), 0.0, 1.0);
+            float v1 = (float)Math.Clamp((tileExtent.MaxY - clippedExtent.MinY) / (tileExtent.MaxY - tileExtent.MinY), 0.0, 1.0);
+
+            // Match the cropped world-space quad to the matching sub-region of the
+            // padded tile texture so edge padding does not render as visible blocks.
+            if (tileWidthPx > 0 && tileHeightPx > 0)
+            {
+                u0 = (float)Math.Clamp(u0, 0f, 1f);
+                u1 = (float)Math.Clamp(u1, 0f, 1f);
+                v0 = (float)Math.Clamp(v0, 0f, 1f);
+                v1 = (float)Math.Clamp(v1, 0f, 1f);
+            }
+
             double tMinX = tileExtent.MinX;
             double tMaxX = tileExtent.MaxX;
             double tMinY = tileExtent.MinY;
             double tMaxY = tileExtent.MaxY;
 
-            // Render the full tile quad. The tile fetch already limits us to
-            // real intersecting tiles, and clipping here can shave off the last
-            // visible edge when the viewport sits near a tile boundary.
-            if (tMaxX <= tMinX || tMaxY <= tMinY)
-                return new TileRenderInfo(tile.Index, -9999, -9999, 0, 0);
-
             // Screen position: divide world coords by viewResolution to get pixels.
             double originScreenX = pyramidalOrigin.X / viewResolution;
             double originScreenY = pyramidalOrigin.Y / viewResolution;
 
-            float screenX      = (float)(tMinX /  viewResolution - originScreenX);
-            float screenY      = (float)(-tMaxY / viewResolution - originScreenY);
-            float screenWidth  = (float)((tMaxX - tMinX) / viewResolution);
-            float screenHeight = (float)((tMaxY - tMinY) / viewResolution);
+            float screenX      = (float)(clippedExtent.MinX /  viewResolution - originScreenX);
+            float screenY      = (float)(-clippedExtent.MaxY / viewResolution - originScreenY);
+            float screenWidth  = (float)((clippedExtent.MaxX - clippedExtent.MinX) / viewResolution);
+            float screenHeight = (float)((clippedExtent.MaxY - clippedExtent.MinY) / viewResolution);
 
-            return new TileRenderInfo(tile.Index, screenX, screenY, screenWidth, screenHeight);
+            return new TileRenderInfo(tile.Index, screenX, screenY, screenWidth, screenHeight, u0, v0, u1, v1);
         }
 
         public int CurrentLevel => _currentLevel;
