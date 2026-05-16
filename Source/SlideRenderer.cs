@@ -98,9 +98,10 @@ namespace BioGTK
             _uploadedTileInfos.Clear();
             _currentLevel = -1;
             _tileCache?.Clear();
-            _openTileCache?.Clear();
+            _openTileCache?.cache.cacheMap.Clear();
+
             _slideBase?.cache?.Clear();
-            _openSlideBase?.cache?.Clear();
+            _openSlideBase?.cache?.cache.cacheMap.Clear();
             _displayRangeSeedLevel = -1;
 
             lock (_pendingLevelSwitchLock)

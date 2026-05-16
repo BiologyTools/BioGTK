@@ -1747,6 +1747,8 @@ namespace BioGTK
         /// @return The tool that is being returned is the tool that is being used.
         public static Tool GetTool(string name)
         {
+            if (tools.Count == 0)
+                return null;
             if (tools.ContainsKey(name))
                 return (Tool)tools[name];
             else return tools[Tool.Type.move.ToString()];

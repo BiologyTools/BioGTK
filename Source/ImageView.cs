@@ -417,6 +417,8 @@ namespace BioGTK
         private MenuItem loop;
 #pragma warning restore 649
         #endregion
+
+
         private SKDrawingArea sk = new SKDrawingArea();
 
         public SlideGLArea glArea;
@@ -437,10 +439,20 @@ namespace BioGTK
         public static ImageView Create(BioImage bm)
         {
             Console.WriteLine("Creating ImageView for " + bm.file);
+            string gladePath = System.IO.Path.Combine(
+                System.IO.Path.GetDirectoryName(Environment.ProcessPath)!,
+                "Glade",
+                "ImageView.glade");
+            if (App.tools == null)
+                App.tools = Tools.Create();
+            Console.WriteLine("ImageView.Create: loading glade from " + gladePath);
+            Builder builder = new Builder();
+            builder.AddFromFile(gladePath);
+            Console.WriteLine("ImageView.Create: glade loaded");
 
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ImageView.glade", FileMode.Open));
-
-            ImageView v = new ImageView(builder, builder.GetObject("imageView").Handle, bm);
+            var imageViewObj = builder.GetObject("imageView");
+            Console.WriteLine("ImageView.Create: imageView object=" + (imageViewObj != null));
+            ImageView v = new ImageView(builder, imageViewObj.Handle, bm);
             v.Title = bm.Filename;
 
             return v;
@@ -450,9 +462,12 @@ namespace BioGTK
         a handle, and a BioImage object as parameters. */
         protected ImageView(Builder builder, IntPtr handle, BioImage im) : base(handle)
         {
+            Console.WriteLine("ImageView.ctor: begin");
             _builder = builder;
             App.viewer = this;
+            Console.WriteLine("ImageView.ctor: autoconnect");
             builder.Autoconnect(this);
+            Console.WriteLine("ImageView.ctor: autoconnect done");
             var gameWindowSettings = new GameWindowSettings()
             {
                 UpdateFrequency = 60,
@@ -461,6 +476,7 @@ namespace BioGTK
 
             if (OperatingSystem.IsMacOS())
             {
+                Console.WriteLine("ImageView.ctor: macos setup");
                 MacOS = true;
                 // Create the renderer bridge
                 View = new SKDrawingArea();
@@ -468,6 +484,7 @@ namespace BioGTK
             }
             else if (OperatingSystem.IsLinux())
             {
+                Console.WriteLine("ImageView.ctor: linux setup");
                 nativeSettings = new NativeWindowSettings()
                 {
                     ClientSize = new Vector2i(600, 400),
@@ -497,6 +514,7 @@ namespace BioGTK
             }
             else if (OperatingSystem.IsWindows())
             {
+                Console.WriteLine("ImageView.ctor: windows setup");
                 nativeSettings = new NativeWindowSettings()
                 {
                     ClientSize = new Vector2i(600, 400),
@@ -521,6 +539,7 @@ namespace BioGTK
 
             if (MacOS)
             {
+                Console.WriteLine("ImageView.ctor: attach macos view");
                 // View is the sole rendering surface on macOS for both pyramidal and non-pyramidal.
                 // Always attach it to the grid so the widget appears in the window layout.
                 View.Expand = true;
@@ -541,6 +560,7 @@ namespace BioGTK
             }
             else
             {
+                Console.WriteLine("ImageView.ctor: attach non-macos view");
                 // Set the source based on image type
                 if (im.OpenSlideBase != null)
                 {
@@ -566,6 +586,7 @@ namespace BioGTK
             
             if (!MacOS)
             {
+                Console.WriteLine("ImageView.ctor: show non-macos view");
                 if (im.isPyramidal)
                 {
                     View.WidthRequest = 600;
@@ -577,13 +598,16 @@ namespace BioGTK
             }
             else
             {
+                Console.WriteLine("ImageView.ctor: show macos view");
                 View.WidthRequest = 600;
                 View.HeightRequest = 400;
                 View.Show();
             }
+            Console.WriteLine("ImageView.ctor: add image");
             roi.Submenu = roiMenu;
             roi.ShowAll();
             AddImage(im);
+            Console.WriteLine("ImageView.ctor: added image");
             ShowMasks = true;
             pxWmicron = SelectedImage.PhysicalSizeX;
             pxHmicron = SelectedImage.PhysicalSizeY;
@@ -611,6 +635,7 @@ namespace BioGTK
                     GoToImage(SelectedIndex);
             });
 
+            Console.WriteLine("ImageView.ctor: end");
             //App.ApplyStyles(this);
         }
         /*
@@ -3555,7 +3580,7 @@ namespace BioGTK
                 pd = p;
                 return;
             }
-
+            if(App.tools!=null)
             App.tools.ToolMove(p, e);
             UpdateStatus();
             pd = p;
@@ -3773,6 +3798,7 @@ namespace BioGTK
                 }
             }
             UpdateStatus();
+
             App.tools.ToolDown(pointer, e);
             // On macOS pyramidal, a click alone doesn't change origin/resolution so there
             // is nothing to re-render. Avoid launching a spurious async pipeline invocation.
@@ -4497,7 +4523,7 @@ namespace BioGTK
                 Log($"[RebuildSchemaForWell] OpenSlideBase was null — schema not applied");
                 return;
             }
-
+            //OpenSlideBase op = new OpenSlideBase(SelectedImage.Filename);
             slideBase.Schema = newSchema;
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, b?.file ?? string.Empty, b?.Level ?? 0);
         }

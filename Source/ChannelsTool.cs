@@ -56,7 +56,8 @@ namespace BioGTK
         #region Constructors / Destructors
         public static ChannelsTool Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ChannelsTool.glade", FileMode.Open));
+            string s = System.IO.Path.GetDirectoryName(Environment.ProcessPath).Replace("\\", "/") + "/" + "Glade/ChannelsTool.glade";
+            Builder builder = new Builder(new FileStream(s, FileMode.Open));
             return new ChannelsTool(builder, builder.GetObject("chanTool").Handle);
         }
         /* Creating a new window and populating it with the values from the channels. */
