@@ -3294,7 +3294,14 @@ namespace BioGTK
                         UpdateView();
                     else if (View != null)
                     {
-                        UpdateImages();
+                        try
+                        {
+                            UpdateImages();
+                        }
+                        catch (Exception)
+                        {
+
+                        }
                         if (!MacOS)
                             glArea?.RequestRedraw();
                         else
