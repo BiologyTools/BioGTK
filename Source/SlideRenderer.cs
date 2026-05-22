@@ -151,8 +151,8 @@ namespace BioGTK
 
             try
             {
-            int renderVersion = _renderStateVersion;
-            using var tileFetchCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                int renderVersion = _renderStateVersion;
+                using var tileFetchCts = new CancellationTokenSource(RemoteTileFetchTimeout);
 
             var schema = _useOpenSlide ? _openSlideBase.Schema : _slideBase.Schema;
 

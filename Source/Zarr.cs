@@ -1311,35 +1311,24 @@ namespace BioLib
             }
             catch { }
 
-            int width = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeX : image.SizeX;
-            int height = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeY : image.SizeY;
-            if (width <= 0 || height <= 0)
+            int baseWidth = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeX : image.SizeX;
+            int baseHeight = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeY : image.SizeY;
+            if (baseWidth <= 0 || baseHeight <= 0)
                 return;
-
-            int sourceWidth = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeX : width;
-            int sourceHeight = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeY : height;
-            double scaleX = sourceWidth > 0 ? width / (double)sourceWidth : 1.0;
-            double scaleY = sourceHeight > 0 ? height / (double)sourceHeight : 1.0;
 
             int sizeT = Math.Max(1, image.SizeT);
             int sizeC = Math.Max(1, image.SizeC);
             int sizeZ = Math.Max(1, image.SizeZ);
-            int planePixels = width * height;
-            int planeStride = planePixels;
-            int zStride = planeStride;
-            int cStride = zStride * sizeZ;
-            int tStride = cStride * sizeC;
-
-            short[] labelVolume = new short[planePixels * sizeZ * sizeC * sizeT];
             var labelColors = new Dictionary<int, AForge.Color>();
-            int fallbackLabel = 1;
-            int probeCount = 0;
+            var roiEntries = new List<(ROI Roi, int LabelId)>();
 
             foreach (var roi in labelRois)
             {
-                int labelId = ParseLabelId(roi.Text, fallbackLabel++);
+                int labelId = ParseLabelId(roi.Text, roiEntries.Count + 1);
                 if (labelId <= 0)
                     continue;
+
+                roiEntries.Add((roi, labelId));
 
                 if (!labelColors.ContainsKey(labelId))
                 {
@@ -1350,82 +1339,13 @@ namespace BioLib
                         col = AForge.Color.FromArgb(96, 0, 255, 0);
                     labelColors[labelId] = col;
                 }
-
-                int z = Math.Clamp(roi.coord.Z, 0, sizeZ - 1);
-                int c = Math.Clamp(roi.coord.C, 0, sizeC - 1);
-                int t = Math.Clamp(roi.coord.T, 0, sizeT - 1);
-                int offset = (t * tStride) + (c * cStride) + (z * zStride);
-
-                if (probeCount < 4)
-                {
-                    try
-                    {
-                        int positiveCount = 0;
-                        int firstPosX = -1;
-                        int firstPosY = -1;
-                        int firstDstX = -1;
-                        int firstDstY = -1;
-                        if (roi.type == ROI.Type.Mask && roi.roiMask != null)
-                        {
-                            var mask = roi.roiMask;
-                            for (int py = 0; py < mask.Height; py++)
-                            {
-                                for (int px = 0; px < mask.Width; px++)
-                                {
-                                    if (mask.GetValue(px, py) <= 0)
-                                        continue;
-
-                                    positiveCount++;
-                                    if (firstPosX < 0)
-                                    {
-                                        firstPosX = px;
-                                        firstPosY = py;
-                                        firstDstX = (int)Math.Round((mask.X + px) * scaleX);
-                                        firstDstY = (int)Math.Round((mask.Y + py) * scaleY);
-                                    }
-                                }
-                            }
-                        }
-                        else if (TryGetRoiProbePoint(roi, scaleX, scaleY, out firstDstX, out firstDstY))
-                        {
-                            firstPosX = 0;
-                            firstPosY = 0;
-                            positiveCount = 1;
-                        }
-
-                        AppLog.Append("[SaveLabelOverlaysAsync.MaskProbe] roi=" + roi.roiID +
-                            " type=" + roi.type +
-                            " coord=" + z + "," + c + "," + t +
-                            " bbox=" + roi.BoundingBox.X + "," + roi.BoundingBox.Y + "," + roi.BoundingBox.W + "," + roi.BoundingBox.H +
-                            " scale=" + scaleX + "," + scaleY +
-                            " pos=" + positiveCount +
-                            " firstSrc=" + firstPosX + "," + firstPosY +
-                            " firstDst=" + firstDstX + "," + firstDstY +
-                            (roi.type == ROI.Type.Mask && roi.roiMask != null
-                                ? " sample=" + roi.roiMask.GetValue(0, 0) + "," +
-                                  roi.roiMask.GetValue(Math.Min(1, Math.Max(0, roi.roiMask.Width - 1)), Math.Min(1, Math.Max(0, roi.roiMask.Height - 1)))
-                                : ""));
-                    }
-                    catch { }
-                    probeCount++;
-                }
-                RasterizeRoi(labelVolume, width, height, roi, labelId, offset, scaleX, scaleY);
             }
-
-            try
-            {
-                int nonZero = 0;
-                for (int i = 0; i < labelVolume.Length; i++)
-                {
-                    if (labelVolume[i] != 0)
-                        nonZero++;
-                }
-                AppLog.Append("[SaveLabelOverlaysAsync] nonZero=" + nonZero +
-                    " volume=" + labelVolume.Length);
-            }
-            catch { }
 
             if (labelColors.Count == 0)
+                return;
+
+            var exportLevels = BuildExportLevels(image);
+            if (baseWidth <= 0 || baseHeight <= 0)
                 return;
 
             using var store = new ZarrNET.Core.Zarr.Store.LocalFileSystemStore(outputDir);
@@ -1438,7 +1358,14 @@ namespace BioLib
                 {
                     zarr_format = 3,
                     node_type   = "group",
-                    attributes   = new { labels = new[] { "0" } }
+                    attributes   = new
+                    {
+                        ome = new
+                        {
+                            version = "0.5",
+                            labels = new[] { "0" }
+                        }
+                    }
                 },
                 ct).ConfigureAwait(false);
 
@@ -1451,42 +1378,26 @@ namespace BioLib
                 })
                 .ToArray();
 
+            var labelAxes = new object[]
+            {
+                new { name = "t", type = "time" },
+                new { name = "c", type = "channel" },
+                new { name = "z", type = "space", unit = "micrometer" },
+                new { name = "y", type = "space", unit = "micrometer" },
+                new { name = "x", type = "space", unit = "micrometer" }
+            };
+
             var labelImageGroupDoc = new Dictionary<string, object?>
             {
+                ["version"] = "0.5",
                 ["multiscales"] = new[]
                 {
                     new
                     {
                         version = "0.5",
                         name = "0",
-                        axes = new object[]
-                        {
-                            new { name = "c", type = "channel" },
-                            new { name = "z", type = "space", unit = "micrometer" },
-                            new { name = "y", type = "space", unit = "micrometer" },
-                            new { name = "x", type = "space", unit = "micrometer" }
-                        },
-                        datasets = new[]
-                        {
-                            new
-                            {
-                                path = "0",
-                                coordinateTransformations = new object[]
-                                {
-                                    new
-                                    {
-                                        type = "scale",
-                                        scale = new[]
-                                        {
-                                            1.0,
-                                            image.PhysicalSizeZ > 0 ? image.PhysicalSizeZ : 1.0,
-                                            image.PhysicalSizeY > 0 ? image.PhysicalSizeY : 1.0,
-                                            image.PhysicalSizeX > 0 ? image.PhysicalSizeX : 1.0
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        axes = labelAxes,
+                        datasets = BuildV3Datasets(exportLevels)
                     }
                 },
                 ["image-label"] = new Dictionary<string, object?>
@@ -1494,80 +1405,131 @@ namespace BioLib
                     ["version"] = "0.5",
                     ["source"] = new Dictionary<string, object?>
                     {
-                        ["href"] = "../.."
+                        ["image"] = "../../"
                     },
                     ["colors"] = colors,
                     ["properties"] = Array.Empty<object>()
                 }
             };
 
-            var labelArrayDoc = new
-            {
-                zarr_format = 3,
-                node_type   = "array",
-                shape       = new long[] { sizeT, sizeC, sizeZ, height, width },
-                data_type   = "int16",
-                chunk_grid  = new
-                {
-                    name = "regular",
-                    configuration = new
-                    {
-                        chunk_shape = new[]
-                        {
-                            1,
-                            1,
-                            1,
-                            Math.Min(512, height),
-                            Math.Min(512, width)
-                        }
-                    }
-                },
-                chunk_key_encoding = new
-                {
-                    name = "default",
-                    configuration = new { separator = "/" }
-                },
-                fill_value = 0,
-                dimension_names = new[] { "t", "c", "z", "y", "x" },
-                codecs = new object[]
-                {
-                    new
-                    {
-                        name = "blosc",
-                        configuration = new
-                        {
-                            cname = "lz4",
-                            clevel = 5,
-                            shuffle = "byteshuffle",
-                            typesize = 2,
-                            blocksize = 0
-                        }
-                    }
-                },
-                attributes = labelImageGroupDoc
-            };
-
             await WriteJsonAsync(store, "labels/0/zarr.json", new
             {
                 zarr_format = 3,
                 node_type   = "group",
-                attributes  = labelImageGroupDoc
+                attributes  = new
+                {
+                    ome = labelImageGroupDoc
+                }
             }, ct).ConfigureAwait(false);
-
-            await WriteJsonAsync(store, "labels/0/0/zarr.json", labelArrayDoc, ct).ConfigureAwait(false);
 
             var labelGroup = await rootGroup.OpenGroupAsync("labels", ct).ConfigureAwait(false);
             var labelImageGroup = await labelGroup.OpenGroupAsync("0", ct).ConfigureAwait(false);
-            var labelArray = await labelImageGroup.OpenArrayAsync("0", ct).ConfigureAwait(false);
 
-            var labelBytes = new byte[labelVolume.Length * sizeof(short)];
-            Buffer.BlockCopy(labelVolume, 0, labelBytes, 0, labelBytes.Length);
+            for (int levelIndex = 0; levelIndex < exportLevels.Count; levelIndex++)
+            {
+                var exportLevel = exportLevels[levelIndex];
+                int levelWidth = exportLevel.SizeX;
+                int levelHeight = exportLevel.SizeY;
+                double scaleX = baseWidth > 0 ? levelWidth / (double)baseWidth : 1.0;
+                double scaleY = baseHeight > 0 ? levelHeight / (double)baseHeight : 1.0;
 
-            await labelArray.WriteRegionAsync(
-                new long[] { 0, 0, 0, 0, 0 },
-                new long[] { sizeT, sizeC, sizeZ, height, width },
-                labelBytes,
-                ct).ConfigureAwait(false);
+                int planePixels = levelWidth * levelHeight;
+                int planeStride = planePixels;
+                int zStride = planeStride;
+                int cStride = zStride * sizeZ;
+                int tStride = cStride * sizeC;
+
+                var labelVolume = new short[planePixels * sizeZ * sizeC * sizeT];
+                int probeCount = 0;
+
+                foreach (var entry in roiEntries)
+                {
+                    var roi = entry.Roi;
+                    int labelId = entry.LabelId;
+
+                    int z = Math.Clamp(roi.coord.Z, 0, sizeZ - 1);
+                    int c = Math.Clamp(roi.coord.C, 0, sizeC - 1);
+                    int t = Math.Clamp(roi.coord.T, 0, sizeT - 1);
+                    int offset = (t * tStride) + (c * cStride) + (z * zStride);
+
+                    if (probeCount < 2)
+                    {
+                        try
+                        {
+                            int firstDstX = -1;
+                            int firstDstY = -1;
+                            if (TryGetRoiProbePoint(roi, scaleX, scaleY, out firstDstX, out firstDstY))
+                            {
+                                AppLog.Append("[SaveLabelOverlaysAsync.LevelProbe] level=" + levelIndex +
+                                    " roi=" + roi.roiID +
+                                    " dst=" + firstDstX + "," + firstDstY +
+                                    " scale=" + scaleX + "," + scaleY);
+                            }
+                        }
+                        catch { }
+                        probeCount++;
+                    }
+
+                    RasterizeRoi(labelVolume, levelWidth, levelHeight, roi, labelId, offset, scaleX, scaleY);
+                }
+
+                var levelArrayDoc = new
+                {
+                    zarr_format = 3,
+                    node_type = "array",
+                    shape = new long[] { sizeT, sizeC, sizeZ, levelHeight, levelWidth },
+                    data_type = "int16",
+                    chunk_grid = new
+                    {
+                        name = "regular",
+                        configuration = new
+                        {
+                            chunk_shape = new[]
+                            {
+                                1,
+                                1,
+                                1,
+                                Math.Min(512, levelHeight),
+                                Math.Min(512, levelWidth)
+                            }
+                        }
+                    },
+                    chunk_key_encoding = new
+                    {
+                        name = "default",
+                        configuration = new { separator = "/" }
+                    },
+                    fill_value = 0,
+                    dimension_names = new[] { "t", "c", "z", "y", "x" },
+                    codecs = new object[]
+                    {
+                        new
+                        {
+                            name = "blosc",
+                            configuration = new
+                            {
+                                cname = "lz4",
+                                clevel = 5,
+                                shuffle = "byteshuffle",
+                                typesize = 2,
+                                blocksize = 0
+                            }
+                        }
+                    }
+                };
+
+                await WriteJsonAsync(store, $"labels/0/{levelIndex}/zarr.json", levelArrayDoc, ct).ConfigureAwait(false);
+
+                var labelArray = await labelImageGroup.OpenArrayAsync(levelIndex.ToString(), ct).ConfigureAwait(false);
+                var labelBytes = new byte[labelVolume.Length * sizeof(short)];
+                Buffer.BlockCopy(labelVolume, 0, labelBytes, 0, labelBytes.Length);
+
+                await labelArray.WriteRegionAsync(
+                    new long[] { 0, 0, 0, 0, 0 },
+                    new long[] { sizeT, sizeC, sizeZ, levelHeight, levelWidth },
+                    labelBytes,
+                    ct).ConfigureAwait(false);
+            }
 
             WriteText(Path.Combine(outputDir, "labels", ".zgroup"), JsonSerializer.Serialize(new { zarr_format = 2 }, new JsonSerializerOptions { WriteIndented = true }));
             WriteText(Path.Combine(outputDir, "labels", ".zattrs"), JsonSerializer.Serialize(new { labels = new[] { "0" } }, new JsonSerializerOptions { WriteIndented = true }));
@@ -1577,8 +1539,8 @@ namespace BioLib
             var labelV2Array = new
             {
                 zarr_format = 2,
-                shape = new long[] { sizeT, sizeC, sizeZ, height, width },
-                chunks = new[] { 1, 1, 1, Math.Min(512, height), Math.Min(512, width) },
+                shape = new long[] { sizeT, sizeC, sizeZ, baseHeight, baseWidth },
+                chunks = new[] { 1, 1, 1, Math.Min(512, baseHeight), Math.Min(512, baseWidth) },
                 dtype = "<i2",
                 compressor = new
                 {

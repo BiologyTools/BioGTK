@@ -28,6 +28,7 @@ namespace BioGTK
         private ZCT _lastCoordinate;
         private int _lastWidth;
         private int _lastHeight;
+        private volatile int _renderStateVersion;
 
         // Source tracking
         private OpenSlideGTK.OpenSlideBase _openSlideSource;
@@ -130,6 +131,7 @@ namespace BioGTK
         /// </summary>
         private void ClearCurrentSource()
         {
+            Interlocked.Increment(ref _renderStateVersion);
             _currentRenderedImage?.Dispose();
             _currentRenderedImage = null;
 
@@ -137,6 +139,15 @@ namespace BioGTK
             _stitchingPipeline = null;
 
             _hasSource = false;
+        }
+
+        /// <summary>
+        /// Marks any in-flight render as stale so the next viewport update can
+        /// replace it without the old result winning the race.
+        /// </summary>
+        public void InvalidateRenderState()
+        {
+            Interlocked.Increment(ref _renderStateVersion);
         }
 
         #endregion
@@ -166,6 +177,7 @@ namespace BioGTK
 
             // We hold the semaphore — clear the skip flag and run.
             LastRenderSkipped = false;
+            int renderVersion = _renderStateVersion;
 
             try
             {
@@ -178,7 +190,7 @@ namespace BioGTK
                 _lastWidth = width;
                 _lastHeight = height;
 
-                await RenderFullQualityAsync(origin, resolution, coordinate, width, height);
+                await RenderFullQualityAsync(origin, resolution, coordinate, width, height, renderVersion);
             }
             catch (Exception ex)
             {
@@ -246,7 +258,8 @@ namespace BioGTK
             double resolution,
             ZCT coordinate,
             int width = 600,
-            int height = 400)
+            int height = 400,
+            int renderVersion = 0)
         {
             try
             {
@@ -258,6 +271,12 @@ namespace BioGTK
                     width,
                     height
                 );
+
+                if (renderVersion != _renderStateVersion)
+                {
+                    stitchedImage?.Dispose();
+                    return;
+                }
 
                 if (stitchedImage != null)
                 {

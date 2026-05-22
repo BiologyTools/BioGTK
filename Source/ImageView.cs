@@ -1155,7 +1155,27 @@ namespace BioGTK
         {
             if (_viewerCleanupDone)
                 return;
-            ExecuteDeferredRender();
+            if (System.Threading.Interlocked.Exchange(ref _deferredRenderQueued, 1) == 1)
+                return;
+
+            GLib.Timeout.Add(16, () =>
+            {
+                if (_viewerCleanupDone)
+                {
+                    System.Threading.Interlocked.Exchange(ref _deferredRenderQueued, 0);
+                    return false;
+                }
+
+                try
+                {
+                    ExecuteDeferredRender();
+                }
+                finally
+                {
+                    System.Threading.Interlocked.Exchange(ref _deferredRenderQueued, 0);
+                }
+                return false;
+            });
         }
         private void ExecuteDeferredRender()
         {
@@ -1365,6 +1385,7 @@ namespace BioGTK
         // Incremented each time a new macOS pyramidal render is requested.
         // ContinueWith callbacks check this to discard stale results.
         private volatile int _renderGeneration = 0;
+        private int _deferredRenderQueued = 0;
         // Set to true while GoToImage is applying a batch of origin/resolution changes
         // so that intermediate setter calls don't each fire a separate UpdateView.
         private bool _suppressViewUpdates = false;
@@ -1540,9 +1561,12 @@ namespace BioGTK
                 return;
 
             slideRenderer?.InvalidateRenderState();
+            sKSlideRenderer?.InvalidateRenderState();
             SelectedImage.InvalidateTileCache();
             slideRenderer?.ClearCache();
+            sKSlideRenderer?.ClearCache();
             SelectedImage.ZarrDisplayMax = 0;
+            InitPreview();
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, SelectedImage?.file ?? string.Empty);
         }
         Rectangle overview;
@@ -1806,13 +1830,14 @@ namespace BioGTK
             if (src == null)
                 return null;
 
-            Bitmap previewBitmap = src;
+            Bitmap previewBitmap = NormalizeOverviewBitmap(src);
 
             try
             {
-                // Reuse BioLib's bitmap-to-Skia conversion so the overview uses
-                // the same channel ordering as the main image path.
-                using (var fullSK = BioImage.BitmapToSKImage(previewBitmap))
+                // Match the main render path: normalize to RGBA first, then
+                // hand Skia a 32-bit BGRA bitmap.
+                using var rgbaBitmap = previewBitmap.GetImageRGBA(previewBitmap.LittleEndian);
+                using (var fullSK = BioImage.BitmapToSKImage(rgbaBitmap))
                 {
                     using var scaled = new SKBitmap(destW, destH, SKColorType.Bgra8888, SKAlphaType.Premul);
                     fullSK.ScalePixels(scaled.PeekPixels(), SKFilterQuality.Low);
@@ -1821,8 +1846,185 @@ namespace BioGTK
             }
             finally
             {
+                if (!ReferenceEquals(previewBitmap, src))
+                    previewBitmap?.Dispose();
                 src.Dispose();
             }
+        }
+
+        private Bitmap NormalizeOverviewBitmap(Bitmap src)
+        {
+            if (src == null)
+                return null;
+
+            if (src.PixelFormat != AForge.PixelFormat.Format16bppGrayScale &&
+                src.PixelFormat != AForge.PixelFormat.Format48bppRgb &&
+                src.PixelFormat != AForge.PixelFormat.Format24bppRgb &&
+                src.PixelFormat != AForge.PixelFormat.Format32bppArgb &&
+                src.PixelFormat != AForge.PixelFormat.Format32bppPArgb &&
+                src.PixelFormat != AForge.PixelFormat.Format32bppRgb)
+                return src;
+
+            ushort displayMax = 0;
+            if (SelectedImage?.ZarrDisplayMax > 0 && SelectedImage.ZarrDisplayMax <= ushort.MaxValue)
+                displayMax = (ushort)SelectedImage.ZarrDisplayMax;
+
+            if (displayMax == 0)
+            {
+                displayMax = ComputeOverviewDisplayMax(src);
+            }
+
+            if (displayMax == 0)
+                displayMax = 1;
+
+            if (src.PixelFormat == AForge.PixelFormat.Format16bppGrayScale)
+                return NormalizeGray16ToArgb(src, displayMax);
+
+            if (src.PixelFormat == AForge.PixelFormat.Format48bppRgb)
+                return NormalizeRgb48ToArgb(src, displayMax);
+
+            return NormalizePackedRgbToArgb(src, displayMax);
+        }
+
+        private static Bitmap NormalizeGray16ToArgb(Bitmap src, ushort displayMax)
+        {
+            byte[] bytes = src.Bytes;
+            if (bytes == null || bytes.Length == 0)
+                return src;
+
+            int pixelCount = src.Width * src.Height;
+            if (pixelCount <= 0)
+                return src;
+
+            byte[] bgra = new byte[pixelCount * 4];
+            bool littleEndian = src.LittleEndian;
+
+            for (int srcIndex = 0, dstIndex = 0; srcIndex + 1 < bytes.Length && dstIndex + 3 < bgra.Length; srcIndex += 2, dstIndex += 4)
+            {
+                ushort value = littleEndian
+                    ? (ushort)(bytes[srcIndex] | (bytes[srcIndex + 1] << 8))
+                    : (ushort)((bytes[srcIndex] << 8) | bytes[srcIndex + 1]);
+                byte gray = (byte)Math.Min(255, (value * 255) / displayMax);
+                bgra[dstIndex + 0] = gray;
+                bgra[dstIndex + 1] = gray;
+                bgra[dstIndex + 2] = gray;
+                bgra[dstIndex + 3] = 255;
+            }
+
+            return new Bitmap(src.Width, src.Height, AForge.PixelFormat.Format32bppArgb, bgra, new ZCT(), "");
+        }
+
+        private static Bitmap NormalizeRgb48ToArgb(Bitmap src, ushort displayMax)
+        {
+            byte[] bytes = src.Bytes;
+            if (bytes == null || bytes.Length == 0)
+                return src;
+
+            int pixelCount = src.Width * src.Height;
+            if (pixelCount <= 0)
+                return src;
+
+            byte[] bgra = new byte[pixelCount * 4];
+            bool littleEndian = src.LittleEndian;
+
+            for (int srcIndex = 0, dstIndex = 0; srcIndex + 5 < bytes.Length && dstIndex + 3 < bgra.Length; srcIndex += 6, dstIndex += 4)
+            {
+                ushort r = littleEndian
+                    ? (ushort)(bytes[srcIndex + 0] | (bytes[srcIndex + 1] << 8))
+                    : (ushort)((bytes[srcIndex + 0] << 8) | bytes[srcIndex + 1]);
+                ushort g = littleEndian
+                    ? (ushort)(bytes[srcIndex + 2] | (bytes[srcIndex + 3] << 8))
+                    : (ushort)((bytes[srcIndex + 2] << 8) | bytes[srcIndex + 3]);
+                ushort b = littleEndian
+                    ? (ushort)(bytes[srcIndex + 4] | (bytes[srcIndex + 5] << 8))
+                    : (ushort)((bytes[srcIndex + 4] << 8) | bytes[srcIndex + 5]);
+
+                bgra[dstIndex + 0] = (byte)Math.Min(255, (b * 255) / displayMax);
+                bgra[dstIndex + 1] = (byte)Math.Min(255, (g * 255) / displayMax);
+                bgra[dstIndex + 2] = (byte)Math.Min(255, (r * 255) / displayMax);
+                bgra[dstIndex + 3] = 255;
+            }
+
+            return new Bitmap(src.Width, src.Height, AForge.PixelFormat.Format32bppArgb, bgra, new ZCT(), "");
+        }
+
+        private static Bitmap NormalizePackedRgbToArgb(Bitmap src, ushort displayMax)
+        {
+            byte[] bytes = src.Bytes;
+            if (bytes == null || bytes.Length == 0)
+                return src;
+
+            int pixelCount = src.Width * src.Height;
+            if (pixelCount <= 0)
+                return src;
+
+            byte[] bgra = new byte[pixelCount * 4];
+            int srcChannels = bytes.Length >= pixelCount * 4 ? 4 : 3;
+            int srcStride = srcChannels == 4 ? 4 : 3;
+
+            for (int srcIndex = 0, dstIndex = 0; dstIndex + 3 < bgra.Length && srcIndex + srcStride - 1 < bytes.Length; srcIndex += srcStride, dstIndex += 4)
+            {
+                byte b;
+                byte g;
+                byte r;
+                byte a = 255;
+
+                if (srcStride == 4)
+                {
+                    b = bytes[srcIndex + 0];
+                    g = bytes[srcIndex + 1];
+                    r = bytes[srcIndex + 2];
+                    a = bytes[srcIndex + 3];
+                }
+                else
+                {
+                    b = bytes[srcIndex + 0];
+                    g = bytes[srcIndex + 1];
+                    r = bytes[srcIndex + 2];
+                }
+
+                bgra[dstIndex + 0] = (byte)Math.Min(255, (b * 255) / Math.Max((ushort)1, displayMax));
+                bgra[dstIndex + 1] = (byte)Math.Min(255, (g * 255) / Math.Max((ushort)1, displayMax));
+                bgra[dstIndex + 2] = (byte)Math.Min(255, (r * 255) / Math.Max((ushort)1, displayMax));
+                bgra[dstIndex + 3] = a;
+            }
+
+            return new Bitmap(src.Width, src.Height, AForge.PixelFormat.Format32bppArgb, bgra, new ZCT(), "");
+        }
+
+        private static ushort ComputeOverviewDisplayMax(Bitmap src)
+        {
+            if (src == null || src.Bytes == null || src.Bytes.Length == 0)
+                return 1;
+
+            byte[] bytes = src.Bytes;
+            bool littleEndian = src.LittleEndian;
+
+            if (src.PixelFormat == AForge.PixelFormat.Format16bppGrayScale ||
+                src.PixelFormat == AForge.PixelFormat.Format48bppRgb)
+            {
+                ushort max = 0;
+                for (int i = 0; i + 1 < bytes.Length; i += 2)
+                {
+                    ushort value = littleEndian
+                        ? (ushort)(bytes[i] | (bytes[i + 1] << 8))
+                        : (ushort)((bytes[i] << 8) | bytes[i + 1]);
+                    if (value > max)
+                        max = value;
+                }
+                return max == 0 ? (ushort)1 : max;
+            }
+
+            int stride = bytes.Length >= src.Width * src.Height * 4 ? 4 : 3;
+            byte maxByte = 0;
+            for (int i = 0; i + stride - 1 < bytes.Length; i += stride)
+            {
+                if (bytes[i + 0] > maxByte) maxByte = bytes[i + 0];
+                if (bytes[i + 1] > maxByte) maxByte = bytes[i + 1];
+                if (bytes[i + 2] > maxByte) maxByte = bytes[i + 2];
+            }
+
+            return maxByte == 0 ? (ushort)1 : maxByte;
         }
         #region Handlers
 
@@ -3226,8 +3428,9 @@ namespace BioGTK
 
                 if (SelectedImage?.isPyramidal == true)
                 {
+                    slideRenderer?.InvalidateRenderState();
+                    sKSlideRenderer?.InvalidateRenderState();
                     UpdateView();
-                    UpdateImages();
                 }
                 else if (View != null)
                 {
@@ -3263,17 +3466,9 @@ namespace BioGTK
             if (currentResolution <= 0 || nextResolution <= 0)
                 return;
 
-            // Preserve the world point under the cursor while stepping one level.
-            double worldX = PyramidalOrigin.X + (mouseX * currentResolution);
-            double worldY = PyramidalOrigin.Y + (mouseY * currentResolution);
-
-            SelectedImage.Resolution = nextResolution;
-            PyramidalOrigin = new PointD(
-                worldX - (mouseX * nextResolution),
-                worldY - (mouseY * nextResolution)
-            );
-
-            UpdateView();
+            // Batch the level/origin change so zoom only triggers one viewport
+            // update instead of two separate renders.
+            SetResolution(nextResolution, new PointD(mouseX, mouseY));
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, mouseX, mouseY, zoomIn);
         }
         public double Resolution
@@ -3391,9 +3586,12 @@ namespace BioGTK
             else if (SelectedImage.Type == BioImage.ImageType.pyramidal || 
                      SelectedImage.Type == BioImage.ImageType.well)
             {
+                string wellStatus = SelectedImage.Type == BioImage.ImageType.well
+                    ? ", WellIndex:" + SelectedImage.WellIndex
+                    : string.Empty;
                 statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
                 mousePoint + mouseColor + ", " + SelectedImage.Resolutions[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") "
-                + PyramidalOrigin.X.ToString("N2") + "," + PyramidalOrigin.Y.ToString("N2") + " , Level:" + Level + " Res:" + Resolution;
+                + PyramidalOrigin.X.ToString("N2") + "," + PyramidalOrigin.Y.ToString("N2") + " , Level:" + Level + " Res:" + Resolution + wellStatus;
             }
         }
         /// It updates the view.
