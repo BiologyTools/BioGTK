@@ -34,6 +34,9 @@ namespace BioLib
     public static class Zarr
     {
         private static int s_debugTileLogs;
+        private static readonly object s_labelColorLock = new();
+        private static readonly Random s_labelColorRandom = new(unchecked((int)(DateTime.UtcNow.Ticks ^ Environment.TickCount)));
+        private static readonly Dictionary<int, Color> s_generatedLabelColors = new();
 
         private sealed record ExportLevelInfo(
             int SourceIndex,
@@ -1336,7 +1339,7 @@ namespace BioLib
                     if (col.A == 0)
                         col = roi.strokeColor;
                     if (col.A == 0)
-                        col = AForge.Color.FromArgb(96, 0, 255, 0);
+                        col = GetFallbackLabelColor(labelId);
                     labelColors[labelId] = col;
                 }
             }
@@ -1682,9 +1685,14 @@ namespace BioLib
                         if (sizeX <= 0 || sizeY <= 0)
                             continue;
 
+                        int baseWidth = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeX : image.SizeX;
+                        int baseHeight = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeY : image.SizeY;
                         double physX = image.PhysicalSizeX > 0 ? image.PhysicalSizeX : 1.0;
                         double physY = image.PhysicalSizeY > 0 ? image.PhysicalSizeY : 1.0;
-                        var color = PickLabelColor(labelNode.ImageLabelMetadata);
+                        double widthScale = sizeX > 0 ? baseWidth / (double)sizeX : 1.0;
+                        double heightScale = sizeY > 0 ? baseHeight / (double)sizeY : 1.0;
+                        physX *= widthScale;
+                        physY *= heightScale;
 
                         try
                         {
@@ -1734,6 +1742,7 @@ namespace BioLib
                                         {
                                             int labelId = kv.Key;
                                             byte[] maskData = kv.Value;
+                                            var color = PickLabelColor(labelNode.ImageLabelMetadata, labelId);
 
                                             var mask = new ROI.Mask(maskData, sizeX, sizeY, physX, physY, 0, 0);
                                             var roi = new ROI
@@ -2520,12 +2529,15 @@ namespace BioLib
                    string.Equals(dataType, "float64", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static Color PickLabelColor(ImageLabelMetadata metadata)
+        private static Color PickLabelColor(ImageLabelMetadata metadata, int labelValue)
         {
             if (metadata?.Colors != null)
             {
                 foreach (var entry in metadata.Colors)
                 {
+                    if (entry.LabelValue != labelValue)
+                        continue;
+
                     var rgba = entry.Rgba;
                     if (rgba != null && rgba.Length >= 4 &&
                         (rgba[0] != 0 || rgba[1] != 0 || rgba[2] != 0 || rgba[3] != 0))
@@ -2535,7 +2547,50 @@ namespace BioLib
                 }
             }
 
-            return Color.FromArgb(96, 0, 255, 0);
+            return GetFallbackLabelColor(labelValue);
+        }
+
+        private static Color GetFallbackLabelColor(int labelValue)
+        {
+            lock (s_labelColorLock)
+            {
+                if (s_generatedLabelColors.TryGetValue(labelValue, out var cached))
+                    return cached;
+
+                var color = ColorFromHsv((s_labelColorRandom.NextDouble() + (labelValue * 0.6180339887498949)) % 1.0);
+                s_generatedLabelColors[labelValue] = color;
+                return color;
+            }
+        }
+
+        private static Color ColorFromHsv(double hue)
+        {
+            double saturation = 0.65 + (s_labelColorRandom.NextDouble() * 0.2);
+            double value = 0.80 + (s_labelColorRandom.NextDouble() * 0.15);
+            hue = (hue % 1.0 + 1.0) % 1.0;
+            double h = hue * 6.0;
+            int sector = (int)Math.Floor(h);
+            double fraction = h - sector;
+            double p = value * (1.0 - saturation);
+            double q = value * (1.0 - saturation * fraction);
+            double t = value * (1.0 - saturation * (1.0 - fraction));
+
+            double r, g, b;
+            switch (sector % 6)
+            {
+                case 0: r = value; g = t; b = p; break;
+                case 1: r = q; g = value; b = p; break;
+                case 2: r = p; g = value; b = t; break;
+                case 3: r = p; g = q; b = value; break;
+                case 4: r = t; g = p; b = value; break;
+                default: r = value; g = p; b = q; break;
+            }
+
+            return Color.FromArgb(
+                96,
+                (byte)Math.Clamp((int)Math.Round(r * 255.0), 0, 255),
+                (byte)Math.Clamp((int)Math.Round(g * 255.0), 0, 255),
+                (byte)Math.Clamp((int)Math.Round(b * 255.0), 0, 255));
         }
 
         // =====================================================================

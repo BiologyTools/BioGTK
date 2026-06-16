@@ -21,7 +21,7 @@
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>Fixed overview, added Fiji.NET as well as full Zarr support.</PackageReleaseNotes>
+    <PackageReleaseNotes>BioGTK 6.6.0 adds full Zarr support, including ROI, label, well-plate, and Fiji-compatible metadata handling. This release also improves pyramidal image navigation with better overview rendering and Go To Image fitting, and refreshes ImageView rendering for 48 bpp, threshold updates, and stale tile protection.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
   
@@ -477,13 +477,13 @@
     <PackageReference Include="OpenTK.Windowing.Common" Version="4.9.4" />
     <PackageReference Include="OpenTK.Windowing.Desktop" Version="4.9.4" />
     <PackageReference Include="ScottPlot" Version="5.1.58" />
-    <PackageReference Include="SkiaSharp" Version="3.119.2" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.2" />
-    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.119.2" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.2" />
-    <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.119.2" />
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" />
+    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.119.4" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.4" />
+    <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.119.4" />
     <PackageReference Include="TorchSharp-cpu" Version="0.107.0" />
-    <PackageReference Include="YamlDotNet" Version="17.1.0" />  
+    <PackageReference Include="YamlDotNet" Version="18.0.0" />  
   </ItemGroup>
 
   <ItemGroup>

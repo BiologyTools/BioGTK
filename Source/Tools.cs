@@ -70,11 +70,9 @@ namespace BioGTK
             get
             {
                 List<ROI> rs = new List<ROI>();
-                foreach (var item in ImageView.SelectedImage.Annotations)
-                {
-                    if (item.Selected)
+                foreach (var item in GetSelectableRois(ImageView.SelectedImage))
+                    if (item != null && item.Selected)
                         rs.Add(item);
-                }
                 if (rs.Count > 0)
                     roi = rs[0];
                 return roi;
@@ -96,11 +94,9 @@ namespace BioGTK
                 rois.Clear();
                 for (int i = 0; i < Images.images.Count; i++)
                 {
-                    for (int r = 0; r < Images.images[i].Annotations.Count; r++)
-                    {
-                        if (Images.images[i].Annotations[r].Selected)
-                            rois.Add(Images.images[i].Annotations[r]);
-                    }
+                    foreach (var item in GetSelectableRois(Images.images[i]))
+                        if (item != null && item.Selected)
+                            rois.Add(item);
                 }
                 return rois;
             }
@@ -109,6 +105,29 @@ namespace BioGTK
                 rois.Clear();
                 rois.AddRange(value);
             }
+        }
+        public static bool HitTestMask(ROI ann, PointD worldPoint)
+        {
+            if (ann == null || ann.type != ROI.Type.Mask || ann.roiMask == null)
+                return false;
+
+            double x = ann.X;
+            double y = ann.Y;
+            double w = ann.W;
+            double h = ann.H;
+            if (worldPoint.X < x || worldPoint.Y < y ||
+                worldPoint.X > x + w || worldPoint.Y > y + h)
+                return false;
+
+            if (ann.roiMask.PhysicalSizeX == 0 || ann.roiMask.PhysicalSizeY == 0)
+                return false;
+
+            int mx = (int)Math.Floor((worldPoint.X - x) / ann.roiMask.PhysicalSizeX);
+            int my = (int)Math.Floor((worldPoint.Y - y) / ann.roiMask.PhysicalSizeY);
+            if (mx < 0 || my < 0 || mx >= ann.roiMask.Width || my >= ann.roiMask.Height)
+                return false;
+
+            return ann.roiMask.IsSelected(mx, my);
         }
         void AddROI(ROI roi)
         {
@@ -480,13 +499,17 @@ namespace BioGTK
 
             App.viewer.MouseDown = e;
             bool ctrl = buts.Event.State.HasFlag(ModifierType.ControlMask);
+            var selectableRois = GetSelectableRois(ImageView.SelectedImage).ToList();
+            var selectedRois = selectableRois.Where(r => r != null && r.Selected).Reverse().ToList();
+            var unselectedRois = selectableRois.Where(r => r != null && !r.Selected).Reverse().ToList();
 
             selectedROI = null;
 
             // 1 — Vertex hit test on selected ROIs
-            foreach (var ann in ImageView.SelectedImage.Annotations)
+            foreach (var ann in selectedRois)
             {
-                if (ann == null || !ann.Selected) continue;
+                if (ann.type == ROI.Type.Mask)
+                    continue;
 
                 var boxes = ann.GetSelectBoxes(ROI.selectBoxSize * ImageView.SelectedImage.PhysicalSizeX);
                 if (boxes == null) continue;
@@ -513,9 +536,23 @@ namespace BioGTK
             }
 
             // 2 — Click on body of already-selected ROI
-            foreach (var ann in ImageView.SelectedImage.Annotations)
+            foreach (var ann in selectedRois)
             {
-                if (ann != null && ann.Selected && ann.BoundingBox.Contains(ann.coord, e))
+                if (ann == null)
+                    continue;
+
+                if (ann.type == ROI.Type.Mask)
+                {
+                    if (HitTestMask(ann, e))
+                    {
+                        selectedROI = ann;
+                        UpdateView();
+                        return;
+                    }
+                    continue;
+                }
+
+                if (ann.BoundingBox.Contains(ann.coord, e))
                 {
                     selectedROI = ann;
                     UpdateView();
@@ -524,13 +561,17 @@ namespace BioGTK
             }
 
             // 3 — Click on any ROI (select it)
-            foreach (var ann in ImageView.SelectedImage.Annotations)
+            foreach (var ann in selectedRois.Concat(unselectedRois))
             {
-                if (ann != null && ann.BoundingBox.Contains(ann.coord, e))
+                if (ann == null)
+                    continue;
+
+                bool hit = ann.type == ROI.Type.Mask ? HitTestMask(ann, e) : ann.BoundingBox.Contains(ann.coord, e);
+                if (hit)
                 {
                     if (!ctrl)
                     {
-                        foreach (var other in ImageView.SelectedImage.Annotations)
+                        foreach (var other in selectableRois)
                         {
                             if (other != ann)
                             {
@@ -551,7 +592,7 @@ namespace BioGTK
             // 4 — Start selection rectangle
             if (!ctrl)
             {
-                foreach (var ann in ImageView.SelectedImage.Annotations)
+                foreach (var ann in selectableRois)
                 {
                     if (ann != null)
                     {
@@ -564,6 +605,26 @@ namespace BioGTK
 
             Tools.GetTool(Tools.Tool.Type.move).Rectangle = new RectangleD(e.X, e.Y, 0, 0);
             UpdateView();
+        }
+
+        private static IEnumerable<ROI> GetSelectableRois(BioImage image)
+        {
+            if (image == null)
+                yield break;
+
+            if (image.Annotations != null)
+            {
+                foreach (var roi in image.Annotations)
+                    if (roi != null)
+                        yield return roi;
+            }
+
+            if (App.viewer == null)
+                yield break;
+
+            foreach (var roi in App.viewer.GetZarrLabelOverlaysForImage(image))
+                if (roi != null)
+                    yield return roi;
         }
         public void ToolMove_Move(PointD e, MotionNotifyEventArgs buts)
         {

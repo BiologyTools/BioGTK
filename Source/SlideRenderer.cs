@@ -160,7 +160,7 @@ namespace BioGTK
             var levelRes = schema.Resolutions[level];
             double levelUnitsPerPixel = levelRes.UnitsPerPixel;
 
-            _ = EnsureGlobalDisplayRangeAsync(coordinate, renderVersion, level);
+            await EnsureGlobalDisplayRangeAsync(coordinate, renderVersion, level).ConfigureAwait(false);
 
             LogDiag($"[UpdateViewAsync] type={(_useOpenSlide ? "openslide" : "slidebase")} level={level} res={resolution:F3} upp={levelUnitsPerPixel:F3} viewport={viewportWidth}x{viewportHeight} origin=({pyramidalOrigin.X:F2},{pyramidalOrigin.Y:F2}) schemaExtent=({schema.Extent.MinX:F0},{schema.Extent.MinY:F0},{schema.Extent.MaxX:F0},{schema.Extent.MaxY:F0})");
 
@@ -526,6 +526,12 @@ namespace BioGTK
 
             if (gotRange && bestMax > 0)
             {
+                if (renderVersion != _renderStateVersion)
+                {
+                    Interlocked.Exchange(ref _displayRangeProbeStarted, 0);
+                    return;
+                }
+
                 bool rangeChanged = bioImage.ZarrDisplayMin != 0 ||
                                     bioImage.ZarrDisplayMax != bestMax;
                 bioImage.ZarrDisplayMin = 0;

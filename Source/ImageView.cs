@@ -90,6 +90,64 @@ namespace BioGTK
             return SelectedImage.Coordinate;
         }
 
+        private bool TrySelectVisibleMaskAt(double worldX, double worldY, bool ctrlHeld)
+        {
+            if (SelectedImage?.Annotations == null)
+                return false;
+
+            PointD worldPoint = new PointD(worldX, worldY);
+            ZCT coord = GetCoordinate();
+            ROI hit = null;
+
+            var candidates = new List<ROI>();
+            candidates.AddRange(SelectedImage.Annotations);
+            candidates.AddRange(GetZarrLabelOverlays(SelectedImage));
+
+            // Match render order: selected masks are drawn last, so they must win
+            // hit-testing before any non-selected mask underneath them.
+            for (int pass = 0; pass < 2 && hit == null; pass++)
+            {
+                for (int i = candidates.Count - 1; i >= 0; i--)
+                {
+                    ROI an = candidates[i];
+                    if (an == null || an.type != ROI.Type.Mask || an.roiMask == null || an.coord != coord)
+                        continue;
+
+                    if (pass == 0 && !an.Selected)
+                        continue;
+                    if (pass == 1 && an.Selected)
+                        continue;
+
+                    if (Tools.HitTestMask(an, worldPoint))
+                    {
+                        hit = an;
+                        break;
+                    }
+                }
+            }
+
+            if (hit == null)
+                return false;
+
+            if (!ctrlHeld)
+            {
+                foreach (ROI other in candidates)
+                {
+                    if (other != hit)
+                    {
+                        other.Selected = false;
+                        other.selectedPoints?.Clear();
+                    }
+                }
+            }
+
+            hit.Selected = true;
+            hit.selectedPoints?.Clear();
+            Tools.selectedROI = hit;
+            UpdateView();
+            return true;
+        }
+
         /// It adds an image to the list of images, and then updates the GUI and the images
         /// 
         /// @param BioImage a class that contains the image data and metadata
@@ -791,6 +849,7 @@ namespace BioGTK
                         canvas.Translate(0, 0);
                     else
                         canvas.Translate(-(width / 2f), -(height / 2f));
+                    List<ROI> selectedMasks = new List<ROI>();
                     foreach (ROI an in rois)
                         {
                             if (an.coord != GetCoordinate())
@@ -820,15 +879,15 @@ namespace BioGTK
                             {
                                 if (an.roiMask == null)
                                     continue;
-                                paint.Style = SKPaintStyle.Fill;
-                                SKImage sim;
                                 if (an.Selected)
-                                    sim = an.roiMask.GetColored(Color.Blue, 10, true).ToSKImage();
-                                else
-                                    sim = an.roiMask.GetColored(Color.FromArgb(1, an.fillColor.R, an.fillColor.G, an.fillColor.B), 1, true).ToSKImage();
+                                {
+                                    selectedMasks.Add(an);
+                                    continue;
+                                }
+                                paint.Style = SKPaintStyle.Fill;
+                                using SKImage sim = an.roiMask.GetColored(Color.FromArgb(2, an.fillColor.R, an.fillColor.G, an.fillColor.B), 2, true).ToSKImage();
                                 RectangleD p = ToScreenSpace(new RectangleD(an.roiMask.X * an.roiMask.PhysicalSizeX, an.roiMask.Y * an.roiMask.PhysicalSizeY, an.W, an.H));
                                 canvas.DrawImage(sim, ToRectangle((float)p.X, (float)p.Y, (float)p.W, (float)p.H), paint);
-                                sim.Dispose();
                                 continue;
                             }
                             else
@@ -950,6 +1009,19 @@ namespace BioGTK
                             }
                             ri++;
                         }
+                    foreach (ROI an in selectedMasks)
+                    {
+                        if (an == null || an.roiMask == null || an.coord != co)
+                            continue;
+                        paint.Style = SKPaintStyle.Fill;
+                        using SKImage sim = an.roiMask.GetColored(Color.FromArgb(220, 0, 120, 255), 220, true).ToSKImage();
+                        RectangleD p = ToScreenSpace(new RectangleD(an.roiMask.X * an.roiMask.PhysicalSizeX, an.roiMask.Y * an.roiMask.PhysicalSizeY, an.W, an.H));
+                        canvas.DrawImage(sim, ToRectangle((float)p.X, (float)p.Y, (float)p.W, (float)p.H), paint);
+                        paint.Style = SKPaintStyle.Stroke;
+                        paint.Color = SKColors.Blue;
+                        paint.StrokeWidth = 2;
+                        canvas.DrawRect(ToRectangle((float)p.X, (float)p.Y, (float)p.W, (float)p.H), paint);
+                    }
                     }
                     i++;
                     canvas.Restore();
@@ -3872,6 +3944,9 @@ namespace BioGTK
 
             if (e.Event.Button == 1 && TryNavigateFromOverview(e.Event.X, e.Event.Y))
                 return;
+
+            if (e.Event.Button == 1)
+                TrySelectVisibleMaskAt(pointer.X, pointer.Y, e.Event.State.HasFlag(ModifierType.ControlMask));
 
             // Handle well plate level navigation
             if (ImageView.SelectedImage.Type == BioImage.ImageType.well)
