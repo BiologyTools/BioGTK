@@ -173,6 +173,7 @@ namespace BioGTK
             InitPreview();
             UpdateImages(true);
             UpdateGUI();
+            App.roiManager?.UpdateAnnotationList();
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, im?.file ?? string.Empty);
         }
 
@@ -230,6 +231,7 @@ namespace BioGTK
                 }
                 SetZarrLabelOverlays(SelectedImage, overlays);
                 SetZarrLabelOverlays(SelectedImage, overlays, source);
+                SyncZarrLabelAnnotations(SelectedImage, overlays);
                 AppLog.Append("[RefreshZarrLabelOverlays] storedCount=" + (overlays?.Count ?? 0));
                 BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, source);
             }
@@ -251,14 +253,30 @@ namespace BioGTK
                 return new List<ROI>();
 
             if (zarrLabelOverlays.TryGetValue(key, out var overlays) && overlays != null && overlays.Count > 0)
+            {
+                SyncZarrLabelAnnotations(image, overlays);
                 return overlays;
+            }
 
             if (!zarrLabelLoadAttempted.Contains(key))
             {
                 zarrLabelLoadAttempted.Add(key);
                 RefreshZarrLabelOverlays(key);
                 if (zarrLabelOverlays.TryGetValue(key, out overlays) && overlays != null)
+                {
+                    SyncZarrLabelAnnotations(image, overlays);
                     return overlays;
+                }
+            }
+
+            if (image?.Annotations != null)
+            {
+                var synced = image.Annotations.Where(IsZarrLabelRoi).ToList();
+                if (synced.Count > 0)
+                {
+                    SyncZarrLabelAnnotations(image, synced);
+                    return synced;
+                }
             }
 
             return new List<ROI>();
@@ -402,8 +420,16 @@ namespace BioGTK
                 List<ROI> rois = new List<ROI>();
                 foreach (var item in SelectedImage.Annotations)
                 {
-                    if (item.BoundingBox.IntersectsWith(App.viewer.MouseDown))
+                    if (item != null && item.Selected)
                         rois.Add(item);
+                }
+                if (App.viewer != null)
+                {
+                    foreach (var item in App.viewer.GetZarrLabelOverlaysForImage(SelectedImage))
+                    {
+                        if (item != null && item.Selected)
+                            rois.Add(item);
+                    }
                 }
                 return rois;
             }
@@ -764,12 +790,11 @@ namespace BioGTK
                 foreach (BioImage im in Images)
                 {
                     canvas.Save();
-                    List<ROI> rois = new List<ROI>();
-                    rois.AddRange(im.Annotations);
-                    rois.AddRange(GetZarrLabelOverlays(im));
+                List<ROI> rois = new List<ROI>();
+                rois.AddRange(im.Annotations);
+                rois.AddRange(GetZarrLabelOverlays(im).Where(r => r != null && !im.Annotations.Contains(r)));
                     int ri = 0;
                     ZCT co = GetCoordinate();
-                    canvas.Translate(width / 2f, height / 2f);
                     RectangleD rp = ToScreenSpace(new RectangleD(im.StageSizeX * im.PhysicalSizeX, im.StageSizeX * im.PhysicalSizeY, im.SizeX * im.PhysicalSizeX, im.SizeY * im.PhysicalSizeY));
                     if (!im.isPyramidal)
                         canvas.DrawImage(SKImages[i], ToRectangle((float)rp.X, (float)rp.Y, (float)rp.W, (float)rp.H), paint);
@@ -840,15 +865,11 @@ namespace BioGTK
                     canvas.Save();
                     List<ROI> rois = new List<ROI>();
                     rois.AddRange(im.Annotations);
-                    rois.AddRange(GetZarrLabelOverlays(im));
+                    rois.AddRange(GetZarrLabelOverlays(im).Where(r => r != null && !im.Annotations.Contains(r)));
                     int ri = 0;
                     ZCT co = GetCoordinate();
                     if (rois.Count > 0)
                 {
-                    if (!SelectedImage.isPyramidal)
-                        canvas.Translate(0, 0);
-                    else
-                        canvas.Translate(-(width / 2f), -(height / 2f));
                     List<ROI> selectedMasks = new List<ROI>();
                     foreach (ROI an in rois)
                         {
@@ -874,8 +895,7 @@ namespace BioGTK
                             PointF pc = new PointF((float)(an.BoundingBox.X + (an.BoundingBox.W / 2)), (float)(an.BoundingBox.Y + (an.BoundingBox.H / 2)));
                             float widths = ROI.selectBoxSize * (float)Resolution;
                             
-                            if (an.type == ROI.Type.Mask && ShowMasks &&
-                                an.coord == co)
+                            if (an.type == ROI.Type.Mask && ShowMasks && an.coord == co)
                             {
                                 if (an.roiMask == null)
                                     continue;
@@ -886,7 +906,9 @@ namespace BioGTK
                                 }
                                 paint.Style = SKPaintStyle.Fill;
                                 using SKImage sim = an.roiMask.GetColored(Color.FromArgb(2, an.fillColor.R, an.fillColor.G, an.fillColor.B), 2, true).ToSKImage();
-                                RectangleD p = ToScreenSpace(new RectangleD(an.roiMask.X * an.roiMask.PhysicalSizeX, an.roiMask.Y * an.roiMask.PhysicalSizeY, an.W, an.H));
+                                RectangleD p = SelectedImage.isPyramidal
+                                    ? ToScreenSpace(new RectangleD(an.X, an.Y, an.W, an.H))
+                                    : ToScreenSpace(new RectangleD(an.X, an.Y, an.W, an.H));
                                 canvas.DrawImage(sim, ToRectangle((float)p.X, (float)p.Y, (float)p.W, (float)p.H), paint);
                                 continue;
                             }
@@ -1011,11 +1033,13 @@ namespace BioGTK
                         }
                     foreach (ROI an in selectedMasks)
                     {
-                        if (an == null || an.roiMask == null || an.coord != co)
+                        if (an == null || an.roiMask == null)
                             continue;
                         paint.Style = SKPaintStyle.Fill;
                         using SKImage sim = an.roiMask.GetColored(Color.FromArgb(220, 0, 120, 255), 220, true).ToSKImage();
-                        RectangleD p = ToScreenSpace(new RectangleD(an.roiMask.X * an.roiMask.PhysicalSizeX, an.roiMask.Y * an.roiMask.PhysicalSizeY, an.W, an.H));
+                        RectangleD p = SelectedImage.isPyramidal
+                            ? ToScreenSpace(new RectangleD(an.X, an.Y, an.W, an.H))
+                            : ToScreenSpace(new RectangleD(an.X, an.Y, an.W, an.H));
                         canvas.DrawImage(sim, ToRectangle((float)p.X, (float)p.Y, (float)p.W, (float)p.H), paint);
                         paint.Style = SKPaintStyle.Stroke;
                         paint.Color = SKColors.Blue;
@@ -2745,12 +2769,47 @@ namespace BioGTK
         /// https://developer.gnome.org/gtk3/stable/GtkButton.html#GtkButton-clicked
         private void RoiDelete_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            foreach (var item in selectedAnnotations)
-            {
-                SelectedImage.Annotations.Remove(item);
-                //Tools.selectedROI = null;
-            }
+            DeleteSelectedRois();
             UpdateView();
+        }
+
+        private void DeleteSelectedRois()
+        {
+            if (SelectedImage == null)
+                return;
+
+            var toDelete = new HashSet<ROI>(selectedAnnotations);
+            if (toDelete.Count == 0 && Tools.selectedROI != null)
+                toDelete.Add(Tools.selectedROI);
+
+            if (toDelete.Count == 0)
+                return;
+
+            foreach (var roi in toDelete)
+            {
+                if (roi == null)
+                    continue;
+
+                if (SelectedImage.Annotations.Contains(roi))
+                    SelectedImage.Annotations.Remove(roi);
+            }
+
+            string key = GetOverlayKey(SelectedImage);
+            var overlays = GetZarrLabelOverlays(SelectedImage);
+            if (overlays != null && overlays.Count > 0)
+            {
+                overlays.RemoveAll(r => r != null && toDelete.Contains(r));
+                SetZarrLabelOverlays(SelectedImage, overlays, key);
+            }
+
+            if (Tools.selectedROI != null && toDelete.Contains(Tools.selectedROI))
+                Tools.selectedROI = null;
+
+            foreach (var roi in toDelete)
+            {
+                if (roi != null)
+                    roi.Selected = false;
+            }
         }
 
         /// When the user clicks the "Go to Origin" button, the viewer's origin is set to the negative
@@ -4463,6 +4522,21 @@ namespace BioGTK
         {
             GoToImage(SelectedIndex);
         }
+
+        private static bool IsZarrSource(BioImage image)
+        {
+            if (image == null)
+                return false;
+
+            string source = image.file;
+            if (string.IsNullOrWhiteSpace(source))
+                source = image.Filename;
+
+            return source.Contains(".zarr", StringComparison.OrdinalIgnoreCase) ||
+                   source.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+                   source.StartsWith("s3://", StringComparison.OrdinalIgnoreCase);
+        }
+
         public void GoToImage(int i)
         {
             if (i < 0 || Images.Count <= i)
@@ -4503,6 +4577,8 @@ namespace BioGTK
 
                 if (SelectedImage.isPyramidal)
                 {
+                    bool keepTopLeft = IsZarrSource(SelectedImage);
+
                     // --- Determine world size ---
                     double imageWorldW = SelectedImage.Resolutions.Count > 0
                         ? SelectedImage.Resolutions[0].SizeX
@@ -4557,14 +4633,25 @@ namespace BioGTK
                     // centering origin is clamped against the correct viewport span.
                     UpdateScrollBars();
 
-                    // --- Centering (works for both zoom-in and zoom-out) ---
-                    double viewWorldW = vpW * Resolution;
-                    double viewWorldH = vpH * Resolution;
+                    // Zarr sources are expected to open at the top-left so label
+                    // overlays stay anchored to the visible image rather than the
+                    // centered fit view. Other pyramidal formats keep the older
+                    // centered behavior.
+                    if (keepTopLeft)
+                    {
+                        PyramidalOrigin = new PointD(0, 0);
+                    }
+                    else
+                    {
+                        // --- Centering (works for both zoom-in and zoom-out) ---
+                        double viewWorldW = vpW * Resolution;
+                        double viewWorldH = vpH * Resolution;
 
-                    double originX = (imageWorldW - viewWorldW) / 2.0;
-                    double originY = (imageWorldH - viewWorldH) / 2.0;
+                        double originX = (imageWorldW - viewWorldW) / 2.0;
+                        double originY = (imageWorldH - viewWorldH) / 2.0;
 
-                    PyramidalOrigin = new PointD(originX, originY);
+                        PyramidalOrigin = new PointD(originX, originY);
+                    }
                 }
                 else
                 {

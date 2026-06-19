@@ -1744,7 +1744,15 @@ namespace BioLib
                                             byte[] maskData = kv.Value;
                                             var color = PickLabelColor(labelNode.ImageLabelMetadata, labelId);
 
-                                            var mask = new ROI.Mask(maskData, sizeX, sizeY, physX, physY, 0, 0);
+                                            var mask = new ROI.Mask(
+                                                maskData,
+                                                sizeX,
+                                                sizeY,
+                                                physX,
+                                                physY,
+                                                0,
+                                                0,
+                                                preserveDimensions: false);
                                             var roi = new ROI
                                             {
                                                 type = ROI.Type.Mask,

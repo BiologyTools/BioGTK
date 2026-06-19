@@ -99,8 +99,22 @@ namespace Bio
                     if(!rts.ContainsKey(item.id))
                     {
                         if (item.id == "" || item.id == null)
-                            item.id = rng.Next(0,999999).ToString();
+                            item.id = rng.Next(0,999999999).ToString();
                         rts.Add(item.id, item);
+                    }
+                }
+                if (App.viewer != null && ImageView.SelectedImage != null)
+                {
+                    foreach (var item in App.viewer.GetZarrLabelOverlaysForImage(ImageView.SelectedImage))
+                    {
+                        if (item == null)
+                            continue;
+                        if (!rts.ContainsKey(item.id))
+                        {
+                            if (item.id == "" || item.id == null)
+                                item.id = rng.Next(0, 999999).ToString();
+                            rts.Add(item.id, item);
+                        }
                     }
                 }
                 return rts;
@@ -202,6 +216,8 @@ namespace Bio
             selBox.Adjustment.StepIncrement = 1;
             roiView.ActivateOnSingleClick = true;
             InitItems();
+            if (ImageView.SelectedImage != null)
+                UpdateAnnotationList();
             App.ApplyStyles(this);
         }
 
@@ -398,6 +414,15 @@ namespace Bio
                 {
                     store.AppendValues(iter, r.type.ToString(), r.id, r.Text, r.BoundingBox.ToString());
                 }
+                if (App.viewer != null)
+                {
+                    foreach (ROI r in App.viewer.GetZarrLabelOverlaysForImage(b))
+                    {
+                        if (r == null || b.Annotations.Contains(r))
+                            continue;
+                        store.AppendValues(iter, r.type.ToString(), r.id, r.Text, r.BoundingBox.ToString());
+                    }
+                }
             }
             roiView.Model = store;
             
@@ -409,7 +434,11 @@ namespace Bio
         {
             rois.Clear();
             Gtk.TreeStore store = new Gtk.TreeStore(typeof(string), typeof(string), typeof(string), typeof(string));
-            foreach (BioImage b in Images.images)
+            List<BioImage> sourceImages = new List<BioImage>(Images.images);
+            if (ImageView.SelectedImage != null && !sourceImages.Contains(ImageView.SelectedImage))
+                sourceImages.Insert(0, ImageView.SelectedImage);
+
+            foreach (BioImage b in sourceImages)
             {
                 Gtk.TreeIter iter = store.AppendValues(System.IO.Path.GetFileName(b.Filename));
                 foreach (ROI r in b.Annotations)
@@ -423,6 +452,24 @@ namespace Bio
                         if(!rois.ContainsKey(r.id))
                         rois.Add(r.id, r);
                         store.AppendValues(iter, r.type.ToString(), r.id, r.Text, r.BoundingBox.ToString());
+                    }
+                }
+                if (App.viewer != null)
+                {
+                    foreach (ROI r in App.viewer.GetZarrLabelOverlaysForImage(b))
+                    {
+                        if (r == null || b.Annotations.Contains(r))
+                            continue;
+                        if (r.id == "")
+                        {
+                            store.AppendValues(iter, r.type.ToString(), rng.Next(), r.Text, r.BoundingBox.ToString());
+                        }
+                        else
+                        {
+                            if (!rois.ContainsKey(r.id))
+                                rois.Add(r.id, r);
+                            store.AppendValues(iter, r.type.ToString(), r.id, r.Text, r.BoundingBox.ToString());
+                        }
                     }
                 }
             }

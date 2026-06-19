@@ -184,11 +184,13 @@ namespace BioGTK
             view.Present();
         }
 
-        private async Task OpenPyramidRootsAsViewsAsync(string file)
+        private async Task OpenPyramidRootsAsViewsAsync(string file, bool addToRegistry = false)
         {
             List<BioImage> roots = await CollectPyramidRootsAsync(file);
             for (int series = 0; series < roots.Count; series++)
             {
+                if (addToRegistry)
+                    Images.AddImage(roots[series]);
                 ShowImageView(roots[series], file, series, roots.Count);
             }
         }
@@ -573,6 +575,24 @@ namespace BioGTK
             }
         }
 
+        private static void NormalizeMasksForOmeExport(BioImage image)
+        {
+            if (image == null || image.Annotations == null || image.Annotations.Count == 0)
+                return;
+
+            foreach (ROI roi in image.Annotations)
+            {
+                if (roi?.roiMask == null)
+                    continue;
+
+                if (roi.roiMask.PhysicalSizeX <= 0)
+                    roi.roiMask.PhysicalSizeX = image.PhysicalSizeX > 0 ? image.PhysicalSizeX : 1.0;
+
+                if (roi.roiMask.PhysicalSizeY <= 0)
+                    roi.roiMask.PhysicalSizeY = image.PhysicalSizeY > 0 ? image.PhysicalSizeY : 1.0;
+            }
+        }
+
         void AddToRecent(string name)
         {
             bool con = false;
@@ -755,7 +775,7 @@ namespace BioGTK
             await Task.Yield();
             foreach (string f in filechooser.Filenames)
             {
-                await OpenPyramidRootsAsViewsAsync(f);
+                await OpenPyramidRootsAsViewsAsync(f, true);
             }
             StopProgress();
         }
@@ -768,7 +788,7 @@ namespace BioGTK
                 string url = box.GetUrl();
                 StartProgressHidden("Open URL", "Opening");
                 await Task.Yield();
-                await OpenPyramidRootsAsViewsAsync(url);
+                await OpenPyramidRootsAsViewsAsync(url, true);
                 StopProgress();
             }
             box.Destroy();
@@ -1258,6 +1278,7 @@ namespace BioGTK
             viewers[(int)args.PageNum].Present();
             App.viewer = viewers[(int)args.PageNum];
             ImageView.SelectedImage = App.viewer.Images[0];
+            App.roiManager?.UpdateAnnotationList();
         }
 
         /// If the emission menu is active, then deactivate it. Otherwise, activate it
@@ -1792,6 +1813,46 @@ namespace BioGTK
             done = true;
             progress.Hide();
         }
+
+        private static bool IsZarrSource(BioImage image)
+        {
+            if (image == null)
+                return false;
+
+            string source = image.file;
+            if (string.IsNullOrWhiteSpace(source))
+                source = image.Filename;
+
+            return source.Contains(".zarr", StringComparison.OrdinalIgnoreCase) ||
+                   source.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+                   source.StartsWith("s3://", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static async Task<(BioImage Image, bool IsTemporary)> GetOmeExportImageAsync(BioImage image)
+        {
+            if (image == null)
+                return (null, false);
+
+            if (!IsZarrSource(image))
+                return (image, false);
+
+            string source = image.file;
+            if (string.IsNullOrWhiteSpace(source))
+                source = image.Filename;
+
+            BioImage exportImage = await BioImage.OpenZarrAsync(source, 0, 0, image.ID).ConfigureAwait(false);
+            return (exportImage, true);
+        }
+
+        private static void ReleaseTemporaryExportImage(BioImage image)
+        {
+            if (image == null)
+                return;
+
+            Images.images.Remove(image);
+            image.Dispose();
+        }
+
         /// It creates a file chooser dialog, and if the user selects a file, it saves the selected
         /// image to that file
         /// 
@@ -1806,7 +1867,7 @@ namespace BioGTK
                 return;
             filechooser.Hide();
             StartProgress("Save Selected Tiff","Saving");
-            await BioImage.SaveAsync(filechooser.Filename,ImageView.SelectedImage.Filename, 0, false);
+            await BioImage.SaveAsync(filechooser.Filename, ImageView.SelectedImage.Filename, 0, false);
             StopProgress();
         }
         /// This function saves the selected image in the OME-TIFF format
@@ -1822,7 +1883,19 @@ namespace BioGTK
                 return;
             filechooser.Hide();
             StartProgress("Save Selected OME", "Saving");
-            await BioImage.SaveAsync(filechooser.Filename, ImageView.SelectedImage.ID, 0, true);
+            var (exportImage, isTemporary) = await GetOmeExportImageAsync(ImageView.SelectedImage);
+            try
+            {
+                PreserveSourceAnnotations(ImageView.SelectedImage, exportImage);
+                MergeZarrLabelOverlaysIntoAnnotations(exportImage);
+                NormalizeMasksForOmeExport(exportImage);
+                await Task.Run(() => BioImage.SaveOMESeries(new[] { exportImage }, filechooser.Filename, BioImage.Planes));
+            }
+            finally
+            {
+                if (isTemporary)
+                    ReleaseTemporaryExportImage(exportImage);
+            }
             StopProgress();
         }
         /// This function saves the current series of images to an OME-TIFF file
@@ -1838,7 +1911,29 @@ namespace BioGTK
                 return;
             filechooser.Hide();
             StartProgress("Save Selected OME", "Saving");
-            await BioImage.SaveSeriesAsync(App.viewer.Images.ToArray(), filechooser.Filename, true);
+            BioImage[] exportImages = new BioImage[App.viewer.Images.Count];
+            List<BioImage> temporaryImages = new List<BioImage>();
+            try
+            {
+                for (int i = 0; i < App.viewer.Images.Count; i++)
+                {
+                    BioImage sourceImage = App.viewer.Images[i];
+                    var (exportImage, isTemporary) = await GetOmeExportImageAsync(sourceImage);
+                    PreserveSourceAnnotations(sourceImage, exportImage);
+                    MergeZarrLabelOverlaysIntoAnnotations(exportImage);
+                    NormalizeMasksForOmeExport(exportImage);
+                    exportImages[i] = exportImage;
+                    if (isTemporary)
+                        temporaryImages.Add(exportImage);
+                }
+
+                await Task.Run(() => BioImage.SaveOMESeries(exportImages, filechooser.Filename, true));
+            }
+            finally
+            {
+                foreach (BioImage temp in temporaryImages)
+                    ReleaseTemporaryExportImage(temp);
+            }
             StopProgress();
         }
         /// It saves the current tab as a tiff file
@@ -2180,7 +2275,7 @@ namespace BioGTK
         /// @param tabName The filename of the image to add to tabcontrol
         public async void Open(string file)
         {
-            await OpenPyramidRootsAsViewsAsync(file);
+            await OpenPyramidRootsAsViewsAsync(file, true);
         }
         #endregion
 
