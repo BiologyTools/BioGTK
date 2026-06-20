@@ -1689,10 +1689,8 @@ namespace BioLib
                         int baseHeight = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeY : image.SizeY;
                         double physX = image.PhysicalSizeX > 0 ? image.PhysicalSizeX : 1.0;
                         double physY = image.PhysicalSizeY > 0 ? image.PhysicalSizeY : 1.0;
-                        double widthScale = sizeX > 0 ? baseWidth / (double)sizeX : 1.0;
-                        double heightScale = sizeY > 0 ? baseHeight / (double)sizeY : 1.0;
-                        physX *= widthScale;
-                        physY *= heightScale;
+                        physX *= sizeX > 0 ? baseWidth / (double)sizeX : 1.0;
+                        physY *= sizeY > 0 ? baseHeight / (double)sizeY : 1.0;
 
                         try
                         {

@@ -560,19 +560,100 @@ namespace BioGTK
             if (source == null || target == null)
                 return;
 
-            if (source.Annotations == null || source.Annotations.Count == 0)
-                return;
-
             if (target.Annotations == null)
                 target.Annotations = new List<ROI>();
 
-            foreach (ROI roi in source.Annotations)
+            foreach (ROI roi in source.Annotations ?? Enumerable.Empty<ROI>())
             {
                 if (roi == null)
                     continue;
 
-                target.Annotations.Add(roi.Copy());
+                ROI copy = roi.Copy();
+                ScaleAnnotationToTargetVolume(copy, source, target);
+                target.Annotations.Add(copy);
             }
+
+            if (App.viewer == null)
+                return;
+
+            foreach (ROI roi in App.viewer.GetZarrLabelOverlaysForImage(source))
+            {
+                if (roi == null)
+                    continue;
+
+                if (!string.IsNullOrWhiteSpace(roi.roiID) &&
+                    target.Annotations.Any(a => a != null && a.roiID == roi.roiID))
+                    continue;
+
+                ROI copy = roi.Copy();
+                ScaleAnnotationToTargetVolume(copy, source, target);
+                target.Annotations.Add(copy);
+            }
+        }
+
+        private static void ScaleAnnotationToTargetVolume(ROI roi, BioImage source, BioImage target)
+        {
+            if (roi == null || source == null || target == null)
+                return;
+
+            double sourceW = GetStageWidth(source);
+            double sourceH = GetStageHeight(source);
+            double targetW = GetStageWidth(target);
+            double targetH = GetStageHeight(target);
+
+            if (sourceW <= 0 || sourceH <= 0 || targetW <= 0 || targetH <= 0)
+                return;
+
+            double scaleX = targetW / sourceW;
+            double scaleY = targetH / sourceH;
+            if (Math.Abs(scaleX - 1.0) < 0.000001 && Math.Abs(scaleY - 1.0) < 0.000001)
+                return;
+
+            double MapX(double x) => target.Volume.Location.X + ((x - source.Volume.Location.X) * scaleX);
+            double MapY(double y) => target.Volume.Location.Y + ((y - source.Volume.Location.Y) * scaleY);
+
+            roi.BoundingBox = new AForge.RectangleD(
+                MapX(roi.BoundingBox.X),
+                MapY(roi.BoundingBox.Y),
+                roi.BoundingBox.W * scaleX,
+                roi.BoundingBox.H * scaleY);
+
+            for (int i = 0; i < roi.Points.Count; i++)
+                roi.Points[i] = new AForge.PointD(MapX(roi.Points[i].X), MapY(roi.Points[i].Y));
+
+            if (roi.roiMask != null)
+            {
+                double maskStageX = roi.roiMask.X * roi.roiMask.PhysicalSizeX;
+                double maskStageY = roi.roiMask.Y * roi.roiMask.PhysicalSizeY;
+                roi.roiMask.PhysicalSizeX *= scaleX;
+                roi.roiMask.PhysicalSizeY *= scaleY;
+                roi.roiMask.X = MapX(maskStageX) / Math.Max(roi.roiMask.PhysicalSizeX, 1e-12);
+                roi.roiMask.Y = MapY(maskStageY) / Math.Max(roi.roiMask.PhysicalSizeY, 1e-12);
+            }
+        }
+
+        private static double GetStageWidth(BioImage image)
+        {
+            if (image == null)
+                return 0;
+
+            if (image.Resolutions != null && image.Resolutions.Count > 0 &&
+                image.Resolutions[0].SizeX > 0 && image.Resolutions[0].PhysicalSizeX > 0)
+                return image.Resolutions[0].SizeX * image.Resolutions[0].PhysicalSizeX;
+
+            return image.SizeX * (image.PhysicalSizeX > 0 ? image.PhysicalSizeX : 1.0);
+        }
+
+        private static double GetStageHeight(BioImage image)
+        {
+            if (image == null)
+                return 0;
+
+            if (image.Resolutions != null && image.Resolutions.Count > 0 &&
+                image.Resolutions[0].SizeY > 0 && image.Resolutions[0].PhysicalSizeY > 0)
+                return image.Resolutions[0].SizeY * image.Resolutions[0].PhysicalSizeY;
+
+            return image.SizeY * (image.PhysicalSizeY > 0 ? image.PhysicalSizeY : 1.0);
         }
 
         private static void NormalizeMasksForOmeExport(BioImage image)
@@ -1887,7 +1968,6 @@ namespace BioGTK
             try
             {
                 PreserveSourceAnnotations(ImageView.SelectedImage, exportImage);
-                MergeZarrLabelOverlaysIntoAnnotations(exportImage);
                 NormalizeMasksForOmeExport(exportImage);
                 await Task.Run(() => BioImage.SaveOMESeries(new[] { exportImage }, filechooser.Filename, BioImage.Planes));
             }
@@ -1920,7 +2000,6 @@ namespace BioGTK
                     BioImage sourceImage = App.viewer.Images[i];
                     var (exportImage, isTemporary) = await GetOmeExportImageAsync(sourceImage);
                     PreserveSourceAnnotations(sourceImage, exportImage);
-                    MergeZarrLabelOverlaysIntoAnnotations(exportImage);
                     NormalizeMasksForOmeExport(exportImage);
                     exportImages[i] = exportImage;
                     if (isTemporary)

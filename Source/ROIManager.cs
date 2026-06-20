@@ -94,8 +94,11 @@ namespace Bio
         {
             get
             {
-                foreach (var item in ImageView.SelectedImage.Annotations)
+                ROI[] selectedAnnotations = ImageView.SelectedImage?.Annotations?.ToArray() ?? Array.Empty<ROI>();
+                foreach (var item in selectedAnnotations)
                 {
+                    if (item == null)
+                        continue;
                     if(!rts.ContainsKey(item.id))
                     {
                         if (item.id == "" || item.id == null)
@@ -105,7 +108,8 @@ namespace Bio
                 }
                 if (App.viewer != null && ImageView.SelectedImage != null)
                 {
-                    foreach (var item in App.viewer.GetZarrLabelOverlaysForImage(ImageView.SelectedImage))
+                    ROI[] overlays = App.viewer.GetZarrLabelOverlaysForImage(ImageView.SelectedImage).ToArray();
+                    foreach (var item in overlays)
                     {
                         if (item == null)
                             continue;
@@ -441,8 +445,12 @@ namespace Bio
             foreach (BioImage b in sourceImages)
             {
                 Gtk.TreeIter iter = store.AppendValues(System.IO.Path.GetFileName(b.Filename));
-                foreach (ROI r in b.Annotations)
+                ROI[] annotations = b.Annotations?.ToArray() ?? Array.Empty<ROI>();
+                HashSet<ROI> annotationSet = new HashSet<ROI>(annotations.Where(r => r != null));
+                foreach (ROI r in annotations)
                 {
+                    if (r == null)
+                        continue;
                     if (r.id == "")
                     {
                         store.AppendValues(iter, r.type.ToString(), rng.Next(), r.Text, r.BoundingBox.ToString());
@@ -456,9 +464,10 @@ namespace Bio
                 }
                 if (App.viewer != null)
                 {
-                    foreach (ROI r in App.viewer.GetZarrLabelOverlaysForImage(b))
+                    ROI[] overlays = App.viewer.GetZarrLabelOverlaysForImage(b).ToArray();
+                    foreach (ROI r in overlays)
                     {
-                        if (r == null || b.Annotations.Contains(r))
+                        if (r == null || annotationSet.Contains(r))
                             continue;
                         if (r.id == "")
                         {
