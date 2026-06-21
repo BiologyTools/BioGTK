@@ -116,7 +116,7 @@ namespace Bio
                         if (!rts.ContainsKey(item.id))
                         {
                             if (item.id == "" || item.id == null)
-                                item.id = rng.Next(0, 999999).ToString();
+                                item.id = rng.Next(0, 999999999).ToString();
                             rts.Add(item.id, item);
                         }
                     }

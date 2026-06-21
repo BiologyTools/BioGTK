@@ -14,6 +14,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using ZarrNET;
 using ZarrNET.Core;
+using ZarrNET.Core.OmeZarr.Nodes;
 
 namespace BioLib
 {
@@ -1711,23 +1712,28 @@ namespace BioLib
                                             " z=" + z +
                                             " t=" + t);
 
-                                        long[] start = hasLeadingSingletonT
-                                            ? new long[] { t, sourceC, z, 0, 0 }
-                                            : BuildStart(axes, shape, t, sourceC, z);
-                                        long[] end = hasLeadingSingletonT
-                                            ? new long[] { t + 1, sourceC + 1, z + 1, sizeY, sizeX }
-                                            : BuildEnd(axes, shape, t, sourceC, z, sizeX, sizeY);
-                                        var region = new ZarrNET.Core.OmeZarr.Coordinates.PixelRegion(start, end);
-                                        var regionData = await level.ReadPixelRegionAsync(region).ConfigureAwait(false);
+                                        var regionData = await level.ReadTileAsync(
+                                            0,
+                                            0,
+                                            sizeX,
+                                            sizeY,
+                                            z: z,
+                                            c: sourceC,
+                                            t: t).ConfigureAwait(false);
                                         if (regionData == null || regionData.Data == null || regionData.Data.Length == 0)
                                             continue;
 
-                                        int totalPixels = sizeX * sizeY;
+                                        GetRegionDimensions(regionData, sizeX, sizeY, out int planeW, out int planeH);
+                                        if (planeW <= 0 || planeH <= 0)
+                                            continue;
+
+                                        int totalPixels = planeW * planeH;
                                         if (totalPixels <= 0)
                                             continue;
 
                                         int bytesPerPixel = Math.Max(1, regionData.Data.Length / totalPixels);
-                                        var labelMasks = SplitLabelPlane(regionData.Data, sizeX, sizeY, bytesPerPixel);
+                                        var knownLabelValues = GetKnownLabelValues(labelNode.ImageLabelMetadata);
+                                        var labelMasks = SplitLabelPlane(regionData.Data, planeW, planeH, bytesPerPixel, knownLabelValues);
                                         if (labelMasks.Count == 0)
                                             continue;
                                         Log("[Zarr.LoadLabelOverlaysAsync] label=" + labelName +
@@ -1744,8 +1750,8 @@ namespace BioLib
 
                                             var mask = new ROI.Mask(
                                                 maskData,
-                                                sizeX,
-                                                sizeY,
+                                                planeW,
+                                                planeH,
                                                 physX,
                                                 physY,
                                                 0,
@@ -2163,7 +2169,50 @@ namespace BioLib
             return 0;
         }
 
-        private static Dictionary<int, byte[]> SplitLabelPlane(byte[] raw, int w, int h, int bytesPerPixel)
+        private static void GetRegionDimensions(RegionResult region, int fallbackWidth, int fallbackHeight, out int width, out int height)
+        {
+            width = Math.Max(1, fallbackWidth);
+            height = Math.Max(1, fallbackHeight);
+
+            if (region?.Shape == null || region.Shape.Length == 0)
+                return;
+
+            if (region.Axes != null && region.Axes.Length == region.Shape.Length)
+            {
+                for (int i = 0; i < region.Axes.Length; i++)
+                {
+                    string axisName = region.Axes[i].Name?.ToLowerInvariant() ?? string.Empty;
+                    if (axisName == "x")
+                        width = (int)Math.Max(1, region.Shape[i]);
+                    else if (axisName == "y")
+                        height = (int)Math.Max(1, region.Shape[i]);
+                }
+                return;
+            }
+
+            if (region.Shape.Length >= 2)
+            {
+                width = (int)Math.Max(1, region.Shape[^1]);
+                height = (int)Math.Max(1, region.Shape[^2]);
+            }
+        }
+
+        private static HashSet<int>? GetKnownLabelValues(ImageLabelMetadata metadata)
+        {
+            if (metadata?.Colors == null)
+                return null;
+
+            HashSet<int> values = new();
+            foreach (var entry in metadata.Colors)
+            {
+                if (entry.LabelValue > 0)
+                    values.Add(entry.LabelValue);
+            }
+
+            return values.Count > 0 ? values : null;
+        }
+
+        private static Dictionary<int, byte[]> SplitLabelPlane(byte[] raw, int w, int h, int bytesPerPixel, ISet<int>? knownLabelValues = null)
         {
             int total = w * h;
             var result = new Dictionary<int, byte[]>();
@@ -2172,6 +2221,8 @@ namespace BioLib
             {
                 int labelId = ReadLabelId(raw, i, bytesPerPixel);
                 if (labelId == 0)
+                    continue;
+                if (knownLabelValues != null && !knownLabelValues.Contains(labelId))
                     continue;
 
                 if (!result.TryGetValue(labelId, out byte[]? mask))

@@ -43,6 +43,7 @@ namespace BioGTK
             if (_updatingCoordinate)
                 return;
 
+            ZCT previousCoordinate = SelectedImage.Coordinate;
             _updatingCoordinate = true;
             try
             {
@@ -69,6 +70,9 @@ namespace BioGTK
                 _updatingCoordinate = false;
             }
 
+            if (SelectedImage.isPyramidal && SelectedImage.Coordinate != previousCoordinate)
+                PreparePyramidalCoordinateRender();
+
             UpdateImages();
             if (SelectedImage?.isPyramidal != true && View != null)
             {
@@ -78,6 +82,19 @@ namespace BioGTK
                     View.QueueDraw();
             }
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, z, c, t);
+        }
+
+        private void PreparePyramidalCoordinateRender()
+        {
+            if (SelectedImage?.isPyramidal != true)
+                return;
+
+            slideRenderer?.InvalidateRenderState();
+            sKSlideRenderer?.InvalidateRenderState();
+            SelectedImage.InvalidateTileCache();
+            slideRenderer?.ClearCache();
+            sKSlideRenderer?.ClearCache();
+            SelectedImage.ZarrDisplayMax = 0;
         }
         /// It returns the coordinate of the selected image
         /// 
@@ -253,30 +270,21 @@ namespace BioGTK
                 return new List<ROI>();
 
             if (zarrLabelOverlays.TryGetValue(key, out var overlays) && overlays != null && overlays.Count > 0)
-            {
-                SyncZarrLabelAnnotations(image, overlays);
                 return overlays;
-            }
 
             if (!zarrLabelLoadAttempted.Contains(key))
             {
                 zarrLabelLoadAttempted.Add(key);
                 RefreshZarrLabelOverlays(key);
                 if (zarrLabelOverlays.TryGetValue(key, out overlays) && overlays != null)
-                {
-                    SyncZarrLabelAnnotations(image, overlays);
                     return overlays;
-                }
             }
 
             if (image?.Annotations != null)
             {
                 var synced = image.Annotations.Where(IsZarrLabelRoi).ToList();
                 if (synced.Count > 0)
-                {
-                    SyncZarrLabelAnnotations(image, synced);
                     return synced;
-                }
             }
 
             return new List<ROI>();
@@ -790,9 +798,7 @@ namespace BioGTK
                 foreach (BioImage im in Images)
                 {
                     canvas.Save();
-                List<ROI> rois = new List<ROI>();
-                rois.AddRange(im.Annotations);
-                rois.AddRange(GetZarrLabelOverlays(im).Where(r => r != null && !im.Annotations.Contains(r)));
+                List<ROI> rois = BuildRenderableRois(im);
                     int ri = 0;
                     ZCT co = GetCoordinate();
                     RectangleD rp = ToScreenSpace(new RectangleD(im.StageSizeX * im.PhysicalSizeX, im.StageSizeX * im.PhysicalSizeY, im.SizeX * im.PhysicalSizeX, im.SizeY * im.PhysicalSizeY));
@@ -863,9 +869,7 @@ namespace BioGTK
                 foreach (BioImage im in Images)
                 {
                     canvas.Save();
-                    List<ROI> rois = new List<ROI>();
-                    rois.AddRange(im.Annotations);
-                    rois.AddRange(GetZarrLabelOverlays(im).Where(r => r != null && !im.Annotations.Contains(r)));
+                    List<ROI> rois = BuildRenderableRois(im);
                     int ri = 0;
                     ZCT co = GetCoordinate();
                     if (rois.Count > 0)
@@ -905,10 +909,13 @@ namespace BioGTK
                                     continue;
                                 }
                                 paint.Style = SKPaintStyle.Fill;
-                                using SKImage sim = an.roiMask.GetColored(Color.FromArgb(2, an.fillColor.R, an.fillColor.G, an.fillColor.B), 2, true).ToSKImage();
                                 RectangleD p = SelectedImage.isPyramidal
                                     ? ToScreenSpace(new RectangleD(an.X, an.Y, an.W, an.H))
                                     : ToScreenSpace(new RectangleD(an.X, an.Y, an.W, an.H));
+                                if (!IsScreenRectVisible(p, width, height))
+                                    continue;
+                                const byte maskOverlayAlpha = 96;
+                                using SKImage sim = MaskToSKImage(an.roiMask, Color.FromArgb(maskOverlayAlpha, an.fillColor.R, an.fillColor.G, an.fillColor.B), maskOverlayAlpha);
                                 canvas.DrawImage(sim, ToRectangle((float)p.X, (float)p.Y, (float)p.W, (float)p.H), paint);
                                 continue;
                             }
@@ -1036,10 +1043,12 @@ namespace BioGTK
                         if (an == null || an.roiMask == null)
                             continue;
                         paint.Style = SKPaintStyle.Fill;
-                        using SKImage sim = an.roiMask.GetColored(Color.FromArgb(220, 0, 120, 255), 220, true).ToSKImage();
                         RectangleD p = SelectedImage.isPyramidal
                             ? ToScreenSpace(new RectangleD(an.X, an.Y, an.W, an.H))
                             : ToScreenSpace(new RectangleD(an.X, an.Y, an.W, an.H));
+                        if (!IsScreenRectVisible(p, width, height))
+                            continue;
+                        using SKImage sim = MaskToSKImage(an.roiMask, Color.FromArgb(220, 0, 120, 255), 220);
                         canvas.DrawImage(sim, ToRectangle((float)p.X, (float)p.Y, (float)p.W, (float)p.H), paint);
                         paint.Style = SKPaintStyle.Stroke;
                         paint.Color = SKColors.Blue;
@@ -1060,6 +1069,33 @@ namespace BioGTK
             {
                 Console.WriteLine($"Annotation render error: {ex.Message}");
             }
+        }
+
+        private List<ROI> BuildRenderableRois(BioImage image)
+        {
+            List<ROI> rois = image?.Annotations?.ToList() ?? new List<ROI>();
+            List<ROI> overlays = GetZarrLabelOverlays(image);
+            if (overlays.Count == 0)
+                return rois;
+
+            HashSet<ROI> existing = new HashSet<ROI>(rois.Where(r => r != null));
+            foreach (ROI overlay in overlays)
+            {
+                if (overlay != null && existing.Add(overlay))
+                    rois.Add(overlay);
+            }
+            return rois;
+        }
+
+        private static bool IsScreenRectVisible(RectangleD rect, int width, int height)
+        {
+            if (rect.W <= 0 || rect.H <= 0 || width <= 0 || height <= 0)
+                return false;
+
+            return rect.X < width &&
+                   rect.Y < height &&
+                   rect.X + rect.W > 0 &&
+                   rect.Y + rect.H > 0;
         }
         public static SKImage BitmapToSKImage(Bitmap bmp)
         {
@@ -1086,6 +1122,36 @@ namespace BioGTK
             {
                 bmp.UnlockBits(data);
             }
+        }
+
+        private static SKImage MaskToSKImage(ROI.Mask mask, Color color, byte alpha)
+        {
+            if (mask == null || mask.Width <= 0 || mask.Height <= 0)
+                return SKImage.FromBitmap(new SKBitmap(1, 1));
+
+            byte[] values = mask.GetBytes();
+            int width = mask.Width;
+            int height = mask.Height;
+            int pixelCount = width * height;
+            byte[] bgra = new byte[pixelCount * 4];
+            int count = Math.Min(pixelCount, values?.Length ?? 0);
+
+            for (int i = 0; i < count; i++)
+            {
+                if (values[i] == 0)
+                    continue;
+
+                int d = i * 4;
+                bgra[d + 0] = color.B;
+                bgra[d + 1] = color.G;
+                bgra[d + 2] = color.R;
+                bgra[d + 3] = alpha;
+            }
+
+            var info = new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Unpremul);
+            var data = SKData.CreateCopy(bgra);
+            var pixmap = new SKPixmap(info, data.Data, info.RowBytes);
+            return SKImage.FromPixels(pixmap, (address, context) => data.Dispose(), null);
         }
         /*
         /// <summary>
@@ -3186,15 +3252,6 @@ namespace BioGTK
             if (_updatingCoordinate)
                 return;
             SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
-            if (SelectedImage?.isPyramidal == true)
-            {
-                SelectedImage.InvalidateTileCache();
-                // Also clear the GPU tile cache in SlideRenderer — it holds textures
-                // keyed by TileIndex only, so changing ZCT won't evict them and the
-                // old plane's tiles would be reused instead of fetching the new plane.
-                slideRenderer?.ClearCache();
-                SelectedImage.ZarrDisplayMax = 0; // force display range recalculation for new plane
-            }
             UpdateView(true);
         }
         /// The function ValueChanged is called when the value of the trackbar is changed.
@@ -3206,12 +3263,6 @@ namespace BioGTK
             if (_updatingCoordinate)
                 return;
             SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
-            if (SelectedImage?.isPyramidal == true)
-            {
-                SelectedImage.InvalidateTileCache();
-                slideRenderer?.ClearCache();
-                SelectedImage.ZarrDisplayMax = 0;
-            }
             UpdateView(true);
         }
         /// The function ValueChanged is called when the value of the trackbar is changed.
@@ -3223,12 +3274,6 @@ namespace BioGTK
             if (_updatingCoordinate)
                 return;
             SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
-            if (SelectedImage?.isPyramidal == true)
-            {
-                SelectedImage.InvalidateTileCache();
-                slideRenderer?.ClearCache();
-                SelectedImage.ZarrDisplayMax = 0;
-            }
             UpdateView(true);
         }
         private void UpdateScrollBars()
