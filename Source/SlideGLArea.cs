@@ -19,7 +19,7 @@ namespace BioGTK
     public class SlideGLArea : GLArea
     {
         private const bool VerboseLogging = false;
-        private static readonly bool DiagnosticLogging = false;
+        private static readonly bool DiagnosticLogging = true;
         // ============================================================================
         // GL Resources
         // ============================================================================

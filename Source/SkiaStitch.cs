@@ -508,9 +508,10 @@ namespace BioGTK
             // X: (Tile Left - Viewport Left) / Resolution
             float destX = (float)((request.Extent.MinX - viewportOrigin.X) / resolution);
 
-            // Y: (Viewport Top - Tile Top) / Resolution 
-            // In BruTile, MaxY is the Top of the tile
-            float destY = (float)((viewportOrigin.Y - request.Extent.MaxY) / resolution);
+            // Viewport origin is stored in positive-down image/stage space.
+            // BruTile extents remain in OSM world space, so convert tile top
+            // into the same positive-down convention here.
+            float destY = (float)((-request.Extent.MaxY - viewportOrigin.Y) / resolution);
 
             // Calculate dimensions based on the Extent to ensure precision
             float destW = (float)(request.Extent.Width / resolution);
@@ -556,18 +557,13 @@ namespace BioGTK
         /// </summary>
         private List<TileRequest> CalculateTileRequests(PointD origin, int viewportWidth, int viewportHeight, int level, ZCT coordinate, double resolution)
         {
-            // origin.X/Y is the Top-Left of the viewport in World Space.
-            // In BruTile (OSM/TMS style), Y increases UPWARDS.
+            // origin is the Top-Left of the viewport in positive-down image/stage
+            // space. Convert to BruTile's OSM world-space extent here.
 
             double minX = origin.X;
             double maxX = origin.X + (viewportWidth * resolution);
-
-            // Because Y increases UP, the Top of the screen (origin.Y) 
-            // is the MAXIMUM Y value.
-            double maxY = origin.Y;
-
-            // The Bottom of the screen is the MINIMUM Y value.
-            double minY = origin.Y - (viewportHeight * resolution);
+            double maxY = -origin.Y;
+            double minY = -origin.Y - (viewportHeight * resolution);
 
             // Create the extent (MinX, MinY, MaxX, MaxY)
             var viewportExtent = new Extent(minX, minY, maxX, maxY);

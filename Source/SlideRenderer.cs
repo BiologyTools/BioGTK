@@ -12,7 +12,7 @@ namespace BioGTK
 {
     public class SlideRenderer
     {
-        private static readonly bool DiagnosticLogging = false;
+        private static readonly bool DiagnosticLogging = true;
         private readonly SlideGLArea _glArea;
         private OpenSlideBase _openSlideBase;
         private SlideBase _slideBase;
@@ -173,10 +173,26 @@ namespace BioGTK
             _uploadedTiles.Clear();
             _uploadedTileInfos.Clear();
 
-            double minX = pyramidalOrigin.X;
+            double originX = pyramidalOrigin.X;
+            double originY = pyramidalOrigin.Y;
+            double minX = originX;
             double width = viewportWidth * resolution;
             double height = viewportHeight * resolution;
-            var viewportExtent = new Extent(minX, -pyramidalOrigin.Y - height, minX + width, -pyramidalOrigin.Y);
+            // BioLib pyramids use OSM-style inverted Y coordinates. Keep the
+            // renderer in the same convention rather than trying to infer a
+            // positive-down variant from the schema bounds.
+            var viewportExtent = new Extent(minX, -originY - height, minX + width, -originY);
+
+            // Keep the GL scissor aligned with the actual image boundary so
+            // edge tiles don't leak padded black pixels outside the image.
+            double imageMinX = schema.Extent.MinX;
+            double imageMaxX = schema.Extent.MaxX;
+            double imageMinY = schema.Extent.MinY;
+            double imageMaxY = schema.Extent.MaxY;
+            _glArea.ImageScreenX = (float)((imageMinX - pyramidalOrigin.X) / resolution);
+            _glArea.ImageScreenY = (float)((-imageMaxY - pyramidalOrigin.Y) / resolution);
+            _glArea.ImageScreenW = (float)((imageMaxX - imageMinX) / resolution);
+            _glArea.ImageScreenH = (float)((imageMaxY - imageMinY) / resolution);
 
             // Prefetch one tile beyond each viewport edge so partially visible
             // edge tiles are available without overfetching an arbitrary 2x area.
@@ -188,26 +204,50 @@ namespace BioGTK
                 viewportExtent.MaxX + tileMarginX,
                 viewportExtent.MaxY + tileMarginY);
 
-            // BioLib's own tile-query path converts the viewer extent into the
-            // schema's pixel-space, inverted-Y coordinates before calling BruTile.
-            // Using the raw world extent first can return a non-empty but incorrect
-            // subset of tiles for Zarr, so prefer the converted extent and only
-            // fall back to the raw world extent if it still yields nothing.
-            var lookupExtent = BioLib.ExtentEx.WorldToPixelInvertedY(fetchExtent, levelUnitsPerPixel);
-            var tileInfos = schema.GetTileInfos(lookupExtent, level).ToList();
-            var fallbackInfos = schema.GetTileInfos(fetchExtent, level).ToList();
-
-            if (fallbackInfos.Count > 0)
+            List<TileInfo> tileInfos;
+            List<TileInfo> fallbackInfos;
+            if (_useOpenSlide)
             {
-                var seen = new HashSet<TileIndex>(tileInfos.Select(t => t.Index));
-                foreach (var info in fallbackInfos)
+                // OpenSlide schemas use their historical pixel-space lookup path.
+                var lookupExtent = BioLib.ExtentEx.WorldToPixelInvertedY(fetchExtent, levelUnitsPerPixel);
+                tileInfos = schema.GetTileInfos(lookupExtent, level).ToList();
+                fallbackInfos = schema.GetTileInfos(fetchExtent, level).ToList();
+
+                if (fallbackInfos.Count > 0)
                 {
-                    if (seen.Add(info.Index))
-                        tileInfos.Add(info);
+                    var seen = new HashSet<TileIndex>(tileInfos.Select(t => t.Index));
+                    foreach (var info in fallbackInfos)
+                    {
+                        if (seen.Add(info.Index))
+                            tileInfos.Add(info);
+                    }
+                }
+            }
+            else
+            {
+                // BioLib/Zarr SlideBase schemas already use the same inverted-Y
+                // world convention as BioLib's slice path. Keep lookups in that
+                // space so translated datasets stay aligned with the tile schema.
+                tileInfos = schema.GetTileInfos(fetchExtent, level).ToList();
+                fallbackInfos = new List<TileInfo>();
+
+                if (tileInfos.Count == 0)
+                {
+                    var pixelToWorldExtent = BioLib.ExtentEx.PixelToWorldInvertedY(fetchExtent, levelUnitsPerPixel);
+                    fallbackInfos = schema.GetTileInfos(pixelToWorldExtent, level).ToList();
+
+                    if (fallbackInfos.Count == 0)
+                    {
+                        var worldToPixelExtent = BioLib.ExtentEx.WorldToPixelInvertedY(fetchExtent, levelUnitsPerPixel);
+                        fallbackInfos = schema.GetTileInfos(worldToPixelExtent, level).ToList();
+                    }
+
+                    if (fallbackInfos.Count > 0)
+                        tileInfos = fallbackInfos;
                 }
             }
 
-            LogDiag($"[UpdateViewAsync] fetchExtent=({fetchExtent.MinX:F0},{fetchExtent.MinY:F0},{fetchExtent.MaxX:F0},{fetchExtent.MaxY:F0}) lookupExtent=({lookupExtent.MinX:F0},{lookupExtent.MinY:F0},{lookupExtent.MaxX:F0},{lookupExtent.MaxY:F0}) tileInfos={tileInfos.Count} fallbackInfos={fallbackInfos.Count}");
+            LogDiag($"[UpdateViewAsync] fetchExtent=({fetchExtent.MinX:F0},{fetchExtent.MinY:F0},{fetchExtent.MaxX:F0},{fetchExtent.MaxY:F0}) tileInfos={tileInfos.Count} fallbackInfos={fallbackInfos.Count}");
 
             var renderInfos = new List<TileRenderInfo>();
             var pendingFetches = new List<(TileInfo Tile, Task<byte[]> FetchTask)>();
@@ -339,36 +379,13 @@ namespace BioGTK
 
                 int tW = schema.Resolutions[level].TileWidth;
                 int tH = schema.Resolutions[level].TileHeight;
-                int actualW = tW;
-                int actualH = tH;
-                try
+                // The fetch layer already returns padded edge tiles. The shader
+                // UVs handle world-space clipping, so re-cropping the texture here
+                // would double-clip the edge and leave a visible border.
+                if (tileData.Length < (long)tW * tH * 4)
                 {
-                    var levelRes = schema.Resolutions[level];
-                    double upp = levelRes.UnitsPerPixel;
-                    double clipMinX = Math.Max(tile.Extent.MinX, schema.Extent.MinX);
-                    double clipMaxX = Math.Min(tile.Extent.MaxX, schema.Extent.MaxX);
-                    double clipMinY = Math.Max(tile.Extent.MinY, schema.Extent.MinY);
-                    double clipMaxY = Math.Min(tile.Extent.MaxY, schema.Extent.MaxY);
-                    if (clipMaxX > clipMinX && clipMaxY > clipMinY && upp > 0)
-                    {
-                        actualW = Math.Max(1, (int)Math.Round((clipMaxX - clipMinX) / upp));
-                        actualH = Math.Max(1, (int)Math.Round((clipMaxY - clipMinY) / upp));
-                        actualW = Math.Min(actualW, tW);
-                        actualH = Math.Min(actualH, tH);
-                    }
-                }
-                catch
-                {
-                    actualW = tW;
-                    actualH = tH;
-                }
-
-                if (tileData.Length >= (long)tW * tH * 4 &&
-                    (actualW != tW || actualH != tH))
-                {
-                    tileData = CropBgraTile(tileData, tW, tH, actualW, actualH);
-                    tW = actualW;
-                    tH = actualH;
+                    LogDiag($"[UpdateViewAsync] buffer too small tile={tile.Index} need={tW * tH * 4} got={tileData.Length}");
+                    return;
                 }
 
                 await RunOnGtkThreadAsync(() =>
@@ -437,11 +454,13 @@ namespace BioGTK
             }
         }
 
-        private static byte[] CropBgraTile(byte[] src, int srcW, int srcH, int dstW, int dstH)
+        private static byte[] CropBgraTile(byte[] src, int srcW, int srcH, int srcX, int srcY, int dstW, int dstH)
         {
             if (src == null || src.Length == 0 || srcW <= 0 || srcH <= 0 || dstW <= 0 || dstH <= 0)
                 return Array.Empty<byte>();
-            if (srcW == dstW && srcH == dstH)
+            if (srcX < 0 || srcY < 0 || srcX >= srcW || srcY >= srcH)
+                return Array.Empty<byte>();
+            if (srcX == 0 && srcY == 0 && srcW == dstW && srcH == dstH)
                 return src;
 
             int srcRowBytes = srcW * 4;
@@ -449,7 +468,16 @@ namespace BioGTK
             byte[] cropped = new byte[dstRowBytes * dstH];
             int copyRows = Math.Min(dstH, srcH);
             for (int y = 0; y < copyRows; y++)
-                Buffer.BlockCopy(src, y * srcRowBytes, cropped, y * dstRowBytes, dstRowBytes);
+            {
+                int srcRow = (srcY + y) * srcRowBytes + srcX * 4;
+                int dstRow = y * dstRowBytes;
+                if (srcRow < 0 || srcRow >= src.Length)
+                    break;
+                int bytesToCopy = Math.Min(dstRowBytes, Math.Max(0, src.Length - srcRow));
+                if (bytesToCopy <= 0)
+                    break;
+                Buffer.BlockCopy(src, srcRow, cropped, dstRow, bytesToCopy);
+            }
             return cropped;
         }
 
@@ -663,54 +691,29 @@ namespace BioGTK
             ITileSchema schema)
         {
             // viewResolution and pyramidalOrigin are in world units (microns or
-            // GetUnitPerPixel units).  Schema.Extent and tile.Extent are in the
-            // schema's native coordinate space, which for SlideBase is raw pixels.
-            // Multiply by level-0 UnitsPerPixel to bring everything into the same
-            // world-unit space before computing screen positions.
-
-            double r = schema.Resolutions[level].UnitsPerPixel;
-            double level0UPP = schema.Resolutions.ContainsKey(0)
-                ? schema.Resolutions[0].UnitsPerPixel : r;
-            int tileWidthPx = schema.Resolutions[level].TileWidth;
-            int tileHeightPx = schema.Resolutions[level].TileHeight;
+            // GetUnitPerPixel units).  Tile extents are already expressed in the
+            // same world-space convention used by GetTileInfos/SkiaStitch, so use
+            // them directly here instead of re-clipping against the schema extent.
+            // That avoids introducing a one-sided padding strip when the dataset
+            // carries a translation transform.
 
             var tileExtent = tile.Extent;
-            var clippedExtent = new Extent(
-                Math.Max(tileExtent.MinX, schema.Extent.MinX),
-                Math.Max(tileExtent.MinY, schema.Extent.MinY),
-                Math.Min(tileExtent.MaxX, schema.Extent.MaxX),
-                Math.Min(tileExtent.MaxY, schema.Extent.MaxY));
-            if (clippedExtent.MaxX <= clippedExtent.MinX || clippedExtent.MaxY <= clippedExtent.MinY)
+            if (tileExtent.MaxX <= tileExtent.MinX || tileExtent.MaxY <= tileExtent.MinY)
                 return new TileRenderInfo(tile.Index, -9999, -9999, 0, 0);
 
-            float u0 = (float)Math.Clamp((clippedExtent.MinX - tileExtent.MinX) / (tileExtent.MaxX - tileExtent.MinX), 0.0, 1.0);
-            float u1 = (float)Math.Clamp((clippedExtent.MaxX - tileExtent.MinX) / (tileExtent.MaxX - tileExtent.MinX), 0.0, 1.0);
-            float v0 = (float)Math.Clamp((tileExtent.MaxY - clippedExtent.MaxY) / (tileExtent.MaxY - tileExtent.MinY), 0.0, 1.0);
-            float v1 = (float)Math.Clamp((tileExtent.MaxY - clippedExtent.MinY) / (tileExtent.MaxY - tileExtent.MinY), 0.0, 1.0);
-
-            // Match the cropped world-space quad to the matching sub-region of the
-            // padded tile texture so edge padding does not render as visible blocks.
-            if (tileWidthPx > 0 && tileHeightPx > 0)
-            {
-                u0 = (float)Math.Clamp(u0, 0f, 1f);
-                u1 = (float)Math.Clamp(u1, 0f, 1f);
-                v0 = (float)Math.Clamp(v0, 0f, 1f);
-                v1 = (float)Math.Clamp(v1, 0f, 1f);
-            }
-
-            double tMinX = tileExtent.MinX;
-            double tMaxX = tileExtent.MaxX;
-            double tMinY = tileExtent.MinY;
-            double tMaxY = tileExtent.MaxY;
+            float u0 = 0f;
+            float u1 = 1f;
+            float v0 = 0f;
+            float v1 = 1f;
 
             // Screen position: divide world coords by viewResolution to get pixels.
-            double originScreenX = pyramidalOrigin.X / viewResolution;
-            double originScreenY = pyramidalOrigin.Y / viewResolution;
+            double originScreenX = pyramidalOrigin.X;
+            double originScreenY = pyramidalOrigin.Y;
 
-            float screenX      = (float)(clippedExtent.MinX /  viewResolution - originScreenX);
-            float screenY      = (float)(-clippedExtent.MaxY / viewResolution - originScreenY);
-            float screenWidth  = (float)((clippedExtent.MaxX - clippedExtent.MinX) / viewResolution);
-            float screenHeight = (float)((clippedExtent.MaxY - clippedExtent.MinY) / viewResolution);
+            float screenX      = (float)((tileExtent.MinX - originScreenX) / viewResolution);
+            float screenY      = (float)((-tileExtent.MaxY - originScreenY) / viewResolution);
+            float screenWidth  = (float)((tileExtent.MaxX - tileExtent.MinX) / viewResolution);
+            float screenHeight = (float)((tileExtent.MaxY - tileExtent.MinY) / viewResolution);
 
             return new TileRenderInfo(tile.Index, screenX, screenY, screenWidth, screenHeight, u0, v0, u1, v1);
         }

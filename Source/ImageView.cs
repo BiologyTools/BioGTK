@@ -209,12 +209,17 @@ namespace BioGTK
 
         public void RefreshZarrLabelOverlays(string? sourceOverride = null)
         {
-            if (SelectedImage == null)
+            RefreshZarrLabelOverlays(SelectedImage, sourceOverride);
+        }
+
+        public void RefreshZarrLabelOverlays(BioImage image, string? sourceOverride = null)
+        {
+            if (image == null)
                 return;
 
-            string source = sourceOverride ?? SelectedImage.file;
+            string source = sourceOverride ?? image.file;
             if (string.IsNullOrWhiteSpace(source))
-                source = SelectedImage.Filename;
+                source = image.Filename;
 
             if (string.IsNullOrWhiteSpace(source) ||
                 (!source.Contains(".zarr", StringComparison.OrdinalIgnoreCase) && !Directory.Exists(source)))
@@ -223,9 +228,9 @@ namespace BioGTK
             try
             {
                 AppLog.Append("[RefreshZarrLabelOverlays] source=" + source +
-                    " image=" + SelectedImage.Filename +
-                    " coord=" + SelectedImage.Coordinate.Z + "," + SelectedImage.Coordinate.C + "," + SelectedImage.Coordinate.T);
-                var overlays = BioLib.Zarr.LoadLabelOverlaysAsync(SelectedImage, source).GetAwaiter().GetResult();
+                    " image=" + image.Filename +
+                    " coord=" + image.Coordinate.Z + "," + image.Coordinate.C + "," + image.Coordinate.T);
+                var overlays = BioLib.Zarr.LoadLabelOverlaysAsync(image, source).GetAwaiter().GetResult();
                 AppLog.Append("[RefreshZarrLabelOverlays] primaryCount=" + (overlays?.Count ?? 0));
                 if (overlays == null || overlays.Count == 0)
                 {
@@ -240,15 +245,15 @@ namespace BioGTK
                     AppLog.Append("[RefreshZarrLabelOverlays] fallbackMethod=" + (method != null));
                     if (method != null)
                     {
-                        var result = method.Invoke(null, new object[] { SelectedImage, source }) as List<ROI>;
+                        var result = method.Invoke(null, new object[] { image, source }) as List<ROI>;
                         AppLog.Append("[RefreshZarrLabelOverlays] fallbackCount=" + (result?.Count ?? 0));
                         if (result != null && result.Count > 0)
                             overlays = result;
                     }
                 }
-                SetZarrLabelOverlays(SelectedImage, overlays);
-                SetZarrLabelOverlays(SelectedImage, overlays, source);
-                SyncZarrLabelAnnotations(SelectedImage, overlays);
+                SetZarrLabelOverlays(image, overlays);
+                SetZarrLabelOverlays(image, overlays, source);
+                SyncZarrLabelAnnotations(image, overlays);
                 AppLog.Append("[RefreshZarrLabelOverlays] storedCount=" + (overlays?.Count ?? 0));
                 BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, source);
             }
@@ -275,7 +280,7 @@ namespace BioGTK
             if (!zarrLabelLoadAttempted.Contains(key))
             {
                 zarrLabelLoadAttempted.Add(key);
-                RefreshZarrLabelOverlays(key);
+                RefreshZarrLabelOverlays(image, key);
                 if (zarrLabelOverlays.TryGetValue(key, out overlays) && overlays != null)
                     return overlays;
             }
@@ -342,13 +347,21 @@ namespace BioGTK
                 if (SelectedImage.Type == BioImage.ImageType.pyramidal)
                     if (openSlide)
                     {
-                        int lev = OpenSlideGTK.TileUtil.GetLevel(_openSlideBase.Schema.Resolutions, Resolution);
-                        return _openSlideBase.Schema.Resolutions[lev].UnitsPerPixel * pxWmicron;
+                        if (_openSlideBase?.Schema?.Resolutions != null && _openSlideBase.Schema.Resolutions.Count > 0)
+                        {
+                            int lev = OpenSlideGTK.TileUtil.GetLevel(_openSlideBase.Schema.Resolutions, Resolution);
+                            lev = Math.Clamp(lev, 0, _openSlideBase.Schema.Resolutions.Count - 1);
+                            return _openSlideBase.Schema.Resolutions[lev].UnitsPerPixel * pxWmicron;
+                        }
                     }
                     else
                     {
-                        int lev = OpenSlideGTK.TileUtil.GetLevel(_slideBase.Schema.Resolutions, Resolution);
-                        return _slideBase.Schema.Resolutions[lev].UnitsPerPixel * pxWmicron;
+                        if (_slideBase?.Schema?.Resolutions != null && _slideBase.Schema.Resolutions.Count > 0)
+                        {
+                            int lev = OpenSlideGTK.TileUtil.GetLevel(_slideBase.Schema.Resolutions, Resolution);
+                            lev = Math.Clamp(lev, 0, _slideBase.Schema.Resolutions.Count - 1);
+                            return _slideBase.Schema.Resolutions[lev].UnitsPerPixel * pxWmicron;
+                        }
                     }
 
                 return pxWmicron;
@@ -367,13 +380,21 @@ namespace BioGTK
                 if (SelectedImage.Type == BioImage.ImageType.pyramidal)
                     if (openSlide)
                     {
-                        int lev = OpenSlideGTK.TileUtil.GetLevel(_openSlideBase.Schema.Resolutions, Resolution);
-                        return _openSlideBase.Schema.Resolutions[lev].UnitsPerPixel * pxHmicron;
+                        if (_openSlideBase?.Schema?.Resolutions != null && _openSlideBase.Schema.Resolutions.Count > 0)
+                        {
+                            int lev = OpenSlideGTK.TileUtil.GetLevel(_openSlideBase.Schema.Resolutions, Resolution);
+                            lev = Math.Clamp(lev, 0, _openSlideBase.Schema.Resolutions.Count - 1);
+                            return _openSlideBase.Schema.Resolutions[lev].UnitsPerPixel * pxHmicron;
+                        }
                     }
                     else
                     {
-                        int lev = OpenSlideGTK.TileUtil.GetLevel(_slideBase.Schema.Resolutions, Resolution);
-                        return _slideBase.Schema.Resolutions[lev].UnitsPerPixel * pxHmicron;
+                        if (_slideBase?.Schema?.Resolutions != null && _slideBase.Schema.Resolutions.Count > 0)
+                        {
+                            int lev = OpenSlideGTK.TileUtil.GetLevel(_slideBase.Schema.Resolutions, Resolution);
+                            lev = Math.Clamp(lev, 0, _slideBase.Schema.Resolutions.Count - 1);
+                            return _slideBase.Schema.Resolutions[lev].UnitsPerPixel * pxHmicron;
+                        }
                     }
                 return pxHmicron;
             }
@@ -806,7 +827,7 @@ namespace BioGTK
                         canvas.DrawImage(SKImages[i], ToRectangle((float)rp.X, (float)rp.Y, (float)rp.W, (float)rp.H), paint);
                     if (rois.Count > 0)
                     {
-                        RenderSkiaAnnotations(canvas, width, height);
+                        RenderSkiaAnnotations(canvas, width, height, im);
                     }
                     i++;
                     canvas.Restore();
@@ -849,7 +870,43 @@ namespace BioGTK
                 Console.WriteLine($"Annotation render error: {ex.Message}");
             }
         }
-        private void RenderSkiaAnnotations(SKCanvas canvas, int width, int height)
+        private PointD ToScreenSpaceForImage(BioImage image, PointD p)
+        {
+            if (image != null && image.isPyramidal)
+            {
+                double resolution = image.Resolution > 0 ? image.Resolution : 1;
+                PointD origin = image.PyramidalOrigin;
+                return new PointD((p.X - origin.X) / resolution, (p.Y - origin.Y) / resolution);
+            }
+
+            double dx = (pxWmicron * (Origin.X)) * Scale.Width;
+            double dy = (pxHmicron * (Origin.Y)) * Scale.Height;
+            return new PointD((PxWmicron * p.X * Scale.Width + dx), (PxHmicron * p.Y * Scale.Height + dy));
+        }
+
+        private RectangleD ToScreenRectForImage(BioImage image, double x, double y, double w, double h)
+        {
+            if (image != null && image.isPyramidal)
+            {
+                double resolution = image.Resolution > 0 ? image.Resolution : 1;
+                PointD origin = image.PyramidalOrigin;
+                return new RectangleD(
+                    (x - origin.X) / resolution,
+                    (y - origin.Y) / resolution,
+                    w / resolution,
+                    h / resolution);
+            }
+
+            double dx = (pxWmicron * (Origin.X)) * Scale.Width;
+            double dy = (pxHmicron * (Origin.Y)) * Scale.Height;
+            return new RectangleD(
+                (PxWmicron * x * Scale.Width + dx),
+                (PxHmicron * y * Scale.Height + dy),
+                (PxWmicron * w * Scale.Width),
+                (PxHmicron * h * Scale.Height));
+        }
+
+        private void RenderSkiaAnnotations(SKCanvas canvas, int width, int height, BioImage im)
         {
             try
             {
@@ -864,20 +921,16 @@ namespace BioGTK
                     Style = SKPaintStyle.Fill
                 };
 
-                // Draw annotations (ROIs) - keep existing annotation drawing code
-                int i = 0;
-                foreach (BioImage im in Images)
-                {
-                    canvas.Save();
-                    List<ROI> rois = BuildRenderableRois(im);
-                    int ri = 0;
-                    ZCT co = GetCoordinate();
-                    if (rois.Count > 0)
+                canvas.Save();
+                List<ROI> rois = BuildRenderableRois(im);
+                int ri = 0;
+                ZCT co = im?.Coordinate ?? new ZCT();
+                if (rois.Count > 0)
                 {
                     List<ROI> selectedMasks = new List<ROI>();
                     foreach (ROI an in rois)
-                        {
-                            if (an.coord != GetCoordinate())
+                    {
+                            if (an.coord != co)
                                 continue;
                             if (Mode == ViewMode.RGBImage)
                             {
@@ -909,9 +962,7 @@ namespace BioGTK
                                     continue;
                                 }
                                 paint.Style = SKPaintStyle.Fill;
-                                RectangleD p = SelectedImage.isPyramidal
-                                    ? ToScreenSpace(new RectangleD(an.X, an.Y, an.W, an.H))
-                                    : ToScreenSpace(new RectangleD(an.X, an.Y, an.W, an.H));
+                                RectangleD p = ToScreenRectForImage(im, an.X, an.Y, an.W, an.H);
                                 if (!IsScreenRectVisible(p, width, height))
                                     continue;
                                 const byte maskOverlayAlpha = 96;
@@ -930,21 +981,21 @@ namespace BioGTK
                             {
                                 for (int p = 0; p < an.Points.Count - 1; p++)
                                 {
-                                    PointD p1 = ToScreenSpace(an.Points[p]);
-                                    PointD p2 = ToScreenSpace(an.Points[p + 1]);
+                                    PointD p1 = ToScreenSpaceForImage(im, an.Points[p]);
+                                    PointD p2 = ToScreenSpaceForImage(im, an.Points[p + 1]);
                                     canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
                                 }
                             }
                             else
                             if (an.type == ROI.Type.Rectangle)
                             {
-                                RectangleD rectt = ToScreenRect(an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
+                                RectangleD rectt = ToScreenRectForImage(im, an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
                                 canvas.DrawRect((float)rectt.X, (float)rectt.Y, (float)rectt.W, (float)rectt.H, paint);
                             }
                             else
                             if (an.type == ROI.Type.Ellipse)
                             {
-                                RectangleD rect = ToScreenRect(an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
+                                RectangleD rect = ToScreenRectForImage(im, an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
                                 canvas.DrawOval((float)rect.X, (float)rect.Y, (float)rect.W / 2, (float)rect.H / 2, paint);
                             }
                             else
@@ -952,12 +1003,12 @@ namespace BioGTK
                             {
                                 for (int p = 0; p < an.Points.Count - 1; p++)
                                 {
-                                    PointD p1 = ToScreenSpace(an.Points[p]);
-                                    PointD p2 = ToScreenSpace(an.Points[p + 1]);
+                                    PointD p1 = ToScreenSpaceForImage(im, an.Points[p]);
+                                    PointD p2 = ToScreenSpaceForImage(im, an.Points[p + 1]);
                                     canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
                                 }
-                                 PointD pp1 = ToScreenSpace(an.Points[0]);
-                                 PointD pp2 = ToScreenSpace(an.Points[an.Points.Count - 1]);
+                                 PointD pp1 = ToScreenSpaceForImage(im, an.Points[0]);
+                                 PointD pp2 = ToScreenSpaceForImage(im, an.Points[an.Points.Count - 1]);
                                  canvas.DrawLine(new SKPoint((float)pp1.X, (float)pp1.Y), new SKPoint((float)pp2.X, (float)pp2.Y), paint);
                             }
                             else
@@ -965,8 +1016,8 @@ namespace BioGTK
                             {
                                 for (int p = 0; p < an.Points.Count - 1; p++)
                                 {
-                                    PointD p1 = ToScreenSpace(an.Points[p]);
-                                    PointD p2 = ToScreenSpace(an.Points[p + 1]);
+                                    PointD p1 = ToScreenSpaceForImage(im, an.Points[p]);
+                                    PointD p2 = ToScreenSpaceForImage(im, an.Points[p + 1]);
                                     canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
                                 }
                             }
@@ -975,36 +1026,36 @@ namespace BioGTK
                             {
                                 for (int p = 0; p < an.Points.Count - 1; p++)
                                 {
-                                    PointD p1 = ToScreenSpace(an.Points[p]);
-                                    PointD p2 = ToScreenSpace(an.Points[p + 1]);
+                                    PointD p1 = ToScreenSpaceForImage(im, an.Points[p]);
+                                    PointD p2 = ToScreenSpaceForImage(im, an.Points[p + 1]);
                                     canvas.DrawLine(new SKPoint((float)p1.X, (float)p1.Y), new SKPoint((float)p2.X, (float)p2.Y), paint);
                                 }
-                                PointD pp1 = ToScreenSpace(an.Points[0]);
-                                PointD pp2 = ToScreenSpace(an.Points[an.Points.Count - 1]);
+                                PointD pp1 = ToScreenSpaceForImage(im, an.Points[0]);
+                                PointD pp2 = ToScreenSpaceForImage(im, an.Points[an.Points.Count - 1]);
                                 canvas.DrawLine(new SKPoint((float)pp1.X, (float)pp1.Y), new SKPoint((float)pp2.X, (float)pp2.Y), paint);
                             }
                             else
                             if (an.type == ROI.Type.Label)
                             {
-                                PointD p = ToScreenSpace(an.Point);
+                                PointD p = ToScreenSpaceForImage(im, an.Point);
                                 canvas.DrawText(an.Text, (float)p.X, (float)p.Y, new SKFont(SKTypeface.Default, an.fontSize, 1, 0), paint);
                             }
 
                             if (ROIManager.showText)
                             {
-                                RectangleD p = ToScreenRect(an.Point.X, an.Point.Y, 1, 1);
+                                RectangleD p = ToScreenRectForImage(im, an.Point.X, an.Point.Y, 1, 1);
                                 canvas.DrawText(an.Text, (float)p.X, (float)p.Y, new SKFont(SKTypeface.Default, an.fontSize, 1, 0), paint);
                             }
                             if (ROIManager.showBounds && an.type != ROI.Type.Rectangle && an.type != ROI.Type.Mask && an.type != ROI.Type.Label)
                             {
-                                RectangleD rrf = ToScreenRect(an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
+                                RectangleD rrf = ToScreenRectForImage(im, an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
                                 canvas.DrawRect((float)rrf.X, (float)rrf.Y, (float)rrf.W, (float)rrf.H, paint);
                             }
                             paint.Color = SKColors.Red;
                             if (!(an.type == ROI.Type.Freeform && !an.Selected) && an.type != ROI.Type.Mask)
                                 foreach (RectangleD re in an.GetSelectBoxes(1))
                                 {
-                                    RectangleD recd = ToScreenRect(re.X, re.Y, re.W, re.H);
+                                    RectangleD recd = ToScreenRectForImage(im, re.X, re.Y, re.W, re.H);
                                     canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
                                 }
                             if (an.type != ROI.Type.Mask)
@@ -1026,7 +1077,7 @@ namespace BioGTK
                                     int ind = 0;
                                     foreach (RectangleD re in an.GetSelectBoxes(1))
                                     {
-                                        RectangleD recd = ToScreenRect(re.X, re.Y, re.W, re.H);
+                                        RectangleD recd = ToScreenRectForImage(im, re.X, re.Y, re.W, re.H);
                                         if (an.selectedPoints.Contains(ind))
                                         {
                                             canvas.DrawRect((float)recd.X, (float)recd.Y, (float)recd.W, (float)recd.H, paint);
@@ -1043,9 +1094,7 @@ namespace BioGTK
                         if (an == null || an.roiMask == null)
                             continue;
                         paint.Style = SKPaintStyle.Fill;
-                        RectangleD p = SelectedImage.isPyramidal
-                            ? ToScreenSpace(new RectangleD(an.X, an.Y, an.W, an.H))
-                            : ToScreenSpace(new RectangleD(an.X, an.Y, an.W, an.H));
+                        RectangleD p = ToScreenRectForImage(im, an.X, an.Y, an.W, an.H);
                         if (!IsScreenRectVisible(p, width, height))
                             continue;
                         using SKImage sim = MaskToSKImage(an.roiMask, Color.FromArgb(220, 0, 120, 255), 220);
@@ -1055,10 +1104,8 @@ namespace BioGTK
                         paint.StrokeWidth = 2;
                         canvas.DrawRect(ToRectangle((float)p.X, (float)p.Y, (float)p.W, (float)p.H), paint);
                     }
-                    }
-                    i++;
-                    canvas.Restore();
                 }
+                canvas.Restore();
                 SKImageInfo inf = new SKImageInfo(width, height);
                 // Plugin rendering hook
                 Plugins.Render(this, new SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs(canvas.Surface, inf));
@@ -1551,6 +1598,9 @@ namespace BioGTK
         // Set to true while GoToImage is applying a batch of origin/resolution changes
         // so that intermediate setter calls don't each fire a separate UpdateView.
         private bool _suppressViewUpdates = false;
+        private bool _isApplyingGoToImage = false;
+        private int? _pendingGoToImageIndex = null;
+        private bool _updatingGui = false;
         private CancellationTokenSource _tileFetchCancellation;
         private Dictionary<string, Task<byte[]>> _pendingTileFetches = new Dictionary<string, Task<byte[]>>();
         private List<SKImage> SKImages = new List<SKImage>();
@@ -1558,27 +1608,31 @@ namespace BioGTK
         /// It updates the images.
         public void UpdateImages(bool force = false)
         {
-            if (SelectedImage == null)
+            App.viewer = this;
+            if (selectedIndex < 0 || selectedIndex >= Images.Count)
                 return;
-            if (zBar.Adjustment.Upper != SelectedImage.SizeZ - 1 ||
-                tBar.Adjustment.Upper != SelectedImage.SizeT - 1)
+            BioImage currentImage = Images[selectedIndex];
+            if (currentImage == null)
+                return;
+            if (zBar.Adjustment.Upper != currentImage.SizeZ - 1 ||
+                tBar.Adjustment.Upper != currentImage.SizeT - 1)
             {
                 UpdateGUI();
             }
             if (!MacOS)
             {
-                if (SelectedImage.isPyramidal && glArea.AllocatedWidth > 1 && glArea.AllocatedHeight > 1)
+                if (currentImage.isPyramidal && glArea.AllocatedWidth > 1 && glArea.AllocatedHeight > 1)
                 {
                     // Use the new renderer - no more ReadPixels!
                     _ = slideRenderer.UpdateViewAsync(
-                        PyramidalOrigin,
+                        currentImage.PyramidalOrigin,
                         glArea.AllocatedWidth,
                         glArea.AllocatedHeight,
-                        Resolution,
-                        GetCoordinate()
+                        currentImage.Resolution,
+                        currentImage.Coordinate
                     );
                 }
-                else if (!SelectedImage.isPyramidal)
+                else if (!currentImage.isPyramidal)
                 {
                     for (int i = 0; i < SKImages.Count; i++)
                     {
@@ -1589,7 +1643,7 @@ namespace BioGTK
                     Bitmaps.Clear();
                     foreach (BioImage b in Images)
                     {
-                        ZCT c = GetCoordinate();
+                        ZCT c = b.Coordinate;
                         AForge.Bitmap bitmap = null;
                         int index = b.GetFrameIndex(c.Z, c.C, c.T);
                         if (Mode == ViewMode.Filtered)
@@ -1619,18 +1673,18 @@ namespace BioGTK
             }
             else
             {
-                if (SelectedImage.isPyramidal && sk.AllocatedWidth > 1 && sk.AllocatedHeight > 1)
+                if (currentImage.isPyramidal && sk.AllocatedWidth > 1 && sk.AllocatedHeight > 1)
                 {
                     // Use the new renderer - no more ReadPixels!
                     _ = sKSlideRenderer.UpdateViewAsync(
-                        PyramidalOrigin,
-                        Resolution,
-                        GetCoordinate(),
+                        currentImage.PyramidalOrigin,
+                        currentImage.Resolution,
+                        currentImage.Coordinate,
                         sk.AllocatedWidth,
                         sk.AllocatedHeight
                     );
                 }
-                else if (!SelectedImage.isPyramidal)
+                else if (!currentImage.isPyramidal)
                 {
                     for (int i = 0; i < SKImages.Count; i++)
                     {
@@ -1641,7 +1695,7 @@ namespace BioGTK
                     Bitmaps.Clear();
                     foreach (BioImage b in Images)
                     {
-                        ZCT c = GetCoordinate();
+                        ZCT c = b.Coordinate;
                         AForge.Bitmap bitmap = null;
                         int index = b.GetFrameIndex(c.Z, c.C, c.T);
                         if (Mode == ViewMode.Filtered)
@@ -2350,7 +2404,7 @@ namespace BioGTK
                     if (sKSlideRenderer.HasValidImage)
                         canvas.Clear(SKColors.Black);
                     sKSlideRenderer.DrawToCanvas(canvas, width, height);
-                    RenderSkiaAnnotations(canvas, width, height);
+                    RenderSkiaAnnotations(canvas, width, height, SelectedImage);
                 }
                 else
                 {
@@ -2916,6 +2970,8 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         private void BBox_Changed(object sender, EventArgs e)
         {
+            if (_updatingGui || SelectedImage == null)
+                return;
             SelectedImage.rgbChannels[2] = bBox.Active;
             UpdateView();
         }
@@ -2926,6 +2982,8 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         private void GBox_Changed(object sender, EventArgs e)
         {
+            if (_updatingGui || SelectedImage == null)
+                return;
             SelectedImage.rgbChannels[1] = gBox.Active;
             UpdateView();
         }
@@ -2937,6 +2995,8 @@ namespace BioGTK
         /// @param EventArgs The EventArgs class is the base class for classes containing event data.
         private void RBox_Changed(object sender, EventArgs e)
         {
+            if (_updatingGui || SelectedImage == null)
+                return;
             SelectedImage.rgbChannels[0] = rBox.Active;
             UpdateView();
         }
@@ -3326,55 +3386,70 @@ namespace BioGTK
         {
             if (SelectedImage == null)
                 return;
-            cBar.Adjustment.Lower = 0;
-            cBar.Adjustment.Upper = Images[selectedIndex].SizeC - 1;
-            zBar.Adjustment.Lower = 0;
-            zBar.Adjustment.Upper = Images[selectedIndex].SizeZ - 1;
-            tBar.Adjustment.Lower = 0;
-            tBar.Adjustment.Upper = Images[selectedIndex].SizeT - 1;
-            if (endz == 0 || endz > Images[selectedIndex].SizeZ - 1)
-                endz = Images[selectedIndex].SizeZ - 1;
-            if (endc == 0 || endc > Images[selectedIndex].SizeC - 1)
-                endc = Images[selectedIndex].SizeC - 1;
-            if (endt == 0 || endt > Images[selectedIndex].SizeT - 1)
-                endt = Images[selectedIndex].SizeT - 1;
-            UpdateScrollBars();
-            var store = new ListStore(typeof(string));
-            foreach (Channel c in SelectedImage.Channels)
+            if (_updatingGui)
+                return;
+
+            _updatingGui = true;
+            try
             {
-                store.AppendValues(c.Name);
-            }
-            // Set the model for the ComboBox
-            rBox.Model = store;
-            gBox.Model = store;
-            bBox.Model = store;
-            if (SelectedImage.Channels.Count > 2)
-            {
-                rBox.Active = 0;
-                gBox.Active = 1;
-                bBox.Active = 2;
-            }
-            else
-            if (SelectedImage.Channels.Count == 2)
-            {
-                rBox.Active = 0;
-                gBox.Active = 1;
-            }
-            imagesMenu = new Menu();
-            for (int i = 0; i < Images.Count; i++)
-            {
-                if (Images[i] == null)
+                cBar.Adjustment.Lower = 0;
+                cBar.Adjustment.Upper = Images[selectedIndex].SizeC - 1;
+                zBar.Adjustment.Lower = 0;
+                zBar.Adjustment.Upper = Images[selectedIndex].SizeZ - 1;
+                tBar.Adjustment.Lower = 0;
+                tBar.Adjustment.Upper = Images[selectedIndex].SizeT - 1;
+                if (endz == 0 || endz > Images[selectedIndex].SizeZ - 1)
+                    endz = Images[selectedIndex].SizeZ - 1;
+                if (endc == 0 || endc > Images[selectedIndex].SizeC - 1)
+                    endc = Images[selectedIndex].SizeC - 1;
+                if (endt == 0 || endt > Images[selectedIndex].SizeT - 1)
+                    endt = Images[selectedIndex].SizeT - 1;
+                UpdateScrollBars();
+                var store = new ListStore(typeof(string));
+                foreach (Channel c in SelectedImage.Channels)
                 {
-                    if (SelectedIndex >= Images.Count)
-                        SelectedIndex--;
-                    Images.RemoveAt(i);
+                    store.AppendValues(c.Name);
                 }
-                MenuItem mi = new MenuItem(Images[i].Filename);
-                mi.ButtonPressEvent += Mi_ButtonPressEvent;
-                imagesMenu.Append(mi);
+                rBox.Model = store;
+                gBox.Model = store;
+                bBox.Model = store;
+                if (SelectedImage.Channels.Count > 2)
+                {
+                    rBox.Active = Math.Clamp(SelectedImage.rgbChannels[0], 0, SelectedImage.Channels.Count - 1);
+                    gBox.Active = Math.Clamp(SelectedImage.rgbChannels[1], 0, SelectedImage.Channels.Count - 1);
+                    bBox.Active = Math.Clamp(SelectedImage.rgbChannels[2], 0, SelectedImage.Channels.Count - 1);
+                }
+                else if (SelectedImage.Channels.Count == 2)
+                {
+                    rBox.Active = Math.Clamp(SelectedImage.rgbChannels[0], 0, SelectedImage.Channels.Count - 1);
+                    gBox.Active = Math.Clamp(SelectedImage.rgbChannels[1], 0, SelectedImage.Channels.Count - 1);
+                }
+                else if (SelectedImage.Channels.Count == 1)
+                {
+                    rBox.Active = 0;
+                    gBox.Active = 0;
+                    bBox.Active = 0;
+                }
+                imagesMenu = new Menu();
+                for (int i = 0; i < Images.Count; i++)
+                {
+                    if (Images[i] == null)
+                    {
+                        if (SelectedIndex >= Images.Count)
+                            SelectedIndex--;
+                        Images.RemoveAt(i);
+                    }
+                    MenuItem mi = new MenuItem(Images[i].Filename);
+                    mi.ButtonPressEvent += Mi_ButtonPressEvent;
+                    imagesMenu.Append(mi);
+                }
+                goToImageMenu.Submenu = imagesMenu;
+                goToImageMenu.ShowAll();
             }
-            goToImageMenu.Submenu = imagesMenu;
-            goToImageMenu.ShowAll();
+            finally
+            {
+                _updatingGui = false;
+            }
         }
 
         /// When a menu item is clicked, find the image that matches the menu item's label, and go to
@@ -4586,6 +4661,11 @@ namespace BioGTK
         {
             if (i < 0 || Images.Count <= i)
                 return;
+            if (_isApplyingGoToImage)
+            {
+                _pendingGoToImageIndex = i;
+                return;
+            }
 
             // Ensure viewport is valid before doing any math
             int vpW = View.AllocatedWidth;
@@ -4607,6 +4687,7 @@ namespace BioGTK
             }
 
             bool imageChanged = selectedIndex != i;
+            _isApplyingGoToImage = true;
             _suppressViewUpdates = true;
             try
             {
@@ -4618,113 +4699,86 @@ namespace BioGTK
                     UpdateGUI();
                 }
 
+                BioImage currentImage = Images[i];
+                if (currentImage == null)
+                    return;
+
                 RefreshPyramidalTiles();
 
-                if (SelectedImage.isPyramidal)
+                if (currentImage.isPyramidal)
                 {
-                    bool keepTopLeft = IsZarrSource(SelectedImage);
-
-                    // --- Determine world size ---
-                    double imageWorldW = SelectedImage.Resolutions.Count > 0
-                        ? SelectedImage.Resolutions[0].SizeX
-                        : SelectedImage.SizeX;
-
-                    double imageWorldH = SelectedImage.Resolutions.Count > 0
-                        ? SelectedImage.Resolutions[0].SizeY
-                        : SelectedImage.SizeY;
+                    double imageMinX = currentImage.Volume.Location.X;
+                    double imageMaxX = currentImage.Volume.Location.X + currentImage.Volume.Width;
+                    double imageMinY = currentImage.Volume.Location.Y;
+                    double imageMaxY = currentImage.Volume.Location.Y + currentImage.Volume.Height;
 
                     var schema = openSlide
                         ? _openSlideBase?.Schema
                         : _slideBase?.Schema;
 
-                    double level0UPP = 1.0;
-
-                    if (schema?.Resolutions != null && schema.Resolutions.Count > 0)
+                    if (schema?.Extent != null)
                     {
-                        if (schema.Resolutions.TryGetValue(0, out var level0))
-                            level0UPP = level0.UnitsPerPixel;
-
-                        if (schema.Extent != null)
-                        {
-                            imageWorldW = schema.Extent.Width;
-                            imageWorldH = schema.Extent.Height;
-                        }
+                        imageMinX = schema.Extent.MinX;
+                        imageMaxX = schema.Extent.MaxX;
+                        imageMinY = schema.Extent.MinY;
+                        imageMaxY = schema.Extent.MaxY;
                     }
 
-                    if (imageWorldW <= 0 && SelectedImage.Resolutions.Count > 0)
-                        imageWorldW = SelectedImage.Resolutions[0].SizeX * level0UPP;
-
-                    if (imageWorldH <= 0 && SelectedImage.Resolutions.Count > 0)
-                        imageWorldH = SelectedImage.Resolutions[0].SizeY * level0UPP;
-
+                    double imageWorldW = imageMaxX - imageMinX;
+                    double imageWorldH = imageMaxY - imageMinY;
                     if (imageWorldW <= 0) imageWorldW = 1;
                     if (imageWorldH <= 0) imageWorldH = 1;
 
-                    // --- FIT (fit the full image inside the viewport) ---
-                    double fitW = imageWorldW / vpW;
-                    double fitH = imageWorldH / vpH;
-
-                    // Use the larger ratio so both dimensions fit inside the viewport.
-                    double targetRes = Math.Max(fitW, fitH);
+                    double targetRes = Math.Max(imageWorldW / vpW, imageWorldH / vpH);
                     if (targetRes <= 0) targetRes = 1;
 
-                    // Use the exact fit resolution here rather than snapping to an
-                    // existing pyramid level. Tile selection already picks the best
-                    // level for the current resolution, and snapping here can leave
-                    // the image smaller than the available viewport.
                     Resolution = targetRes;
-
-                    // Refresh scrollbar page sizes after changing resolution so the
-                    // centering origin is clamped against the correct viewport span.
                     UpdateScrollBars();
 
-                    // Zarr sources are expected to open at the top-left so label
-                    // overlays stay anchored to the visible image rather than the
-                    // centered fit view. Other pyramidal formats keep the older
-                    // centered behavior.
-                    if (keepTopLeft)
-                    {
-                        PyramidalOrigin = new PointD(0, 0);
-                    }
-                    else
-                    {
-                        // --- Centering (works for both zoom-in and zoom-out) ---
-                        double viewWorldW = vpW * Resolution;
-                        double viewWorldH = vpH * Resolution;
-
-                        double originX = (imageWorldW - viewWorldW) / 2.0;
-                        double originY = (imageWorldH - viewWorldH) / 2.0;
-
-                        PyramidalOrigin = new PointD(originX, originY);
-                    }
+                    double viewWorldW = vpW * Resolution;
+                    double viewWorldH = vpH * Resolution;
+                    double originX = imageMinX - ((viewWorldW - imageWorldW) / 2.0);
+                    double originY = (-imageMaxY) - ((viewWorldH - imageWorldH) / 2.0);
+                    PyramidalOrigin = new PointD(originX, originY);
                 }
                 else
                 {
-                    // --- Non-pyramidal path (unchanged, already correct) ---
-                    double dx = Images[i].Volume.Width / 2;
-                    double dy = Images[i].Volume.Height / 2;
+                    double imageWorldW = Math.Max(currentImage.Volume.Width, currentImage.SizeX * currentImage.PhysicalSizeX);
+                    double imageWorldH = Math.Max(currentImage.Volume.Height, currentImage.SizeY * currentImage.PhysicalSizeY);
+                    if (imageWorldW <= 0) imageWorldW = 1;
+                    if (imageWorldH <= 0) imageWorldH = 1;
 
-                    Origin = new PointD(
-                        -(Images[i].Volume.Location.X + dx),
-                        -(Images[i].Volume.Location.Y + dy)
-                    );
-
-                    double wx = vpW / ToScreenW(SelectedImage.Volume.Width);
-                    double wy = vpH / ToScreenH(SelectedImage.Volume.Height);
+                    double wx = vpW / (PxWmicron * imageWorldW);
+                    double wy = vpH / (PxHmicron * imageWorldH);
 
                     float fitScale = (float)Math.Min(wx, wy);
                     if (fitScale <= 0) fitScale = 1;
 
                     Scale = new SizeF(fitScale, fitScale);
+
+                    double viewWorldW = vpW / (PxWmicron * fitScale);
+                    double viewWorldH = vpH / (PxHmicron * fitScale);
+                    double originX = -currentImage.Volume.Location.X + ((viewWorldW - imageWorldW) / 2.0);
+                    double originY = -currentImage.Volume.Location.Y + ((viewWorldH - imageWorldH) / 2.0);
+                    Origin = new PointD(originX, originY);
                 }
             }
             finally
             {
                 _suppressViewUpdates = false;
+                _isApplyingGoToImage = false;
             }
 
             UpdateView();
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, i);
+
+            if (_pendingGoToImageIndex.HasValue)
+            {
+                int pendingIndex = _pendingGoToImageIndex.Value;
+                _pendingGoToImageIndex = null;
+                if (pendingIndex != i)
+                    GoToImage(pendingIndex);
+            }
         }
 
         /// <summary>

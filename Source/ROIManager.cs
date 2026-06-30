@@ -86,7 +86,7 @@ namespace Bio
 #pragma warning restore 649
 
         #endregion
-        private static Random rng = new Random();
+        private static Random rng = new Random(DateTime.Now.Millisecond);
         #region Constructors / Destructors
         public BioImage image;
         private static Dictionary<string, ROI> rts = new Dictionary<string, ROI>();

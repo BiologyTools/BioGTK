@@ -1686,12 +1686,17 @@ namespace BioLib
                         if (sizeX <= 0 || sizeY <= 0)
                             continue;
 
-                        int baseWidth = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeX : image.SizeX;
-                        int baseHeight = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeY : image.SizeY;
                         double physX = image.PhysicalSizeX > 0 ? image.PhysicalSizeX : 1.0;
                         double physY = image.PhysicalSizeY > 0 ? image.PhysicalSizeY : 1.0;
-                        physX *= sizeX > 0 ? baseWidth / (double)sizeX : 1.0;
-                        physY *= sizeY > 0 ? baseHeight / (double)sizeY : 1.0;
+                        double stageX = image.Volume.Location.X;
+                        double stageY = image.Volume.Location.Y;
+                        if (TryGetMultiscaleLabelTransform(multiscale, axes, out double labelPhysX, out double labelPhysY, out double labelStageX, out double labelStageY))
+                        {
+                            physX = labelPhysX;
+                            physY = labelPhysY;
+                            stageX = labelStageX;
+                            stageY = labelStageY;
+                        }
 
                         try
                         {
@@ -1749,14 +1754,14 @@ namespace BioLib
                                             var color = PickLabelColor(labelNode.ImageLabelMetadata, labelId);
 
                                             var mask = new ROI.Mask(
-                                                maskData,
-                                                planeW,
-                                                planeH,
-                                                physX,
-                                                physY,
-                                                0,
-                                                0,
-                                                preserveDimensions: false);
+                                            maskData,
+                                            planeW,
+                                            planeH,
+                                            physX,
+                                            physY,
+                                            stageX,
+                                            stageY,
+                                            preserveDimensions: false);
                                             var roi = new ROI
                                             {
                                                 type = ROI.Type.Mask,
@@ -2605,6 +2610,153 @@ namespace BioLib
             }
 
             return GetFallbackLabelColor(labelValue);
+        }
+
+        private static bool TryGetMultiscaleLabelTransform(object? multiscale, AxisMetadata[] axes, out double physX, out double physY, out double stageX, out double stageY)
+        {
+            physX = 1.0;
+            physY = 1.0;
+            stageX = 0.0;
+            stageY = 0.0;
+
+            if (multiscale == null || axes == null || axes.Length == 0)
+                return false;
+
+            object? dataset = GetEnumerableFirst(GetPropertyValue(multiscale, "Datasets"));
+            if (dataset == null)
+                return false;
+
+            object? transforms = GetPropertyValue(dataset, "CoordinateTransformations");
+            if (transforms == null)
+                return false;
+
+            int xIndex = Array.FindIndex(axes, a => string.Equals(a.Name, "x", StringComparison.OrdinalIgnoreCase));
+            int yIndex = Array.FindIndex(axes, a => string.Equals(a.Name, "y", StringComparison.OrdinalIgnoreCase));
+            if (xIndex < 0 || yIndex < 0)
+                return false;
+
+            double[] origin = ApplyCoordinateTransforms(transforms, axes.Length, xIndex, yIndex, 0.0, 0.0);
+            double[] xPoint = ApplyCoordinateTransforms(transforms, axes.Length, xIndex, yIndex, 1.0, 0.0);
+            double[] yPoint = ApplyCoordinateTransforms(transforms, axes.Length, xIndex, yIndex, 0.0, 1.0);
+
+            if (origin.Length <= Math.Max(xIndex, yIndex) ||
+                xPoint.Length <= xIndex ||
+                yPoint.Length <= yIndex)
+                return false;
+
+            stageX = origin[xIndex];
+            stageY = origin[yIndex];
+            physX = xPoint[xIndex] - origin[xIndex];
+            physY = yPoint[yIndex] - origin[yIndex];
+
+            if (!double.IsFinite(physX) || physX <= 0)
+                physX = 1.0;
+            if (!double.IsFinite(physY) || physY <= 0)
+                physY = 1.0;
+
+            return true;
+        }
+
+        private static object? GetEnumerableFirst(object? value)
+        {
+            if (value is not System.Collections.IEnumerable enumerable)
+                return null;
+
+            foreach (var item in enumerable)
+                return item;
+            return null;
+        }
+
+        private static object? GetPropertyValue(object? obj, params string[] names)
+        {
+            if (obj == null || names == null || names.Length == 0)
+                return null;
+
+            var type = obj.GetType();
+            foreach (var name in names)
+            {
+                var prop = type.GetProperty(name);
+                if (prop != null)
+                    return prop.GetValue(obj);
+            }
+
+            return null;
+        }
+
+        private static double[] ApplyCoordinateTransforms(object transforms, int rank, int xIndex, int yIndex, double x, double y)
+        {
+            var coordinates = new double[Math.Max(rank, Math.Max(xIndex, yIndex) + 1)];
+            if (xIndex >= 0 && xIndex < coordinates.Length)
+                coordinates[xIndex] = x;
+            if (yIndex >= 0 && yIndex < coordinates.Length)
+                coordinates[yIndex] = y;
+
+            if (transforms is not System.Collections.IEnumerable enumerable)
+                return coordinates;
+
+            foreach (var transform in enumerable)
+            {
+                if (transform == null)
+                    continue;
+
+                string? type = GetPropertyValue(transform, "Type")?.ToString() ?? GetPropertyValue(transform, "type")?.ToString();
+                if (string.IsNullOrWhiteSpace(type))
+                    continue;
+
+                if (type.Equals("scale", StringComparison.OrdinalIgnoreCase))
+                {
+                    double[]? scale = GetDoubleArray(GetPropertyValue(transform, "Scale", "scale"));
+                    if (scale == null || scale.Length == 0)
+                        continue;
+
+                    for (int i = 0; i < coordinates.Length && i < scale.Length; i++)
+                        coordinates[i] *= scale[i];
+                }
+                else if (type.Equals("translation", StringComparison.OrdinalIgnoreCase))
+                {
+                    double[]? translation = GetDoubleArray(GetPropertyValue(transform, "Translation", "translation"));
+                    if (translation == null || translation.Length == 0)
+                        continue;
+
+                    for (int i = 0; i < coordinates.Length && i < translation.Length; i++)
+                        coordinates[i] += translation[i];
+                }
+            }
+
+            return coordinates;
+        }
+
+        private static double[]? GetDoubleArray(object? value)
+        {
+            if (value == null)
+                return null;
+
+            if (value is double[] d)
+                return d;
+
+            if (value is float[] f)
+                return f.Select(v => (double)v).ToArray();
+
+            if (value is int[] i)
+                return i.Select(v => (double)v).ToArray();
+
+            if (value is long[] l)
+                return l.Select(v => (double)v).ToArray();
+
+            if (value is System.Collections.IEnumerable enumerable)
+            {
+                var list = new List<double>();
+                foreach (var item in enumerable)
+                {
+                    if (item == null)
+                        continue;
+
+                    list.Add(Convert.ToDouble(item, CultureInfo.InvariantCulture));
+                }
+                return list.ToArray();
+            }
+
+            return null;
         }
 
         private static Color GetFallbackLabelColor(int labelValue)
