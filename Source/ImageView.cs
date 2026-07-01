@@ -1614,6 +1614,7 @@ namespace BioGTK
             BioImage currentImage = Images[selectedIndex];
             if (currentImage == null)
                 return;
+            EnsureImageChannels(currentImage);
             if (zBar.Adjustment.Upper != currentImage.SizeZ - 1 ||
                 tBar.Adjustment.Upper != currentImage.SizeT - 1)
             {
@@ -1782,7 +1783,6 @@ namespace BioGTK
             slideRenderer?.ClearCache();
             sKSlideRenderer?.ClearCache();
             SelectedImage.ZarrDisplayMax = 0;
-            InitPreview();
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, SelectedImage?.file ?? string.Empty);
         }
         Rectangle overview;
@@ -2973,7 +2973,7 @@ namespace BioGTK
             if (_updatingGui || SelectedImage == null)
                 return;
             SelectedImage.rgbChannels[2] = bBox.Active;
-            UpdateView();
+            RefreshDisplayState(invalidatePyramidalTiles: true);
         }
 
         /// When the combobox is changed, the green channel is set to the value of the combobox
@@ -2985,7 +2985,7 @@ namespace BioGTK
             if (_updatingGui || SelectedImage == null)
                 return;
             SelectedImage.rgbChannels[1] = gBox.Active;
-            UpdateView();
+            RefreshDisplayState(invalidatePyramidalTiles: true);
         }
 
         /// When the user clicks on the combobox, the function will update the rgbChannels array to
@@ -2998,6 +2998,21 @@ namespace BioGTK
             if (_updatingGui || SelectedImage == null)
                 return;
             SelectedImage.rgbChannels[0] = rBox.Active;
+            RefreshDisplayState(invalidatePyramidalTiles: true);
+        }
+
+        private void RefreshDisplayState(bool invalidatePyramidalTiles = false)
+        {
+            if (SelectedImage == null)
+                return;
+
+            if (invalidatePyramidalTiles && SelectedImage.isPyramidal)
+            {
+                RefreshPyramidalTiles();
+                UpdateView();
+                return;
+            }
+
             UpdateView();
         }
 
@@ -3392,6 +3407,7 @@ namespace BioGTK
             _updatingGui = true;
             try
             {
+                EnsureImageChannels(SelectedImage);
                 cBar.Adjustment.Lower = 0;
                 cBar.Adjustment.Upper = Images[selectedIndex].SizeC - 1;
                 zBar.Adjustment.Lower = 0;
@@ -3406,9 +3422,9 @@ namespace BioGTK
                     endt = Images[selectedIndex].SizeT - 1;
                 UpdateScrollBars();
                 var store = new ListStore(typeof(string));
-                foreach (Channel c in SelectedImage.Channels)
+                for (int i = 0; i < SelectedImage.Channels.Count; i++)
                 {
-                    store.AppendValues(c.Name);
+                    store.AppendValues(GetChannelDisplayLabel(SelectedImage.Channels[i], i));
                 }
                 rBox.Model = store;
                 gBox.Model = store;
@@ -3450,6 +3466,56 @@ namespace BioGTK
             {
                 _updatingGui = false;
             }
+        }
+
+        private static string GetChannelDisplayLabel(Channel channel, int index)
+        {
+            string name = channel?.Name;
+            if (string.IsNullOrWhiteSpace(name))
+                name = $"Channel {index + 1}";
+            return $"{name} ({index + 1})";
+        }
+
+        private static void EnsureImageChannels(BioImage image)
+        {
+            if (image?.Channels == null || image.Channels.Count == 0)
+                return;
+
+            int expectedChannels = Math.Max(1, Math.Max(image.SizeC, image.RGBChannelCount));
+            if (image.Resolutions != null && image.Resolutions.Count > 0)
+            {
+                var pixelFormat = image.Resolutions[0].PixelFormat;
+                if (pixelFormat == AForge.PixelFormat.Format24bppRgb ||
+                    pixelFormat == AForge.PixelFormat.Format48bppRgb)
+                {
+                    expectedChannels = Math.Max(expectedChannels, 3);
+                }
+            }
+
+            if (expectedChannels > image.Channels.Count)
+            {
+                Channel template = image.Channels[0];
+                while (image.Channels.Count < expectedChannels)
+                {
+                    Channel clone = new Channel(0, image.bitsPerPixel, 1)
+                    {
+                        Name = $"Channel {image.Channels.Count + 1}",
+                        Fluor = template.Fluor,
+                        Color = template.Color
+                    };
+                    image.Channels.Add(clone);
+                }
+            }
+
+            for (int i = 0; i < image.Channels.Count; i++)
+            {
+                if (string.IsNullOrWhiteSpace(image.Channels[i].Name))
+                    image.Channels[i].Name = $"Channel {i + 1}";
+            }
+
+            image.rgbChannels[0] = Math.Clamp(image.rgbChannels[0], 0, image.Channels.Count - 1);
+            image.rgbChannels[1] = Math.Clamp(image.rgbChannels[1], 0, image.Channels.Count - 1);
+            image.rgbChannels[2] = Math.Clamp(image.rgbChannels[2], 0, image.Channels.Count - 1);
         }
 
         /// When a menu item is clicked, find the image that matches the menu item's label, and go to
@@ -3577,6 +3643,7 @@ namespace BioGTK
                 {
                     rgbStack.VisibleChild = rgbStack.Children[0];
                 }
+                RefreshDisplayState(invalidatePyramidalTiles: true);
             }
         }
         /* A property that returns the R channel of the selected image. */

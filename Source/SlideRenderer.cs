@@ -640,29 +640,10 @@ namespace BioGTK
             await _fetchSemaphore.WaitAsync(ct).ConfigureAwait(false);
             try
             {
-                var fetchCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                var fetchTask = _useOpenSlide
-                    ? Task.Run(() => _openTileCache.GetTile(new OpenSlideGTK.Info(coordinate, tileInfo.Index, tileInfo.Extent, level)))
-                    : _tileCache.GetTile(new BioLib.TileInformation(tileInfo.Index, tileInfo.Extent, coordinate), fetchCts.Token);
+                if (ShouldComposeRgbTile())
+                    return await FetchRgbCompositeTileAsync(tileInfo, level, coordinate, ct).ConfigureAwait(false);
 
-                var timeoutTask = Task.Delay(RemoteTileFetchTimeout, ct);
-                var completed = await Task.WhenAny(fetchTask, timeoutTask).ConfigureAwait(false);
-                if (completed != fetchTask)
-                {
-                    LogDiag($"[FetchTileAsync] timeout tile={tileInfo.Index} level={level} extent=({tileInfo.Extent.MinX:F0},{tileInfo.Extent.MinY:F0},{tileInfo.Extent.MaxX:F0},{tileInfo.Extent.MaxY:F0})");
-                    fetchCts.Cancel();
-                    return null;
-                }
-
-                if (_useOpenSlide)
-                {
-                    var bt = await fetchTask.ConfigureAwait(false);
-                    return bt;
-                }
-                else
-                {
-                    return await fetchTask.ConfigureAwait(false);
-                }
+                return await FetchSingleTileAsync(tileInfo, level, coordinate, ct).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -673,6 +654,117 @@ namespace BioGTK
             {
                 _fetchSemaphore.Release();
             }
+        }
+
+        private bool ShouldComposeRgbTile()
+        {
+            if (_useOpenSlide || App.viewer?.Mode != ImageView.ViewMode.RGBImage)
+                return false;
+
+            var bioImage = _slideBase?.Image?.BioImage;
+            if (bioImage == null || bioImage.Channels == null || bioImage.Channels.Count <= 1)
+                return false;
+            if (bioImage.Resolutions == null || bioImage.Resolutions.Count == 0)
+                return false;
+
+            var pixelFormat = bioImage.Resolutions[0].PixelFormat;
+            return pixelFormat != PixelFormat.Format24bppRgb &&
+                   pixelFormat != PixelFormat.Format48bppRgb;
+        }
+
+        private async Task<byte[]> FetchRgbCompositeTileAsync(TileInfo tileInfo, int level, ZCT coordinate, CancellationToken ct)
+        {
+            var bioImage = _slideBase?.Image?.BioImage;
+            if (bioImage == null)
+                return await FetchSingleTileAsync(tileInfo, level, coordinate, ct).ConfigureAwait(false);
+
+            int channelCount = Math.Max(1, bioImage.Channels.Count);
+            int redIndex = Math.Clamp(bioImage.rgbChannels[0], 0, channelCount - 1);
+            int greenIndex = Math.Clamp(bioImage.rgbChannels[1], 0, channelCount - 1);
+            int blueIndex = Math.Clamp(bioImage.rgbChannels[2], 0, channelCount - 1);
+
+            Task<byte[]> redTask = FetchSlideTileDirectAsync(tileInfo, level, new ZCT(coordinate.Z, redIndex, coordinate.T), ct);
+            Task<byte[]> greenTask = FetchSlideTileDirectAsync(tileInfo, level, new ZCT(coordinate.Z, greenIndex, coordinate.T), ct);
+            Task<byte[]> blueTask = FetchSlideTileDirectAsync(tileInfo, level, new ZCT(coordinate.Z, blueIndex, coordinate.T), ct);
+
+            await Task.WhenAll(redTask, greenTask, blueTask).ConfigureAwait(false);
+            return ComposeBgraTiles(redTask.Result, greenTask.Result, blueTask.Result);
+        }
+
+        private async Task<byte[]> FetchSlideTileDirectAsync(TileInfo tileInfo, int level, ZCT coordinate, CancellationToken ct)
+        {
+            var fetchTask = _slideBase.GetTileAsync(new BioLib.TileInformation(tileInfo.Index, tileInfo.Extent, coordinate), coordinate, ct);
+
+            var timeoutTask = Task.Delay(RemoteTileFetchTimeout, ct);
+            var completed = await Task.WhenAny(fetchTask, timeoutTask).ConfigureAwait(false);
+            if (completed != fetchTask)
+                return null;
+
+            return await fetchTask.ConfigureAwait(false);
+        }
+
+        private async Task<byte[]> FetchSingleTileAsync(TileInfo tileInfo, int level, ZCT coordinate, CancellationToken ct)
+        {
+            using var fetchCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            var fetchTask = _useOpenSlide
+                ? Task.Run(() => _openTileCache.GetTile(new OpenSlideGTK.Info(coordinate, tileInfo.Index, tileInfo.Extent, level)))
+                : _tileCache.GetTile(new BioLib.TileInformation(tileInfo.Index, tileInfo.Extent, coordinate), fetchCts.Token);
+
+            var timeoutTask = Task.Delay(RemoteTileFetchTimeout, ct);
+            var completed = await Task.WhenAny(fetchTask, timeoutTask).ConfigureAwait(false);
+            if (completed != fetchTask)
+            {
+                LogDiag($"[FetchTileAsync] timeout tile={tileInfo.Index} level={level} extent=({tileInfo.Extent.MinX:F0},{tileInfo.Extent.MinY:F0},{tileInfo.Extent.MaxX:F0},{tileInfo.Extent.MaxY:F0})");
+                fetchCts.Cancel();
+                return null;
+            }
+
+            if (_useOpenSlide)
+            {
+                var bt = await fetchTask.ConfigureAwait(false);
+                return bt;
+            }
+
+            return await fetchTask.ConfigureAwait(false);
+        }
+
+        private static byte[] ComposeBgraTiles(byte[] redTile, byte[] greenTile, byte[] blueTile)
+        {
+            byte[] fallback = redTile ?? greenTile ?? blueTile;
+            if (fallback == null)
+                return null;
+
+            redTile ??= fallback;
+            greenTile ??= fallback;
+            blueTile ??= fallback;
+
+            int byteCount = Math.Min(redTile.Length, Math.Min(greenTile.Length, blueTile.Length));
+            byteCount -= byteCount % 4;
+            if (byteCount <= 0)
+                return null;
+
+            byte[] composed = new byte[byteCount];
+            for (int i = 0; i < byteCount; i += 4)
+            {
+                byte r = ExtractIntensity(redTile, i);
+                byte g = ExtractIntensity(greenTile, i);
+                byte b = ExtractIntensity(blueTile, i);
+                byte a = (byte)Math.Max(redTile[i + 3], Math.Max(greenTile[i + 3], blueTile[i + 3]));
+                if (a == 0 && (r != 0 || g != 0 || b != 0))
+                    a = byte.MaxValue;
+
+                composed[i] = b;
+                composed[i + 1] = g;
+                composed[i + 2] = r;
+                composed[i + 3] = a;
+            }
+
+            return composed;
+        }
+
+        private static byte ExtractIntensity(byte[] tile, int offset)
+        {
+            return (byte)Math.Max(tile[offset], Math.Max(tile[offset + 1], tile[offset + 2]));
         }
 
         private static void LogDiag(string message)

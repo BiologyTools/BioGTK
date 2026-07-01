@@ -144,7 +144,12 @@ namespace BioGTK
             public string GetCacheKey()
             {
                 // Use Col/Row directly to avoid confusion
-                return $"{Index.Col}_{Index.Row}_{Level}_{Coordinate.Z}_{Coordinate.C}_{Coordinate.T}";
+                string rgbKey = string.Empty;
+                if (App.viewer?.Mode == ImageView.ViewMode.RGBImage && ImageView.SelectedImage != null)
+                {
+                    rgbKey = $"_{ImageView.SelectedImage.rgbChannels[0]}_{ImageView.SelectedImage.rgbChannels[1]}_{ImageView.SelectedImage.rgbChannels[2]}";
+                }
+                return $"{Index.Col}_{Index.Row}_{Level}_{Coordinate.Z}_{Coordinate.C}_{Coordinate.T}{rgbKey}";
             }
         }
         #endregion
@@ -289,10 +294,8 @@ namespace BioGTK
                     }
                     else
                     {
-                        // SlideBase usually takes the Index object and ZCT
                         TileInfo tf = new TileInfo { Index = request.Index, Extent = request.Extent };
-                        // OpenSlide usually takes Level, X-index, Y-index
-                        data = _slideSource.GetTile(tf,request.Coordinate);
+                        data = await FetchSlideTileAsync(tf, request.Coordinate).ConfigureAwait(false);
                     }
 
                     if (data == null || data.Length == 0) return null;
@@ -321,6 +324,81 @@ namespace BioGTK
 
             _pendingTileFetches[key] = fetchTask;
             return await fetchTask;
+        }
+
+        private bool ShouldComposeRgbTile()
+        {
+            if (_isOpenSlide || App.viewer?.Mode != ImageView.ViewMode.RGBImage)
+                return false;
+
+            var bioImage = _slideSource?.Image?.BioImage;
+            if (bioImage == null || bioImage.Channels == null || bioImage.Channels.Count <= 1)
+                return false;
+            if (bioImage.Resolutions == null || bioImage.Resolutions.Count == 0)
+                return false;
+
+            var pixelFormat = bioImage.Resolutions[0].PixelFormat;
+            return pixelFormat != AForge.PixelFormat.Format24bppRgb &&
+                   pixelFormat != AForge.PixelFormat.Format48bppRgb;
+        }
+
+        private async Task<byte[]> FetchSlideTileAsync(TileInfo tileInfo, ZCT coordinate)
+        {
+            if (!ShouldComposeRgbTile())
+                return _slideSource.GetTile(tileInfo, coordinate);
+
+            var bioImage = _slideSource?.Image?.BioImage;
+            if (bioImage == null)
+                return _slideSource.GetTile(tileInfo, coordinate);
+
+            int channelCount = Math.Max(1, bioImage.Channels.Count);
+            int redIndex = Math.Clamp(bioImage.rgbChannels[0], 0, channelCount - 1);
+            int greenIndex = Math.Clamp(bioImage.rgbChannels[1], 0, channelCount - 1);
+            int blueIndex = Math.Clamp(bioImage.rgbChannels[2], 0, channelCount - 1);
+
+            byte[] redTile = await _slideSource.GetTileAsync(new BioLib.TileInformation(tileInfo.Index, tileInfo.Extent, new ZCT(coordinate.Z, redIndex, coordinate.T)), new ZCT(coordinate.Z, redIndex, coordinate.T)).ConfigureAwait(false);
+            byte[] greenTile = await _slideSource.GetTileAsync(new BioLib.TileInformation(tileInfo.Index, tileInfo.Extent, new ZCT(coordinate.Z, greenIndex, coordinate.T)), new ZCT(coordinate.Z, greenIndex, coordinate.T)).ConfigureAwait(false);
+            byte[] blueTile = await _slideSource.GetTileAsync(new BioLib.TileInformation(tileInfo.Index, tileInfo.Extent, new ZCT(coordinate.Z, blueIndex, coordinate.T)), new ZCT(coordinate.Z, blueIndex, coordinate.T)).ConfigureAwait(false);
+            return ComposeBgraTiles(redTile, greenTile, blueTile);
+        }
+
+        private static byte[] ComposeBgraTiles(byte[] redTile, byte[] greenTile, byte[] blueTile)
+        {
+            byte[] fallback = redTile ?? greenTile ?? blueTile;
+            if (fallback == null)
+                return null;
+
+            redTile ??= fallback;
+            greenTile ??= fallback;
+            blueTile ??= fallback;
+
+            int byteCount = Math.Min(redTile.Length, Math.Min(greenTile.Length, blueTile.Length));
+            byteCount -= byteCount % 4;
+            if (byteCount <= 0)
+                return null;
+
+            byte[] composed = new byte[byteCount];
+            for (int i = 0; i < byteCount; i += 4)
+            {
+                byte r = ExtractIntensity(redTile, i);
+                byte g = ExtractIntensity(greenTile, i);
+                byte b = ExtractIntensity(blueTile, i);
+                byte a = (byte)Math.Max(redTile[i + 3], Math.Max(greenTile[i + 3], blueTile[i + 3]));
+                if (a == 0 && (r != 0 || g != 0 || b != 0))
+                    a = byte.MaxValue;
+
+                composed[i] = b;
+                composed[i + 1] = g;
+                composed[i + 2] = r;
+                composed[i + 3] = a;
+            }
+
+            return composed;
+        }
+
+        private static byte ExtractIntensity(byte[] tile, int offset)
+        {
+            return (byte)Math.Max(tile[offset], Math.Max(tile[offset + 1], tile[offset + 2]));
         }
 
         /// <summary>
@@ -443,6 +521,12 @@ namespace BioGTK
             }
             else
             {
+                if (ShouldComposeRgbTile())
+                {
+                    TileInfo tf = new TileInfo { Index = request.Index, Extent = request.Extent };
+                    return FetchSlideTileAsync(tf, request.Coordinate).Result;
+                }
+
                 var sliceInfo = new BioLib.SliceInfo(
                     request.Bounds.X,
                     request.Bounds.Y,
