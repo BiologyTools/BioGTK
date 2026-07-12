@@ -34,7 +34,6 @@ namespace BioLib
     /// </summary>
     public static class Zarr
     {
-        private static int s_debugTileLogs;
         private static readonly object s_labelColorLock = new();
         private static readonly Random s_labelColorRandom = new(unchecked((int)(DateTime.UtcNow.Ticks ^ Environment.TickCount)));
         private static readonly Dictionary<int, Color> s_generatedLabelColors = new();
@@ -59,19 +58,6 @@ namespace BioLib
             int SourceIndex,
             int SizeX,
             int SizeY);
-
-        private static void Log(string msg)
-        {
-            AppLog.Append(msg);
-        }
-
-        private static string SampleBytes(byte[] data, int count = 16)
-        {
-            if (data == null || data.Length == 0)
-                return "<empty>";
-            int len = Math.Min(count, data.Length);
-            return BitConverter.ToString(data, 0, len);
-        }
 
         private static double NormalizePhysicalSize(double value)
         {
@@ -114,13 +100,6 @@ namespace BioLib
             var bytesPerSample = bitsPerSample / 8;
             var zarrDataType   = MapDataType(bitsPerSample);
             var totalChannels  = exportChannelCount;
-            s_debugTileLogs = 0;
-
-            Log($"[SaveZarr] file={b.Filename} out={outputDir} size={b.SizeX}x{b.SizeY} zct={b.SizeZ}/{b.SizeC}/{b.SizeT} " +
-                $"bits={bitsPerSample} bytesPerSample={bytesPerSample} srcPixFmt={sourcePixelFormat} " +
-                $"interleavedRgb={sourceIsInterleavedRgb} bands={sourceChannelCount} " +
-                $"resLevels={b.Resolutions.Count}");
-
             int tileW = 512;
             int tileH = 512;
 
@@ -183,9 +162,6 @@ namespace BioLib
                 {
                     var exportLevel = exportLevels[exportLevelIndex];
                     var lvlDesc = exportLevel.Descriptor;
-                    Log($"[SaveZarr] level={exportLevelIndex} srcLevel={exportLevel.SourceIndex} size={lvlDesc.SizeX}x{lvlDesc.SizeY} downsample={lvlDesc.Downsample} " +
-                        $"scaleX={exportLevel.ScaleX} scaleY={exportLevel.ScaleY}");
-
                     for (int t = 0; t < b.SizeT; t++)
                     {
                         for (int z = 0; z < b.SizeZ; z++)
@@ -356,15 +332,6 @@ namespace BioLib
                         pixelBytes = new byte[needsDeinterleave ? interleavedBytes : singleChannelBytes];
                     }
 
-                    bool logTile = tileX == 0 && tileY == 0 && s_debugTileLogs < 12;
-                    if (logTile)
-                    {
-                        Log($"[WritePlane] level={levelIndex} srcLevel={sourceLevelIndex} t={t} c={c} z={z} srcC={srcC} tile={tileX},{tileY} size={actualW}x{actualH} " +
-                            $"rawLen={pixelBytes?.Length ?? 0} expSingle={singleChannelBytes} expInterleaved={interleavedBytes} " +
-                            $"needsDeinterleave={needsDeinterleave} srcBands={srcChannelCount} bytesPerSample={bytesPerSample} " +
-                            $"rawSample={SampleBytes(pixelBytes)}");
-                    }
-
                     if (needsDeinterleave)
                     {
                         int inferredChannelCount = srcChannelCount;
@@ -395,9 +362,6 @@ namespace BioLib
                         pixelBytes = DeinterleaveChannel(
                             pixelBytes, srcByteIndex, inferredChannelCount,
                             bytesPerSample, pixelCount);
-
-                        if (logTile)
-                            Log($"[WritePlane] deint c={c} srcByteIndex={srcByteIndex} outLen={pixelBytes.Length} sample={SampleBytes(pixelBytes)}");
                     }
                     else
                     {
@@ -409,9 +373,6 @@ namespace BioLib
                                 Math.Min(pixelBytes.Length, singleChannelBytes));
                             pixelBytes = trimmed;
                         }
-
-                        if (logTile)
-                            Log($"[WritePlane] single c={c} outLen={pixelBytes.Length} sample={SampleBytes(pixelBytes)}");
                     }
 
                     await writer.WriteRegionAsync(
@@ -421,11 +382,6 @@ namespace BioLib
                         pixelBytes,
                         levelIndex: levelIndex).ConfigureAwait(false);
 
-                    if (logTile)
-                    {
-                        s_debugTileLogs++;
-                        Log($"[WritePlane] wrote level={levelIndex} srcLevel={sourceLevelIndex} t={t} c={c} z={z} tile={tileX},{tileY}");
-                    }
                 }
             }
         }
@@ -1307,14 +1263,6 @@ namespace BioLib
             if (labelRois.Count == 0)
                 return;
 
-            try
-            {
-                AppLog.Append("[SaveLabelOverlaysAsync] labelRois=" + labelRois.Count +
-                    " outputDir=" + outputDir +
-                    " image=" + image?.Filename);
-            }
-            catch { }
-
             int baseWidth = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeX : image.SizeX;
             int baseHeight = image.Resolutions.Count > 0 ? image.Resolutions[0].SizeY : image.SizeY;
             if (baseWidth <= 0 || baseHeight <= 0)
@@ -1444,8 +1392,6 @@ namespace BioLib
                 int tStride = cStride * sizeC;
 
                 var labelVolume = new short[planePixels * sizeZ * sizeC * sizeT];
-                int probeCount = 0;
-
                 foreach (var entry in roiEntries)
                 {
                     var roi = entry.Roi;
@@ -1455,24 +1401,6 @@ namespace BioLib
                     int c = Math.Clamp(roi.coord.C, 0, sizeC - 1);
                     int t = Math.Clamp(roi.coord.T, 0, sizeT - 1);
                     int offset = (t * tStride) + (c * cStride) + (z * zStride);
-
-                    if (probeCount < 2)
-                    {
-                        try
-                        {
-                            int firstDstX = -1;
-                            int firstDstY = -1;
-                            if (TryGetRoiProbePoint(roi, scaleX, scaleY, out firstDstX, out firstDstY))
-                            {
-                                AppLog.Append("[SaveLabelOverlaysAsync.LevelProbe] level=" + levelIndex +
-                                    " roi=" + roi.roiID +
-                                    " dst=" + firstDstX + "," + firstDstY +
-                                    " scale=" + scaleX + "," + scaleY);
-                            }
-                        }
-                        catch { }
-                        probeCount++;
-                    }
 
                     RasterizeRoi(labelVolume, levelWidth, levelHeight, roi, labelId, offset, scaleX, scaleY);
                 }
@@ -1677,11 +1605,6 @@ namespace BioLib
                         int sizeZ = Math.Max(1, GetAxisSizeStatic(axes, shape, "z", 1));
                         int sizeC = Math.Max(1, GetAxisSizeStatic(axes, shape, "c", 1));
                         int sizeT = Math.Max(1, GetAxisSizeStatic(axes, shape, "t", 1));
-                        Log("[Zarr.LoadLabelOverlaysAsync] label=" + labelName +
-                            " axes=" + string.Join("", axes.Select(a => a.Name)) +
-                            " shape=" + string.Join("x", shape) +
-                            " imageCoord=" + image.Coordinate.Z + "," + image.Coordinate.C + "," + image.Coordinate.T +
-                            " labelSizes=Z" + sizeZ + " C" + sizeC + " T" + sizeT);
 
                         if (sizeX <= 0 || sizeY <= 0)
                             continue;
@@ -1711,11 +1634,6 @@ namespace BioLib
                                         int viewerC = c;
                                         if (sizeZ == 1 && sizeC == 1 && sizeT == 1 && image.SizeC > 1)
                                             viewerC = image.SizeC - 1;
-                                        Log("[Zarr.LoadLabelOverlaysAsync] label=" + labelName +
-                                            " viewerC=" + viewerC +
-                                            " sourceC=" + sourceC +
-                                            " z=" + z +
-                                            " t=" + t);
 
                                         var regionData = await level.ReadTileAsync(
                                             0,
@@ -1741,10 +1659,6 @@ namespace BioLib
                                         var labelMasks = SplitLabelPlane(regionData.Data, planeW, planeH, bytesPerPixel, knownLabelValues);
                                         if (labelMasks.Count == 0)
                                             continue;
-                                        Log("[Zarr.LoadLabelOverlaysAsync] label=" + labelName +
-                                            " coord=" + z + "," + viewerC + "," + t +
-                                            " sourceC=" + sourceC +
-                                            " labels=" + labelMasks.Count);
 
                                         var zct = new AForge.ZCT(z, viewerC, t);
                                         foreach (var kv in labelMasks)
@@ -1837,36 +1751,6 @@ namespace BioLib
                    roi.type == ROI.Type.Polyline ||
                    roi.type == ROI.Type.Freeform ||
                    roi.type == ROI.Type.Label;
-        }
-
-        private static bool TryGetRoiProbePoint(ROI roi, double scaleX, double scaleY, out int x, out int y)
-        {
-            x = -1;
-            y = -1;
-
-            if (roi == null)
-                return false;
-
-            if (roi.type == ROI.Type.Point || roi.type == ROI.Type.Label)
-            {
-                var p = roi.Point;
-                x = (int)Math.Round(p.X * scaleX);
-                y = (int)Math.Round(p.Y * scaleY);
-                return true;
-            }
-
-            var pts = roi.GetPoints();
-            if (pts != null && pts.Length > 0)
-            {
-                x = (int)Math.Round(pts[0].X * scaleX);
-                y = (int)Math.Round(pts[0].Y * scaleY);
-                return true;
-            }
-
-            var bb = roi.BoundingBox;
-            x = (int)Math.Round((bb.X + (bb.W / 2.0)) * scaleX);
-            y = (int)Math.Round((bb.Y + (bb.H / 2.0)) * scaleY);
-            return true;
         }
 
         private static void RasterizeRoi(short[] labelPlane, int imageWidth, int imageHeight, ROI roi, int labelId, int planeOffset, double scaleX, double scaleY)

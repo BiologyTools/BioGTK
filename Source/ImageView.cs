@@ -29,11 +29,6 @@ namespace BioGTK
         /// <summary> Used to load in the glade file resource as a window. </summary>
         private Builder _builder;
         public List<BioImage> Images = new List<BioImage>();
-        private static void Log(string msg)
-        {
-            AppLog.Append(msg);
-        }
-
         private bool _updatingCoordinate = false;
         //public List<SKImage> SKImages = new List<SKImage>();
         public void SetCoordinate(int z, int c, int t)
@@ -227,11 +222,7 @@ namespace BioGTK
 
             try
             {
-                AppLog.Append("[RefreshZarrLabelOverlays] source=" + source +
-                    " image=" + image.Filename +
-                    " coord=" + image.Coordinate.Z + "," + image.Coordinate.C + "," + image.Coordinate.T);
                 var overlays = BioLib.Zarr.LoadLabelOverlaysAsync(image, source).GetAwaiter().GetResult();
-                AppLog.Append("[RefreshZarrLabelOverlays] primaryCount=" + (overlays?.Count ?? 0));
                 if (overlays == null || overlays.Count == 0)
                 {
                     // Some saved Zarrs expose the labels on disk but do not
@@ -242,11 +233,9 @@ namespace BioGTK
                     var method = zarrType?.GetMethod(
                         "LoadLabelsAsROIs",
                         System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                    AppLog.Append("[RefreshZarrLabelOverlays] fallbackMethod=" + (method != null));
                     if (method != null)
                     {
                         var result = method.Invoke(null, new object[] { image, source }) as List<ROI>;
-                        AppLog.Append("[RefreshZarrLabelOverlays] fallbackCount=" + (result?.Count ?? 0));
                         if (result != null && result.Count > 0)
                             overlays = result;
                     }
@@ -254,17 +243,10 @@ namespace BioGTK
                 SetZarrLabelOverlays(image, overlays);
                 SetZarrLabelOverlays(image, overlays, source);
                 SyncZarrLabelAnnotations(image, overlays);
-                AppLog.Append("[RefreshZarrLabelOverlays] storedCount=" + (overlays?.Count ?? 0));
                 BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, source);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.WriteLine($"Refresh Zarr label overlays failed: {ex.Message}");
-                try
-                {
-                    AppLog.Append("[RefreshZarrLabelOverlays] EXCEPTION: " + ex.GetType().Name + ": " + ex.Message);
-                }
-                catch { }
             }
         }
 
@@ -551,20 +533,16 @@ namespace BioGTK
         /// @return The method is returning an instance of the ImageView class.
         public static ImageView Create(BioImage bm)
         {
-            Console.WriteLine("Creating ImageView for " + bm.file);
             string gladePath = System.IO.Path.Combine(
                 System.IO.Path.GetDirectoryName(Environment.ProcessPath)!,
                 "Glade",
                 "ImageView.glade");
             if (App.tools == null)
                 App.tools = Tools.Create();
-            Console.WriteLine("ImageView.Create: loading glade from " + gladePath);
             Builder builder = new Builder();
             builder.AddFromFile(gladePath);
-            Console.WriteLine("ImageView.Create: glade loaded");
 
             var imageViewObj = builder.GetObject("imageView");
-            Console.WriteLine("ImageView.Create: imageView object=" + (imageViewObj != null));
             ImageView v = new ImageView(builder, imageViewObj.Handle, bm);
             v.Title = bm.Filename;
 
@@ -575,12 +553,9 @@ namespace BioGTK
         a handle, and a BioImage object as parameters. */
         protected ImageView(Builder builder, IntPtr handle, BioImage im) : base(handle)
         {
-            Console.WriteLine("ImageView.ctor: begin");
             _builder = builder;
             App.viewer = this;
-            Console.WriteLine("ImageView.ctor: autoconnect");
             builder.Autoconnect(this);
-            Console.WriteLine("ImageView.ctor: autoconnect done");
             var gameWindowSettings = new GameWindowSettings()
             {
                 UpdateFrequency = 60,
@@ -589,7 +564,6 @@ namespace BioGTK
 
             if (OperatingSystem.IsMacOS())
             {
-                Console.WriteLine("ImageView.ctor: macos setup");
                 MacOS = true;
                 // Create the renderer bridge
                 View = new SKDrawingArea();
@@ -597,7 +571,6 @@ namespace BioGTK
             }
             else if (OperatingSystem.IsLinux())
             {
-                Console.WriteLine("ImageView.ctor: linux setup");
                 nativeSettings = new NativeWindowSettings()
                 {
                     ClientSize = new Vector2i(600, 400),
@@ -619,15 +592,11 @@ namespace BioGTK
                 slideRenderer = new SlideRenderer((SlideGLArea)View);
                 GLFWProvider.SetErrorCallback((error, description) =>
                 {
-                    if (description.Contains("Wayland") && description.Contains("window position"))
-                        Console.WriteLine($"BioGTK Window Position Error.");
-                    Console.WriteLine($"BioGTK GLFW Error {error}: {description}");
                 });
 
             }
             else if (OperatingSystem.IsWindows())
             {
-                Console.WriteLine("ImageView.ctor: windows setup");
                 nativeSettings = new NativeWindowSettings()
                 {
                     ClientSize = new Vector2i(600, 400),
@@ -646,13 +615,11 @@ namespace BioGTK
                 slideRenderer = new SlideRenderer((SlideGLArea)View);
                 GLFWProvider.SetErrorCallback((error, description) =>
                 {
-                    Console.WriteLine($"BioGTK GLFW Error {error}: {description}");
                 });
             }
 
             if (MacOS)
             {
-                Console.WriteLine("ImageView.ctor: attach macos view");
                 // View is the sole rendering surface on macOS for both pyramidal and non-pyramidal.
                 // Always attach it to the grid so the widget appears in the window layout.
                 View.Expand = true;
@@ -673,7 +640,6 @@ namespace BioGTK
             }
             else
             {
-                Console.WriteLine("ImageView.ctor: attach non-macos view");
                 // Set the source based on image type
                 if (im.OpenSlideBase != null)
                 {
@@ -699,7 +665,6 @@ namespace BioGTK
             
             if (!MacOS)
             {
-                Console.WriteLine("ImageView.ctor: show non-macos view");
                 if (im.isPyramidal)
                 {
                     View.WidthRequest = 600;
@@ -711,16 +676,13 @@ namespace BioGTK
             }
             else
             {
-                Console.WriteLine("ImageView.ctor: show macos view");
                 View.WidthRequest = 600;
                 View.HeightRequest = 400;
                 View.Show();
             }
-            Console.WriteLine("ImageView.ctor: add image");
             roi.Submenu = roiMenu;
             roi.ShowAll();
             AddImage(im);
-            Console.WriteLine("ImageView.ctor: added image");
             ShowMasks = true;
             pxWmicron = SelectedImage.PhysicalSizeX;
             pxHmicron = SelectedImage.PhysicalSizeY;
@@ -748,7 +710,6 @@ namespace BioGTK
                     GoToImage(SelectedIndex);
             });
 
-            Console.WriteLine("ImageView.ctor: end");
             //App.ApplyStyles(this);
         }
         /*
@@ -1328,9 +1289,8 @@ namespace BioGTK
                                 return tile;
                             }
                         }
-                        catch (Exception ex)
+                        catch (Exception)
                         {
-                            Console.WriteLine($"Prefetch error for tile {tileInfo.Index}: {ex.Message}");
                             return null;
                         }
                     }, token);
@@ -1453,22 +1413,9 @@ namespace BioGTK
 
             try
             {
-                double imageWorldW = SelectedImage.Resolutions.Count > 0
-                    ? SelectedImage.Resolutions[0].SizeX
-                    : SelectedImage.SizeX;
-                double imageWorldH = SelectedImage.Resolutions.Count > 0
-                    ? SelectedImage.Resolutions[0].SizeY
-                    : SelectedImage.SizeY;
-
-                var schema = openSlide
-                    ? _openSlideBase?.Schema
-                    : _slideBase?.Schema;
-
-                if (schema?.Extent != null)
-                {
-                    imageWorldW = schema.Extent.Width;
-                    imageWorldH = schema.Extent.Height;
-                }
+                TryGetPyramidalViewerBounds(SelectedImage, out double imageMinX, out double imageMinY, out double imageMaxX, out double imageMaxY);
+                double imageWorldW = imageMaxX - imageMinX;
+                double imageWorldH = imageMaxY - imageMinY;
 
                 if (imageWorldW <= 0) imageWorldW = 1;
                 if (imageWorldH <= 0) imageWorldH = 1;
@@ -1482,10 +1429,10 @@ namespace BioGTK
                 double visibleBottom = visibleTop + (View.AllocatedHeight * Resolution);
 
                 paint.Color = SKColors.Yellow;
-                if (visibleLeft <= 0 &&
-                    visibleTop <= 0 &&
-                    visibleRight >= imageWorldW &&
-                    visibleBottom >= imageWorldH)
+                if (visibleLeft <= imageMinX &&
+                    visibleTop <= imageMinY &&
+                    visibleRight >= imageMaxX &&
+                    visibleBottom >= imageMaxY)
                 {
                     paint.Style = SKPaintStyle.Stroke;
                     paint.StrokeWidth = 1f;
@@ -1497,8 +1444,8 @@ namespace BioGTK
                 float ovScaleX = (float)overview.Width / (float)imageWorldW;
                 float ovScaleY = (float)overview.Height / (float)imageWorldH;
 
-                float ovX = (float)(visibleLeft * ovScaleX);
-                float ovY = (float)(visibleTop * ovScaleY);
+                float ovX = (float)((visibleLeft - imageMinX) * ovScaleX);
+                float ovY = (float)((visibleTop - imageMinY) * ovScaleY);
                 float ovW = (float)((visibleRight - visibleLeft) * ovScaleX);
                 float ovH = (float)((visibleBottom - visibleTop) * ovScaleY);
 
@@ -1518,9 +1465,8 @@ namespace BioGTK
                     canvas.DrawRect(rectLeft, rectTop, rectRight - rectLeft, rectBottom - rectTop, paint);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
             }
         }
         private void SetResolution(double newResolution, PointD mouseScreenPos)
@@ -1556,19 +1502,14 @@ namespace BioGTK
             double newOriginX = worldX - mouseScreenPos.X * actualResolution;
             double newOriginY = worldY - mouseScreenPos.Y * actualResolution;
 
-            // 4. Clamp to schema world-space bounds (Extent is in world/micron units).
-            var schema = SelectedImage.isPyramidal
-                ? (SelectedImage.OpenSlideBase != null
-                    ? (ITileSchema)SelectedImage.OpenSlideBase.Schema
-                    : SelectedImage.SlideBase.Schema)
-                : null;
-
-            double maxX = schema != null ? schema.Extent.MaxX : 0;
-            double maxY = schema != null ? -schema.Extent.MinY : 0;
+            // 4. Clamp to translated pyramid bounds in viewer coordinates.
+            TryGetPyramidalViewerBounds(SelectedImage, out double imageMinX, out double imageMinY, out double imageMaxX, out double imageMaxY);
+            double viewWorldW = Math.Max(1, View?.AllocatedWidth ?? 1) * actualResolution;
+            double viewWorldH = Math.Max(1, View?.AllocatedHeight ?? 1) * actualResolution;
 
             PyramidalOrigin = new PointD(
-                Math.Max(0, Math.Min(newOriginX, maxX)),
-                Math.Max(0, Math.Min(newOriginY, maxY))
+                ClampPyramidalOrigin(newOriginX, imageMinX, imageMaxX, viewWorldW),
+                ClampPyramidalOrigin(newOriginY, imageMinY, imageMaxY, viewWorldH)
             );
             // PyramidalOrigin setter fires UpdateView with both the new origin and
             // new resolution already in place — one render, correct result.
@@ -1821,7 +1762,6 @@ namespace BioGTK
                 overviewImage = ScaleToOverview(sourceBitmap, srcW, srcH, ow, oh);
                 ShowOverview = overviewImage != null;
 
-                Console.WriteLine($"Preview initialized: {ow}x{oh} from {srcW}x{srcH}");
                 Gtk.Application.Invoke((s, e) =>
                 {
                     if (_viewerCleanupDone)
@@ -1830,9 +1770,8 @@ namespace BioGTK
                     View?.QueueDraw();
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.WriteLine($"Error initializing preview: {ex.Message}");
                 ShowOverview = false;
                 overviewImage?.Dispose();
                 overviewImage = null;
@@ -1847,7 +1786,6 @@ namespace BioGTK
                 var bmp = await SelectedImage.GetWellFieldBitmap(SelectedImage.WellIndex).ConfigureAwait(false);
                 if (bmp == null)
                 {
-                    Console.WriteLine("Preview: GetWellFieldBitmap returned null.");
                     return (null, 0, 0);
                 }
                 return (bmp, bmp.Width, bmp.Height);
@@ -1856,7 +1794,6 @@ namespace BioGTK
             int level = FindOverviewLevel(overviewSize);
             if (level < 0)
             {
-                Console.WriteLine("Preview: no suitable pyramid level found.");
                 var fallback = SelectedImage.Resolutions[^1];
                 var (fw, fh) = CalcOverviewSize(fallback.SizeX, fallback.SizeY, overviewSize);
                 overview = new Rectangle(0, 0, fw, fh);
@@ -1881,11 +1818,9 @@ namespace BioGTK
                             return (tileBitmap, srcW, srcH);
                         if (tileBitmap != null)
                             tileBitmap.Dispose();
-                        Console.WriteLine("Preview: OpenSlide GetTile returned blank, trying slice fallback.");
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        Console.WriteLine($"Preview: OpenSlide GetTile failed: {ex.Message}");
                     }
 
                     double unitsPerPx = SelectedImage.GetUnitPerPixel(lev);
@@ -1910,16 +1845,13 @@ namespace BioGTK
                             return (tileBitmap, srcW, srcH);
                         if (tileBitmap != null)
                             tileBitmap.Dispose();
-                        Console.WriteLine("Preview: GetTile returned blank, trying finer level.");
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        Console.WriteLine($"Preview: GetTile failed: {ex.Message}");
                     }
 
                     if (SelectedImage.SlideBase == null)
                     {
-                        Console.WriteLine("Preview: SlideBase was null.");
                         return (null, 0, 0);
                     }
 
@@ -1941,9 +1873,8 @@ namespace BioGTK
                             return (bmp, srcW, srcH);
                         bmp.Dispose();
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        Console.WriteLine($"Preview: slice fallback failed: {ex.Message}");
                     }
                 }
             }
@@ -3377,13 +3308,15 @@ namespace BioGTK
                 var hAdj = hScroll.Adjustment;
                 var vAdj = vScroll.Adjustment;
 
-                hAdj.Lower = 0;
-                hAdj.Upper = SelectedImage.Resolutions[0].SizeX;
-                hAdj.PageSize = Math.Min(viewportW, hAdj.Upper);
+                TryGetPyramidalViewerBounds(SelectedImage, out double imageMinX, out double imageMinY, out double imageMaxX, out double imageMaxY);
 
-                vAdj.Lower = 0;
-                vAdj.Upper = SelectedImage.Resolutions[0].SizeY;
-                vAdj.PageSize = Math.Min(viewportH, vAdj.Upper);
+                hAdj.Lower = imageMinX;
+                hAdj.Upper = imageMaxX;
+                hAdj.PageSize = Math.Min(viewportW, Math.Max(1, hAdj.Upper - hAdj.Lower));
+
+                vAdj.Lower = imageMinY;
+                vAdj.Upper = imageMaxY;
+                vAdj.PageSize = Math.Min(viewportH, Math.Max(1, vAdj.Upper - vAdj.Lower));
 
                 hAdj.StepIncrement = Math.Max(1, hAdj.PageSize / 20.0);
                 hAdj.PageIncrement = Math.Max(1, hAdj.PageSize / 2.0);
@@ -3718,15 +3651,15 @@ namespace BioGTK
                 SelectedImage.PyramidalOrigin = value;
                 if (!MacOS)
                 {
-                    bool canPanX = SelectedImage?.isPyramidal == true &&
-                                   SelectedImage.Resolutions.Count > 0 &&
-                                   SelectedImage.Resolutions[0].SizeX > View.AllocatedWidth * Resolution;
-                    bool canPanY = SelectedImage?.isPyramidal == true &&
-                                   SelectedImage.Resolutions.Count > 0 &&
-                                   SelectedImage.Resolutions[0].SizeY > View.AllocatedHeight * Resolution;
+                    double viewWorldW = Math.Max(1, View?.AllocatedWidth ?? 1) * Resolution;
+                    double viewWorldH = Math.Max(1, View?.AllocatedHeight ?? 1) * Resolution;
+                    double worldRangeX = Math.Max(0, hScroll.Adjustment.Upper - hScroll.Adjustment.Lower);
+                    double worldRangeY = Math.Max(0, vScroll.Adjustment.Upper - vScroll.Adjustment.Lower);
+                    bool canPanX = SelectedImage?.isPyramidal == true && worldRangeX > viewWorldW;
+                    bool canPanY = SelectedImage?.isPyramidal == true && worldRangeY > viewWorldH;
 
-                    double maxX = Math.Max(0, hScroll.Adjustment.Upper - hScroll.Adjustment.PageSize);
-                    double maxY = Math.Max(0, vScroll.Adjustment.Upper - vScroll.Adjustment.PageSize);
+                    double maxX = Math.Max(hScroll.Adjustment.Lower, hScroll.Adjustment.Upper - hScroll.Adjustment.PageSize);
+                    double maxY = Math.Max(vScroll.Adjustment.Lower, vScroll.Adjustment.Upper - vScroll.Adjustment.PageSize);
                     double clampedX = canPanX
                         ? Math.Clamp(value.X, hScroll.Adjustment.Lower, maxX)
                         : value.X;
@@ -4033,9 +3966,12 @@ namespace BioGTK
             float newOriginY = (float)(worldY * newLevelScale - mouseY);
 
             // 7. Apply and Clamp (to ensure we don't scroll past image edges)
+            TryGetPyramidalViewerBounds(SelectedImage, out double imageMinX, out double imageMinY, out double imageMaxX, out double imageMaxY);
+            double viewWorldW = Math.Max(1, View?.AllocatedWidth ?? 1) * Resolution;
+            double viewWorldH = Math.Max(1, View?.AllocatedHeight ?? 1) * Resolution;
             PyramidalOrigin = new PointD(
-                Math.Max(0, Math.Min(newOriginX, SelectedImage.Resolutions[SelectedImage.Level].SizeX - AllocatedWidth)),
-                Math.Max(0, Math.Min(newOriginY, SelectedImage.Resolutions[SelectedImage.Level].SizeY - AllocatedHeight))
+                ClampPyramidalOrigin(newOriginX, imageMinX, imageMaxX, viewWorldW),
+                ClampPyramidalOrigin(newOriginY, imageMinY, imageMaxY, viewWorldH)
             );
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, mouseX, mouseY, zoomIn);
         }
@@ -4120,22 +4056,21 @@ namespace BioGTK
             if (!overview.IntersectsWith(overviewX, overviewY))
                 return false;
 
-            double fullResWidth = Math.Max(1, SelectedImage.Resolutions[0].SizeX);
-            double fullResHeight = Math.Max(1, SelectedImage.Resolutions[0].SizeY);
+            TryGetPyramidalViewerBounds(SelectedImage, out double imageMinX, out double imageMinY, out double imageMaxX, out double imageMaxY);
+            double fullResWidth = Math.Max(1, imageMaxX - imageMinX);
+            double fullResHeight = Math.Max(1, imageMaxY - imageMinY);
             double viewWorldW = View.AllocatedWidth * Resolution;
             double viewWorldH = View.AllocatedHeight * Resolution;
 
-            double fullResX = ((overviewX - overview.X) / overview.Width) * fullResWidth;
-            double fullResY = ((overviewY - overview.Y) / overview.Height) * fullResHeight;
+            double fullResX = imageMinX + (((overviewX - overview.X) / overview.Width) * fullResWidth);
+            double fullResY = imageMinY + (((overviewY - overview.Y) / overview.Height) * fullResHeight);
 
             double originX = fullResX - (viewWorldW / 2.0);
             double originY = fullResY - (viewWorldH / 2.0);
-            double maxX = Math.Max(0, fullResWidth - viewWorldW);
-            double maxY = Math.Max(0, fullResHeight - viewWorldH);
 
             PyramidalOrigin = new PointD(
-                Math.Max(0, Math.Min(originX, maxX)),
-                Math.Max(0, Math.Min(originY, maxY)));
+                ClampPyramidalOrigin(originX, imageMinX, imageMaxX, viewWorldW),
+                ClampPyramidalOrigin(originY, imageMinY, imageMaxY, viewWorldH));
             return true;
         }
 
@@ -4724,6 +4659,69 @@ namespace BioGTK
                    source.StartsWith("s3://", StringComparison.OrdinalIgnoreCase);
         }
 
+        private bool TryGetPyramidalViewerBounds(BioImage image, out double minX, out double minY, out double maxX, out double maxY)
+        {
+            minX = 0;
+            minY = 0;
+            maxX = 1;
+            maxY = 1;
+
+            if (image == null)
+                return false;
+
+            minX = image.Volume.Location.X;
+            minY = image.Volume.Location.Y;
+            maxX = minX + image.Volume.Width;
+            maxY = minY + image.Volume.Height;
+
+            ITileSchema schema = null;
+            if (image == SelectedImage)
+            {
+                schema = openSlide
+                    ? _openSlideBase?.Schema
+                    : _slideBase?.Schema;
+            }
+
+            schema ??= image.OpenSlideBase?.Schema;
+            schema ??= image.SlideBase?.Schema;
+
+            if (schema?.Extent != null)
+            {
+                minX = schema.Extent.MinX;
+                maxX = schema.Extent.MaxX;
+                minY = -schema.Extent.MaxY;
+                maxY = -schema.Extent.MinY;
+            }
+
+            if (maxX <= minX)
+                maxX = minX + 1;
+            if (maxY <= minY)
+                maxY = minY + 1;
+
+            return true;
+        }
+
+        private static void NormalizeOsmSchemaOrigin(SlideBase slideBase)
+        {
+            if (slideBase?.Schema is not TileSchema schema)
+                return;
+            if (schema.YAxis != YAxis.OSM)
+                return;
+
+            schema.OriginX = schema.Extent.MinX;
+            schema.OriginY = schema.Extent.MaxY;
+        }
+
+        private static double ClampPyramidalOrigin(double requestedOrigin, double imageMin, double imageMax, double viewWorldSize)
+        {
+            double imageSize = Math.Max(1, imageMax - imageMin);
+            if (viewWorldSize >= imageSize)
+                return imageMin - ((viewWorldSize - imageSize) / 2.0);
+
+            double maxOrigin = imageMax - viewWorldSize;
+            return Math.Max(imageMin, Math.Min(requestedOrigin, maxOrigin));
+        }
+
         public void GoToImage(int i)
         {
             if (i < 0 || Images.Count <= i)
@@ -4774,22 +4772,7 @@ namespace BioGTK
 
                 if (currentImage.isPyramidal)
                 {
-                    double imageMinX = currentImage.Volume.Location.X;
-                    double imageMaxX = currentImage.Volume.Location.X + currentImage.Volume.Width;
-                    double imageMinY = currentImage.Volume.Location.Y;
-                    double imageMaxY = currentImage.Volume.Location.Y + currentImage.Volume.Height;
-
-                    var schema = openSlide
-                        ? _openSlideBase?.Schema
-                        : _slideBase?.Schema;
-
-                    if (schema?.Extent != null)
-                    {
-                        imageMinX = schema.Extent.MinX;
-                        imageMaxX = schema.Extent.MaxX;
-                        imageMinY = schema.Extent.MinY;
-                        imageMaxY = schema.Extent.MaxY;
-                    }
+                    TryGetPyramidalViewerBounds(currentImage, out double imageMinX, out double imageMinY, out double imageMaxX, out double imageMaxY);
 
                     double imageWorldW = imageMaxX - imageMinX;
                     double imageWorldH = imageMaxY - imageMinY;
@@ -4805,7 +4788,7 @@ namespace BioGTK
                     double viewWorldW = vpW * Resolution;
                     double viewWorldH = vpH * Resolution;
                     double originX = imageMinX - ((viewWorldW - imageWorldW) / 2.0);
-                    double originY = (-imageMaxY) - ((viewWorldH - imageWorldH) / 2.0);
+                    double originY = imageMinY - ((viewWorldH - imageWorldH) / 2.0);
                     PyramidalOrigin = new PointD(originX, originY);
                 }
                 else
@@ -4935,7 +4918,7 @@ namespace BioGTK
             if (_slideBase == null) return;
 
             _slideBase.RebuildSchemaForWell(SelectedImage);
-            Log($"[ReinitializeWellField] Schema rebuilt. WellIndex={SelectedImage.WellIndex} Extent={_slideBase.Schema?.Extent.MinX:F0},{_slideBase.Schema?.Extent.MinY:F0},{_slideBase.Schema?.Extent.MaxX:F0},{_slideBase.Schema?.Extent.MaxY:F0}");
+            NormalizeOsmSchemaOrigin(_slideBase);
 
             if (MacOS) sKSlideRenderer?.SetSource(_slideBase);
             else       slideRenderer?.SetSource(_slideBase);
@@ -4961,17 +4944,17 @@ namespace BioGTK
                     var sb = SelectedImage.SlideBase;
                     _slideSource = SelectedImage.SlideBase;
                     _slideBase = sb;
+                    NormalizeOsmSchemaOrigin(sb);
                     var sbResolutions = sb.Schema?.Resolutions;
                     if (sbResolutions != null && sbResolutions.Count > 0)
                         Resolution = sbResolutions[sbResolutions.Count - 1].UnitsPerPixel;
-                    Log($"[Initialize] SetSource called. Resolution={Resolution:F3} WellIndex={SelectedImage.WellIndex} ZarrWellLevels={SelectedImage.ZarrWellLevels?.Count}");
                     if (MacOS) sKSlideRenderer?.SetSource(sb);
                     else slideRenderer?.SetSource(sb);
 
                     if (SelectedImage.Type == BioImage.ImageType.well)
                     {
                         RebuildSchemaForWell(SelectedImage);
-                        Log($"[Initialize] Well schema rebuilt. Levels={sb.Schema?.Resolutions?.Count} Extent={sb.Schema?.Extent.MinX:F0},{sb.Schema?.Extent.MinY:F0},{sb.Schema?.Extent.MaxX:F0},{sb.Schema?.Extent.MaxY:F0}");
+                        NormalizeOsmSchemaOrigin(sb);
                     }
                 }
                 else if (useOpenSlideBase)
@@ -4984,19 +4967,16 @@ namespace BioGTK
                     if (sbResolutions != null && sbResolutions.Count > 0)
                         Resolution = sbResolutions[sbResolutions.Count - 1].UnitsPerPixel;
 
-                    Log($"[Initialize] SetSource called. Resolution={Resolution:F3} WellIndex={SelectedImage.WellIndex} ZarrWellLevels={SelectedImage.ZarrWellLevels?.Count}");
                     if (MacOS) sKSlideRenderer?.SetSource(sb);
                     else slideRenderer?.SetSource(sb);
                     
                     if (SelectedImage.Type == BioImage.ImageType.well)
                     {
                         RebuildSchemaForWell(SelectedImage);
-                        Log($"[Initialize] Well schema rebuilt. Levels={sb.Schema?.Resolutions?.Count} Extent={sb.Schema?.Extent.MinX:F0},{sb.Schema?.Extent.MinY:F0},{sb.Schema?.Extent.MaxX:F0},{sb.Schema?.Extent.MaxY:F0}");
                     }
                 }
                 else
                 {
-                    Log("[Initialize] Pyramidal image had no SlideBase or OpenSlideBase source.");
                 }
             }
 
@@ -5011,7 +4991,6 @@ namespace BioGTK
         {
             if (b.ZarrWellLevels == null || b.ZarrWellLevels.Count == 0)
             {
-                Log($"[RebuildSchemaForWell] ZarrWellLevels empty — schema not rebuilt");
                 return;
             }
             int fi = Math.Clamp(b.Level, 0, b.ZarrWellLevels.Count - 1);
@@ -5023,15 +5002,12 @@ namespace BioGTK
                 fieldLevels = b.ZarrWellLevels.FirstOrDefault(l => l != null && l.Count > 0);
                 if (fieldLevels == null)
                 {
-                    Log($"[RebuildSchemaForWell] no loaded fieldLevels, schema not rebuilt");
                     return;
                 }
-                Log($"[RebuildSchemaForWell] fi={fi} null, fell back to first loaded field");
             }
 
             int w0 = 1, h0 = 1;
             GetFieldDims(fieldLevels[0], out w0, out h0);
-            Log($"[RebuildSchemaForWell] field fi={fi}, level0 w={w0} h={h0}, levels={fieldLevels.Count}");
 
             var newSchema = new BruTile.TileSchema
             {
@@ -5047,13 +5023,11 @@ namespace BioGTK
                 GetFieldDims(fieldLevels[lev], out int wL, out int hL);
                 double downsample = w0 > 0 ? (double)w0 / Math.Max(1, wL) : Math.Pow(2, lev);
                 newSchema.Resolutions[lev] = new BruTile.Resolution(lev, downsample, 256, 256);
-                Log($"[RebuildSchemaForWell]   level {lev}: w={wL} h={hL} unitsPerPixel={downsample}");
             }
 
             var slideBase = SelectedImage?.OpenSlideBase;
             if (slideBase == null)
             {
-                Log($"[RebuildSchemaForWell] OpenSlideBase was null — schema not applied");
                 return;
             }
             //OpenSlideBase op = new OpenSlideBase(SelectedImage.Filename);

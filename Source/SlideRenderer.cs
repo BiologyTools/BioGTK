@@ -12,7 +12,6 @@ namespace BioGTK
 {
     public class SlideRenderer
     {
-        private static readonly bool DiagnosticLogging = true;
         private readonly SlideGLArea _glArea;
         private OpenSlideBase _openSlideBase;
         private SlideBase _slideBase;
@@ -162,8 +161,6 @@ namespace BioGTK
 
             await EnsureGlobalDisplayRangeAsync(coordinate, renderVersion, level).ConfigureAwait(false);
 
-            LogDiag($"[UpdateViewAsync] type={(_useOpenSlide ? "openslide" : "slidebase")} level={level} res={resolution:F3} upp={levelUnitsPerPixel:F3} viewport={viewportWidth}x{viewportHeight} origin=({pyramidalOrigin.X:F2},{pyramidalOrigin.Y:F2}) schemaExtent=({schema.Extent.MinX:F0},{schema.Extent.MinY:F0},{schema.Extent.MaxX:F0},{schema.Extent.MaxY:F0})");
-
             bool levelChanged = level != _currentLevel;
 
             // Keep renderer-side bookkeeping scoped to the current viewport.
@@ -247,8 +244,6 @@ namespace BioGTK
                 }
             }
 
-            LogDiag($"[UpdateViewAsync] fetchExtent=({fetchExtent.MinX:F0},{fetchExtent.MinY:F0},{fetchExtent.MaxX:F0},{fetchExtent.MaxY:F0}) tileInfos={tileInfos.Count} fallbackInfos={fallbackInfos.Count}");
-
             var renderInfos = new List<TileRenderInfo>();
             var pendingFetches = new List<(TileInfo Tile, Task<byte[]> FetchTask)>();
             foreach (var tileInfo in tileInfos)
@@ -285,8 +280,6 @@ namespace BioGTK
                 foreach (var pending in pendingFetches)
                     _ = ProcessPendingFetchAsync(pending.Tile, pending.FetchTask, tileFetchCts.Token, renderVersion, pyramidalOrigin, resolution, level, schema);
             }
-
-            LogDiag($"[UpdateViewAsync] renderInfos={renderInfos.Count} cachedTextures={_glArea.CachedTextureCount}");
 
             if (renderVersion != _renderStateVersion)
                 return;
@@ -372,10 +365,7 @@ namespace BioGTK
                     return;
 
                 if (tileData == null)
-                {
-                    LogDiag($"[UpdateViewAsync] fetch returned null tile={tile.Index} extent=({tile.Extent.MinX:F0},{tile.Extent.MinY:F0},{tile.Extent.MaxX:F0},{tile.Extent.MaxY:F0})");
                     return;
-                }
 
                 int tW = schema.Resolutions[level].TileWidth;
                 int tH = schema.Resolutions[level].TileHeight;
@@ -383,16 +373,12 @@ namespace BioGTK
                 // UVs handle world-space clipping, so re-cropping the texture here
                 // would double-clip the edge and leave a visible border.
                 if (tileData.Length < (long)tW * tH * 4)
-                {
-                    LogDiag($"[UpdateViewAsync] buffer too small tile={tile.Index} need={tW * tH * 4} got={tileData.Length}");
                     return;
-                }
 
                 await RunOnGtkThreadAsync(() =>
                     _glArea.UploadTileTexture(tile.Index, tileData, tW, tH));
                 _uploadedTiles.Add(tile.Index);
                 _uploadedTileInfos[tile.Index] = tile;
-                LogDiag($"[UpdateViewAsync] uploaded tile={tile.Index} bytes={tileData.Length} texSize={tW}x{tH} extent=({tile.Extent.MinX:F0},{tile.Extent.MinY:F0},{tile.Extent.MaxX:F0},{tile.Extent.MaxY:F0})");
 
                 List<TileRenderInfo> pendingLevelRenderInfos = null;
                 int pendingPreviousLevel = -1;
@@ -441,9 +427,8 @@ namespace BioGTK
                     });
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                LogDiag($"[UpdateViewAsync] pending fetch failed tile={tile.Index} err={ex.Message}");
             }
             finally
             {
@@ -714,7 +699,6 @@ namespace BioGTK
             var completed = await Task.WhenAny(fetchTask, timeoutTask).ConfigureAwait(false);
             if (completed != fetchTask)
             {
-                LogDiag($"[FetchTileAsync] timeout tile={tileInfo.Index} level={level} extent=({tileInfo.Extent.MinX:F0},{tileInfo.Extent.MinY:F0},{tileInfo.Extent.MaxX:F0},{tileInfo.Extent.MaxY:F0})");
                 fetchCts.Cancel();
                 return null;
             }
@@ -765,14 +749,6 @@ namespace BioGTK
         private static byte ExtractIntensity(byte[] tile, int offset)
         {
             return (byte)Math.Max(tile[offset], Math.Max(tile[offset + 1], tile[offset + 2]));
-        }
-
-        private static void LogDiag(string message)
-        {
-            if (!DiagnosticLogging)
-                return;
-
-            AppLog.Append(message);
         }
 
         private TileRenderInfo CalculateScreenPosition(
