@@ -272,9 +272,6 @@ namespace BioGTK
         }
         private static void Window_DestroyEvent(object o, DestroyEventArgs args)
         {
-            Gtk.Window w = (Gtk.Window)o;
-            w.Hide();
-            w.Destroy();
         }
 
         private static void Dialog_DeleteEvent(object o, DeleteEventArgs args)
@@ -282,12 +279,10 @@ namespace BioGTK
             Dialog w = (Dialog)o;
             w.Hide();
             w.Destroy();
+            args.RetVal = true;
         }
         private static void Dialog_DestroyEvent(object o, DestroyEventArgs args)
         {
-            Dialog w = (Dialog)o;
-            w.Hide();
-            w.Destroy();
         }
         private static void Window_DeleteEvent(object o, DeleteEventArgs args)
         {
@@ -299,6 +294,7 @@ namespace BioGTK
                 return;
             w.Hide();
             w.Destroy();
+            args.RetVal = true;
         }
 
         public static void SelectWindow(string name)

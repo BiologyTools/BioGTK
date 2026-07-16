@@ -66,6 +66,36 @@ namespace BioLib
                 : 1.0;
         }
 
+        private static double GetRootPhysicalSizeX(BioImage image)
+        {
+            if (image?.Resolutions != null &&
+                image.Resolutions.Count > 0 &&
+                image.Resolutions[0].PhysicalSizeX > 0)
+                return NormalizePhysicalSize(image.Resolutions[0].PhysicalSizeX);
+
+            return NormalizePhysicalSize(image?.PhysicalSizeX ?? 0);
+        }
+
+        private static double GetRootPhysicalSizeY(BioImage image)
+        {
+            if (image?.Resolutions != null &&
+                image.Resolutions.Count > 0 &&
+                image.Resolutions[0].PhysicalSizeY > 0)
+                return NormalizePhysicalSize(image.Resolutions[0].PhysicalSizeY);
+
+            return NormalizePhysicalSize(image?.PhysicalSizeY ?? 0);
+        }
+
+        private static double GetRootPhysicalSizeZ(BioImage image)
+        {
+            if (image?.Resolutions != null &&
+                image.Resolutions.Count > 0 &&
+                image.Resolutions[0].PhysicalSizeZ > 0)
+                return NormalizePhysicalSize(image.Resolutions[0].PhysicalSizeZ);
+
+            return NormalizePhysicalSize(image?.PhysicalSizeZ ?? 0);
+        }
+
         // =====================================================================
         // Public entry point
         // =====================================================================
@@ -124,9 +154,9 @@ namespace BioLib
                     1.0,
                     1.0,
                     1.0,
-                    NormalizePhysicalSize(b.PhysicalSizeX),
-                    NormalizePhysicalSize(b.PhysicalSizeY),
-                    NormalizePhysicalSize(b.PhysicalSizeZ)));
+                    GetRootPhysicalSizeX(b),
+                    GetRootPhysicalSizeY(b),
+                    GetRootPhysicalSizeZ(b)));
             }
 
             // ------------------------------------------------------------------
@@ -139,9 +169,9 @@ namespace BioLib
             {
                 Name          = Path.GetFileNameWithoutExtension(b.Filename),
                 DataType      = zarrDataType,
-                PhysicalSizeX = exportLevels.Count > 0 ? exportLevels[0].PhysicalSizeX : NormalizePhysicalSize(b.PhysicalSizeX),
-                PhysicalSizeY = exportLevels.Count > 0 ? exportLevels[0].PhysicalSizeY : NormalizePhysicalSize(b.PhysicalSizeY),
-                PhysicalSizeZ = NormalizePhysicalSize(b.PhysicalSizeZ),
+                PhysicalSizeX = exportLevels.Count > 0 ? exportLevels[0].PhysicalSizeX : GetRootPhysicalSizeX(b),
+                PhysicalSizeY = exportLevels.Count > 0 ? exportLevels[0].PhysicalSizeY : GetRootPhysicalSizeY(b),
+                PhysicalSizeZ = GetRootPhysicalSizeZ(b),
                 ChunkY        = tileH,
                 ChunkX        = tileW,
             };
@@ -1402,7 +1432,19 @@ namespace BioLib
                     int t = Math.Clamp(roi.coord.T, 0, sizeT - 1);
                     int offset = (t * tStride) + (c * cStride) + (z * zStride);
 
-                    RasterizeRoi(labelVolume, levelWidth, levelHeight, roi, labelId, offset, scaleX, scaleY);
+                    RasterizeRoi(
+                        labelVolume,
+                        levelWidth,
+                        levelHeight,
+                        roi,
+                        labelId,
+                        offset,
+                        scaleX,
+                        scaleY,
+                        image.Volume.Location.X,
+                        image.Volume.Location.Y,
+                        exportLevel.PhysicalSizeX,
+                        exportLevel.PhysicalSizeY);
                 }
 
                 var levelArrayDoc = new
@@ -1519,9 +1561,9 @@ namespace BioLib
                                         {
                                             1.0,
                                             1.0,
-                                            image.PhysicalSizeZ > 0 ? image.PhysicalSizeZ : 1.0,
-                                            image.PhysicalSizeY > 0 ? image.PhysicalSizeY : 1.0,
-                                            image.PhysicalSizeX > 0 ? image.PhysicalSizeX : 1.0
+                                            GetRootPhysicalSizeZ(image),
+                                            GetRootPhysicalSizeY(image),
+                                            GetRootPhysicalSizeX(image)
                                         }
                                     }
                                 }
@@ -1609,8 +1651,8 @@ namespace BioLib
                         if (sizeX <= 0 || sizeY <= 0)
                             continue;
 
-                        double physX = image.PhysicalSizeX > 0 ? image.PhysicalSizeX : 1.0;
-                        double physY = image.PhysicalSizeY > 0 ? image.PhysicalSizeY : 1.0;
+                        double physX = GetRootPhysicalSizeX(image);
+                        double physY = GetRootPhysicalSizeY(image);
                         double stageX = image.Volume.Location.X;
                         double stageY = image.Volume.Location.Y;
                         if (TryGetMultiscaleLabelTransform(multiscale, axes, out double labelPhysX, out double labelPhysY, out double labelStageX, out double labelStageY))
@@ -1753,14 +1795,36 @@ namespace BioLib
                    roi.type == ROI.Type.Label;
         }
 
-        private static void RasterizeRoi(short[] labelPlane, int imageWidth, int imageHeight, ROI roi, int labelId, int planeOffset, double scaleX, double scaleY)
+        private static void RasterizeRoi(
+            short[] labelPlane,
+            int imageWidth,
+            int imageHeight,
+            ROI roi,
+            int labelId,
+            int planeOffset,
+            double scaleX,
+            double scaleY,
+            double imageStageX,
+            double imageStageY,
+            double targetPhysicalSizeX,
+            double targetPhysicalSizeY)
         {
             if (roi == null || labelPlane == null || labelPlane.Length == 0)
                 return;
 
             if (roi.type == ROI.Type.Mask && roi.roiMask != null)
             {
-                RasterizeMask(labelPlane, imageWidth, imageHeight, roi.roiMask, labelId, planeOffset, scaleX, scaleY);
+                RasterizeMask(
+                    labelPlane,
+                    imageWidth,
+                    imageHeight,
+                    roi.roiMask,
+                    labelId,
+                    planeOffset,
+                    imageStageX,
+                    imageStageY,
+                    targetPhysicalSizeX,
+                    targetPhysicalSizeY);
                 return;
             }
 
@@ -2014,10 +2078,22 @@ namespace BioLib
             }
         }
 
-        private static void RasterizeMask(short[] labelPlane, int imageWidth, int imageHeight, ROI.Mask mask, int labelId, int planeOffset, double scaleX, double scaleY)
+        private static void RasterizeMask(
+            short[] labelPlane,
+            int imageWidth,
+            int imageHeight,
+            ROI.Mask mask,
+            int labelId,
+            int planeOffset,
+            double imageStageX,
+            double imageStageY,
+            double targetPhysicalSizeX,
+            double targetPhysicalSizeY)
         {
-            if (scaleX <= 0) scaleX = 1.0;
-            if (scaleY <= 0) scaleY = 1.0;
+            targetPhysicalSizeX = targetPhysicalSizeX > 0 ? targetPhysicalSizeX : 1.0;
+            targetPhysicalSizeY = targetPhysicalSizeY > 0 ? targetPhysicalSizeY : 1.0;
+            double maskPhysicalSizeX = mask.PhysicalSizeX > 0 ? mask.PhysicalSizeX : targetPhysicalSizeX;
+            double maskPhysicalSizeY = mask.PhysicalSizeY > 0 ? mask.PhysicalSizeY : targetPhysicalSizeY;
 
             int startY = 0;
             int startX = 0;
@@ -2026,7 +2102,8 @@ namespace BioLib
 
             for (int y = startY; y < endY; y++)
             {
-                int dstY = (int)Math.Round((mask.Y + y) * scaleY);
+                double worldY = (mask.Y + y) * maskPhysicalSizeY;
+                int dstY = (int)Math.Round((worldY - imageStageY) / targetPhysicalSizeY);
                 if (dstY < 0 || dstY >= imageHeight)
                     continue;
 
@@ -2037,7 +2114,8 @@ namespace BioLib
                     if (mask.GetValue(x, y) <= 0)
                         continue;
 
-                    int dstX = (int)Math.Round((mask.X + x) * scaleX);
+                    double worldX = (mask.X + x) * maskPhysicalSizeX;
+                    int dstX = (int)Math.Round((worldX - imageStageX) / targetPhysicalSizeX);
                     if (dstX < 0 || dstX >= imageWidth)
                         continue;
 
@@ -2346,9 +2424,9 @@ namespace BioLib
                     1.0,
                     1.0,
                     1.0,
-                    NormalizePhysicalSize(b.PhysicalSizeX),
-                    NormalizePhysicalSize(b.PhysicalSizeY),
-                    NormalizePhysicalSize(b.PhysicalSizeZ)));
+                    GetRootPhysicalSizeX(b),
+                    GetRootPhysicalSizeY(b),
+                    GetRootPhysicalSizeZ(b)));
                 return exportLevels;
             }
 
@@ -2374,10 +2452,10 @@ namespace BioLib
 
                 double basePhysicalSizeX = exportLevels.Count > 0
                     ? exportLevels[0].PhysicalSizeX
-                    : NormalizePhysicalSize(b.PhysicalSizeX);
+                    : GetRootPhysicalSizeX(b);
                 double basePhysicalSizeY = exportLevels.Count > 0
                     ? exportLevels[0].PhysicalSizeY
-                    : NormalizePhysicalSize(b.PhysicalSizeY);
+                    : GetRootPhysicalSizeY(b);
                 double physicalSizeX = NormalizePhysicalSize(basePhysicalSizeX * downsample);
                 double physicalSizeY = NormalizePhysicalSize(basePhysicalSizeY * downsample);
 
@@ -2408,9 +2486,9 @@ namespace BioLib
                     1.0,
                     1.0,
                     1.0,
-                    NormalizePhysicalSize(b.PhysicalSizeX),
-                    NormalizePhysicalSize(b.PhysicalSizeY),
-                    NormalizePhysicalSize(b.PhysicalSizeZ)));
+                    GetRootPhysicalSizeX(b),
+                    GetRootPhysicalSizeY(b),
+                    GetRootPhysicalSizeZ(b)));
             }
 
             return exportLevels;

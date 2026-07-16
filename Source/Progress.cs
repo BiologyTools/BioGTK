@@ -36,6 +36,21 @@ namespace BioGTK
                 });
             }
         }
+        public double ProgressPercentValue
+        {
+            get
+            {
+                return progressBar.Fraction * 100;
+            }
+            set
+            {
+                Application.Invoke(delegate
+                {
+                    double percent = Math.Max(0, Math.Min(100, value));
+                    progressBar.Fraction = percent / 100;
+                });
+            }
+        }
         /* A property that is used to update the progress bar. */
         public string Text
         {

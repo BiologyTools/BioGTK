@@ -7,6 +7,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -72,6 +73,17 @@ namespace BioGTK
             if (string.IsNullOrWhiteSpace(ext))
                 ext = string.Empty;
             return $"{baseName}_s{series}{ext}";
+        }
+        private static bool IsRemoteZarrSource(BioImage image)
+        {
+            if (image == null || !image.IsZarrSource)
+                return false;
+
+            string source = image.SourceFile;
+            return !string.IsNullOrWhiteSpace(source) &&
+                (source.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+                 source.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                 source.StartsWith("s3://", StringComparison.OrdinalIgnoreCase));
         }
 
         private async Task<BioImage?> OpenSeriesAsTabAsync(
@@ -169,7 +181,9 @@ namespace BioGTK
             if (seriesCount > 1)
                 im.Rename(GetSeriesDisplayName(file, series, seriesCount));
 
+            TryLoadZarrROIs(im);
             ImageView view = ImageView.Create(im);
+            view.RefreshZarrLabelOverlays(file);
             if (!viewers.Contains(view))
                 viewers.Add(view);
 
@@ -186,7 +200,7 @@ namespace BioGTK
 
         private async Task OpenPyramidRootsAsViewsAsync(string file, bool addToRegistry = false)
         {
-            List<BioImage> roots = await CollectPyramidRootsAsync(file);
+            List<BioImage> roots = await CollectPyramidRootsInBackgroundAsync(file);
             for (int series = 0; series < roots.Count; series++)
             {
                 if (addToRegistry)
@@ -197,7 +211,7 @@ namespace BioGTK
 
         private async Task OpenPyramidRootsAsTabsAsync(string file)
         {
-            List<BioImage> roots = await CollectPyramidRootsAsync(file);
+            List<BioImage> roots = await CollectPyramidRootsInBackgroundAsync(file);
             for (int series = 0; series < roots.Count; series++)
             {
                 BioImage im = roots[series];
@@ -206,6 +220,11 @@ namespace BioGTK
                 Images.AddImage(im);
                 AddTab(im, file);
             }
+        }
+
+        private Task<List<BioImage>> CollectPyramidRootsInBackgroundAsync(string file)
+        {
+            return Task.Run(async () => await CollectPyramidRootsAsync(file));
         }
 
 #pragma warning disable 649
@@ -527,7 +546,15 @@ namespace BioGTK
                 YesNoDialog pd = YesNoDialog.Create("Run on all pyramidal levels?");
                 if (pd.Run() == (int)ResponseType.Yes)
                 {
-                    bm = await ImageJ.RunOnAllPyramidLevels(ImageView.SelectedImage, command, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
+                    StartProgress("Run Command", "Running " + m.Label + " on all pyramid levels.");
+                    try
+                    {
+                        bm = await ImageJ.RunOnAllPyramidLevels(ImageView.SelectedImage, command, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
+                    }
+                    finally
+                    {
+                        StopProgress();
+                    }
                     AddToRecent(m.Label);
                 }
                 else
@@ -536,7 +563,25 @@ namespace BioGTK
                     if(cpd.Run() == (int)ResponseType.Ok)
                     {
                         int level = cpd.SelectedIndex;
-                        bm = await ImageJ.RunOnPyramidalImage(ImageView.SelectedImage, command, level, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
+                        bool currentViewOnly = false;
+                        if (IsRemoteZarrSource(ImageView.SelectedImage))
+                        {
+                            YesNoDialog speedDialog = YesNoDialog.Create("Use only the current visible region for speed?");
+                            currentViewOnly = speedDialog.Run() == (int)ResponseType.Yes;
+                        }
+
+                        string scopeText = currentViewOnly
+                            ? "the current visible region of pyramid level " + (level + 1).ToString()
+                            : "pyramid level " + (level + 1).ToString();
+                        StartProgress("Run Command", "Running " + m.Label + " on " + scopeText + ".");
+                        try
+                        {
+                            bm = await ImageJ.RunOnPyramidalImage(ImageView.SelectedImage, command, level, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab, currentViewOnly);
+                        }
+                        finally
+                        {
+                            StopProgress();
+                        }
                         AddToRecent(m.Label);
                     }
                     else
@@ -545,6 +590,7 @@ namespace BioGTK
                     }
                 }
                 Console.WriteLine($"[TabsView.CommandMenuItem] pyramidal result={(bm == null ? "null" : bm.ID)}");
+                PreserveSourceAnnotations(sourceImage, bm);
                 AddTab(bm);
                 return;
             }
@@ -853,26 +899,44 @@ namespace BioGTK
             await Task.Yield();
             string[] sts = filechooser.Filenames;
             StartProgressHidden("Open Zarr", "Opening");
-            await Task.Yield();
-            foreach (string f in filechooser.Filenames)
+            try
             {
-                await OpenPyramidRootsAsViewsAsync(f, true);
+                await Task.Yield();
+                foreach (string f in filechooser.Filenames)
+                {
+                    await OpenPyramidRootsAsViewsAsync(f, true);
+                }
             }
-            StopProgress();
+            finally
+            {
+                StopProgress();
+            }
         }
 
         private async void OpenURLMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             OpenUrlBox box = OpenUrlBox.Create();
-            if (box.Run() == (int)ResponseType.Ok)
+            try
             {
-                string url = box.GetUrl();
-                StartProgressHidden("Open URL", "Opening");
-                await Task.Yield();
-                await OpenPyramidRootsAsViewsAsync(url, true);
-                StopProgress();
+                if (box.Run() == (int)ResponseType.Ok)
+                {
+                    string url = box.GetUrl();
+                    StartProgress("Open URL", "Opening");
+                    try
+                    {
+                        await Task.Yield();
+                        await OpenPyramidRootsAsViewsAsync(url, true);
+                    }
+                    finally
+                    {
+                        StopProgress();
+                    }
+                }
             }
-            box.Destroy();
+            finally
+            {
+                box.Destroy();
+            }
         }
 
         private void ImportPointsNapari_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -1459,7 +1523,7 @@ namespace BioGTK
                 }
                 TryLoadZarrROIs(im);
                 ImageView v = ImageView.Create(im);
-                //v.QueueRefreshZarrLabelOverlays(sourcePath ?? im.file);
+                v.RefreshZarrLabelOverlays(sourcePath ?? im.file);
                 viewers.Add(v);
                 Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file.Replace("\\", "/")) + "/" + im.Filename);
                 dummy.Text = im.file.Replace("\\", "/") + "/" + im.Filename;
@@ -1505,7 +1569,7 @@ namespace BioGTK
                 }
                 ImageView v = ImageView.Create(im);
                 viewers.Add(v);
-                //v.QueueRefreshZarrLabelOverlays(sourcePath ?? im.file);
+                v.RefreshZarrLabelOverlays(sourcePath ?? im.file);
                     Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file.Replace("\\", "/")) + "/" + im.Filename);
                     dummy.Text = im.file.Replace("\\", "/") + "/" + im.Filename;
                     dummy.Visible = false;
@@ -1652,8 +1716,15 @@ namespace BioGTK
             foreach (string item in sts)
             {
                 StartProgress("Open File", "Opening");
-                await OpenPyramidRootsAsTabsAsync(item);
-                StopProgress();
+                try
+                {
+                    await FlushGtkEventsAsync();
+                    await OpenPyramidRootsAsTabsAsync(item);
+                }
+                finally
+                {
+                    StopProgress();
+                }
             }
             BioLib.Recorder.Record("BioImage.OpenAsync(" + StrArray(sts) + ", false, true, true);");
         }
@@ -1832,9 +1903,36 @@ namespace BioGTK
         private static bool progressShown = false;
         private static int progressShowThreshold = 0;
         private static int progressDisplayOffset = 0;
+        private static int progressRunId = 0;
+        private static readonly Stopwatch progressStopwatch = new Stopwatch();
         private static Progress progress;
         private static string title;
-        private static void ProgressUpdate()
+        private static string FormatProgressTiming(double progressPercent)
+        {
+            TimeSpan elapsed = progressStopwatch.Elapsed;
+            string elapsedText = FormatDuration(elapsed);
+            string etaText = "--:--";
+
+            if (progressPercent > 0.01 && progressPercent < 100)
+            {
+                double remainingSeconds = elapsed.TotalSeconds * ((100.0 - progressPercent) / progressPercent);
+                if (double.IsFinite(remainingSeconds) && remainingSeconds >= 0)
+                    etaText = FormatDuration(TimeSpan.FromSeconds(remainingSeconds));
+            }
+            else if (progressPercent >= 100)
+            {
+                etaText = "00:00";
+            }
+
+            return $"Elapsed: {elapsedText}   ETA: {etaText}";
+        }
+        private static string FormatDuration(TimeSpan span)
+        {
+            if (span.TotalHours >= 1)
+                return span.ToString(@"hh\:mm\:ss");
+            return span.ToString(@"mm\:ss");
+        }
+        private static void ProgressUpdate(int runId)
         {
             do
             {
@@ -1852,12 +1950,15 @@ namespace BioGTK
                     progressShown = true;
                     Gtk.Application.Invoke(delegate
                     {
+                        if (done || runId != progressRunId)
+                            return;
                         progress.ShowAll();
                     });
                 }
-                progress.ProgressValue = displayProgress;
+                progress.ProgressPercentValue = displayProgress;
+                progress.Text = FormatProgressTiming(displayProgress);
                 Thread.Sleep(250);
-            } while (!done);
+            } while (!done && runId == progressRunId);
         }
         private static void StartProgress(string titl, string status)
         {
@@ -1870,6 +1971,8 @@ namespace BioGTK
         private static void StartProgressInternal(string titl, string status, bool showImmediately, int showThreshold, int displayOffset)
         {
             done = false;
+            progressRunId++;
+            int runId = progressRunId;
             progressShown = showImmediately;
             progressShowThreshold = showThreshold;
             progressDisplayOffset = displayOffset;
@@ -1881,18 +1984,39 @@ namespace BioGTK
                 progress.Status = status;
             else
                 progress.Status = BioImage.Status;
-            progress.ProgressValue = BioImage.Progress;
+            progress.ProgressPercentValue = BioImage.Progress;
+            progressStopwatch.Restart();
+            progress.Text = FormatProgressTiming(BioImage.Progress);
             if (showImmediately)
                 progress.ShowAll();
             else
                 progress.Hide();
-            Thread th = new Thread(ProgressUpdate);
+            Thread th = new Thread(() => ProgressUpdate(runId));
+            th.IsBackground = true;
             th.Start();
         }
+
+        private static async Task FlushGtkEventsAsync()
+        {
+            await Task.Yield();
+            while (Gtk.Application.EventsPending())
+                Gtk.Application.RunIteration(false);
+            await Task.Delay(50);
+            while (Gtk.Application.EventsPending())
+                Gtk.Application.RunIteration(false);
+        }
+
         private static void StopProgress()
         {
             done = true;
-            progress.Hide();
+            progressStopwatch.Stop();
+            int runId = ++progressRunId;
+            Gtk.Application.Invoke(delegate
+            {
+                if (runId != progressRunId)
+                    return;
+                progress.Hide();
+            });
         }
 
         private static bool IsZarrSource(BioImage image)

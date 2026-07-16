@@ -240,6 +240,13 @@ namespace BioGTK
                             overlays = result;
                     }
                 }
+                if ((overlays == null || overlays.Count == 0) && image.Annotations != null)
+                {
+                    var existing = image.Annotations.Where(IsZarrLabelRoi).ToList();
+                    if (existing.Count > 0)
+                        overlays = existing;
+                }
+
                 SetZarrLabelOverlays(image, overlays);
                 SetZarrLabelOverlays(image, overlays, source);
                 SyncZarrLabelAnnotations(image, overlays);
@@ -2871,7 +2878,12 @@ namespace BioGTK
         /// https://developer.gnome.org/gtkmm-tutorial/stable/sec-events-button.html.en
         private void GoToOriginMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            App.viewer.Origin = new PointD(-SelectedImage.Volume.Location.X, -SelectedImage.Volume.Location.Y);
+            if (SelectedImage?.isPyramidal == true)
+                PyramidalOrigin = new PointD(0, 0);
+            else
+                Origin = new PointD(-SelectedImage.Volume.Location.X, -SelectedImage.Volume.Location.Y);
+
+            ForceNavigationRefresh();
         }
 
         /// This function is called when the user clicks on the "Go to Image" button in the menu
@@ -4701,12 +4713,45 @@ namespace BioGTK
             return true;
         }
 
-        private static void NormalizeOsmSchemaOrigin(SlideBase slideBase)
+        private static void NormalizeOsmSchemaOrigin(SlideBase slideBase, BioImage image = null)
         {
             if (slideBase?.Schema is not TileSchema schema)
                 return;
             if (schema.YAxis != YAxis.OSM)
                 return;
+
+            BioImage bioImage = image ?? slideBase.Image?.BioImage;
+            if (bioImage?.Type != BioImage.ImageType.well &&
+                bioImage?.Resolutions != null &&
+                bioImage.Resolutions.Count > 0 &&
+                schema.Resolutions != null &&
+                schema.Resolutions.Count > 0)
+            {
+                var baseResolution = bioImage.Resolutions[0];
+                double unitsPerPixel = schema.Resolutions.ContainsKey(0)
+                    ? schema.Resolutions[0].UnitsPerPixel
+                    : schema.Resolutions.OrderBy(kv => kv.Key).First().Value.UnitsPerPixel;
+
+                if (unitsPerPixel > 0 && baseResolution.SizeX > 0 && baseResolution.SizeY > 0)
+                {
+                    double expectedWidth = baseResolution.SizeX * unitsPerPixel;
+                    double expectedHeight = baseResolution.SizeY * unitsPerPixel;
+                    double extentWidth = schema.Extent.MaxX - schema.Extent.MinX;
+                    double extentHeight = schema.Extent.MaxY - schema.Extent.MinY;
+
+                    if (Math.Abs(extentWidth - expectedWidth) > Math.Max(1e-6, expectedWidth * 0.001) ||
+                        Math.Abs(extentHeight - expectedHeight) > Math.Max(1e-6, expectedHeight * 0.001))
+                    {
+                        double stageX = baseResolution.StageSizeX;
+                        double stageY = baseResolution.StageSizeY;
+                        schema.Extent = new Extent(
+                            stageX,
+                            -(stageY + expectedHeight),
+                            stageX + expectedWidth,
+                            -stageY);
+                    }
+                }
+            }
 
             schema.OriginX = schema.Extent.MinX;
             schema.OriginY = schema.Extent.MaxY;
@@ -4720,6 +4765,39 @@ namespace BioGTK
 
             double maxOrigin = imageMax - viewWorldSize;
             return Math.Max(imageMin, Math.Min(requestedOrigin, maxOrigin));
+        }
+
+        private void ForceNavigationRefresh()
+        {
+            if (SelectedImage?.isPyramidal == true)
+            {
+                slideRenderer?.InvalidateRenderState();
+                sKSlideRenderer?.InvalidateRenderState();
+                ExecuteDeferredRender();
+                ScheduleNavigationRenderRetry(50);
+                ScheduleNavigationRenderRetry(150);
+            }
+
+            UpdateView();
+            View?.QueueDraw();
+            if (!MacOS)
+                glArea?.RequestRedraw();
+        }
+
+        private void ScheduleNavigationRenderRetry(uint delayMs)
+        {
+            GLib.Timeout.Add(delayMs, () =>
+            {
+                if (_viewerCleanupDone || SelectedImage?.isPyramidal != true)
+                    return false;
+
+                ExecuteDeferredRender();
+                View?.QueueDraw();
+                if (!MacOS)
+                    glArea?.RequestRedraw();
+
+                return false;
+            });
         }
 
         public void GoToImage(int i)
@@ -4819,7 +4897,7 @@ namespace BioGTK
                 _isApplyingGoToImage = false;
             }
 
-            UpdateView();
+            ForceNavigationRefresh();
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, i);
 
             if (_pendingGoToImageIndex.HasValue)
@@ -4918,7 +4996,7 @@ namespace BioGTK
             if (_slideBase == null) return;
 
             _slideBase.RebuildSchemaForWell(SelectedImage);
-            NormalizeOsmSchemaOrigin(_slideBase);
+            NormalizeOsmSchemaOrigin(_slideBase, SelectedImage);
 
             if (MacOS) sKSlideRenderer?.SetSource(_slideBase);
             else       slideRenderer?.SetSource(_slideBase);
@@ -4944,7 +5022,7 @@ namespace BioGTK
                     var sb = SelectedImage.SlideBase;
                     _slideSource = SelectedImage.SlideBase;
                     _slideBase = sb;
-                    NormalizeOsmSchemaOrigin(sb);
+                    NormalizeOsmSchemaOrigin(sb, SelectedImage);
                     var sbResolutions = sb.Schema?.Resolutions;
                     if (sbResolutions != null && sbResolutions.Count > 0)
                         Resolution = sbResolutions[sbResolutions.Count - 1].UnitsPerPixel;
@@ -4954,7 +5032,7 @@ namespace BioGTK
                     if (SelectedImage.Type == BioImage.ImageType.well)
                     {
                         RebuildSchemaForWell(SelectedImage);
-                        NormalizeOsmSchemaOrigin(sb);
+                        NormalizeOsmSchemaOrigin(sb, SelectedImage);
                     }
                 }
                 else if (useOpenSlideBase)
