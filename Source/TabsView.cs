@@ -86,6 +86,17 @@ namespace BioGTK
                  source.StartsWith("s3://", StringComparison.OrdinalIgnoreCase));
         }
 
+        private static bool IsZarrLikeSource(string file)
+        {
+            if (string.IsNullOrWhiteSpace(file))
+                return false;
+
+            return file.Contains(".zarr", StringComparison.OrdinalIgnoreCase) ||
+                file.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+                file.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                file.StartsWith("s3://", StringComparison.OrdinalIgnoreCase);
+        }
+
         private async Task<BioImage?> OpenSeriesAsTabAsync(
             string file,
             int series,
@@ -127,6 +138,15 @@ namespace BioGTK
 
         private async Task<List<BioImage>> CollectPyramidRootsAsync(string file)
         {
+            if (IsZarrLikeSource(file))
+            {
+                BioImage? zarrImage = await BioImage.OpenFile(file, 0, false, false, false, 0, 0, 0, 0);
+                List<BioImage> singleRoot = new List<BioImage>();
+                if (zarrImage != null)
+                    singleRoot.Add(zarrImage);
+                return singleRoot;
+            }
+
             int seriesCount = 1;
             try
             {
@@ -926,6 +946,18 @@ namespace BioGTK
                     {
                         await Task.Yield();
                         await OpenPyramidRootsAsViewsAsync(url, true);
+                    }
+                    catch (Exception ex)
+                    {
+                        var dialog = new MessageDialog(
+                            this,
+                            DialogFlags.Modal,
+                            MessageType.Error,
+                            ButtonsType.Ok,
+                            ex.Message);
+                        dialog.Title = "Open URL Failed";
+                        dialog.Run();
+                        dialog.Destroy();
                     }
                     finally
                     {

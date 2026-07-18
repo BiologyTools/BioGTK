@@ -85,7 +85,7 @@ namespace BioGTK
             ClearCache();
         }
 
-        public void ClearCache()
+        public void ClearCache(bool resetLevel = true)
         {
             // Clearing the visible tile cache must also invalidate any in-flight
             // fetches. Otherwise an old Z/C/T request can finish after the
@@ -95,7 +95,8 @@ namespace BioGTK
             _glArea.ClearTextureCache();
             _uploadedTiles.Clear();
             _uploadedTileInfos.Clear();
-            _currentLevel = -1;
+            if (resetLevel)
+                _currentLevel = -1;
             _tileCache?.Clear();
             _openTileCache?.cache.cacheMap.Clear();
 
@@ -555,7 +556,7 @@ namespace BioGTK
                 {
                     await RunOnGtkThreadAsync(() =>
                     {
-                        ClearCache();
+                        ClearCache(resetLevel: false);
                         _displayRangeSeedLevel = seedLevel;
                         _glArea.RequestRedraw();
                     });

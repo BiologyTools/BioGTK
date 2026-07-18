@@ -65,16 +65,19 @@ namespace BioGTK
                 _updatingCoordinate = false;
             }
 
-            if (SelectedImage.isPyramidal && SelectedImage.Coordinate != previousCoordinate)
+            bool coordinateChanged = SelectedImage.Coordinate != previousCoordinate;
+            if (SelectedImage.isPyramidal && coordinateChanged)
+            {
                 PreparePyramidalCoordinateRender();
+                ForceNavigationRefresh();
+                BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, z, c, t);
+                return;
+            }
 
             UpdateImages();
             if (SelectedImage?.isPyramidal != true && View != null)
             {
-                if (!MacOS)
-                    glArea?.RequestRedraw();
-                else
-                    View.QueueDraw();
+                RequestViewportRefresh();
             }
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, z, c, t);
         }
@@ -87,9 +90,40 @@ namespace BioGTK
             slideRenderer?.InvalidateRenderState();
             sKSlideRenderer?.InvalidateRenderState();
             SelectedImage.InvalidateTileCache();
-            slideRenderer?.ClearCache();
+            slideRenderer?.ClearCache(resetLevel: false);
             sKSlideRenderer?.ClearCache();
             SelectedImage.ZarrDisplayMax = 0;
+        }
+
+        private void RequestViewportRefresh(bool scheduleIdleRetry = true)
+        {
+            if (View == null)
+                return;
+
+            View.QueueDraw();
+            if (!MacOS)
+            {
+                glArea?.RequestRedraw();
+                glArea?.QueueDraw();
+            }
+
+            if (!scheduleIdleRetry)
+                return;
+
+            GLib.Idle.Add(() =>
+            {
+                if (_viewerCleanupDone || View == null)
+                    return false;
+
+                View.QueueDraw();
+                if (!MacOS)
+                {
+                    glArea?.RequestRedraw();
+                    glArea?.QueueDraw();
+                }
+
+                return false;
+            });
         }
         /// It returns the coordinate of the selected image
         /// 
@@ -494,6 +528,10 @@ namespace BioGTK
         [Builder.Object]
         private Menu roiMenu;
         [Builder.Object]
+        private MenuItem roiShow;
+        [Builder.Object]
+        private MenuItem roiHide;
+        [Builder.Object]
         private MenuItem roiDelete;
         [Builder.Object]
         private MenuItem roiID;
@@ -522,6 +560,7 @@ namespace BioGTK
 
 
         private SKDrawingArea sk = new SKDrawingArea();
+        private Widget currentView;
 
         public SlideGLArea glArea;
         public SlideRenderer slideRenderer;
@@ -591,12 +630,18 @@ namespace BioGTK
                 //tileCopy = new TileCopyGL(gameWindowSettings, nativeSettings);
                 Environment.SetEnvironmentVariable("GDK_BACKEND", "x11");
                 Environment.SetEnvironmentVariable("GTK_BACKEND", "x11");
-                window = new GLWindow(gameWindowSettings, nativeSettings);
-                // Create the View widget
-                View = new SlideGLArea();
-                ((SlideGLArea)View).OnSkiaRender += RenderSkia;
-                // Create the renderer bridge
-                slideRenderer = new SlideRenderer((SlideGLArea)View);
+                if (im.isPyramidal)
+                {
+                    window = new GLWindow(gameWindowSettings, nativeSettings);
+                    View = new SlideGLArea();
+                    ((SlideGLArea)View).OnSkiaRender += RenderSkia;
+                    slideRenderer = new SlideRenderer((SlideGLArea)View);
+                }
+                else
+                {
+                    View = new SlideArea();
+                    ((SlideArea)View).OnSkiaRender += RenderSkia;
+                }
                 GLFWProvider.SetErrorCallback((error, description) =>
                 {
                 });
@@ -614,12 +659,18 @@ namespace BioGTK
                     Profile = ContextProfile.Core,
                     APIVersion = new Version(3, 3)
                 };
-                window = new GLWindow(gameWindowSettings, nativeSettings);
-                // Create the View widget
-                View = new SlideGLArea();
-                ((SlideGLArea)View).OnSkiaRender += RenderSkia;
-                // Create the renderer bridge
-                slideRenderer = new SlideRenderer((SlideGLArea)View);
+                if (im.isPyramidal)
+                {
+                    window = new GLWindow(gameWindowSettings, nativeSettings);
+                    View = new SlideGLArea();
+                    ((SlideGLArea)View).OnSkiaRender += RenderSkia;
+                    slideRenderer = new SlideRenderer((SlideGLArea)View);
+                }
+                else
+                {
+                    View = new SlideArea();
+                    ((SlideArea)View).OnSkiaRender += RenderSkia;
+                }
                 GLFWProvider.SetErrorCallback((error, description) =>
                 {
                 });
@@ -648,11 +699,11 @@ namespace BioGTK
             else
             {
                 // Set the source based on image type
-                if (im.OpenSlideBase != null)
+                if (slideRenderer != null && im.OpenSlideBase != null)
                 {
                     slideRenderer.SetSource(im.OpenSlideBase);
                 }
-                else if (im.SlideBase != null)
+                else if (slideRenderer != null && im.SlideBase != null)
                 {
                     slideRenderer.SetSource(im.SlideBase);
                 }
@@ -688,6 +739,7 @@ namespace BioGTK
                 View.Show();
             }
             roi.Submenu = roiMenu;
+            UpdateRoiMenuState();
             roi.ShowAll();
             AddImage(im);
             ShowMasks = true;
@@ -1088,6 +1140,9 @@ namespace BioGTK
 
         private List<ROI> BuildRenderableRois(BioImage image)
         {
+            if (!ShowROIs)
+                return new List<ROI>();
+
             List<ROI> rois = image?.Annotations?.ToList() ?? new List<ROI>();
             List<ROI> overlays = GetZarrLabelOverlays(image);
             if (overlays.Count == 0)
@@ -1728,7 +1783,7 @@ namespace BioGTK
             slideRenderer?.InvalidateRenderState();
             sKSlideRenderer?.InvalidateRenderState();
             SelectedImage.InvalidateTileCache();
-            slideRenderer?.ClearCache();
+            slideRenderer?.ClearCache(resetLevel: false);
             sKSlideRenderer?.ClearCache();
             SelectedImage.ZarrDisplayMax = 0;
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, SelectedImage?.file ?? string.Empty);
@@ -2190,6 +2245,14 @@ namespace BioGTK
             zBar.ValueChanged += ValueChangedZ;
             cBar.ValueChanged += ValueChangedC;
             tBar.ValueChanged += ValueChangedT;
+            zBar.ScrollEvent += ZBar_ScrollEvent;
+            cBar.ScrollEvent += CBar_ScrollEvent;
+            tBar.ScrollEvent += TBar_ScrollEvent;
+            zBar.AddEvents((int)EventMask.ScrollMask);
+            cBar.AddEvents((int)EventMask.ScrollMask);
+            tBar.AddEvents((int)EventMask.ScrollMask);
+            this.ScrollEvent += ImageView_WindowScrollEvent;
+            this.AddEvents((int)EventMask.ScrollMask);
             if (MacOS)
             {
                 View.MotionNotifyEvent += ImageView_MotionNotifyEvent;
@@ -2214,7 +2277,8 @@ namespace BioGTK
                 View.ButtonReleaseEvent += ImageView_ButtonReleaseEvent;
                 View.ScrollEvent += ImageView_ScrollEvent;
                 // OnMouseWheel removed: ImageView_ScrollEvent handles zoom-to-cursor via SetResolution.
-                glArea.Render += GlArea_Render;
+                if (glArea != null)
+                    glArea.Render += GlArea_Render;
                 View.SizeAllocated += PictureBox_SizeAllocated;
                 View.AddEvents((int)(EventMask.ButtonPressMask
                 | EventMask.ButtonReleaseMask
@@ -2236,6 +2300,8 @@ namespace BioGTK
             goToOriginMenu.ButtonPressEvent += GoToOriginMenu_ButtonPressEvent;
             overView.ButtonPressEvent += OverView_ButtonPressEvent;
 
+            roiShow.ButtonPressEvent += RoiShow_ButtonPressEvent;
+            roiHide.ButtonPressEvent += RoiHide_ButtonPressEvent;
             roiDelete.ButtonPressEvent += RoiDelete_ButtonPressEvent;
             roiID.ButtonPressEvent += RoiID_ButtonPressEvent;
             copy.ButtonPressEvent += Copy_ButtonPressEvent;
@@ -2313,6 +2379,20 @@ namespace BioGTK
                 ShowOverview = true;
                 overView.Label = "Hide Overview";
             }
+            UpdateView();
+        }
+
+        private void RoiShow_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            ShowROIs = true;
+            UpdateRoiMenuState();
+            UpdateView();
+        }
+
+        private void RoiHide_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        {
+            ShowROIs = false;
+            UpdateRoiMenuState();
             UpdateView();
         }
 
@@ -3055,17 +3135,8 @@ namespace BioGTK
         /// @param ScrollEventArgs This is the event that is passed to the event handler.
         private void TBar_ScrollEvent(object o, ScrollEventArgs args)
         {
-            if (args.Event.Direction == ScrollDirection.Up)
-            {
-                if (tBar.Value + 1 <= tBar.Adjustment.Upper)
-                    tBar.Value += 1;
-            }
-            else
-            {
-                if (tBar.Value - 1 >= 0)
-                    tBar.Value -= 1;
-            }
-            UpdateView(true);
+            if (AdjustSliderFromScroll(tBar, args))
+                args.RetVal = true;
         }
         /// If the scroll direction is up, and the value of the scrollbar is less than the upper limit,
         /// then increment the value of the scrollbar. If the scroll direction is down, and the value of
@@ -3075,17 +3146,8 @@ namespace BioGTK
         /// @param ScrollEventArgs The event arguments for the scroll event.
         private void CBar_ScrollEvent(object o, ScrollEventArgs args)
         {
-            if (args.Event.Direction == ScrollDirection.Up)
-            {
-                if (cBar.Value + 1 <= cBar.Adjustment.Upper)
-                    cBar.Value += 1;
-            }
-            else
-            {
-                if (cBar.Value - 1 >= 0)
-                    cBar.Value -= 1;
-            }
-            UpdateView(true);
+            if (AdjustSliderFromScroll(cBar, args))
+                args.RetVal = true;
         }
         /// If the scroll direction is up, and the value of the scrollbar is less than the upper limit,
         /// then increment the value of the scrollbar. If the scroll direction is down, and the value of
@@ -3095,17 +3157,93 @@ namespace BioGTK
         /// @param ScrollEventArgs This is the event that is passed to the event handler.
         private void ZBar_ScrollEvent(object o, ScrollEventArgs args)
         {
-            if (args.Event.Direction == ScrollDirection.Up)
+            if (AdjustSliderFromScroll(zBar, args))
+                args.RetVal = true;
+        }
+
+        private void ImageView_WindowScrollEvent(object o, ScrollEventArgs args)
+        {
+            if (args.RetVal is bool handled && handled)
+                return;
+
+            if (TryAdjustSliderFromPointer(zBar, args) ||
+                TryAdjustSliderFromPointer(cBar, args) ||
+                TryAdjustSliderFromPointer(tBar, args))
             {
-                if (zBar.Value + 1 <= zBar.Adjustment.Upper)
-                    zBar.Value += 1;
+                args.RetVal = true;
             }
+        }
+
+        private bool TryAdjustSliderFromPointer(Gtk.Scale scale, ScrollEventArgs args)
+        {
+            if (scale == null || !scale.Visible || !scale.IsSensitive || !scale.IsRealized)
+                return false;
+
+            Gdk.Window hostWindow = scale.Window;
+            if (hostWindow == null)
+                return false;
+
+            var allocation = scale.Allocation;
+            hostWindow.GetOrigin(out int hostX, out int hostY);
+            int widgetX = hostX + allocation.X;
+            int widgetY = hostY + allocation.Y;
+
+            double pointerX = args.Event.XRoot;
+            double pointerY = args.Event.YRoot;
+
+            bool inside =
+                pointerX >= widgetX &&
+                pointerX <= widgetX + allocation.Width &&
+                pointerY >= widgetY &&
+                pointerY <= widgetY + allocation.Height;
+
+            return inside && AdjustSliderFromScroll(scale, args);
+        }
+
+        private bool AdjustSliderFromScroll(Gtk.Scale scale, ScrollEventArgs args)
+        {
+            if (scale?.Adjustment == null)
+                return false;
+
+            double delta = GetSliderScrollDelta(args);
+            if (delta == 0)
+                return false;
+
+            double lower = scale.Adjustment.Lower;
+            double upper = scale.Adjustment.Upper;
+            double newValue = Math.Clamp(scale.Value + delta, lower, upper);
+            if (Math.Abs(newValue - scale.Value) < double.Epsilon)
+                return false;
+
+            scale.Value = newValue;
+            return true;
+        }
+
+        private static double GetSliderScrollDelta(ScrollEventArgs args)
+        {
+            if (args.Event.Direction == ScrollDirection.Up)
+                return 1;
+            if (args.Event.Direction == ScrollDirection.Down)
+                return -1;
+            if (args.Event.Direction == ScrollDirection.Smooth)
+            {
+                if (args.Event.DeltaY < 0)
+                    return 1;
+                if (args.Event.DeltaY > 0)
+                    return -1;
+            }
+            return 0;
+        }
+
+        private void RefreshAfterCoordinateSliderChange()
+        {
+            if (SelectedImage?.isPyramidal == true)
+                ForceNavigationRefresh();
             else
             {
-                if (zBar.Value - 1 >= 0)
-                    zBar.Value -= 1;
+                UpdateImages(true);
+                RequestViewportRefresh();
             }
-            UpdateView(true);
         }
 
         public static Gdk.Key keyDown = Gdk.Key.Key_3270_Test;
@@ -3270,7 +3408,6 @@ namespace BioGTK
             if (_updatingCoordinate)
                 return;
             SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
-            UpdateView(true);
         }
         /// The function ValueChanged is called when the value of the trackbar is changed.
         /// 
@@ -3281,7 +3418,6 @@ namespace BioGTK
             if (_updatingCoordinate)
                 return;
             SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
-            UpdateView(true);
         }
         /// The function ValueChanged is called when the value of the trackbar is changed.
         /// 
@@ -3292,7 +3428,6 @@ namespace BioGTK
             if (_updatingCoordinate)
                 return;
             SetCoordinate((int)zBar.Value, (int)cBar.Value, (int)tBar.Value);
-            UpdateView(true);
         }
         private void UpdateScrollBars()
         {
@@ -3868,10 +4003,7 @@ namespace BioGTK
             else
             {
                 UpdateImages(true);
-                if (!MacOS)
-                    glArea.RequestRedraw();
-                else
-                    View.QueueDraw();
+                RequestViewportRefresh();
             }
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, updateImages);
         }
@@ -3881,6 +4013,15 @@ namespace BioGTK
         public bool showRROIs = true;
         public bool showGROIs = true;
         public bool showBROIs = true;
+        public bool ShowROIs { get; private set; } = true;
+
+        private void UpdateRoiMenuState()
+        {
+            if (roiShow != null)
+                roiShow.Sensitive = !ShowROIs;
+            if (roiHide != null)
+                roiHide.Sensitive = ShowROIs;
+        }
 
         public double GetScale()
         {
@@ -4373,17 +4514,19 @@ namespace BioGTK
         {
             get
             {
-                if(MacOS)
+                if (currentView != null)
+                    return currentView;
+                if (MacOS)
                     return sk;
-                else
-                    return glArea;
+                return glArea;
             }
             set
             {
-                if (MacOS)
-                    sk = (SKDrawingArea)value;
-                else
-                    glArea = (SlideGLArea)value;
+                currentView = value;
+                if (value is SKDrawingArea drawingArea)
+                    sk = drawingArea;
+                if (value is SlideGLArea slideGlArea)
+                    glArea = slideGlArea;
             }
         }
         public PointD ToViewSpace(double x, double y)

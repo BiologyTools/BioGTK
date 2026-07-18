@@ -321,14 +321,22 @@ void main()
 
         private void OnRender(object sender, RenderArgs args)
         {
-            if (!_glInitialized) return;
+            if (!_glInitialized)
+            {
+                args.RetVal = true;
+                return;
+            }
 
             MakeCurrent();
 
             int width = AllocatedWidth;
             int height = AllocatedHeight;
 
-            if (width <= 0 || height <= 0) return;
+            if (width <= 0 || height <= 0)
+            {
+                args.RetVal = true;
+                return;
+            }
 
             // Phase 1: Render tiles with OpenGL
             RenderTiles(width, height);
@@ -338,6 +346,7 @@ void main()
 
             // Flush Skia to ensure all drawing is done
             _grContext?.Flush();
+            args.RetVal = true;
         }
 
         private void RenderTiles(int width, int height)
@@ -637,6 +646,13 @@ void main()
         {
             NeedsRedraw = true;
             QueueRender();
+            QueueDraw();
+
+            if (IsRealized && Window != null)
+            {
+                Window.InvalidateRect(Allocation, false);
+                Window.ProcessUpdates(true);
+            }
         }
 
         /// <summary>

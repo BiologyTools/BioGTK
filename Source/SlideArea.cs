@@ -97,6 +97,12 @@ namespace BioGTK
         public void RequestRedraw()
         {
             this.QueueDraw();
+
+            if (this.IsRealized && this.Window != null)
+            {
+                this.Window.InvalidateRect(this.Allocation, false);
+                this.Window.ProcessUpdates(true);
+            }
         }
 
         #endregion

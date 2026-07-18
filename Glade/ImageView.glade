@@ -318,6 +318,24 @@
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <child>
+      <object class="GtkImageMenuItem" id="roiShow">
+        <property name="label">Show ROI</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="roiHide">
+        <property name="label">Hide ROI</property>
+        <property name="name">openImagesMenu</property>
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="use-stock">False</property>
+      </object>
+    </child>
+    <child>
       <object class="GtkImageMenuItem" id="roiDelete">
         <property name="label">Delete</property>
         <property name="name">openImagesMenu</property>
