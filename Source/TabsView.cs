@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace BioGTK
@@ -22,6 +23,13 @@ namespace BioGTK
         #region Properties
         private Builder _builder;
         private List<ImageView> viewers = new List<ImageView>();
+        private const int MaxRecentImages = 10;
+        private readonly List<string> recentImages = new List<string>();
+        private readonly Menu recentImagesMenu = new Menu();
+        private MenuItem openRecentMenu;
+        private static readonly string RecentImagesPath = System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "BioGTK", "recent-images.json");
         private static string Q(string s)
         {
             return "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
@@ -216,6 +224,7 @@ namespace BioGTK
             l.UseMarkup = false;
             tabsView.AppendPage(dummy, l);
             view.Present();
+            RememberRecentImage(file);
         }
 
         private async Task OpenPyramidRootsAsViewsAsync(string file, bool addToRegistry = false)
@@ -431,6 +440,7 @@ namespace BioGTK
             _builder = builder;
             App.tabsView = this;
             builder.Autoconnect(this);
+            InitializeOpenRecentMenu();
             filteredMenu.Active = true;
             SetupHandlers();
             progress = Progress.Create(title, "", "");
@@ -737,6 +747,110 @@ namespace BioGTK
 
                 if (roi.roiMask.PhysicalSizeY <= 0)
                     roi.roiMask.PhysicalSizeY = image.PhysicalSizeY > 0 ? image.PhysicalSizeY : 1.0;
+            }
+        }
+
+        private void InitializeOpenRecentMenu()
+        {
+            openRecentMenu = new MenuItem("Open Recent");
+            openRecentMenu.Submenu = recentImagesMenu;
+            Menu fileMenu = (Menu)openImagesMenu.Parent;
+            fileMenu.Insert(openRecentMenu, Array.IndexOf(fileMenu.Children, openImagesMenu) + 1);
+
+            try
+            {
+                if (File.Exists(RecentImagesPath))
+                {
+                    var savedImages = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(RecentImagesPath));
+                    if (savedImages != null)
+                    {
+                        recentImages.AddRange(savedImages
+                            .Where(source => !string.IsNullOrWhiteSpace(source))
+                            .Distinct(StringComparer.Ordinal)
+                            .Take(MaxRecentImages));
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is JsonException)
+            {
+                Console.WriteLine("Could not load recent images: " + ex.Message);
+            }
+
+            RefreshOpenRecentMenu();
+        }
+
+        private void RememberRecentImage(string source)
+        {
+            if (string.IsNullOrWhiteSpace(source))
+                return;
+
+            bool remote = source.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+                source.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                source.StartsWith("s3://", StringComparison.OrdinalIgnoreCase);
+            // Generated images should not become recent entries unless they have a saved source.
+            if (!remote && !File.Exists(source) && !Directory.Exists(source))
+                return;
+            if (!remote)
+                source = System.IO.Path.GetFullPath(source);
+
+            StringComparison comparison = !remote && OperatingSystem.IsWindows()
+                ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            recentImages.RemoveAll(item => string.Equals(item, source, comparison));
+            recentImages.Insert(0, source);
+            if (recentImages.Count > MaxRecentImages)
+                recentImages.RemoveRange(MaxRecentImages, recentImages.Count - MaxRecentImages);
+
+            try
+            {
+                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(RecentImagesPath));
+                File.WriteAllText(RecentImagesPath, JsonSerializer.Serialize(recentImages));
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                Console.WriteLine("Could not save recent images: " + ex.Message);
+            }
+
+            RefreshOpenRecentMenu();
+        }
+
+        private void RefreshOpenRecentMenu()
+        {
+            foreach (Widget item in recentImagesMenu.Children)
+            {
+                recentImagesMenu.Remove(item);
+                item.Destroy();
+            }
+
+            foreach (string source in recentImages)
+            {
+                var item = new MenuItem(source) { UseUnderline = false };
+                item.Activated += async (sender, args) => await OpenRecentImageAsync(source);
+                recentImagesMenu.Append(item);
+            }
+
+            openRecentMenu.Sensitive = recentImages.Count > 0;
+            openRecentMenu.ShowAll();
+        }
+
+        private async Task OpenRecentImageAsync(string source)
+        {
+            StartProgress("Open Recent", "Opening");
+            try
+            {
+                await FlushGtkEventsAsync();
+                await OpenPyramidRootsAsTabsAsync(source);
+            }
+            catch (Exception ex)
+            {
+                using var dialog = new MessageDialog(this, DialogFlags.Modal,
+                    MessageType.Error, ButtonsType.Ok, "{0}", ex.Message);
+                dialog.Title = "Open Recent Failed";
+                dialog.Run();
+                dialog.Destroy();
+            }
+            finally
+            {
+                StopProgress();
             }
         }
 
@@ -1550,7 +1664,10 @@ namespace BioGTK
                     for (int i = 0; i < viewers[vi].Images.Count; i++)
                     {
                         if (viewers[vi].Images[i].Filename == im.Filename)
+                        {
+                            RememberRecentImage(sourcePath ?? im.SourceFile);
                             return;
+                        }
                     }
                 }
                 TryLoadZarrROIs(im);
@@ -1567,6 +1684,7 @@ namespace BioGTK
                 App.nodeView.UpdateItems();
                 tabsView.ShowAll();
                 v.ShowAll();
+                RememberRecentImage(sourcePath ?? im.SourceFile);
                 BioLib.Recorder.Record("AddTab(" + (im?.file ?? string.Empty) + ", " + Q(sourcePath ?? string.Empty) + ");");
                 GLib.Timeout.Add(16, () =>
                 {
@@ -1596,7 +1714,10 @@ namespace BioGTK
                     for (int i = 0; i < viewers[vi].Images.Count; i++)
                     {
                         if (viewers[vi].Images[i].Filename == im.Filename)
+                        {
+                            RememberRecentImage(sourcePath ?? im.SourceFile);
                             return;
+                        }
                     }
                 }
                 ImageView v = ImageView.Create(im);
@@ -1612,6 +1733,7 @@ namespace BioGTK
                     App.nodeView.UpdateItems();
                     tabsView.ShowAll();
                     v.ShowAll();
+                    RememberRecentImage(sourcePath ?? im.SourceFile);
                     GLib.Timeout.Add(16, () =>
                     {
                         if (v.View == null || !v.View.IsRealized || v.View.AllocatedWidth <= 1 || v.View.AllocatedHeight <= 1)

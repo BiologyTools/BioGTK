@@ -3,29 +3,29 @@
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RuntimeIdentifiers>osx-x64;linux-x64;win-x64;win-arm64;linux-arm64;osx-arm64;</RuntimeIdentifiers>
-    <AssemblyVersion>6.6.0</AssemblyVersion>
-    <FileVersion>6.6.0</FileVersion>
+    <AssemblyVersion>6.7.0</AssemblyVersion>
+    <FileVersion>6.7.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>BioGTK</PackageId>
     <Title>BioGTK</Title>
     <PackageProjectUrl>https://github.com/BiologyTools/BioGTK</PackageProjectUrl>
     <PackageIcon>banner.jpg</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageVersion>6.6.0</PackageVersion>
+    <PackageVersion>6.7.0</PackageVersion>
     <RepositoryUrl>https://github.com/BiologyTools/BioGTK</RepositoryUrl>
     <PackageTags>Biology; GTK; ImageJ; Bio-Formats; Image-Stacks; Microscopy; Whole-Slide-Image; Segment-Anything; SAM; QuPath;</PackageTags>
     <PackageLicenseExpression> GPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Description>A .NET application &amp; library for editing &amp; annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters &amp; macro functions. Supports Windows, Linux and Mac.</Description>
-    <Version>6.6.0</Version>
+    <Version>6.7.0</Version>
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>BioGTK 6.6.0 adds full Zarr support, including ROI, label, well-plate, and Fiji-compatible metadata handling. This release also improves pyramidal image navigation with better overview rendering and Go To Image fitting, and refreshes ImageView rendering for 48 bpp, threshold updates, and stale tile protection.</PackageReleaseNotes>
+    <PackageReleaseNotes>BioGTK 6.7.0 adds Open Recent with persistent image history, ROI show/hide controls, and Zarr-to-OME-TIFF export including masks and annotations. Improves Fiji processing of pyramidal and remote Zarr images, well-plate navigation, and label alignment with scale and translation transforms. Fixes RGB display, annotation rendering with multiple images open, and missing edge pixels in 16-bit Zarr images. Updates imaging and machine-learning dependencies and displays the Bio-Formats version in the About window.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
-  
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <WarningLevel>7</WarningLevel>
   </PropertyGroup>
 
@@ -50,12 +50,7 @@
     <WarningLevel>7</WarningLevel>
   </PropertyGroup>
 
-  <ItemGroup>
-    <None Remove="Glade\OpenURLBox.glade" />
-    <None Remove="macro-commands.csv" />
-    <None Remove="macro-functions.txt" />
-  </ItemGroup>
-  <ItemGroup>
+	<ItemGroup>
     <Content Include="bio.icns">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <PackageCopyToOutput>true</PackageCopyToOutput>
@@ -317,6 +312,11 @@
     <Pack>True</Pack>
       <PackageCopyToOutput>true</PackageCopyToOutput>
     </Content>
+	  <Content Include="Glade\OpenURLBox.glade">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		  <Pack>True</Pack>
+		  <PackageCopyToOutput>true</PackageCopyToOutput>
+	  </Content>
   </ItemGroup>
 
   <ItemGroup>
@@ -461,12 +461,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="BioFormats.NET6" Version="9.0.0-pr">
+      <Aliases>BioFormats6</Aliases>
+    </PackageReference>
+    <PackageReference Include="BioLib" Version="4.3.0" />
+    <PackageReference Include="Fiji.NET" Version="0.1.0" Aliases="FijiNet" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="ManagedCuda.NETStandard" Version="9.1.300" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.26.0" />
-    <PackageReference Include="Microsoft.ML.TorchSharp" Version="0.23.0" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.31.1" />
+    <PackageReference Include="Microsoft.ML.TorchSharp" Version="0.23.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="NuGet.Build.Tasks.Pack" Version="6.14.0">
       <PrivateAssets>all</PrivateAssets>
@@ -476,18 +481,14 @@
     <PackageReference Include="OpenTK.Graphics" Version="4.9.4" />
     <PackageReference Include="OpenTK.Windowing.Common" Version="4.9.4" />
     <PackageReference Include="OpenTK.Windowing.Desktop" Version="4.9.4" />
-    <PackageReference Include="ScottPlot" Version="5.1.58" />
-    <PackageReference Include="SkiaSharp" Version="3.119.4" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" />
-    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.119.4" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.4" />
-    <PackageReference Include="SkiaSharp.Views.Gtk3" Version="3.119.4" />
+    <PackageReference Include="ScottPlot" Version="5.1.59" />
+    <PackageReference Include="SkiaSharp" Version="4.154.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="4.154.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="4.154.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="4.154.0" />
+    <PackageReference Include="SkiaSharp.Views.Gtk3" Version="4.154.0" />
     <PackageReference Include="TorchSharp-cpu" Version="0.107.0" />
-    <PackageReference Include="YamlDotNet" Version="18.0.0" />  
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\BioLib\BioLib.csproj" />
+    <PackageReference Include="YamlDotNet" Version="18.1.0" />  
   </ItemGroup>
 
   <ItemGroup>
@@ -504,12 +505,12 @@
     <CFBundleName>BioGTK</CFBundleName>
     <CFBundleDisplayName>BioGTK</CFBundleDisplayName>
     <CFBundleIdentifier>com.BioGTK</CFBundleIdentifier>
-    <CFBundleVersion>6.6.0</CFBundleVersion>
+    <CFBundleVersion>6.7.0</CFBundleVersion>
     <CFBundlePackageType>APPL</CFBundlePackageType>
     <CFBundleSignature>????</CFBundleSignature>
     <CFBundleExecutable>BioGTKApp</CFBundleExecutable>
     <CFBundleIconFile>bio.icns</CFBundleIconFile>
-    <CFBundleShortVersionString>6.6.0</CFBundleShortVersionString>
+    <CFBundleShortVersionString>6.7.0</CFBundleShortVersionString>
     <NSPrincipalClass>NSApplication</NSPrincipalClass>
     <NSHighResolutionCapable>true</NSHighResolutionCapable>
     <ImplicitUsings>enable</ImplicitUsings>

@@ -1,4 +1,5 @@
-﻿using Gdk;
+extern alias BioFormats6;
+using Gdk;
 using Gtk;
 using System;
 using System.Collections.Generic;
@@ -43,7 +44,7 @@ namespace BioGTK
             builder.Autoconnect(this);
             string s = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/";
             pixbuf = new Pixbuf(s + "Images/banner.jpg");
-            label.Text = "BioGTK " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString() + " by Erik Repo, Github.com/BiologyTools/BioGTK.";
+            label.Text = "Bio-Formats version:" + loci.formats.FormatTools.VERSION + " , BioGTK " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString() + " by Erik Repo, Github.com/BiologyTools/BioGTK.";
             image.Drawn += Image_Drawn;
             this.DeleteEvent += About_DeleteEvent;
             App.ApplyStyles(this);

@@ -679,6 +679,9 @@ namespace BioGTK
 
         private async Task<byte[]> FetchSlideTileDirectAsync(TileInfo tileInfo, int level, ZCT coordinate, CancellationToken ct)
         {
+            if (IsGray16ZarrLevel(level))
+                return await FetchGray16ZarrTileAsync(tileInfo, level, coordinate, ct).ConfigureAwait(false);
+
             var fetchTask = _slideBase.GetTileAsync(new BioLib.TileInformation(tileInfo.Index, tileInfo.Extent, coordinate), coordinate, ct);
 
             var timeoutTask = Task.Delay(RemoteTileFetchTimeout, ct);
@@ -691,6 +694,9 @@ namespace BioGTK
 
         private async Task<byte[]> FetchSingleTileAsync(TileInfo tileInfo, int level, ZCT coordinate, CancellationToken ct)
         {
+            if (IsGray16ZarrLevel(level))
+                return await FetchGray16ZarrTileAsync(tileInfo, level, coordinate, ct).ConfigureAwait(false);
+
             using var fetchCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             var fetchTask = _useOpenSlide
                 ? Task.Run(() => _openTileCache.GetTile(new OpenSlideGTK.Info(coordinate, tileInfo.Index, tileInfo.Extent, level)))
@@ -711,6 +717,48 @@ namespace BioGTK
             }
 
             return await fetchTask.ConfigureAwait(false);
+        }
+
+        private bool IsGray16ZarrLevel(int level)
+        {
+            var image = _slideBase?.Image?.BioImage;
+            return !_useOpenSlide && image != null && image.IsZarrSource &&
+                level >= 0 && level < image.Resolutions.Count &&
+                image.Resolutions[level].PixelFormat == PixelFormat.Format16bppGrayScale;
+        }
+
+        private async Task<byte[]> FetchGray16ZarrTileAsync(TileInfo tileInfo, int level, ZCT coordinate, CancellationToken ct)
+        {
+            var image = _slideBase.Image.BioImage;
+            var tileResolution = _slideBase.Schema.Resolutions[level];
+            int tileWidth = tileResolution.TileWidth;
+            int tileHeight = tileResolution.TileHeight;
+            int x = checked(tileInfo.Index.Col * tileWidth);
+            int y = checked(tileInfo.Index.Row * tileHeight);
+            var dimensions = _slideBase.Image.GetLevelDimension(level);
+            int width = (int)Math.Max(0, Math.Min(tileWidth, dimensions.Width - x));
+            int height = (int)Math.Max(0, Math.Min(tileHeight, dimensions.Height - y));
+            if (width == 0 || height == 0 || x < 0 || y < 0)
+                return new byte[tileWidth * tileHeight * 4];
+
+            // Read packed pixels with their known rectangular dimensions. The
+            // SlideImage BGRA conversion guesses a square from the pixel count,
+            // which truncates narrow right-edge tiles (e.g. 16x256 becomes 64x64).
+            byte[] raw = await image.GetTileBytesRaw(
+                image.GetFrameIndex(coordinate.Z, coordinate.C, coordinate.T),
+                level, x, y, width, height, coordinate)
+                .WaitAsync(RemoteTileFetchTimeout, ct).ConfigureAwait(false);
+            if (raw == null || raw.Length == 0)
+                return null;
+
+            int min = image.ZarrDisplayMin;
+            int max = image.ZarrDisplayMax;
+            if (max <= min)
+            {
+                min = 0;
+                max = ushort.MaxValue;
+            }
+            return Gray16TileConverter.ToBgra(raw, width, height, tileWidth, tileHeight, min, max);
         }
 
         private static byte[] ComposeBgraTiles(byte[] redTile, byte[] greenTile, byte[] blueTile)

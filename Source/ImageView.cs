@@ -2049,7 +2049,7 @@ namespace BioGTK
                 using (var fullSK = BioImage.BitmapToSKImage(rgbaBitmap))
                 {
                     using var scaled = new SKBitmap(destW, destH, SKColorType.Bgra8888, SKAlphaType.Premul);
-                    fullSK.ScalePixels(scaled.PeekPixels(), SKFilterQuality.Low);
+                    fullSK.ScalePixels(scaled.PeekPixels(), SKSamplingOptions.Default);
                     return SKImage.FromBitmap(scaled);
                 }
             }
@@ -5273,5 +5273,43 @@ namespace BioGTK
 
         #endregion
 
+    }
+
+    internal static class Gray16TileConverter
+    {
+        /// <summary>
+        /// Converts a packed little-endian Zarr region to a full BGRA tile,
+        /// leaving pixels outside the region transparent.
+        /// </summary>
+        internal static byte[] ToBgra(byte[] raw, int width, int height,
+            int tileWidth, int tileHeight, int min, int max)
+        {
+            if (width <= 0 || height <= 0 || width > tileWidth || height > tileHeight)
+                throw new ArgumentOutOfRangeException(nameof(width), "The region must fit inside the tile.");
+            if (raw == null || raw.Length != checked(width * height * 2))
+                throw new ArgumentException("The pixel buffer must match the region dimensions.", nameof(raw));
+            if (max <= min)
+                throw new ArgumentOutOfRangeException(nameof(max), "The display maximum must exceed the minimum.");
+
+            byte[] bgra = new byte[checked(tileWidth * tileHeight * 4)];
+            float scale = 255f / (max - min);
+            for (int row = 0; row < height; row++)
+            {
+                int srcRow = row * width * 2;
+                int dstRow = row * tileWidth * 4;
+                for (int col = 0; col < width; col++)
+                {
+                    int source = srcRow + col * 2;
+                    ushort value = (ushort)(raw[source] | (raw[source + 1] << 8));
+                    byte gray = (byte)Math.Clamp((value - min) * scale, 0f, 255f);
+                    int destination = dstRow + col * 4;
+                    bgra[destination] = gray;
+                    bgra[destination + 1] = gray;
+                    bgra[destination + 2] = gray;
+                    bgra[destination + 3] = 255;
+                }
+            }
+            return bgra;
+        }
     }
 }
