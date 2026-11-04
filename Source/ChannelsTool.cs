@@ -3,6 +3,9 @@ using Gtk;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 
 namespace BioGTK
@@ -81,14 +84,17 @@ namespace BioGTK
 
             UpdateGUI();
 
-            minBox.Value = (int)Channels[0].stats[0].StackMin;
-            maxBox.Value = (int)Channels[0].stats[0].StackMax;
+            GetChannelLimits(Channels[0], 0, out int initialMin, out int initialMax);
+            minBox.Value = initialMin;
+            maxBox.Value = initialMax;
             binBox.Value = 1;
             binBox.Adjustment = new Adjustment(1, 1, 255, 1, 1, 1);
             hist = HistogramControl.Create(Channels[0]);
-            hist.GraphMax = (int)maxBox.Value;
-            graphMax.Value = (int)maxBox.Value;
+            int initialGraphMaximum = GetObservedHistogramMaximum();
+            hist.GraphMax = initialGraphMaximum;
+            graphMax.Value = initialGraphMaximum;
             hist.Show();
+            _ = LoadMissingZarrStatisticsAsync();
 
             minBox.ButtonPressEvent += minBox_ValueChanged;
             //meanStackBox.Clicked += MeanStackBox_Clicked;
@@ -232,7 +238,10 @@ namespace BioGTK
                         min = c.range[i].Min;
                 }
             }
-            graphMax.Value = max;
+            int observedMaximum = GetObservedHistogramMaximum();
+            graphMax.Value = observedMaximum;
+            if (hist != null)
+                hist.GraphMax = observedMaximum;
             graphMinBox.Value = min;
             fluorBox.Text = SelectedChannel.Fluor;
             emissionBox.Value = SelectedChannel.Emission;
@@ -272,8 +281,10 @@ namespace BioGTK
                 graphMinBox.Adjustment.StepIncrement = 1;
                 graphMinBox.Adjustment.PageIncrement = 10;
             }
-            minBox.Value = SelectedChannel.stats[(int)sampleBox.Value].Min;
-            maxBox.Value = SelectedChannel.stats[(int)sampleBox.Value].Max;
+            GetChannelLimits(SelectedChannel, (int)sampleBox.Value,
+                out int selectedMin, out int selectedMax);
+            minBox.Value = selectedMin;
+            maxBox.Value = selectedMax;
             emissionBox.Value = 
 
             emissionBox.Adjustment.Upper = 1000;
@@ -332,6 +343,184 @@ namespace BioGTK
         #endregion
 
         private HistogramControl hist = null;
+        private readonly SemaphoreSlim _statisticsRefreshGate = new(1, 1);
+        private int _statisticsRefreshVersion;
+
+        private async Task LoadMissingZarrStatisticsAsync()
+        {
+            if (ImageView.SelectedImage?.IsZarrSource != true ||
+                Channels.All(HasPopulatedStatistics))
+                return;
+
+            BioImage image = ImageView.SelectedImage;
+            int version = Interlocked.Increment(ref _statisticsRefreshVersion);
+            await RefreshZarrStatisticsAsync(image, image.Coordinate, version, debounce: false);
+        }
+
+        public void RefreshStatisticsForCoordinate(BioImage image, ZCT coordinate)
+        {
+            if (image == null)
+                return;
+
+            int version = Interlocked.Increment(ref _statisticsRefreshVersion);
+            if (!image.IsZarrSource)
+            {
+                UpdateValues();
+                hist?.UpdateChannel(SelectedChannel);
+                hist?.UpdateView();
+                hist?.QueueDraw();
+                return;
+            }
+
+            _ = RefreshZarrStatisticsAsync(image, coordinate, version, debounce: true);
+        }
+
+        private async Task RefreshZarrStatisticsAsync(
+            BioImage image,
+            ZCT coordinate,
+            int version,
+            bool debounce)
+        {
+            if (debounce)
+                await Task.Delay(150).ConfigureAwait(false);
+
+            if (version != Volatile.Read(ref _statisticsRefreshVersion) ||
+                !ReferenceEquals(image, ImageView.SelectedImage) ||
+                image.Coordinate != coordinate)
+                return;
+
+            try
+            {
+                if (App.viewer == null)
+                    return;
+
+                await _statisticsRefreshGate.WaitAsync().ConfigureAwait(false);
+                bool populated;
+                try
+                {
+                    if (version != Volatile.Read(ref _statisticsRefreshVersion) ||
+                        !ReferenceEquals(image, ImageView.SelectedImage) ||
+                        image.Coordinate != coordinate)
+                        return;
+
+                    populated = await App.viewer.PopulateSelectedZarrStatisticsAsync().ConfigureAwait(false);
+                }
+                finally
+                {
+                    _statisticsRefreshGate.Release();
+                }
+
+                if (!populated)
+                {
+                    AppLog.Append("Zarr statistics loading returned no usable samples.");
+                    return;
+                }
+
+                if (version != Volatile.Read(ref _statisticsRefreshVersion) ||
+                    !ReferenceEquals(image, ImageView.SelectedImage) ||
+                    image.Coordinate != coordinate)
+                    return;
+
+                Gtk.Application.Invoke((s, e) =>
+                {
+                    if (version != Volatile.Read(ref _statisticsRefreshVersion) ||
+                        !ReferenceEquals(image, ImageView.SelectedImage) ||
+                        image.Coordinate != coordinate)
+                        return;
+
+                    UpdateGUI();
+                    UpdateValues();
+                    hist?.UpdateChannel(SelectedChannel);
+                    hist?.UpdateView();
+                    hist?.QueueDraw();
+                });
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                AppLog.Append($"Zarr statistics loading failed: {ex}");
+                Console.WriteLine($"Zarr statistics loading failed: {ex.Message}");
+            }
+        }
+
+        private static bool HasPopulatedStatistics(Channel channel)
+        {
+            return channel?.stats != null &&
+                channel.stats.Length > 0 &&
+                channel.stats.All(statistics =>
+                    statistics?.StackValues != null && statistics.StackValues.Length > 0);
+        }
+
+        private static bool TryGetStatistics(Channel channel, int sample, out Statistics statistics)
+        {
+            statistics = null;
+            if (channel?.stats == null || channel.stats.Length == 0)
+                return false;
+
+            int index = Math.Clamp(sample, 0, channel.stats.Length - 1);
+            statistics = channel.stats[index];
+            return statistics != null;
+        }
+
+        private static void GetChannelLimits(Channel channel, int sample, out int min, out int max)
+        {
+            if (TryGetStatistics(channel, sample, out Statistics statistics))
+            {
+                min = (int)statistics.StackMin;
+                max = (int)statistics.StackMax;
+                return;
+            }
+
+            if (channel?.range != null && channel.range.Length > 0)
+            {
+                int index = Math.Clamp(sample, 0, channel.range.Length - 1);
+                min = channel.range[index].Min;
+                max = channel.range[index].Max;
+                return;
+            }
+
+            min = 0;
+            max = channel?.BitsPerPixel > 8 ? ushort.MaxValue : byte.MaxValue;
+        }
+
+        private int GetObservedHistogramMaximum()
+        {
+            float observedMaximum = 0;
+            foreach (Channel imageChannel in Channels)
+            {
+                if (imageChannel?.stats == null)
+                    continue;
+
+                foreach (Statistics statistics in imageChannel.stats)
+                {
+                    if (statistics != null && statistics.StackMax > observedMaximum)
+                        observedMaximum = statistics.StackMax;
+                }
+            }
+
+            if (observedMaximum > 0)
+                return Math.Max(1, (int)Math.Ceiling(observedMaximum));
+
+            int fallbackMaximum = 0;
+            foreach (Channel imageChannel in Channels)
+            {
+                if (imageChannel?.range == null)
+                    continue;
+                foreach (IntRange range in imageChannel.range)
+                    fallbackMaximum = Math.Max(fallbackMaximum, range.Max);
+            }
+
+            if (fallbackMaximum > 0)
+                return fallbackMaximum;
+            return SelectedChannel?.BitsPerPixel > 8 ? ushort.MaxValue : byte.MaxValue;
+        }
+
+        private bool TryGetSelectedStatistics(out Statistics statistics)
+        {
+            return TryGetStatistics(SelectedChannel, SelectedSample, out statistics);
+        }
 
         public List<Channel> Channels
         {
@@ -607,7 +796,8 @@ namespace BioGTK
         /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void minToolStripMenuItem_Click(object o, ButtonPressEventArgs args)
         {
-            minBox.Value = SelectedChannel.stats[channelsBox.Active].StackMin;
+            if (TryGetSelectedStatistics(out Statistics statistics))
+                minBox.Value = statistics.StackMin;
         }
 
         /// This function is called when the user clicks on the "Max" button in the "Stack" menu. It
@@ -618,7 +808,8 @@ namespace BioGTK
         /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void maxToolStripMenuItem_Click(object o, ButtonPressEventArgs args)
         {
-            minBox.Value = SelectedChannel.stats[channelsBox.Active].StackMax;
+            if (TryGetSelectedStatistics(out Statistics statistics))
+                minBox.Value = statistics.StackMax;
         }
 
         /// This function is called when the user clicks on the "Median" button in the "Statistics"
@@ -630,7 +821,8 @@ namespace BioGTK
         /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void medianToolStripMenuItem_Click(object o, ButtonPressEventArgs args)
         {
-            minBox.Value = SelectedChannel.stats[channelsBox.Active].StackMedian;
+            if (TryGetSelectedStatistics(out Statistics statistics))
+                minBox.Value = statistics.StackMedian;
         }
 
         /// When the user clicks on the "Mean" button in the "Statistics" menu, the value of the
@@ -641,7 +833,8 @@ namespace BioGTK
         /// https://docs.microsoft.com/en-us/dotnet/api/system.windows.forms.buttonpresseventargs?view=netframework-4.8
         private void meanToolStripMenuItem_Click(object o, ButtonPressEventArgs args)
         {
-            minBox.Value = SelectedChannel.stats[channelsBox.Active].StackMean;
+            if (TryGetSelectedStatistics(out Statistics statistics))
+                minBox.Value = statistics.StackMean;
         }
 
         /// This function is called when the user clicks on the "Set Max" menu item in the context menu.
@@ -652,7 +845,8 @@ namespace BioGTK
         /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void toolStripMenuItem1_Click(object o, ButtonPressEventArgs args)
         {
-            maxBox.Value = SelectedChannel.stats[channelsBox.Active].StackMin;
+            if (TryGetSelectedStatistics(out Statistics statistics))
+                maxBox.Value = statistics.StackMin;
         }
 
         /// This function is called when the user clicks on the "Set Max" menu item in the context menu.
@@ -663,7 +857,8 @@ namespace BioGTK
         /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void toolStripMenuItem2_Click(object o, ButtonPressEventArgs args)
         {
-            maxBox.Value = SelectedChannel.stats[channelsBox.Active].StackMax;
+            if (TryGetSelectedStatistics(out Statistics statistics))
+                maxBox.Value = statistics.StackMax;
         }
         /// When the user clicks on the "Set Max to Median" menu item, the maximum value of the selected
         /// channel is set to the median value of the selected channel
@@ -673,7 +868,8 @@ namespace BioGTK
         /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void toolStripMenuItem3_Click(object o, ButtonPressEventArgs args)
         {
-            maxBox.Value = SelectedChannel.stats[channelsBox.Active].StackMedian;
+            if (TryGetSelectedStatistics(out Statistics statistics))
+                maxBox.Value = statistics.StackMedian;
         }
         /// This function is called when the user clicks on the "Set Max to Mean" menu item in the
         /// "Edit" menu.
@@ -683,7 +879,8 @@ namespace BioGTK
         /// https://developer.gnome.org/gtk-sharp/stable/Gtk.ButtonPressEventArgs.html
         private void toolStripMenuItem4_Click(object o, ButtonPressEventArgs args)
         {
-            maxBox.Value = SelectedChannel.stats[channelsBox.Active].StackMean;
+            if (TryGetSelectedStatistics(out Statistics statistics))
+                maxBox.Value = statistics.StackMean;
         }
 
         /// The function updates the threshold values of the image
@@ -696,16 +893,10 @@ namespace BioGTK
             if (ImageView.SelectedImage.bitsPerPixel > 8)
             {
                 ImageView.SelectedImage.StackThreshold(true);
-                if (ImageView.SelectedImage.RGBChannelCount == 1)
-                {
-                    maxBox.Value = ImageView.SelectedImage.Channels[channelsBox.Active].stats[0].StackMax;
-                    minBox.Value = ImageView.SelectedImage.Channels[channelsBox.Active].stats[0].StackMin;
-                }
-                else
-                {
-                    maxBox.Value = ImageView.SelectedImage.Channels[channelsBox.Active].stats[channelsBox.Active].StackMax;
-                    minBox.Value = ImageView.SelectedImage.Channels[channelsBox.Active].stats[channelsBox.Active].StackMin;
-                }
+                GetChannelLimits(SelectedChannel, SelectedSample,
+                    out int thresholdMin, out int thresholdMax);
+                maxBox.Value = thresholdMax;
+                minBox.Value = thresholdMin;
             }
             else
             {

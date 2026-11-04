@@ -28,6 +28,10 @@ namespace BioGTK
         private int _vao;
         private int _vbo;
         private int _shaderProgram;
+        private int _completeFrameTexture;
+        private int _completeFrameWidth;
+        private int _completeFrameHeight;
+        private bool _tileFrameComplete;
 
         // Uniform locations (cached for performance)
         private int _locPos;
@@ -43,6 +47,7 @@ namespace BioGTK
 
         private Dictionary<TileIndex, int> _textureCache = new();
         private Dictionary<TileIndex, (int w, int h)> _textureSizes = new();
+        private readonly HashSet<TileIndex> _protectedTileIndices = new();
         private long _textureBytes;
         private const int MAX_CACHED_TEXTURES = 128;
         private const long MAX_CACHED_TEXTURE_BYTES = 96L * 1024 * 1024;
@@ -62,6 +67,7 @@ namespace BioGTK
         public List<TileRenderInfo> TilesToRender { get; } = new();
         public bool NeedsRedraw { get; set; } = true;
         public bool PreservePreviousFrameWhileIncomplete { get; set; } = false;
+        private Action<byte[], int, int> _pendingWholeImageCapture;
 
         // Screen-space boundary of the image (in pixels from top-left).
         // Tiles are scissored to this rect so nothing renders outside the image.
@@ -136,6 +142,11 @@ void main()
         {
             HasDepthBuffer = false;
             HasStencilBuffer = false;
+            // Skia wraps this framebuffer as GL_RGBA8, so GTK must allocate an
+            // alpha-capable color attachment too. The final render pass explicitly
+            // writes alpha=1 across the surface, keeping presentation opaque while
+            // avoiding the undefined RGB-buffer-as-RGBA mismatch.
+            HasAlpha = true;
             AutoRender = false;  // We control when to render
 
             Realized += OnRealized;
@@ -280,24 +291,43 @@ void main()
             }
 
             ClearTextureCache();
+            DiscardCompleteFrame();
         }
 
         // ============================================================================
         // Skia Initialization
         // ============================================================================
 
-        private void InitializeSkia()
+        private void InitializeSkia(int framebuffer = -1)
         {
-            _grContext = GRContext.CreateGl();
-            // Get the current FBO ID (usually 0 in GLArea, but not always)
-            GL.GetInteger(GetPName.FramebufferBinding, out int fbo);
+            // Capture GTK's framebuffer before disposing the previous Skia target;
+            // target disposal is allowed to change GL bindings.
+            if (framebuffer < 0)
+                GL.GetInteger(GetPName.FramebufferBinding, out framebuffer);
+
+            // Keep one GPU context for the lifetime of the GLArea. Creating a new
+            // GRContext on every frame leaks native GL resources and eventually
+            // causes allocations such as GL.GenTexture to return 0.
+            _grContext ??= GRContext.CreateGl();
+
+            // GTK may rotate the GLArea framebuffer between renders. Recreate only
+            // the lightweight target/surface wrappers for the currently bound FBO.
+            _skSurface?.Dispose();
+            _skSurface = null;
+            _renderTarget?.Dispose();
+            _renderTarget = null;
+
+            int targetWidth = AllocatedWidth * ScaleFactor;
+            int targetHeight = AllocatedHeight * ScaleFactor;
+            if (_grContext == null || targetWidth <= 0 || targetHeight <= 0)
+                return;
 
             // Ensure the format matches what Gtk.GLArea provides (usually GL_RGBA8)
-            var framebufferInfo = new GRGlFramebufferInfo((uint)fbo, 0x8058); // GL_RGBA8
+            var framebufferInfo = new GRGlFramebufferInfo((uint)framebuffer, 0x8058); // GL_RGBA8
 
             _renderTarget = new GRBackendRenderTarget(
-                AllocatedWidth * ScaleFactor,
-                AllocatedHeight * ScaleFactor,
+                targetWidth,
+                targetHeight,
                 0, 8, framebufferInfo);
 
             _skSurface = SKSurface.Create(_grContext, _renderTarget, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888);
@@ -328,6 +358,7 @@ void main()
             }
 
             MakeCurrent();
+            GL.GetInteger(GetPName.FramebufferBinding, out int presentationFramebuffer);
 
             int width = AllocatedWidth;
             int height = AllocatedHeight;
@@ -340,48 +371,79 @@ void main()
 
             // Phase 1: Render tiles with OpenGL
             RenderTiles(width, height);
+            if (_tileFrameComplete)
+                CaptureCompleteTileFrame(width, height);
+
+            // The initial fit-to-window frame already contains everything needed
+            // by the minimap. Capture it before Skia adds the overview and ROIs so
+            // ImageView does not perform a second remote pyramid read.
+            CaptureWholeImageFrameIfRequested(width, height);
 
             // Phase 2: Render annotations with Skia
-            RenderSkiaOverlay(width, height);
+            try
+            {
+                RenderSkiaOverlay(width, height, presentationFramebuffer);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Skia overlay render error: {ex.Message}");
+            }
 
-            // Flush Skia to ensure all drawing is done
-            _grContext?.Flush();
+            // Skia surfaces are alpha-capable even though the viewer window is not.
+            // Some Windows GL/GDK combinations leave untouched overlay pixels with
+            // alpha zero. Rewrite only the alpha channel after the overlay so the
+            // compositor can never expose windows behind the viewer.
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, presentationFramebuffer);
+            ForceOpaqueFramebuffer();
+            GL.Flush();
             args.RetVal = true;
+        }
+
+        private static void ForceOpaqueFramebuffer()
+        {
+            GL.Disable(EnableCap.ScissorTest);
+            GL.ColorMask(false, false, false, true);
+            GL.ClearColor(0f, 0f, 0f, 1f);
+            GL.Clear(ClearBufferMask.ColorBufferBit);
+            GL.ColorMask(true, true, true, true);
         }
 
         private void RenderTiles(int width, int height)
         {
+            _tileFrameComplete = false;
             int scale = ScaleFactor;
             GL.Viewport(0, 0, width * scale, height * scale);
+
+            // GLArea may provide a different framebuffer for each render. Its
+            // previous contents are undefined, so returning early in an attempt
+            // to preserve the prior frame can present transparent pixels to the
+            // window compositor. Establish a fully opaque frame on every pass;
+            // cached fallback tiles are drawn over it below when available.
+            GL.Disable(EnableCap.ScissorTest);
+            GL.ColorMask(true, true, true, true);
+            GL.ClearColor(0.2f, 0.2f, 0.2f, 1f);
+            GL.Clear(ClearBufferMask.ColorBufferBit);
+
             if (TilesToRender.Count == 0)
             {
-                if (!PreservePreviousFrameWhileIncomplete)
-                {
-                    GL.ClearColor(0.2f, 0.2f, 0.2f, 1f);
-                    GL.Clear(ClearBufferMask.ColorBufferBit);
-                }
+                if (PreservePreviousFrameWhileIncomplete)
+                    RenderCompleteFrameFallback(width, height);
                 LogDiag($"[RenderTiles] no tiles to render viewport={width}x{height} imageScreen=({ImageScreenX},{ImageScreenY},{ImageScreenW},{ImageScreenH})");
                 return;
             }
 
             bool hasAllRenderableTextures = TilesToRender.All(tile => _textureCache.ContainsKey(tile.Index));
-            if (!hasAllRenderableTextures && PreservePreviousFrameWhileIncomplete)
-            {
-                // Keep the previous frame visible while the current visible set
-                // is still incomplete. Clearing here exposes the background for a
-                // frame whenever a view change lands before every tile is ready.
-                LogDiag($"[RenderTiles] waiting for complete tile set viewport={width}x{height} tileCount={TilesToRender.Count}");
-                return;
-            }
-
             if (!hasAllRenderableTextures)
             {
-                GL.ClearColor(0.2f, 0.2f, 0.2f, 1f);
-                GL.Clear(ClearBufferMask.ColorBufferBit);
+                // Never expose a partially assembled target frame. Retain the last
+                // complete GPU snapshot until all visible tiles are resident, then
+                // replace the frame atomically. On first load, keep the opaque
+                // background instead of popping tiles in one at a time.
+                if (_completeFrameTexture != 0)
+                    RenderCompleteFrameFallback(width, height);
+                LogDiag($"[RenderTiles] waiting for atomic tile frame viewport={width}x{height} tileCount={TilesToRender.Count}");
+                return;
             }
-
-            GL.ClearColor(0.2f, 0.2f, 0.2f, 1f);
-            GL.Clear(ClearBufferMask.ColorBufferBit);
 
             LogDiag($"[RenderTiles] tiles={TilesToRender.Count} viewport={width}x{height} imageScreen=({ImageScreenX},{ImageScreenY},{ImageScreenW},{ImageScreenH})");
 
@@ -436,16 +498,146 @@ void main()
             GL.BindVertexArray(0);
             GL.UseProgram(0);
             GL.Disable(EnableCap.Blend);
+            _tileFrameComplete = true;
         }
 
-        private void RenderSkiaOverlay(int width, int height)
+        private void RenderCompleteFrameFallback(int width, int height)
         {
-            if (_skSurface == null || OnSkiaRender == null) return;
-            InitializeSkia();
+            if (_completeFrameTexture == 0 || _completeFrameWidth <= 0 || _completeFrameHeight <= 0)
+                return;
+
+            GL.Disable(EnableCap.ScissorTest);
+            GL.Disable(EnableCap.Blend);
+            GL.UseProgram(_shaderProgram);
+            GL.BindVertexArray(_vao);
+            GL.Uniform2(_locViewportSize, (float)width, (float)height);
+            GL.Uniform1(_locTex, 0);
+            GL.Uniform2(_locPos, 0f, 0f);
+            GL.Uniform2(_locSize, (float)width, (float)height);
+            // Framebuffer copies use bottom-left texture origin, unlike uploaded
+            // top-down tile bytes, so reverse V while drawing the snapshot.
+            GL.Uniform2(_locUvMin, 0f, 1f);
+            GL.Uniform2(_locUvMax, 1f, 0f);
+            GL.ActiveTexture(TextureUnit.Texture0);
+            GL.BindTexture(TextureTarget.Texture2D, _completeFrameTexture);
+            GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
+            GL.BindTexture(TextureTarget.Texture2D, 0);
+            GL.BindVertexArray(0);
+            GL.UseProgram(0);
+        }
+
+        private void CaptureCompleteTileFrame(int width, int height)
+        {
+            int physicalWidth = width * Math.Max(1, ScaleFactor);
+            int physicalHeight = height * Math.Max(1, ScaleFactor);
+            if (physicalWidth <= 0 || physicalHeight <= 0)
+                return;
+
+            if (_completeFrameTexture == 0)
+                _completeFrameTexture = GL.GenTexture();
+            if (_completeFrameTexture == 0)
+                return;
+
+            GL.BindTexture(TextureTarget.Texture2D, _completeFrameTexture);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
+
+            if (_completeFrameWidth != physicalWidth || _completeFrameHeight != physicalHeight)
+            {
+                GL.CopyTexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgba,
+                    0, 0, physicalWidth, physicalHeight, 0);
+                _completeFrameWidth = physicalWidth;
+                _completeFrameHeight = physicalHeight;
+            }
+            else
+            {
+                GL.CopyTexSubImage2D(TextureTarget.Texture2D, 0, 0, 0,
+                    0, 0, physicalWidth, physicalHeight);
+            }
+            GL.BindTexture(TextureTarget.Texture2D, 0);
+        }
+
+        public void DiscardCompleteFrame()
+        {
+            if (_completeFrameTexture != 0 && _glInitialized)
+            {
+                MakeCurrent();
+                GL.DeleteTexture(_completeFrameTexture);
+            }
+            _completeFrameTexture = 0;
+            _completeFrameWidth = 0;
+            _completeFrameHeight = 0;
+        }
+
+        private void CaptureWholeImageFrameIfRequested(int width, int height)
+        {
+            var callback = _pendingWholeImageCapture;
+            if (callback == null || TilesToRender.Count == 0 ||
+                !TilesToRender.All(tile => _textureCache.ContainsKey(tile.Index)))
+                return;
+
+            // Only use a frame in which the complete image fits in the viewport.
+            // A later zoomed/panned frame is not a valid overview source.
+            const float tolerance = 1.5f;
+            if (ImageScreenW <= 0 || ImageScreenH <= 0 ||
+                ImageScreenX < -tolerance || ImageScreenY < -tolerance ||
+                ImageScreenX + ImageScreenW > width + tolerance ||
+                ImageScreenY + ImageScreenH > height + tolerance)
+                return;
+
+            int scale = Math.Max(1, ScaleFactor);
+            int framebufferWidth = width * scale;
+            int framebufferHeight = height * scale;
+            int left = Math.Clamp((int)Math.Round(ImageScreenX * scale), 0, framebufferWidth - 1);
+            int top = Math.Clamp((int)Math.Round(ImageScreenY * scale), 0, framebufferHeight - 1);
+            int captureWidth = Math.Clamp((int)Math.Round(ImageScreenW * scale), 1, framebufferWidth - left);
+            int captureHeight = Math.Clamp((int)Math.Round(ImageScreenH * scale), 1, framebufferHeight - top);
+            int glBottom = framebufferHeight - top - captureHeight;
+
+            byte[] rgbaBottomUp = new byte[captureWidth * captureHeight * 4];
+            GL.ReadPixels(left, glBottom, captureWidth, captureHeight,
+                PixelFormat.Rgba, PixelType.UnsignedByte, rgbaBottomUp);
+
+            // AForge's 32-bit bitmap path expects BGRA rows from top to bottom.
+            byte[] bgraTopDown = new byte[rgbaBottomUp.Length];
+            int rowBytes = captureWidth * 4;
+            for (int y = 0; y < captureHeight; y++)
+            {
+                int sourceRow = (captureHeight - 1 - y) * rowBytes;
+                int destinationRow = y * rowBytes;
+                for (int x = 0; x < captureWidth; x++)
+                {
+                    int source = sourceRow + x * 4;
+                    int destination = destinationRow + x * 4;
+                    bgraTopDown[destination] = rgbaBottomUp[source + 2];
+                    bgraTopDown[destination + 1] = rgbaBottomUp[source + 1];
+                    bgraTopDown[destination + 2] = rgbaBottomUp[source];
+                    bgraTopDown[destination + 3] = 255;
+                }
+            }
+
+            _pendingWholeImageCapture = null;
+            callback(bgraTopDown, captureWidth, captureHeight);
+        }
+
+        private void RenderSkiaOverlay(int width, int height, int presentationFramebuffer)
+        {
+            if (OnSkiaRender == null) return;
+            InitializeSkia(presentationFramebuffer);
+            if (_skSurface == null)
+                return;
+
+            // Tile rendering uses raw OpenGL immediately before Skia. Tell Skia
+            // that every cached GL binding/state may have changed so it rebinds
+            // the current GTK framebuffer, program, viewport and blend state.
+            _grContext.ResetContext(GRGlBackendState.All);
             var canvas = _skSurface.Canvas;
             // Fire event for annotation drawing
             OnSkiaRender?.Invoke(canvas, width, height);
             _grContext.Flush();
+            _grContext.Submit(true);
         }
 
         // ============================================================================
@@ -512,6 +704,11 @@ void main()
             // driver is reading from the pointer (avoids ExecutionEngineException).
             // PixelFormat.Bgra matches the byte order produced by ReadRegionAsync.
             int tex = GL.GenTexture();
+            if (tex == 0)
+            {
+                Console.WriteLine($"OpenGL failed to allocate texture for tile {index}.");
+                return;
+            }
             GL.BindTexture(TextureTarget.Texture2D, tex);
             GL.PixelStore(PixelStoreParameter.UnpackAlignment, 4);
 
@@ -616,13 +813,28 @@ void main()
             }
             _textureCache.Clear();
             _textureSizes.Clear();
+            _protectedTileIndices.Clear();
             _textureBytes = 0;
         }
 
         private void EvictOldestTextures(int count)
         {
-            // Simple FIFO eviction - could be improved with LRU tracking
-            var toRemove = _textureCache.Take(count).ToList();
+            // Prefer off-screen textures. Tiles in the displayed viewport and
+            // incoming tiles for a pending level switch must remain resident long
+            // enough to form a complete frame.
+            var toRemove = _textureCache
+                .Where(kvp => !_protectedTileIndices.Contains(kvp.Key))
+                .Take(count)
+                .ToList();
+
+            // This should only be needed if a viewport itself exceeds the cache.
+            if (toRemove.Count < count)
+            {
+                var selected = new HashSet<TileIndex>(toRemove.Select(kvp => kvp.Key));
+                toRemove.AddRange(_textureCache
+                    .Where(kvp => !selected.Contains(kvp.Key))
+                    .Take(count - toRemove.Count));
+            }
             foreach (var kvp in toRemove)
             {
                 GL.DeleteTexture(kvp.Value);
@@ -647,12 +859,22 @@ void main()
             NeedsRedraw = true;
             QueueRender();
             QueueDraw();
+        }
 
-            if (IsRealized && Window != null)
-            {
-                Window.InvalidateRect(Allocation, false);
-                Window.ProcessUpdates(true);
-            }
+        /// <summary>
+        /// Captures the next complete fit-to-window image frame. A newer request
+        /// replaces an older one because only the current image/coordinate matters.
+        /// </summary>
+        public void CaptureNextWholeImageFrame(Action<byte[], int, int> callback)
+        {
+            _pendingWholeImageCapture = callback;
+            RequestRedraw();
+        }
+
+        public void CancelWholeImageFrameCapture(Action<byte[], int, int> callback)
+        {
+            if (ReferenceEquals(_pendingWholeImageCapture, callback))
+                _pendingWholeImageCapture = null;
         }
 
         /// <summary>
@@ -663,6 +885,20 @@ void main()
             TilesToRender.Clear();
             TilesToRender.AddRange(tiles);
             LogDiag($"[SetTilesToRender] count={TilesToRender.Count}");
+        }
+
+        /// <summary>
+        /// Protects incoming visible tiles from FIFO eviction. The currently
+        /// displayed set is included automatically so progressive level changes
+        /// retain both the fallback frame and the target frame under construction.
+        /// </summary>
+        public void SetProtectedTileIndices(IEnumerable<TileIndex> indices)
+        {
+            _protectedTileIndices.Clear();
+            foreach (var index in indices)
+                _protectedTileIndices.Add(index);
+            foreach (var tile in TilesToRender)
+                _protectedTileIndices.Add(tile.Index);
         }
 
         public int CachedTextureCount => _textureCache.Count;

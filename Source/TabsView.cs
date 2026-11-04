@@ -27,6 +27,7 @@ namespace BioGTK
         private readonly List<string> recentImages = new List<string>();
         private readonly Menu recentImagesMenu = new Menu();
         private MenuItem openRecentMenu;
+        private MenuItem clearRecentImagesMenu;
         private static readonly string RecentImagesPath = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "BioGTK", "recent-images.json");
@@ -105,6 +106,115 @@ namespace BioGTK
                 file.StartsWith("s3://", StringComparison.OrdinalIgnoreCase);
         }
 
+        private static void EnsureLargeZarrUsesPyramidalViewer(BioImage image)
+        {
+            if (image == null || !image.IsZarrSource || image.Resolutions.Count == 0)
+                return;
+
+            image.PyramidNativeLevelCount = image.Resolutions.Count;
+            if (image.Resolutions.Count > 1)
+                return;
+
+            const int largeImageDimension = 2048;
+            const int pyramidTargetDimension = 1024;
+            Resolution baseResolution = image.Resolutions[0];
+            if (baseResolution.SizeX <= largeImageDimension &&
+                baseResolution.SizeY <= largeImageDimension)
+            {
+                return;
+            }
+
+            Resolution previous = baseResolution;
+            int width = baseResolution.SizeX;
+            int height = baseResolution.SizeY;
+            while (width > pyramidTargetDimension || height > pyramidTargetDimension)
+            {
+                width = Math.Max(1, (width + 1) / 2);
+                height = Math.Max(1, (height + 1) / 2);
+                previous = new Resolution(
+                    width,
+                    height,
+                    previous.PixelFormat,
+                    previous.PhysicalSizeX * 2,
+                    previous.PhysicalSizeY * 2,
+                    previous.PhysicalSizeZ,
+                    previous.StageSizeX,
+                    previous.StageSizeY,
+                    previous.StageSizeZ);
+                image.Resolutions.Add(previous);
+            }
+
+            // OpenURL creates SlideBase before returning. Rebuild it so its tile
+            // schema includes the synthetic levels that were added above.
+            var slideImage = new SlideImage { BioImage = image };
+            image.SlideBase = new SlideBase(image, slideImage);
+        }
+
+        private static async Task ApplyRemoteZarrDefaultCoordinateAsync(BioImage image, string source)
+        {
+            if (image == null || string.IsNullOrWhiteSpace(source))
+                return;
+            if (!source.StartsWith("https://", StringComparison.OrdinalIgnoreCase) &&
+                !source.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                !source.StartsWith("s3://", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            try
+            {
+                string metadataRoot = source;
+                if (metadataRoot.StartsWith("s3://", StringComparison.OrdinalIgnoreCase))
+                {
+                    metadataRoot = "https://uk1s3.embassy.ebi.ac.uk/" +
+                        metadataRoot.Substring("s3://".Length).TrimStart('/');
+                }
+
+                using var http = new System.Net.Http.HttpClient();
+                string json = await http.GetStringAsync(metadataRoot.TrimEnd('/') + "/zarr.json")
+                    .ConfigureAwait(false);
+                using var document = JsonDocument.Parse(json);
+
+                JsonElement root = document.RootElement;
+                JsonElement omero = default;
+                bool foundOmero = false;
+                if (root.TryGetProperty("attributes", out JsonElement attributes))
+                {
+                    if (attributes.TryGetProperty("ome", out JsonElement ome) &&
+                        ome.TryGetProperty("omero", out omero))
+                    {
+                        foundOmero = true;
+                    }
+                    else if (attributes.TryGetProperty("omero", out omero))
+                    {
+                        foundOmero = true;
+                    }
+                }
+                if (!foundOmero && root.TryGetProperty("omero", out omero))
+                    foundOmero = true;
+                if (!foundOmero || !omero.TryGetProperty("rdefs", out JsonElement rdefs))
+                    return;
+
+                int defaultZ = image.Coordinate.Z;
+                int defaultT = image.Coordinate.T;
+                if (rdefs.TryGetProperty("defaultZ", out JsonElement zValue) && zValue.TryGetInt32(out int z))
+                    defaultZ = z;
+                if (rdefs.TryGetProperty("defaultT", out JsonElement tValue) && tValue.TryGetInt32(out int t))
+                    defaultT = t;
+
+                defaultZ = Math.Clamp(defaultZ, 0, Math.Max(0, image.SizeZ - 1));
+                defaultT = Math.Clamp(defaultT, 0, Math.Max(0, image.SizeT - 1));
+                image.Coordinate = new ZCT(defaultZ, image.Coordinate.C, defaultT);
+            }
+            catch (Exception ex) when (
+                ex is System.Net.Http.HttpRequestException ||
+                ex is TaskCanceledException ||
+                ex is JsonException)
+            {
+                Console.WriteLine("Could not read the OME-Zarr default coordinate: " + ex.Message);
+            }
+        }
+
         private async Task<BioImage?> OpenSeriesAsTabAsync(
             string file,
             int series,
@@ -151,7 +261,11 @@ namespace BioGTK
                 BioImage? zarrImage = await BioImage.OpenFile(file, 0, false, false, false, 0, 0, 0, 0);
                 List<BioImage> singleRoot = new List<BioImage>();
                 if (zarrImage != null)
+                {
+                    EnsureLargeZarrUsesPyramidalViewer(zarrImage);
+                    await ApplyRemoteZarrDefaultCoordinateAsync(zarrImage, file);
                     singleRoot.Add(zarrImage);
+                }
                 return singleRoot;
             }
 
@@ -754,8 +868,12 @@ namespace BioGTK
         {
             openRecentMenu = new MenuItem("Open Recent");
             openRecentMenu.Submenu = recentImagesMenu;
+            clearRecentImagesMenu = new MenuItem("Clear Recent Files");
+            clearRecentImagesMenu.Activated += ClearRecentImagesMenu_Activated;
             Menu fileMenu = (Menu)openImagesMenu.Parent;
-            fileMenu.Insert(openRecentMenu, Array.IndexOf(fileMenu.Children, openImagesMenu) + 1);
+            int recentMenuPosition = Array.IndexOf(fileMenu.Children, openImagesMenu) + 1;
+            fileMenu.Insert(openRecentMenu, recentMenuPosition);
+            fileMenu.Insert(clearRecentImagesMenu, recentMenuPosition + 1);
 
             try
             {
@@ -774,6 +892,22 @@ namespace BioGTK
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is JsonException)
             {
                 Console.WriteLine("Could not load recent images: " + ex.Message);
+            }
+
+            RefreshOpenRecentMenu();
+        }
+
+        private void ClearRecentImagesMenu_Activated(object sender, EventArgs args)
+        {
+            recentImages.Clear();
+            try
+            {
+                if (File.Exists(RecentImagesPath))
+                    File.Delete(RecentImagesPath);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                Console.WriteLine("Could not clear recent images: " + ex.Message);
             }
 
             RefreshOpenRecentMenu();
@@ -829,7 +963,9 @@ namespace BioGTK
             }
 
             openRecentMenu.Sensitive = recentImages.Count > 0;
+            clearRecentImagesMenu.Sensitive = recentImages.Count > 0;
             openRecentMenu.ShowAll();
+            clearRecentImagesMenu.ShowAll();
         }
 
         private async Task OpenRecentImageAsync(string source)

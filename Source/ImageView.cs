@@ -66,6 +66,8 @@ namespace BioGTK
             }
 
             bool coordinateChanged = SelectedImage.Coordinate != previousCoordinate;
+            if (coordinateChanged)
+                App.channelsTool?.RefreshStatisticsForCoordinate(SelectedImage, SelectedImage.Coordinate);
             if (SelectedImage.isPyramidal && coordinateChanged)
             {
                 PreparePyramidalCoordinateRender();
@@ -87,10 +89,13 @@ namespace BioGTK
             if (SelectedImage?.isPyramidal != true)
                 return;
 
-            slideRenderer?.InvalidateRenderState();
+            // A slider drag can generate many coordinate changes per second.
+            // Mark earlier plane results stale, but let their HTTP reads finish so
+            // HttpClient does not surface routine socket-abort TaskCanceledExceptions.
+            slideRenderer?.InvalidateRenderState(cancelActiveFetches: false);
             sKSlideRenderer?.InvalidateRenderState();
             SelectedImage.InvalidateTileCache();
-            slideRenderer?.ClearCache(resetLevel: false);
+            slideRenderer?.ClearCache(resetLevel: false, cancelActiveFetches: false);
             sKSlideRenderer?.ClearCache();
             SelectedImage.ZarrDisplayMax = 0;
         }
@@ -854,6 +859,7 @@ namespace BioGTK
                 }
                 canvas.Restore();
                 // Draw overview if enabled
+                EnsureOverviewCurrent();
                 if (overviewImage != null && ShowOverview)
                 {
                     paint = new SKPaint
@@ -1268,6 +1274,7 @@ namespace BioGTK
 
             overviewImage?.Dispose();
             overviewImage = null;
+            _overviewRequestId++;
 
             slideRenderer?.ClearCache();
             slideRenderer = null;
@@ -1604,6 +1611,7 @@ namespace BioGTK
         private bool _isApplyingGoToImage = false;
         private int? _pendingGoToImageIndex = null;
         private bool _updatingGui = false;
+        private readonly HashSet<BioImage> _initializedRgbChannelDefaults = new HashSet<BioImage>();
         private CancellationTokenSource _tileFetchCancellation;
         private Dictionary<string, Task<byte[]>> _pendingTileFetches = new Dictionary<string, Task<byte[]>>();
         private List<SKImage> SKImages = new List<SKImage>();
@@ -1780,16 +1788,46 @@ namespace BioGTK
             if (SelectedImage?.isPyramidal != true)
                 return;
 
-            slideRenderer?.InvalidateRenderState();
+            // Threshold/channel edits invalidate pixels but do not require socket
+            // aborts. Let older Zarr reads drain and discard them by render version.
+            slideRenderer?.InvalidateRenderState(cancelActiveFetches: false);
             sKSlideRenderer?.InvalidateRenderState();
             SelectedImage.InvalidateTileCache();
-            slideRenderer?.ClearCache(resetLevel: false);
+            slideRenderer?.ClearCache(resetLevel: false, cancelActiveFetches: false);
             sKSlideRenderer?.ClearCache();
             SelectedImage.ZarrDisplayMax = 0;
+            _overviewSource = null;
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, SelectedImage?.file ?? string.Empty);
+        }
+
+        public Task<bool> PopulateSelectedZarrStatisticsAsync()
+        {
+            var image = SelectedImage;
+            if (image?.IsZarrSource != true || slideRenderer == null)
+                return Task.FromResult(false);
+
+            return slideRenderer.PopulateZarrStatisticsAsync(image, image.Coordinate);
         }
         Rectangle overview;
         SKImage overviewImage;
+        private BioImage _overviewSource;
+        private ZCT _overviewCoordinate;
+        private int _overviewDisplayMin, _overviewDisplayMax, _overviewWellIndex;
+        private int _overviewRequestId;
+
+        private void EnsureOverviewCurrent()
+        {
+            var image = SelectedImage;
+            if (_viewerCleanupDone || image?.isPyramidal != true || !ShowOverview)
+                return;
+
+            if (!ReferenceEquals(_overviewSource, image) ||
+                _overviewCoordinate != image.Coordinate ||
+                _overviewDisplayMin != image.ZarrDisplayMin ||
+                _overviewDisplayMax != image.ZarrDisplayMax ||
+                _overviewWellIndex != image.WellIndex)
+                InitPreview();
+        }
         public int? MacroResolution { get { return SelectedImage.MacroResolution; } }
         public int? LabelResolution { get { return SelectedImage.LabelResolution; } }
 
@@ -1801,51 +1839,76 @@ namespace BioGTK
         /// </summary>
         private async void InitPreview()
         {
-            if (SelectedImage == null || !SelectedImage.isPyramidal)
+            var image = SelectedImage;
+            if (_viewerCleanupDone || image == null || !image.isPyramidal)
                 return;
 
+            int requestId = ++_overviewRequestId;
+            _overviewSource = image;
+            _overviewCoordinate = image.Coordinate;
+            _overviewDisplayMin = image.ZarrDisplayMin;
+            _overviewDisplayMax = image.ZarrDisplayMax;
+            _overviewWellIndex = image.WellIndex;
+            ZCT coordinate = image.Coordinate;
             try
             {
                 refresh = false;
                 int OVERVIEW_SIZE = View.ScaleFactor * 160;
 
-                var (sourceBitmap, srcW, srcH) = await FetchPreviewBitmap(OVERVIEW_SIZE);
-                if (sourceBitmap == null)
+                var (sourceBitmap, srcW, srcH) = await FetchPreviewBitmap(image, coordinate, OVERVIEW_SIZE);
+                Gtk.Application.Invoke((s, e) =>
                 {
+                    using (sourceBitmap)
+                    {
+                        if (_viewerCleanupDone || requestId != _overviewRequestId || !ReferenceEquals(image, SelectedImage))
+                            return;
+                        try
+                        {
+                            var (ow, oh) = CalcOverviewSize(srcW, srcH, OVERVIEW_SIZE);
+                            var preview = ScaleToOverview(sourceBitmap, srcW, srcH, ow, oh);
+                            overview = new Rectangle(0, 0, ow, oh);
+                            overviewImage?.Dispose();
+                            overviewImage = preview;
+                            ShowOverview = overviewImage != null;
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Overview rendering failed: {ex.Message}");
+                            ShowOverview = false;
+                            overviewImage?.Dispose();
+                            overviewImage = null;
+                        }
+                        // SlideGLArea uses AutoRender=false, so QueueDraw alone does
+                        // not invoke its GL render callback. Request a GL render as
+                        // soon as the asynchronously prepared overview is installed;
+                        // otherwise it only appears after the next pan/zoom event.
+                        if (View is SlideGLArea slideGlArea)
+                            slideGlArea.RequestRedraw();
+                        else
+                            View?.QueueDraw();
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Gtk.Application.Invoke((s, e) =>
+                {
+                    if (_viewerCleanupDone || requestId != _overviewRequestId)
+                        return;
+                    Console.WriteLine($"Overview loading failed: {ex.Message}");
                     ShowOverview = false;
                     overviewImage?.Dispose();
                     overviewImage = null;
-                    return;
-                }
-
-                var (ow, oh) = CalcOverviewSize(srcW, srcH, OVERVIEW_SIZE);
-                overview = new Rectangle(0, 0, ow, oh);
-                overviewImage?.Dispose();
-                overviewImage = ScaleToOverview(sourceBitmap, srcW, srcH, ow, oh);
-                ShowOverview = overviewImage != null;
-
-                Gtk.Application.Invoke((s, e) =>
-                {
-                    if (_viewerCleanupDone)
-                        return;
-                    View?.QueueDraw();
-                    View?.QueueDraw();
                 });
-            }
-            catch (Exception)
-            {
-                ShowOverview = false;
-                overviewImage?.Dispose();
-                overviewImage = null;
             }
         }
 
         // Returns (bitmap, srcW, srcH), or (null, 0, 0) on failure.
-        private async Task<(Bitmap bitmap, int w, int h)> FetchPreviewBitmap(int overviewSize)
+        private async Task<(Bitmap bitmap, int w, int h)> FetchPreviewBitmap(BioImage image, ZCT coordinate, int overviewSize)
         {
-            if (SelectedImage.Type == BioImage.ImageType.well)
+            if (image.Type == BioImage.ImageType.well)
             {
-                var bmp = await SelectedImage.GetWellFieldBitmap(SelectedImage.WellIndex).ConfigureAwait(false);
+                var bmp = await image.GetWellFieldBitmap(image.WellIndex, coordinate.Z, coordinate.C, coordinate.T);
                 if (bmp == null)
                 {
                     return (null, 0, 0);
@@ -1853,91 +1916,138 @@ namespace BioGTK
                 return (bmp, bmp.Width, bmp.Height);
             }
 
-            int level = FindOverviewLevel(overviewSize);
-            if (level < 0)
+            // The initial pyramidal view is already fit to the complete image.
+            // Reuse that rendered frame instead of independently downloading and
+            // decoding another multi-megapixel pyramid level for the minimap.
+            if (View is SlideGLArea slideGlArea)
             {
-                var fallback = SelectedImage.Resolutions[^1];
-                var (fw, fh) = CalcOverviewSize(fallback.SizeX, fallback.SizeY, overviewSize);
-                overview = new Rectangle(0, 0, fw, fh);
-                return (null, 0, 0);
+                var renderedPreview = await CaptureRenderedPreviewAsync(slideGlArea).ConfigureAwait(false);
+                if (renderedPreview.bitmap != null)
+                    return renderedPreview;
             }
+
+            if (image.OpenSlideBase?.SlideImage != null)
+                return await Task.Run(() => FetchOpenSlidePreview(image, overviewSize)).ConfigureAwait(false);
+
+            int level = FindOverviewLevel(image, overviewSize);
+            if (level < 0)
+                return (null, 0, 0);
 
             for (int lev = level; lev >= 0; lev--)
             {
-                var res = SelectedImage.Resolutions[lev];
+                var res = image.Resolutions[lev];
                 int srcW = res.SizeX, srcH = res.SizeY;
 
-                if (openSlide)
+                try
                 {
-                    try
-                    {
-                        var tileBitmap = await SelectedImage.GetTile(
-                            SelectedImage.Coords[0, 0, 0],
-                            lev,
-                            0, 0,
-                            srcW, srcH);
-                        if (tileBitmap != null && (!LooksBlank(tileBitmap) || lev == 0))
-                            return (tileBitmap, srcW, srcH);
-                        if (tileBitmap != null)
-                            tileBitmap.Dispose();
-                    }
-                    catch (Exception)
-                    {
-                    }
-
-                    double unitsPerPx = SelectedImage.GetUnitPerPixel(lev);
-                    var sll = new OpenSlideGTK.SliceInfo(0, 0, srcW, srcH, unitsPerPx);
-                    byte[] bt = SelectedImage.OpenSlideBase.GetSlice(sll, new ZCT(), lev);
-                    var bmp = CreatePreviewBitmap(srcW, srcH, bt);
-                    if (!LooksBlank(bmp) || lev == 0)
-                        return (bmp, srcW, srcH);
-                    bmp.Dispose();
-                    continue;
+                    var tileBitmap = await image.GetTile(
+                        image.GetFrameIndex(coordinate.Z, coordinate.C, coordinate.T),
+                        lev,
+                        0, 0,
+                        srcW, srcH, coordinate);
+                    if (tileBitmap != null && !LooksBlank(tileBitmap))
+                        return (tileBitmap, srcW, srcH);
+                    tileBitmap?.Dispose();
                 }
-                else
+                catch (Exception)
                 {
-                    try
-                    {
-                        var tileBitmap = await SelectedImage.GetTile(
-                            SelectedImage.Coords[0, 0, 0],
-                            lev,
-                            0, 0,
-                            srcW, srcH);
-                        if (tileBitmap != null && (!LooksBlank(tileBitmap) || lev == 0))
-                            return (tileBitmap, srcW, srcH);
-                        if (tileBitmap != null)
-                            tileBitmap.Dispose();
-                    }
-                    catch (Exception)
-                    {
-                    }
+                }
 
-                    if (SelectedImage.SlideBase == null)
-                    {
-                        return (null, 0, 0);
-                    }
+                if (image.SlideBase == null)
+                    return (null, 0, 0);
 
-                    try
-                    {
-                        var sliceInfo = new BioLib.SliceInfo(
-                            0, 0,
-                            srcW, srcH,
-                            SelectedImage.GetUnitPerPixel(lev),
-                            SelectedImage.Coordinate);
+                try
+                {
+                    var sliceInfo = new BioLib.SliceInfo(
+                        0, 0,
+                        srcW, srcH,
+                        image.GetUnitPerPixel(lev),
+                        coordinate);
 
-                        byte[] bt = await SelectedImage.SlideBase.GetSlice(
-                            sliceInfo,
-                            new PointD(0, 0),
-                            new AForge.Size(srcW, srcH));
+                    byte[] bt = await image.SlideBase.GetSlice(
+                        sliceInfo,
+                        new PointD(0, 0),
+                        new AForge.Size(srcW, srcH));
 
-                        var bmp = CreatePreviewBitmap(srcW, srcH, bt);
-                        if (!LooksBlank(bmp) || lev == 0)
-                            return (bmp, srcW, srcH);
-                        bmp.Dispose();
-                    }
-                    catch (Exception)
-                    {
-                    }
+                    var bmp = CreatePreviewBitmap(srcW, srcH, bt);
+                    if (!LooksBlank(bmp))
+                        return (bmp, srcW, srcH);
+                    bmp?.Dispose();
+                }
+                catch (Exception)
+                {
+                }
+            }
+
+            return (null, 0, 0);
+        }
+
+        private static async Task<(Bitmap bitmap, int w, int h)> CaptureRenderedPreviewAsync(SlideGLArea slideGlArea)
+        {
+            var completion = new TaskCompletionSource<(Bitmap bitmap, int w, int h)>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            Action<byte[], int, int> captureCallback = null;
+
+            captureCallback = (bytes, width, height) =>
+            {
+                try
+                {
+                    completion.TrySetResult((
+                        CreatePreviewBitmap(width, height, bytes), width, height));
+                }
+                catch (Exception ex)
+                {
+                    completion.TrySetException(ex);
+                }
+            };
+            Gtk.Application.Invoke((s, e) =>
+            {
+                slideGlArea.CaptureNextWholeImageFrame(captureCallback);
+            });
+
+            // A user can zoom before the initial fit frame completes. In that case
+            // retain the source-reader fallback rather than waiting indefinitely.
+            Task finished = await Task.WhenAny(completion.Task, Task.Delay(TimeSpan.FromSeconds(15)))
+                .ConfigureAwait(false);
+            if (finished == completion.Task)
+                return await completion.Task.ConfigureAwait(false);
+
+            Gtk.Application.Invoke((s, e) =>
+                slideGlArea.CancelWholeImageFrameCapture(captureCallback));
+            return (null, 0, 0);
+        }
+
+        private static (Bitmap bitmap, int w, int h) FetchOpenSlidePreview(BioImage image, int overviewSize)
+        {
+            var slide = image?.OpenSlideBase?.SlideImage;
+            if (slide == null || slide.LevelCount <= 0)
+                return (null, 0, 0);
+
+            int targetSize = Math.Max(overviewSize * 2, 512);
+            var levels = Enumerable.Range(0, slide.LevelCount)
+                .Select(level =>
+                {
+                    var dimensions = slide.GetLevelDimension(level);
+                    int width = (int)Math.Min(int.MaxValue, dimensions.Width);
+                    int height = (int)Math.Min(int.MaxValue, dimensions.Height);
+                    long score = Math.Abs((long)Math.Max(width, height) - targetSize);
+                    return (Level: level, Width: width, Height: height, Score: score);
+                })
+                .Where(item => item.Width > 0 && item.Height > 0)
+                .OrderBy(item => item.Score);
+
+            foreach (var item in levels)
+            {
+                try
+                {
+                    byte[] bytes = slide.ReadRegion(item.Level, 0, 0, item.Width, item.Height);
+                    Bitmap bitmap = CreatePreviewBitmap(item.Width, item.Height, bytes);
+                    if (!LooksBlank(bitmap, rejectBlack: true))
+                        return (bitmap, item.Width, item.Height);
+                    bitmap?.Dispose();
+                }
+                catch (Exception)
+                {
                 }
             }
 
@@ -1967,25 +2077,25 @@ namespace BioGTK
             return new Bitmap(width, height, AForge.PixelFormat.Format32bppArgb, bytes, new ZCT(), "");
         }
 
-        private int FindOverviewLevel(int overviewSize)
+        private int FindOverviewLevel(BioImage image, int overviewSize)
         {
             // Exclude macro/label thumbnail levels so the overview shows tissue, not a slide label.
-            int maxLevel = MacroResolution.HasValue
-                ? MacroResolution.Value - 1
-                : SelectedImage.Resolutions.Count - 1;
-            maxLevel = Math.Clamp(maxLevel, 0, SelectedImage.Resolutions.Count - 1);
+            int maxLevel = image.MacroResolution.HasValue
+                ? image.MacroResolution.Value - 1
+                : image.Resolutions.Count - 1;
+            maxLevel = Math.Clamp(maxLevel, 0, image.Resolutions.Count - 1);
 
-            // Aim for a source preview that is substantially larger than the thumbnail.
-            // Some slides only become meaningful once we use a less aggressive pyramid
-            // level, so give the selector more room before it falls back to a coarse tail.
-            int targetSize = Math.Max(overviewSize * 16, 4096);
+            // A small amount of oversampling is sufficient for a 160-pixel minimap.
+            // Reading a ~4096-pixel level here duplicated most of the initial viewport
+            // work and could transfer tens of megabytes for a tiny preview.
+            int targetSize = Math.Max(overviewSize * 2, 512);
 
             int bestLevel = -1;
             int bestScore = int.MaxValue;
 
             for (int lev = maxLevel; lev >= 0; lev--)
             {
-                var res = SelectedImage.Resolutions[lev];
+                var res = image.Resolutions[lev];
                 int maxDim = Math.Max(res.SizeX, res.SizeY);
                 if (maxDim < 16)
                     continue;
@@ -2009,7 +2119,7 @@ namespace BioGTK
             return (Math.Max(w, 20), Math.Max(h, 20));
         }
 
-        private static bool LooksBlank(Bitmap bmp)
+        private static bool LooksBlank(Bitmap bmp, bool rejectBlack = false)
         {
             if (bmp == null || bmp.Width <= 0 || bmp.Height <= 0)
                 return true;
@@ -2018,6 +2128,7 @@ namespace BioGTK
             int stepY = Math.Max(1, bmp.Height / 16);
             int samples = 0;
             int bright = 0;
+            int dark = 0;
 
             for (int y = 0; y < bmp.Height; y += stepY)
             {
@@ -2027,11 +2138,15 @@ namespace BioGTK
                     int lum = (p.R + p.G + p.B) / 3;
                     if (lum >= 245)
                         bright++;
+                    if (rejectBlack && lum <= 5)
+                        dark++;
                     samples++;
                 }
             }
 
-            return samples > 0 && bright * 100 / samples > 95;
+            return samples > 0 &&
+                (bright * 100 / samples > 95 ||
+                 rejectBlack && dark * 100 / samples > 98);
         }
 
         private SKImage ScaleToOverview(Bitmap src, int srcW, int srcH, int destW, int destH)
@@ -2039,7 +2154,8 @@ namespace BioGTK
             if (src == null)
                 return null;
 
-            Bitmap previewBitmap = NormalizeOverviewBitmap(src);
+            Bitmap previewBitmap = NormalizeOverviewBitmap(src,
+                SelectedImage?.ZarrDisplayMin ?? 0, SelectedImage?.ZarrDisplayMax ?? 0);
 
             try
             {
@@ -2057,29 +2173,24 @@ namespace BioGTK
             {
                 if (!ReferenceEquals(previewBitmap, src))
                     previewBitmap?.Dispose();
-                src.Dispose();
             }
         }
 
-        private Bitmap NormalizeOverviewBitmap(Bitmap src)
+        private static Bitmap NormalizeOverviewBitmap(Bitmap src, ushort displayMin, int displayMax)
         {
             if (src == null)
                 return null;
 
+            // GetTile and the slice readers already return display-mapped RGB(A).
+            // Applying a 16-bit display maximum again makes an 8-bit preview black.
+            // Only raw high-bit-depth bitmaps (e.g. well fields) need conversion.
             if (src.PixelFormat != AForge.PixelFormat.Format16bppGrayScale &&
-                src.PixelFormat != AForge.PixelFormat.Format48bppRgb &&
-                src.PixelFormat != AForge.PixelFormat.Format24bppRgb &&
-                src.PixelFormat != AForge.PixelFormat.Format32bppArgb &&
-                src.PixelFormat != AForge.PixelFormat.Format32bppPArgb &&
-                src.PixelFormat != AForge.PixelFormat.Format32bppRgb)
+                src.PixelFormat != AForge.PixelFormat.Format48bppRgb)
                 return src;
 
-            ushort displayMax = 0;
-            if (SelectedImage?.ZarrDisplayMax > 0 && SelectedImage.ZarrDisplayMax <= ushort.MaxValue)
-                displayMax = (ushort)SelectedImage.ZarrDisplayMax;
-
-            if (displayMax == 0)
+            if (displayMax <= displayMin || displayMax > ushort.MaxValue)
             {
+                displayMin = 0;
                 displayMax = ComputeOverviewDisplayMax(src);
             }
 
@@ -2087,15 +2198,12 @@ namespace BioGTK
                 displayMax = 1;
 
             if (src.PixelFormat == AForge.PixelFormat.Format16bppGrayScale)
-                return NormalizeGray16ToArgb(src, displayMax);
+                return NormalizeGray16ToArgb(src, displayMin, (ushort)displayMax);
 
-            if (src.PixelFormat == AForge.PixelFormat.Format48bppRgb)
-                return NormalizeRgb48ToArgb(src, displayMax);
-
-            return NormalizePackedRgbToArgb(src, displayMax);
+            return NormalizeRgb48ToArgb(src, displayMin, (ushort)displayMax);
         }
 
-        private static Bitmap NormalizeGray16ToArgb(Bitmap src, ushort displayMax)
+        private static Bitmap NormalizeGray16ToArgb(Bitmap src, ushort displayMin, ushort displayMax)
         {
             byte[] bytes = src.Bytes;
             if (bytes == null || bytes.Length == 0)
@@ -2107,13 +2215,14 @@ namespace BioGTK
 
             byte[] bgra = new byte[pixelCount * 4];
             bool littleEndian = src.LittleEndian;
+            float scale = 255f / Math.Max(1, displayMax - displayMin);
 
             for (int srcIndex = 0, dstIndex = 0; srcIndex + 1 < bytes.Length && dstIndex + 3 < bgra.Length; srcIndex += 2, dstIndex += 4)
             {
                 ushort value = littleEndian
                     ? (ushort)(bytes[srcIndex] | (bytes[srcIndex + 1] << 8))
                     : (ushort)((bytes[srcIndex] << 8) | bytes[srcIndex + 1]);
-                byte gray = (byte)Math.Min(255, (value * 255) / displayMax);
+                byte gray = (byte)Math.Clamp((value - displayMin) * scale, 0f, 255f);
                 bgra[dstIndex + 0] = gray;
                 bgra[dstIndex + 1] = gray;
                 bgra[dstIndex + 2] = gray;
@@ -2123,7 +2232,7 @@ namespace BioGTK
             return new Bitmap(src.Width, src.Height, AForge.PixelFormat.Format32bppArgb, bgra, new ZCT(), "");
         }
 
-        private static Bitmap NormalizeRgb48ToArgb(Bitmap src, ushort displayMax)
+        private static Bitmap NormalizeRgb48ToArgb(Bitmap src, ushort displayMin, ushort displayMax)
         {
             byte[] bytes = src.Bytes;
             if (bytes == null || bytes.Length == 0)
@@ -2135,6 +2244,7 @@ namespace BioGTK
 
             byte[] bgra = new byte[pixelCount * 4];
             bool littleEndian = src.LittleEndian;
+            float scale = 255f / Math.Max(1, displayMax - displayMin);
 
             for (int srcIndex = 0, dstIndex = 0; srcIndex + 5 < bytes.Length && dstIndex + 3 < bgra.Length; srcIndex += 6, dstIndex += 4)
             {
@@ -2148,54 +2258,10 @@ namespace BioGTK
                     ? (ushort)(bytes[srcIndex + 4] | (bytes[srcIndex + 5] << 8))
                     : (ushort)((bytes[srcIndex + 4] << 8) | bytes[srcIndex + 5]);
 
-                bgra[dstIndex + 0] = (byte)Math.Min(255, (b * 255) / displayMax);
-                bgra[dstIndex + 1] = (byte)Math.Min(255, (g * 255) / displayMax);
-                bgra[dstIndex + 2] = (byte)Math.Min(255, (r * 255) / displayMax);
+                bgra[dstIndex + 0] = (byte)Math.Clamp((b - displayMin) * scale, 0f, 255f);
+                bgra[dstIndex + 1] = (byte)Math.Clamp((g - displayMin) * scale, 0f, 255f);
+                bgra[dstIndex + 2] = (byte)Math.Clamp((r - displayMin) * scale, 0f, 255f);
                 bgra[dstIndex + 3] = 255;
-            }
-
-            return new Bitmap(src.Width, src.Height, AForge.PixelFormat.Format32bppArgb, bgra, new ZCT(), "");
-        }
-
-        private static Bitmap NormalizePackedRgbToArgb(Bitmap src, ushort displayMax)
-        {
-            byte[] bytes = src.Bytes;
-            if (bytes == null || bytes.Length == 0)
-                return src;
-
-            int pixelCount = src.Width * src.Height;
-            if (pixelCount <= 0)
-                return src;
-
-            byte[] bgra = new byte[pixelCount * 4];
-            int srcChannels = bytes.Length >= pixelCount * 4 ? 4 : 3;
-            int srcStride = srcChannels == 4 ? 4 : 3;
-
-            for (int srcIndex = 0, dstIndex = 0; dstIndex + 3 < bgra.Length && srcIndex + srcStride - 1 < bytes.Length; srcIndex += srcStride, dstIndex += 4)
-            {
-                byte b;
-                byte g;
-                byte r;
-                byte a = 255;
-
-                if (srcStride == 4)
-                {
-                    b = bytes[srcIndex + 0];
-                    g = bytes[srcIndex + 1];
-                    r = bytes[srcIndex + 2];
-                    a = bytes[srcIndex + 3];
-                }
-                else
-                {
-                    b = bytes[srcIndex + 0];
-                    g = bytes[srcIndex + 1];
-                    r = bytes[srcIndex + 2];
-                }
-
-                bgra[dstIndex + 0] = (byte)Math.Min(255, (b * 255) / Math.Max((ushort)1, displayMax));
-                bgra[dstIndex + 1] = (byte)Math.Min(255, (g * 255) / Math.Max((ushort)1, displayMax));
-                bgra[dstIndex + 2] = (byte)Math.Min(255, (r * 255) / Math.Max((ushort)1, displayMax));
-                bgra[dstIndex + 3] = a;
             }
 
             return new Bitmap(src.Width, src.Height, AForge.PixelFormat.Format32bppArgb, bgra, new ZCT(), "");
@@ -3509,22 +3575,12 @@ namespace BioGTK
                 rBox.Model = store;
                 gBox.Model = store;
                 bBox.Model = store;
-                if (SelectedImage.Channels.Count > 2)
+                if (SelectedImage.Channels.Count > 0)
                 {
-                    rBox.Active = Math.Clamp(SelectedImage.rgbChannels[0], 0, SelectedImage.Channels.Count - 1);
-                    gBox.Active = Math.Clamp(SelectedImage.rgbChannels[1], 0, SelectedImage.Channels.Count - 1);
-                    bBox.Active = Math.Clamp(SelectedImage.rgbChannels[2], 0, SelectedImage.Channels.Count - 1);
-                }
-                else if (SelectedImage.Channels.Count == 2)
-                {
-                    rBox.Active = Math.Clamp(SelectedImage.rgbChannels[0], 0, SelectedImage.Channels.Count - 1);
-                    gBox.Active = Math.Clamp(SelectedImage.rgbChannels[1], 0, SelectedImage.Channels.Count - 1);
-                }
-                else if (SelectedImage.Channels.Count == 1)
-                {
-                    rBox.Active = 0;
-                    gBox.Active = 0;
-                    bBox.Active = 0;
+                    int lastChannel = SelectedImage.Channels.Count - 1;
+                    rBox.Active = Math.Clamp(SelectedImage.rgbChannels[0], 0, lastChannel);
+                    gBox.Active = Math.Clamp(SelectedImage.rgbChannels[1], 0, lastChannel);
+                    bBox.Active = Math.Clamp(SelectedImage.rgbChannels[2], 0, lastChannel);
                 }
                 imagesMenu = new Menu();
                 for (int i = 0; i < Images.Count; i++)
@@ -3551,12 +3607,13 @@ namespace BioGTK
         private static string GetChannelDisplayLabel(Channel channel, int index)
         {
             string name = channel?.Name;
-            if (string.IsNullOrWhiteSpace(name))
+            if (string.IsNullOrWhiteSpace(name) ||
+                (int.TryParse(name, out int numericName) && numericName == index))
                 name = $"Channel {index + 1}";
             return $"{name} ({index + 1})";
         }
 
-        private static void EnsureImageChannels(BioImage image)
+        private void EnsureImageChannels(BioImage image)
         {
             if (image?.Channels == null || image.Channels.Count == 0)
                 return;
@@ -3591,6 +3648,16 @@ namespace BioGTK
             {
                 if (string.IsNullOrWhiteSpace(image.Channels[i].Name))
                     image.Channels[i].Name = $"Channel {i + 1}";
+            }
+
+            if (_initializedRgbChannelDefaults.Add(image) &&
+                image.rgbChannels[0] == 0 &&
+                image.rgbChannels[1] == 0 &&
+                image.rgbChannels[2] == 0)
+            {
+                image.rgbChannels[0] = 0;
+                image.rgbChannels[1] = Math.Min(1, image.Channels.Count - 1);
+                image.rgbChannels[2] = Math.Min(2, image.Channels.Count - 1);
             }
 
             image.rgbChannels[0] = Math.Clamp(image.rgbChannels[0], 0, image.Channels.Count - 1);
@@ -3826,7 +3893,15 @@ namespace BioGTK
 
                 if (SelectedImage?.isPyramidal == true)
                 {
-                    slideRenderer?.InvalidateRenderState();
+                    // Pan and zoom only change which part of the same image is
+                    // visible. In-flight tiles remain valid cache entries, so do
+                    // not cancel their HTTP requests here. Cancellation is still
+                    // used for channel, Z/T, threshold, and source changes where
+                    // an old tile could contain genuinely stale pixel data.
+                    slideRenderer?.InvalidateViewport();
+                    // The Skia renderer does not cancel network I/O when its
+                    // render state changes, so its existing generation invalidation
+                    // is the viewport-safe equivalent.
                     sKSlideRenderer?.InvalidateRenderState();
                     UpdateView();
                 }
@@ -3975,12 +4050,15 @@ namespace BioGTK
         /// It updates the status of the user.
         public void UpdateStatus()
         {
-            if (SelectedImage.Buffers.Count == 0 && SelectedImage.Type != BioImage.ImageType.well)
+            if (SelectedImage.Buffers.Count == 0 &&
+                SelectedImage.Type != BioImage.ImageType.well &&
+                !SelectedImage.IsZarrSource)
                 return;
+            string formattedResolution = FormatResolution(Resolution);
             if (SelectedImage.Type == BioImage.ImageType.stack)
                 statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
                     mousePoint + mouseColor + ", " + SelectedImage.Resolutions[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") "
-                    + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2") + ", Res:" + Resolution + " Level:" + Level;
+                    + Origin.X.ToString("N2") + "," + Origin.Y.ToString("N2") + ", Res:" + formattedResolution + " Level:" + Level;
             else if (SelectedImage.Type == BioImage.ImageType.pyramidal || 
                      SelectedImage.Type == BioImage.ImageType.well)
             {
@@ -3989,8 +4067,20 @@ namespace BioGTK
                     : string.Empty;
                 statusLabel.Text = (zBar.Value + 1) + "/" + (zBar.Adjustment.Upper + 1) + ", " + (cBar.Value + 1) + "/" + (cBar.Adjustment.Upper + 1) + ", " + (tBar.Value + 1) + "/" + (tBar.Adjustment.Upper + 1) + ", " +
                 mousePoint + mouseColor + ", " + SelectedImage.Resolutions[0].PixelFormat.ToString() + ", (" + SelectedImage.Volume.Location.X.ToString("N2") + ", " + SelectedImage.Volume.Location.Y.ToString("N2") + ") "
-                + PyramidalOrigin.X.ToString("N2") + "," + PyramidalOrigin.Y.ToString("N2") + " , Level:" + Level + " Res:" + Resolution + wellStatus;
+                + PyramidalOrigin.X.ToString("N2") + "," + PyramidalOrigin.Y.ToString("N2") + " , Level:" + Level + " Res:" + formattedResolution + wellStatus;
             }
+        }
+
+        private static string FormatResolution(double resolution)
+        {
+            double magnitude = Math.Abs(resolution);
+            if (magnitude >= 1000) return resolution.ToString("F0");
+            if (magnitude >= 100) return resolution.ToString("F1");
+            if (magnitude >= 10) return resolution.ToString("F2");
+            if (magnitude >= 1) return resolution.ToString("F3");
+            if (magnitude >= 0.1) return resolution.ToString("F4");
+            if (magnitude >= 0.01) return resolution.ToString("F5");
+            return resolution.ToString("G4");
         }
         /// It updates the view.
         public void UpdateView(bool updateImages = true)
@@ -4009,6 +4099,115 @@ namespace BioGTK
         }
         private string mousePoint = "";
         private string mouseColor = "";
+        private int _cursorPixelSampleRequestId;
+
+        private void UpdateCursorPixelSample(PointD imagePoint)
+        {
+            var image = SelectedImage;
+            if (image == null)
+                return;
+
+            int pixelX = (int)Math.Floor(imagePoint.X);
+            int pixelY = (int)Math.Floor(imagePoint.Y);
+            if (pixelX < 0 || pixelY < 0 || pixelX >= image.SizeX || pixelY >= image.SizeY)
+            {
+                Interlocked.Increment(ref _cursorPixelSampleRequestId);
+                mouseColor = string.Empty;
+                return;
+            }
+
+            if (image.IsZarrSource)
+            {
+                QueueCursorPixelSample(imagePoint);
+                return;
+            }
+
+            try
+            {
+                ZCT coordinate = image.Coordinate;
+                if (image.isRGB)
+                {
+                    double red = image.GetValueRGB(coordinate.Z, RChannel.Index, coordinate.T,
+                        pixelX, pixelY, 0);
+                    double green = image.GetValueRGB(coordinate.Z, GChannel.Index, coordinate.T,
+                        pixelX, pixelY, 1);
+                    double blue = image.GetValueRGB(coordinate.Z, BChannel.Index, coordinate.T,
+                        pixelX, pixelY, 2);
+                    mouseColor = $", Val: ({FormatPixelValue(red)}, {FormatPixelValue(green)}, {FormatPixelValue(blue)})";
+                }
+                else
+                {
+                    double value = image.GetValueRGB(coordinate.Z, coordinate.C, coordinate.T,
+                        pixelX, pixelY, 0);
+                    mouseColor = $", Val: {FormatPixelValue(value)}";
+                }
+            }
+            catch (Exception)
+            {
+                mouseColor = string.Empty;
+            }
+        }
+
+        private static string FormatPixelValue(double value)
+        {
+            return Math.Abs(value - Math.Round(value)) < 0.000001
+                ? value.ToString("F0")
+                : value.ToString("G6");
+        }
+
+        private void QueueCursorPixelSample(PointD imagePoint)
+        {
+            var image = SelectedImage;
+            if (image?.IsZarrSource != true || slideRenderer == null)
+                return;
+
+            int pixelX = (int)Math.Floor(imagePoint.X);
+            int pixelY = (int)Math.Floor(imagePoint.Y);
+            int requestId = Interlocked.Increment(ref _cursorPixelSampleRequestId);
+            if (pixelX < 0 || pixelY < 0 || pixelX >= image.SizeX || pixelY >= image.SizeY)
+            {
+                mouseColor = string.Empty;
+                return;
+            }
+
+            ZCT coordinate = image.Coordinate;
+            _ = UpdateCursorPixelValueAsync(image, coordinate, pixelX, pixelY, requestId);
+        }
+
+        private async Task UpdateCursorPixelValueAsync(
+            BioImage image,
+            ZCT coordinate,
+            int pixelX,
+            int pixelY,
+            int requestId)
+        {
+            try
+            {
+                // Avoid a remote request for every mouse event. Only the last
+                // position after a short pause proceeds to the Zarr reader.
+                await Task.Delay(60).ConfigureAwait(false);
+                if (requestId != _cursorPixelSampleRequestId || !ReferenceEquals(image, SelectedImage))
+                    return;
+
+                double? value = await slideRenderer.SampleZarrPixelAsync(
+                    image, coordinate, pixelX, pixelY).ConfigureAwait(false);
+                if (!value.HasValue || requestId != _cursorPixelSampleRequestId ||
+                    !ReferenceEquals(image, SelectedImage))
+                    return;
+
+                Gtk.Application.Invoke((s, e) =>
+                {
+                    if (requestId != _cursorPixelSampleRequestId || !ReferenceEquals(image, SelectedImage))
+                        return;
+                    mouseColor = $", Val: {FormatPixelValue(value.Value)}";
+                    UpdateStatus();
+                });
+            }
+            catch (Exception ex)
+            {
+                AppLog.Append($"Cursor Zarr sample failed: {ex.Message}");
+            }
+        }
 
         public bool showRROIs = true;
         public bool showGROIs = true;
@@ -4178,6 +4377,8 @@ namespace BioGTK
             mousePoint = "(" + (p.X.ToString("F")) + ", " + (p.Y.ToString("F")) + ")";
             if (SelectedImage == null)
                 return;
+            mouseD = SelectedImage.ToImageSpace(p);
+            UpdateCursorPixelSample(mouseD);
             if (e.Event.State.HasFlag(ModifierType.Button2Mask) &&
                 Tools.currentTool.type != Tools.Tool.Type.pan)
             {
@@ -4350,67 +4551,9 @@ namespace BioGTK
                 ind++;
             }
 
-            // Get pixel value at cursor for display (only for left-click)
+            // Refresh the status value immediately on a click as well as on hover.
             if (e.Event.Button == 1)
-            {
-                PointD s = new PointD(e.Event.X, e.Event.Y);
-
-                // Sample pixel value for status display
-                if ((s.X < SelectedImage.SizeX && s.Y < SelectedImage.SizeY) ||
-                    (s.X >= 0 && s.Y >= 0))
-                {
-                    int zc = SelectedImage.Coordinate.Z;
-                    int cc = SelectedImage.Coordinate.C;
-                    int tc = SelectedImage.Coordinate.T;
-
-                    try
-                    {
-                        if (SelectedImage.isPyramidal)
-                        {
-                            if (SelectedImage.isRGB)
-                            {
-                                float r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc,
-                                                                   (int)s.X, (int)s.Y, 0);
-                                float g = SelectedImage.GetValueRGB(zc, GChannel.Index, tc,
-                                                                   (int)s.X, (int)s.Y, 1);
-                                float b = SelectedImage.GetValueRGB(zc, BChannel.Index, tc,
-                                                                   (int)s.X, (int)s.Y, 2);
-                                mouseColor = ", RGB(" + r + "," + g + "," + b + ")";
-                            }
-                            else
-                            {
-                                float r = SelectedImage.GetValueRGB(zc, (int)cBar.Value, tc,
-                                                                   (int)mouseD.X, (int)mouseD.Y, 0);
-                                mouseColor = ", Val(" + r + ")";
-                            }
-                        }
-                        else
-                        {
-                            if (SelectedImage.isRGB)
-                            {
-                                float r = SelectedImage.GetValueRGB(zc, RChannel.Index, tc,
-                                                                   (int)s.X, (int)s.Y, 0);
-                                float g = SelectedImage.GetValueRGB(zc, GChannel.Index, tc,
-                                                                   (int)s.X, (int)s.Y, 1);
-                                float b = SelectedImage.GetValueRGB(zc, BChannel.Index, tc,
-                                                                   (int)s.X, (int)s.Y, 2);
-                                mouseColor = ", RGB(" + r + "," + g + "," + b + ")";
-                            }
-                            else
-                            {
-                                float r = SelectedImage.GetValueRGB(zc, (int)cBar.Value, tc,
-                                                                   (int)s.X, (int)s.Y, 0);
-                                mouseColor = ", Val(" + r + ")";
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        mouseColor = "";
-                        Console.WriteLine("Error reading pixel value: " + ex.Message);
-                    }
-                }
-            }
+                UpdateCursorPixelSample(mouseD);
             UpdateStatus();
 
             App.tools.ToolDown(pointer, e);
@@ -4914,7 +5057,9 @@ namespace BioGTK
         {
             if (SelectedImage?.isPyramidal == true)
             {
-                slideRenderer?.InvalidateRenderState();
+                // Go To, pan, and zoom only change viewport geometry. Keep
+                // reusable tile downloads alive and supersede stale layout work.
+                slideRenderer?.InvalidateViewport();
                 sKSlideRenderer?.InvalidateRenderState();
                 ExecuteDeferredRender();
                 ScheduleNavigationRenderRetry(50);
@@ -4988,8 +5133,6 @@ namespace BioGTK
                 BioImage currentImage = Images[i];
                 if (currentImage == null)
                     return;
-
-                RefreshPyramidalTiles();
 
                 if (currentImage.isPyramidal)
                 {

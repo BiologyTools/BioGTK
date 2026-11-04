@@ -56,6 +56,8 @@ namespace BioGTK
         #endregion
 
         public Channel channel = null;
+        private const double HistogramBarOpacity = 0.55;
+        private readonly Dictionary<Channel, Cairo.Color> _generatedChannelColors = new();
         /// This function initializes the histogram control
         public void Init()
         {
@@ -69,7 +71,7 @@ namespace BioGTK
                 graphMax = ushort.MaxValue;
                 Bin = 1;
             }
-            this.Drawn += HistogramControl_Drawn;
+            view.Drawn += HistogramControl_Drawn;
             this.MotionNotifyEvent += HistogramControl_MotionNotifyEvent;
             this.ButtonPressEvent += HistogramControl_ButtonPressEvent;
             this.ScrollEvent += HistogramControl_ScrollEvent;
@@ -214,6 +216,22 @@ namespace BioGTK
         private void HistogramControl_Drawn(object o, DrawnArgs args)
         {
             Cairo.Context g = args.Cr;
+            var image = ImageView.SelectedImage;
+            int drawingWidth = Math.Max(1, view?.AllocatedWidth ?? AllocatedWidth);
+            int drawingHeight = Math.Max(1, view?.AllocatedHeight ?? AllocatedHeight);
+            g.SetSourceRGB(0.82, 0.82, 0.82);
+            g.Paint();
+
+            if (!HasUsableStatistics(image))
+            {
+                g.SetSourceRGB(0.2, 0.2, 0.2);
+                g.MoveTo(12, Math.Max(22, drawingHeight / 2));
+                g.ShowText("Statistics are not available for this image.");
+                g.Stroke();
+                args.RetVal = true;
+                return;
+            }
+
             if (graphMax == 0)
                 graphMax = ushort.MaxValue;
             g.SetSourceColor(ToCairoColor(Color.LightGray));
@@ -221,14 +239,17 @@ namespace BioGTK
             //g.Translate(-graphMin, 0);
             g.LineWidth = 1;
             string st = "";
-            fx = ((float)this.AllocatedWidth) / ((float)graphMax);
+            fx = ((float)drawingWidth) / ((float)graphMax);
             float maxmedian = 0;
             int maxChan = 0;
-            for (int cc = 0; cc < ImageView.SelectedImage.Channels.Count; cc++)
+            for (int cc = 0; cc < image.Channels.Count; cc++)
             {
-                for (int i = 0; i < ImageView.SelectedImage.Channels[cc].stats.Length; i++)
+                for (int i = 0; i < image.Channels[cc].stats.Length; i++)
                 {
-                    float f = ImageView.SelectedImage.Channels[cc].stats[i].StackMedian;
+                    Statistics channelStatistics = image.Channels[cc].stats[i];
+                    if (channelStatistics == null)
+                        continue;
+                    float f = GetHistogramMaximum(channelStatistics.StackValues);
                     if (maxmedian < f)
                     {
                         maxmedian = f;
@@ -236,128 +257,67 @@ namespace BioGTK
                     }
                 }
             }
-            fy = ((float)this.AllocatedHeight) / maxmedian;
-            for (int c = 0; c < ImageView.SelectedImage.Channels.Count; c++)
+            if (maxmedian <= 0)
+            {
+                g.SetSourceRGB(0.2, 0.2, 0.2);
+                g.MoveTo(12, Math.Max(22, drawingHeight / 2));
+                g.ShowText("Histogram contains no sample counts.");
+                g.Stroke();
+                args.RetVal = true;
+                return;
+            }
+            fy = ((float)drawingHeight) / maxmedian;
+            for (int c = 0; c < image.Channels.Count; c++)
             {
                 //We draw the mouse line
 
                 g.SetSourceColor(ToCairoColor(Color.Black));
                 g.MoveTo(mouseX, 0);
-                g.LineTo(mouseX, this.AllocatedHeight);
+                g.LineTo(mouseX, drawingHeight);
                 g.Stroke();
                 int gmax = graphMax;
                 int gmin = graphMin;
-                Channel channel = ImageView.SelectedImage.Channels[c];
+                Channel channel = image.Channels[c];
                 for (int i = 0; i < channel.range.Length; i++)
                 {
                     Statistics stat;
-                    if (ImageView.SelectedImage.RGBChannelCount == 1)
-                        stat = channel.stats[0];
-                    else
-                        stat = channel.stats[i];
+                    int statisticsIndex = image.Channels.Count == 1 && image.RGBChannelCount > 1
+                        ? Math.Clamp(i, 0, channel.stats.Length - 1)
+                        : 0;
+                    stat = channel.stats[statisticsIndex];
                     g.LineWidth = 1;// bin * fx;
-                    Cairo.Color black = ToCairoColor(Color.FromArgb(35, 0, 0, 0));
-                    Cairo.Color blackd = ToCairoColor(Color.FromArgb(150, 0, 0, 0));
-                    Cairo.Color pen = new Cairo.Color();
-                    Cairo.Color pend = new Cairo.Color();
-                    int dark = 100;
-                    int light = 75;
-                    
-                    
+                    Cairo.Color blackd = new Cairo.Color(0, 0, 0, 0.35);
                     if (ImageView.SelectedImage.bitsPerPixel <= 8)
                         gmax = 255;
 
-                    if (channel.Emission != 0)
+                    Cairo.Color barColor = GetChannelBarColor(image, channel, c, i);
+
+                    int plotWidth = drawingWidth;
+                    int plotHeight = drawingHeight;
+                    int valueRange = Math.Max(1, gmax - gmin);
+
+                    if (StackHistogram && c == image.Channels.Count - 1 && i == 0 &&
+                        image.Statistics?.StackValues != null)
                     {
-                        Cairo.Color cc = ToCairoColor(SpectralColor(channel.Emission));
-                        cc.A = 0.2;
-                        pen = cc;
-                        cc.A = 0.6;
-                        pend = cc;
-                    }
-                    else
-                    {
-                        if (i == 0)
-                        {
-                            pen = ToCairoColor(Color.FromArgb(light, 255, 0, 0));
-                            pend = ToCairoColor(Color.FromArgb(dark, 255, 0, 0));
-                        }
-                        else if (i == 1)
-                        {
-                            pen = ToCairoColor(Color.FromArgb(light, 0, 255, 0));
-                            pend = ToCairoColor(Color.FromArgb(dark, 0, 255, 0));
-                        }
-                        else
-                        {
-                            pen = ToCairoColor(Color.FromArgb(light, 0, 0, 255));
-                            pend = ToCairoColor(Color.FromArgb(dark, 0, 0, 255));
-                        }
+                        g.SetSourceColor(blackd);
+                        DrawBinnedHistogram(g, image.Statistics.StackValues,
+                            gmin, valueRange, plotWidth, plotHeight, maxmedian);
                     }
 
-                    float sumbins = 0;
-                    float sumbin = 0;
-                    int binind = 0;
-                    int bininds = 0;
-                    PointF? prevs = null;
-                    PointF? prev = null;
-                    float f = (float)(gmax - gmin) / (float)this.AllocatedWidth;
-                    g.SetSourceColor(pen);
-                    for (float x = gmin; x < gmax; x+=f)
-                    {
-                        if (StackHistogram && c == ImageView.SelectedImage.Channels.Count - 1)
-                        {
-                            //Lets draw the stack histogram.
-                            float val = (float)ImageView.SelectedImage.Statistics.StackValues[(int)x];
-                            sumbin += val;
-                            if (binind == bin)
-                            {
-                                float v = sumbin / binind;
-                                float yy = this.AllocatedHeight - (fy * v);
-                                if (prevs != null)
-                                {
-                                    g.SetSourceColor(blackd);
-                                    g.MoveTo(prevs.Value.X, prevs.Value.Y);
-                                    g.LineTo(fx * x, yy);
-                                    g.Stroke();
-                                }
-                                g.SetSourceColor(black);
-                                g.MoveTo(fx * x, this.AllocatedHeight);
-                                g.LineTo(fx * x, yy);
-                                g.Stroke();
-                                prevs = new PointF(fx * x, yy);
-                                binind = 0;
-                                sumbin = 0;
-                            }
-                        }
-                        //Lets draw the channel histogram on top of the stack histogram.
-                        float rv = stat.StackValues[(int)x];
-                        sumbins += rv;
-                        if (bininds == bin)
-                        {
-                            g.SetSourceColor(pend);
-                            g.MoveTo(fx * x, this.AllocatedHeight);
-                            g.LineTo(fx * x, this.AllocatedHeight - (fy * (sumbins / bininds)));
-                            g.Stroke();
-                            if (prev != null)
-                            {
-                                g.MoveTo(prev.Value.X,prev.Value.Y);
-                                g.LineTo(fx * x, this.AllocatedHeight - (fy * (sumbins / bininds)));
-                                g.Stroke();
-                            }
-                            prev = new PointF(fx * x, this.AllocatedHeight - (fy * (sumbins / bininds)));
-                            bininds = 0;
-                            sumbins = 0;
-                        }
-                        binind++;
-                        bininds++;
-
-                    }
-                    g.SetSourceColor(ToCairoColor(SpectralColor(channel.Emission)));
+                    // Aggregate every source bin covered by a screen pixel. The
+                    // former loop sampled one isolated value per pixel and skipped
+                    // nearly all peaks in a 16-bit (65,536-bin) histogram.
+                    g.SetSourceColor(barColor);
+                    DrawBinnedHistogram(g, stat.StackValues,
+                        gmin, valueRange, plotWidth, plotHeight, maxmedian);
+                    Cairo.Color markerColor = barColor;
+                    markerColor.A = 1.0;
+                    g.SetSourceColor(markerColor);
                     g.MoveTo((fx * channel.range[i].Max), 0);
-                    g.LineTo((fx * channel.range[i].Max), this.AllocatedHeight);
+                    g.LineTo((fx * channel.range[i].Max), drawingHeight);
                     g.Stroke();
                     g.MoveTo((fx * channel.range[i].Min), 0);
-                    g.LineTo((fx * channel.range[i].Min), this.AllocatedHeight);
+                    g.LineTo((fx * channel.range[i].Min), drawingHeight);
                     g.Stroke();
                 }
 
@@ -367,94 +327,211 @@ namespace BioGTK
             if (axisTicks)
             {
                 g.SetSourceRGB(0, 0, 0);
-                if (axisNumbers)
+                int axisRange = Math.Max(1, graphMax - graphMin);
+                int majorStep = GetNiceTickStep(axisRange, 6);
+                int firstTick = (int)Math.Ceiling((double)graphMin / majorStep) * majorStep;
+                for (int value = firstTick; value <= graphMax; value += majorStep)
                 {
-                    if (graphMax <= 255)
+                    double x = (double)(value - graphMin) * drawingWidth / axisRange;
+                    g.MoveTo(x, 0);
+                    g.LineTo(x, tick);
+                    g.Stroke();
+                    if (axisNumbers)
                     {
-                        for (float x = 0; x < graphMax; x += 50)
-                        {
-                            TextExtents ex = g.TextExtents(x.ToString());
-                            g.MoveTo((fx * x) - (ex.Width / 2), tick + 10);
-                            g.ShowText(x.ToString());
-                            g.Stroke();
-                            g.MoveTo((fx * x), 0);
-                            g.LineTo((fx * x), tick);
-                            g.Stroke();
-                        }
-                    }
-                    else
-                    {
-                        for (float x = 0; x < graphMax; x += 2000)
-                        {
-                            g.MoveTo((fx * x), 0);
-                            g.LineTo((fx * x), tick + 3);
-                            g.Stroke();
-                        }
-                        for (float x = 0; x < graphMax; x += 1000)
-                        {
-                            TextExtents ex = g.TextExtents(x.ToString());
-                            g.MoveTo((fx * x) - (ex.Width / 2), tick + 10);
-                            g.ShowText(x.ToString());
-                            g.Stroke();
-                            g.MoveTo((fx * x), 0);
-                            g.LineTo((fx * x), tick);
-                            g.Stroke();
-                        }
-                    }
-                }
-                if (graphMax <= 16383)
-                    for (float x = 0; x < graphMax; x += 100)
-                    {
-                        g.MoveTo((fx * x), 0);
-                        g.LineTo((fx * x), tick);
-                        g.Stroke();
-                    }
-                if (graphMax <= 255)
-                {
-                    for (float x = 0; x < graphMax; x += 50)
-                    {
-                        g.MoveTo((fx * x), 0);
-                        g.LineTo((fx * x), 4);
-                        g.Stroke();
-                    }
-                    for (float x = 0; x < graphMax; x += 10)
-                    {
-                        g.MoveTo((fx * x), 0);
-                        g.LineTo((fx * x), 2);
+                        string label = value.ToString();
+                        TextExtents extents = g.TextExtents(label);
+                        g.MoveTo(x - (extents.Width / 2), tick + 11);
+                        g.ShowText(label);
                         g.Stroke();
                     }
                 }
             }
             
-            if (ImageView.SelectedImage.RGBChannelCount == 3)
+            int hoverBin = graphMin + (int)((long)Math.Max(0, mouseX) *
+                Math.Max(1, graphMax - graphMin) / drawingWidth);
+            if (image.RGBChannelCount == 3)
             {
-                if (ImageView.SelectedImage.Channels.Count > 2)
+                float red;
+                float green;
+                float blue;
+                if (image.Channels.Count > 2)
                 {
-                    st =
-                        "(" + (mouseX / fx).ToString() +
-                        ",R:" + ImageView.SelectedImage.Channels[2].stats[2].StackValues[(int)(mouseX / fx)].ToString() +
-                        ",G:" + ImageView.SelectedImage.Channels[1].stats[1].StackValues[(int)(mouseX / fx)].ToString() +
-                        ",B:" + ImageView.SelectedImage.Channels[0].stats[0].StackValues[(int)(mouseX / fx)].ToString() + ")";
+                    // Separate logical channels each carry one statistics plane.
+                    red = GetHistogramValue(image.Channels[2], 0, hoverBin);
+                    green = GetHistogramValue(image.Channels[1], 0, hoverBin);
+                    blue = GetHistogramValue(image.Channels[0], 0, hoverBin);
                 }
                 else
                 {
-                    st =
-                        "(" + (mouseX / fx).ToString() +
-                        ",R:" + ImageView.SelectedImage.Channels[0].stats[2].StackValues[(int)(mouseX / fx)].ToString() +
-                        ",G:" + ImageView.SelectedImage.Channels[0].stats[1].StackValues[(int)(mouseX / fx)].ToString() +
-                        ",B:" + ImageView.SelectedImage.Channels[0].stats[0].StackValues[(int)(mouseX / fx)].ToString() + ")";
+                    // Packed/planar RGB is represented by one logical channel with
+                    // three statistics planes in B, G, R order.
+                    red = GetHistogramValue(image.Channels[0], 2, hoverBin);
+                    green = GetHistogramValue(image.Channels[0], 1, hoverBin);
+                    blue = GetHistogramValue(image.Channels[0], 0, hoverBin);
                 }
+                st = $"({hoverBin},R:{red},G:{green},B:{blue})";
             }
             else
             {
-                int x = (int)(mouseX / fx);
-                if (ImageView.SelectedImage.bitsPerPixel < 8 && ImageView.SelectedImage.Channels[0].stats[0].StackValues.Length < 255)
-                    st = "(" + (mouseX / fx).ToString() + "," + ImageView.SelectedImage.Channels[0].stats[0].StackValues[x].ToString() + ")";
-
+                st = $"({hoverBin},{GetHistogramValue(image.Channels[0], 0, hoverBin)})";
             }
             g.MoveTo(mouseX, mouseY);
             g.ShowText(st);
             g.Stroke();
+        }
+
+        private static float GetHistogramMaximum(float[] values)
+        {
+            if (values == null || values.Length == 0)
+                return 0;
+
+            float maximum = 0;
+            for (int i = 0; i < values.Length; i++)
+                if (values[i] > maximum)
+                    maximum = values[i];
+            return maximum;
+        }
+
+        private Cairo.Color GetChannelBarColor(
+            BioImage image,
+            Channel imageChannel,
+            int channelIndex,
+            int sampleIndex)
+        {
+            // A single packed RGB channel contains three component histograms.
+            if (image.Channels.Count == 1 && image.RGBChannelCount == 3)
+            {
+                return sampleIndex switch
+                {
+                    0 => new Cairo.Color(0.1, 0.35, 1.0, HistogramBarOpacity),
+                    1 => new Cairo.Color(0.1, 0.85, 0.2, HistogramBarOpacity),
+                    _ => new Cairo.Color(1.0, 0.15, 0.1, HistogramBarOpacity)
+                };
+            }
+
+            if (imageChannel.Color.HasValue)
+            {
+                Color specified = imageChannel.Color.Value;
+                return new Cairo.Color(
+                    specified.R / 255.0,
+                    specified.G / 255.0,
+                    specified.B / 255.0,
+                    HistogramBarOpacity);
+            }
+
+            if (_generatedChannelColors.TryGetValue(imageChannel, out Cairo.Color generated))
+                return generated;
+
+            generated = CreateRandomVisibleColor();
+            _generatedChannelColors[imageChannel] = generated;
+            return generated;
+        }
+
+        private static Cairo.Color CreateRandomVisibleColor()
+        {
+            double hue = Random.Shared.NextDouble() * 6.0;
+            int sector = (int)Math.Floor(hue);
+            double fraction = hue - sector;
+            const double value = 0.9;
+            const double saturation = 0.75;
+            double low = value * (1.0 - saturation);
+            double falling = value * (1.0 - saturation * fraction);
+            double rising = value * (1.0 - saturation * (1.0 - fraction));
+
+            return sector switch
+            {
+                0 => new Cairo.Color(value, rising, low, HistogramBarOpacity),
+                1 => new Cairo.Color(falling, value, low, HistogramBarOpacity),
+                2 => new Cairo.Color(low, value, rising, HistogramBarOpacity),
+                3 => new Cairo.Color(low, falling, value, HistogramBarOpacity),
+                4 => new Cairo.Color(rising, low, value, HistogramBarOpacity),
+                _ => new Cairo.Color(value, low, falling, HistogramBarOpacity)
+            };
+        }
+
+        private static int GetNiceTickStep(int range, int targetTickCount)
+        {
+            double roughStep = Math.Max(1, (double)range / Math.Max(1, targetTickCount));
+            double magnitude = Math.Pow(10, Math.Floor(Math.Log10(roughStep)));
+            double normalized = roughStep / magnitude;
+            double nice = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+            return Math.Max(1, (int)(nice * magnitude));
+        }
+
+        private static void DrawBinnedHistogram(
+            Cairo.Context context,
+            float[] values,
+            int graphMinimum,
+            int graphRange,
+            int plotWidth,
+            int plotHeight,
+            float histogramMaximum)
+        {
+            if (values == null || values.Length == 0 || histogramMaximum <= 0)
+                return;
+
+            double logMaximum = Math.Log(1.0 + histogramMaximum);
+            for (int pixelX = 0; pixelX < plotWidth; pixelX++)
+            {
+                int start = graphMinimum + (int)((long)pixelX * graphRange / plotWidth);
+                int end = graphMinimum + (int)((long)(pixelX + 1) * graphRange / plotWidth);
+                start = Math.Clamp(start, 0, values.Length - 1);
+                end = Math.Clamp(Math.Max(start + 1, end), 1, values.Length);
+
+                float value = 0;
+                for (int binIndex = start; binIndex < end; binIndex++)
+                    if (values[binIndex] > value)
+                        value = values[binIndex];
+
+                if (value <= 0)
+                    continue;
+
+                double scaled = Math.Min(1.0, Math.Log(1.0 + value) / logMaximum);
+                double y = plotHeight - (scaled * plotHeight);
+                context.MoveTo(pixelX + 0.5, plotHeight);
+                context.LineTo(pixelX + 0.5, y);
+            }
+            context.Stroke();
+        }
+
+        private static float GetHistogramValue(Channel histogramChannel, int statisticsIndex, int bin)
+        {
+            if (histogramChannel?.stats == null || histogramChannel.stats.Length == 0)
+                return 0;
+
+            int safeStatisticsIndex = Math.Clamp(statisticsIndex, 0, histogramChannel.stats.Length - 1);
+            float[] values = histogramChannel.stats[safeStatisticsIndex]?.StackValues;
+            if (values == null || values.Length == 0)
+                return 0;
+
+            return values[Math.Clamp(bin, 0, values.Length - 1)];
+        }
+
+        private static bool HasUsableStatistics(BioImage image)
+        {
+            if (image?.Channels == null || image.Channels.Count == 0)
+                return false;
+
+            foreach (Channel imageChannel in image.Channels)
+            {
+                if (imageChannel?.stats == null || imageChannel.stats.Length == 0)
+                    return false;
+
+                int requiredStats = image.Channels.Count == 1 && image.RGBChannelCount > 1
+                    ? image.RGBChannelCount
+                    : 1;
+                if (imageChannel.stats.Length < requiredStats)
+                    return false;
+
+                for (int i = 0; i < requiredStats; i++)
+                {
+                    if (imageChannel.stats[i]?.StackValues == null ||
+                        imageChannel.stats[i].StackValues.Length == 0)
+                        return false;
+                }
+            }
+
+            return true;
         }
         
         private float bin = 10;

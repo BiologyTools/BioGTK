@@ -491,6 +491,10 @@
     <PackageReference Include="YamlDotNet" Version="18.1.0" />  
   </ItemGroup>
 
+  <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)\..\..\Zarr.NET\Zarr.NET.csproj')">
+    <ProjectReference Include="$(MSBuildProjectDirectory)\..\..\Zarr.NET\Zarr.NET.csproj" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Update="README.md">
       <Pack>True</Pack>
