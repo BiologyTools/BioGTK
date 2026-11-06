@@ -21,7 +21,7 @@
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes>BioGTK 6.7.0 adds Open Recent with persistent image history, ROI show/hide controls, and Zarr-to-OME-TIFF export including masks and annotations. Improves Fiji processing of pyramidal and remote Zarr images, well-plate navigation, and label alignment with scale and translation transforms. Fixes RGB display, annotation rendering with multiple images open, and missing edge pixels in 16-bit Zarr images. Updates imaging and machine-learning dependencies and displays the Bio-Formats version in the About window.</PackageReleaseNotes>
+    <PackageReleaseNotes>BioGTK 6.7.0 adds Open Recent with persistent image history and a Clear Recent Files command, ROI show/hide controls, and Zarr-to-OME-TIFF export including masks and annotations. Large remote Zarr datasets now open as pyramidal images with more responsive pan, zoom, and ZCT navigation, resilient tile retries, reduced tile popping, and protection against missing or transparent frames. Pyramidal overviews load faster, refresh automatically, and apply correct display thresholds. The Channels and Histogram tools now load coordinate-aware Zarr statistics, scale to observed data, use channel-colored translucent bars, and remain safe when statistics are unavailable. RGB selectors default to sequential channels, while ImageView status reports formatted resolution and cursor pixel values. Also improves Fiji processing of pyramidal and remote Zarr images, well-plate navigation, label alignment, annotation rendering, and 16-bit Zarr edge handling, and updates imaging and machine-learning dependencies.</PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
 
@@ -464,7 +464,7 @@
     <PackageReference Include="BioFormats.NET6" Version="9.0.0-pr">
       <Aliases>BioFormats6</Aliases>
     </PackageReference>
-    <PackageReference Include="BioLib" Version="4.3.0" />
+    <PackageReference Include="BioLib" Version="4.3.1" />
     <PackageReference Include="Fiji.NET" Version="0.1.0" Aliases="FijiNet" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
@@ -489,10 +489,6 @@
     <PackageReference Include="SkiaSharp.Views.Gtk3" Version="4.154.0" />
     <PackageReference Include="TorchSharp-cpu" Version="0.107.0" />
     <PackageReference Include="YamlDotNet" Version="18.1.0" />  
-  </ItemGroup>
-
-  <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)\..\..\Zarr.NET\Zarr.NET.csproj')">
-    <ProjectReference Include="$(MSBuildProjectDirectory)\..\..\Zarr.NET\Zarr.NET.csproj" />
   </ItemGroup>
 
   <ItemGroup>

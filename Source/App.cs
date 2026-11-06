@@ -259,7 +259,20 @@ namespace BioGTK
             if(widget is Gtk.Window)
             {
                 var window = (Gtk.Window)widget;
-                window.Icon = new Gdk.Pixbuf("bio.png");
+                // Finder and terminal launches can use a different working directory.
+                string iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "bio.png");
+                if (System.IO.File.Exists(iconPath))
+                {
+                    try
+                    {
+                        using var icon = new Gdk.Pixbuf(iconPath);
+                        window.Icon = icon;
+                    }
+                    catch (GLib.GException e)
+                    {
+                        Console.Error.WriteLine($"Unable to load window icon '{iconPath}': {e.Message}");
+                    }
+                }
                 window.DeleteEvent += Window_DeleteEvent;
                 window.DestroyEvent += Window_DestroyEvent;
                 window.FocusInEvent += Window_FocusInEvent;
