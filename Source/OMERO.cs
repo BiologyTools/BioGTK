@@ -1,4 +1,4 @@
-﻿using AForge;
+using AForge;
 using BioLib;
 using com.google.errorprone.annotations;
 using Gdk;
@@ -62,7 +62,8 @@ namespace BioGTK
         /// @return A new instance of the Search class.
         public static OMERO Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/omero.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/omero.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new OMERO(builder, builder.GetObject("omeroViewer").Handle);
         }
 

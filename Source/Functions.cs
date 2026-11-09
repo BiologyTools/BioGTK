@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using Gtk;
 using System;
 using System.Collections.Generic;
@@ -71,7 +71,8 @@ namespace BioGTK
         /// <returns> A TestForm1. </returns>
         public static Functions Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Functions.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Functions.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new Functions(builder, builder.GetObject("functions").Handle);
         }
 

@@ -1,4 +1,4 @@
-﻿using AForge;
+using AForge;
 using BioGTK;
 using CSScripting;
 using Gtk;
@@ -130,7 +130,8 @@ namespace Bio
         }
         public static ROIManager Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ROIManager.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ROIManager.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new ROIManager(builder, builder.GetObject("roiManager").Handle);
         }
         /* The above code is initializing the ROIManager class. */

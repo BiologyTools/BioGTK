@@ -1,4 +1,4 @@
-﻿using AForge;
+using AForge;
 using Gtk;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -42,7 +42,8 @@ namespace BioGTK
         /// @return The method is returning a NodeView object.
         public static NodeView Create(string[] args)
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/NodeView.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/NodeView.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new NodeView(builder, builder.GetObject("nodeView").Handle,args);
         }
         ListStore store;

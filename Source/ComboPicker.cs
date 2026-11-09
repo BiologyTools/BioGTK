@@ -1,4 +1,4 @@
-﻿using Gtk;
+using Gtk;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -34,7 +34,8 @@ namespace BioGTK
         /// @return A new instance of the ComboPicker class.
         public static ComboPicker Create(string[] sts)
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ComboPicker.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ComboPicker.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new ComboPicker(builder, builder.GetObject("comboPicker").Handle, sts);
         }
 
@@ -43,7 +44,8 @@ namespace BioGTK
         /// @return A new instance of the ComboPicker class.
         public static ComboPicker Create(string l,string[] sts)
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ComboPicker.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ComboPicker.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new ComboPicker(builder, builder.GetObject("comboPicker").Handle,l, sts);
         }
 
@@ -52,7 +54,8 @@ namespace BioGTK
         /// @return A new instance of the ComboPicker class.
         public static ComboPicker Create(Type ems)
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ComboPicker.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ComboPicker.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new ComboPicker(builder, builder.GetObject("comboPicker").Handle, ems);
         }
         /* The constructor for the ComboPicker class. */

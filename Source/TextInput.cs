@@ -1,4 +1,4 @@
-﻿using Gtk;
+using Gtk;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -35,7 +35,8 @@ namespace BioGTK
        /// @return A new instance of the TextInput class.
         public static TextInput Create(bool ROItype = true)
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/TextInput.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/TextInput.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             var ti = new TextInput(builder, builder.GetObject("textInput").Handle);
             ti.ROItype = ROItype;
             return ti;

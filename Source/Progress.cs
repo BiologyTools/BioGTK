@@ -1,4 +1,4 @@
-﻿using AForge;
+using AForge;
 using Gdk;
 using Gtk;
 using sun.tools.tree;
@@ -94,7 +94,8 @@ namespace BioGTK
         
         public static Progress Create(string title, string status, string state)
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Progress.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Progress.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new Progress(builder, builder.GetObject("progress").Handle, title, status, state);
         }
 

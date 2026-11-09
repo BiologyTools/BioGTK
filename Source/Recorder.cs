@@ -1,4 +1,4 @@
-﻿using Gtk;
+using Gtk;
 using Gdk;
 using System;
 using System.Collections.Generic;
@@ -43,7 +43,8 @@ namespace BioGTK
         /// @return A new instance of the Recorder class.
         public static Recorder Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Recorder.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Recorder.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new Recorder(builder, builder.GetObject("recorderWindow").Handle);
         }
 

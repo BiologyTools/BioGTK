@@ -1,4 +1,4 @@
-﻿
+
 using System;
 using BioGTK;
 using Gtk;
@@ -56,7 +56,8 @@ namespace BioGTK
         /// @return The ApplyFilter class is being returned.
         public static ApplyFilter Create(Filt filter,bool two)
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ApplyFilter.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ApplyFilter.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             filt = filter;
             return new ApplyFilter(builder, builder.GetObject("applyFilter").Handle, two, filter);
         }

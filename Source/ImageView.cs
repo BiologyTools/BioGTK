@@ -89,9 +89,8 @@ namespace BioGTK
             if (SelectedImage?.isPyramidal != true)
                 return;
 
-            // A slider drag can generate many coordinate changes per second.
-            // Mark earlier plane results stale, but let their HTTP reads finish so
-            // HttpClient does not surface routine socket-abort TaskCanceledExceptions.
+            // Supersede earlier planes while allowing BioLib reads without
+            // transport cancellation to finish in the background.
             slideRenderer?.InvalidateRenderState(cancelActiveFetches: false);
             sKSlideRenderer?.InvalidateRenderState();
             SelectedImage.InvalidateTileCache();
@@ -1788,8 +1787,8 @@ namespace BioGTK
             if (SelectedImage?.isPyramidal != true)
                 return;
 
-            // Threshold/channel edits invalidate pixels but do not require socket
-            // aborts. Let older Zarr reads drain and discard them by render version.
+            // Threshold/channel edits invalidate pixels. Let BioLib reads without
+            // transport cancellation drain and discard them by render version.
             slideRenderer?.InvalidateRenderState(cancelActiveFetches: false);
             sKSlideRenderer?.InvalidateRenderState();
             SelectedImage.InvalidateTileCache();

@@ -1,4 +1,4 @@
-﻿using Gtk;
+using Gtk;
 using Gdk;
 using System;
 using System.Collections.Generic;
@@ -46,7 +46,8 @@ namespace BioGTK
         /// @return A new instance of the Resolutions class.
         public static Resolutions Create(Resolution[] re)
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Resolutions.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Resolutions.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             Resolutions res = new Resolutions(builder, builder.GetObject("resolutions").Handle, re);
             return res;
         }

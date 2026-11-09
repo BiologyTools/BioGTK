@@ -1,4 +1,4 @@
-﻿using AForge.Imaging.Filters;
+using AForge.Imaging.Filters;
 using BioGTK;
 using Gtk;
 using System;
@@ -40,7 +40,8 @@ namespace Bio
         /// @return A new instance of the ColorTool class.
         public static MagicSelect Create(int index)
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Magic.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Magic.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new MagicSelect(builder, builder.GetObject("magicSelect").Handle, index);
         }
 

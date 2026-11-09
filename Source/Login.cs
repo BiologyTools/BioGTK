@@ -1,4 +1,4 @@
-﻿using AForge;
+using AForge;
 using Gtk;
 using javax.swing.text;
 using omero.gateway.model;
@@ -42,7 +42,8 @@ namespace BioGTK
         /// @return A new instance of the Search class.
         public static Login Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/login.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/login.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new Login(builder, builder.GetObject("login").Handle);
         }
 

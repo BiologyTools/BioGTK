@@ -1,4 +1,4 @@
-﻿using AForge;
+using AForge;
 using Gtk;
 using System;
 using System.Collections.Generic;
@@ -60,7 +60,8 @@ namespace BioGTK
         public static ChannelsTool Create()
         {
             string s = System.IO.Path.GetDirectoryName(Environment.ProcessPath).Replace("\\", "/") + "/" + "Glade/ChannelsTool.glade";
-            Builder builder = new Builder(new FileStream(s, FileMode.Open));
+            using var gladeStream = new FileStream(s, FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new ChannelsTool(builder, builder.GetObject("chanTool").Handle);
         }
         /* Creating a new window and populating it with the values from the channels. */

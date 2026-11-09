@@ -1,4 +1,4 @@
-﻿using Gtk;
+using Gtk;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -43,7 +43,8 @@ namespace BioGTK
         #region Constructors / Destructors
         public static HistogramControl Create(Channel channel)
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Histogram.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Histogram.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new HistogramControl(builder, builder.GetObject("histogram").Handle,channel);
         }
         protected HistogramControl(Builder builder, IntPtr handle, Channel channel) : base(handle)

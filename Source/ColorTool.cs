@@ -1,4 +1,4 @@
-﻿using AForge;
+using AForge;
 using Gdk;
 using Gtk;
 using System;
@@ -56,7 +56,8 @@ namespace BioGTK
         /// @return A new instance of the ColorTool class.
         public static ColorTool Create(bool color1)
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ColorTool.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/ColorTool.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new ColorTool(builder, builder.GetObject("colorTool").Handle, color1);
         }
 

@@ -1,4 +1,4 @@
-﻿using AForge;
+using AForge;
 using Bio;
 using Gtk;
 using System;
@@ -25,7 +25,8 @@ namespace BioGTK
         #region Constructors / Destructors
         public static FiltersView Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Filters.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Filters.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new FiltersView(builder, builder.GetObject("filters").Handle);
         }
         ListStore store;

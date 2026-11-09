@@ -544,7 +544,8 @@ namespace BioGTK
         /// @return A new instance of the TabsView class.
         public static TabsView Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/TabsView.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/TabsView.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new TabsView(builder, builder.GetObject("TabsView").Handle);
         }
         Menu recent = new Menu();

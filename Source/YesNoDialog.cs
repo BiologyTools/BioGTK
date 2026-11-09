@@ -1,4 +1,4 @@
-﻿using Gtk;
+using Gtk;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -31,7 +31,8 @@ namespace BioGTK
         /// @return A new instance of the ComboPicker class.
         public static YesNoDialog Create(string text)
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/YesNoDialog.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/YesNoDialog.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new YesNoDialog(builder, builder.GetObject("yesDialog").Handle, text);
         }
         /* The constructor for the ComboPicker class. */

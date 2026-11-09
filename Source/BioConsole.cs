@@ -1,4 +1,4 @@
-﻿using BioGTK;
+using BioGTK;
 using Gtk;
 using Pango;
 using System;
@@ -51,7 +51,8 @@ namespace BioGTK
         /// @return A new instance of the BioConsole class.
         public static BioConsole Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/BioConsole.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/BioConsole.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new BioConsole(builder, builder.GetObject("console").Handle);
         }
 

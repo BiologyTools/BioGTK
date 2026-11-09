@@ -1,4 +1,4 @@
-﻿using AForge;
+using AForge;
 using Gtk;
 using System;
 using System.Collections.Generic;
@@ -44,7 +44,8 @@ namespace BioGTK
         /// @return The method is returning an instance of the Play class.
         public static Play Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Play.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Play.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new Play(builder, builder.GetObject("play").Handle);
         }
         /* The constructor for the Play class. */

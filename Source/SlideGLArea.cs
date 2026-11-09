@@ -19,7 +19,7 @@ namespace BioGTK
     public class SlideGLArea : GLArea
     {
         private const bool VerboseLogging = false;
-        private static readonly bool DiagnosticLogging = true;
+        private static readonly bool DiagnosticLogging = false;
         // ============================================================================
         // GL Resources
         // ============================================================================
@@ -31,6 +31,9 @@ namespace BioGTK
         private int _completeFrameTexture;
         private int _completeFrameWidth;
         private int _completeFrameHeight;
+        private int _completeFrameVersion = -1;
+        private (float X, float Y, float Width, float Height) _completeFrameImageBounds;
+        private (int Width, int Height) _completeFrameViewport;
         private bool _tileFrameComplete;
 
         // Uniform locations (cached for performance)
@@ -67,6 +70,7 @@ namespace BioGTK
         public List<TileRenderInfo> TilesToRender { get; } = new();
         public bool NeedsRedraw { get; set; } = true;
         public bool PreservePreviousFrameWhileIncomplete { get; set; } = false;
+        public int TileFrameVersion { get; set; }
         private Action<byte[], int, int> _pendingWholeImageCapture;
 
         // Screen-space boundary of the image (in pixels from top-left).
@@ -432,17 +436,15 @@ void main()
                 return;
             }
 
-            bool hasAllRenderableTextures = TilesToRender.All(tile => _textureCache.ContainsKey(tile.Index));
-            if (!hasAllRenderableTextures)
+            bool incomplete = PreservePreviousFrameWhileIncomplete ||
+                TilesToRender.Any(tile => !_textureCache.ContainsKey(tile.Index));
+            if (incomplete)
             {
-                // Never expose a partially assembled target frame. Retain the last
-                // complete GPU snapshot until all visible tiles are resident, then
-                // replace the frame atomically. On first load, keep the opaque
-                // background instead of popping tiles in one at a time.
-                if (_completeFrameTexture != 0)
-                    RenderCompleteFrameFallback(width, height);
-                LogDiag($"[RenderTiles] waiting for atomic tile frame viewport={width}x{height} tileCount={TilesToRender.Count}");
-                return;
+                RenderCompleteFrameFallback(width, height);
+                // A coordinate or display change needs a complete replacement.
+                // A pan can immediately draw resident tiles from the same plane.
+                if (_completeFrameTexture == 0 || _completeFrameVersion != TileFrameVersion)
+                    return;
             }
 
             LogDiag($"[RenderTiles] tiles={TilesToRender.Count} viewport={width}x{height} imageScreen=({ImageScreenX},{ImageScreenY},{ImageScreenW},{ImageScreenH})");
@@ -498,7 +500,7 @@ void main()
             GL.BindVertexArray(0);
             GL.UseProgram(0);
             GL.Disable(EnableCap.Blend);
-            _tileFrameComplete = true;
+            _tileFrameComplete = !incomplete;
         }
 
         private void RenderCompleteFrameFallback(int width, int height)
@@ -512,8 +514,21 @@ void main()
             GL.BindVertexArray(_vao);
             GL.Uniform2(_locViewportSize, (float)width, (float)height);
             GL.Uniform1(_locTex, 0);
-            GL.Uniform2(_locPos, 0f, 0f);
-            GL.Uniform2(_locSize, (float)width, (float)height);
+            var previousBounds = _completeFrameImageBounds;
+            if (_completeFrameVersion == TileFrameVersion && previousBounds.Width > 0 &&
+                previousBounds.Height > 0 && ImageScreenW > 0 && ImageScreenH > 0)
+            {
+                float scaleX = ImageScreenW / previousBounds.Width;
+                float scaleY = ImageScreenH / previousBounds.Height;
+                GL.Uniform2(_locPos, ImageScreenX - previousBounds.X * scaleX,
+                    ImageScreenY - previousBounds.Y * scaleY);
+                GL.Uniform2(_locSize, _completeFrameViewport.Width * scaleX, _completeFrameViewport.Height * scaleY);
+            }
+            else
+            {
+                GL.Uniform2(_locPos, 0f, 0f);
+                GL.Uniform2(_locSize, (float)width, (float)height);
+            }
             // Framebuffer copies use bottom-left texture origin, unlike uploaded
             // top-down tile bytes, so reverse V while drawing the snapshot.
             GL.Uniform2(_locUvMin, 0f, 1f);
@@ -557,6 +572,9 @@ void main()
                     0, 0, physicalWidth, physicalHeight);
             }
             GL.BindTexture(TextureTarget.Texture2D, 0);
+            _completeFrameVersion = TileFrameVersion;
+            _completeFrameImageBounds = (ImageScreenX, ImageScreenY, ImageScreenW, ImageScreenH);
+            _completeFrameViewport = (width, height);
         }
 
         public void DiscardCompleteFrame()
@@ -574,8 +592,7 @@ void main()
         private void CaptureWholeImageFrameIfRequested(int width, int height)
         {
             var callback = _pendingWholeImageCapture;
-            if (callback == null || TilesToRender.Count == 0 ||
-                !TilesToRender.All(tile => _textureCache.ContainsKey(tile.Index)))
+            if (callback == null || !_tileFrameComplete)
                 return;
 
             // Only use a frame in which the complete image fits in the viewport.

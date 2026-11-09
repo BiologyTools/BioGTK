@@ -1,4 +1,4 @@
-﻿using BioGTK;
+using BioGTK;
 using GLib;
 using Gtk;
 using Mapsui.Widgets;
@@ -58,7 +58,8 @@ namespace BioGTK
         /// @return A new instance of the AI class.
         public static AI Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/Glade/AI.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/Glade/AI.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new AI(builder, builder.GetObject("aiConsole").Handle);
         }
 

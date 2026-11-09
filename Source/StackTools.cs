@@ -1,4 +1,4 @@
-﻿using Gtk;
+using Gtk;
 using System;
 using System.IO;
 
@@ -47,7 +47,8 @@ namespace BioGTK
         /// <returns> StackTools </returns>
         public static StackTools Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Stacks.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Stacks.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new StackTools(builder, builder.GetObject("stackTools").Handle);
         }
 

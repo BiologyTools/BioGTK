@@ -1,4 +1,4 @@
-﻿using Gtk;
+using Gtk;
 using javax.swing.text;
 using System;
 using System.IO;
@@ -31,7 +31,8 @@ namespace BioGTK
         /// @return A new instance of the SetTool class.
         public static SetTool Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/SetTool.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/SetTool.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new SetTool(builder, builder.GetObject("setTool").Handle);
         }
         /* The constructor of the class. */

@@ -1,4 +1,4 @@
-﻿using Gtk;
+using Gtk;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -34,7 +34,8 @@ namespace BioGTK
         /// @return A new instance of the NumberPicker class.
         public static NumberPicker Create(double min, double max, double start = 0)
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/NumberPicker.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/NumberPicker.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new NumberPicker(builder, builder.GetObject("numberPicker").Handle, min, max, start);
         }
 

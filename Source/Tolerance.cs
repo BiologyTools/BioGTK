@@ -1,4 +1,4 @@
-﻿using AForge;
+using AForge;
 using Gdk;
 using Gtk;
 using sun.tools.tree;
@@ -50,7 +50,8 @@ namespace BioGTK
         /// @return A new instance of the ColorTool class.
         public static Tolerance Create()
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Tolerance.glade", FileMode.Open));
+            using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/Tolerance.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
+            Builder builder = new Builder(gladeStream);
             return new Tolerance(builder, builder.GetObject("tolerance").Handle);
         }
 
