@@ -16,6 +16,10 @@ namespace BioGTK
     {
         #region Fields and Properties
         private readonly SemaphoreSlim _renderSemaphore = new SemaphoreSlim(1, 1);
+        private readonly object _renderCancellationLock = new object();
+        private readonly SKDrawingArea _view;
+        private readonly int _gtkThreadId = Environment.CurrentManagedThreadId;
+        private CancellationTokenSource _renderCancellation;
         /// <summary>True if the last UpdateViewAsync call was skipped because a render was already in progress.</summary>
         public bool LastRenderSkipped { get; private set; }
         private SkiaStitchingPipeline _stitchingPipeline;
@@ -54,6 +58,7 @@ namespace BioGTK
         /// </summary>
         public SKSlideRenderer(SKDrawingArea sk)
         {
+            _view = sk;
             InitializeDefaults();
         }
 
@@ -131,7 +136,7 @@ namespace BioGTK
         /// </summary>
         private void ClearCurrentSource()
         {
-            Interlocked.Increment(ref _renderStateVersion);
+            InvalidateRenderState();
             _currentRenderedImage?.Dispose();
             _currentRenderedImage = null;
 
@@ -147,7 +152,11 @@ namespace BioGTK
         /// </summary>
         public void InvalidateRenderState()
         {
-            Interlocked.Increment(ref _renderStateVersion);
+            lock (_renderCancellationLock)
+            {
+                _renderStateVersion++;
+                _renderCancellation?.Cancel();
+            }
         }
 
         #endregion
@@ -172,12 +181,20 @@ namespace BioGTK
             if (!_renderSemaphore.Wait(0))
             {
                 LastRenderSkipped = true;
+                if (NeedsUpdate(origin, width, height, resolution, coordinate))
+                    InvalidateRenderState();
                 return;
             }
 
             // We hold the semaphore — clear the skip flag and run.
             LastRenderSkipped = false;
-            int renderVersion = _renderStateVersion;
+            var cancellation = new CancellationTokenSource();
+            int renderVersion;
+            lock (_renderCancellationLock)
+            {
+                _renderCancellation = cancellation;
+                renderVersion = _renderStateVersion;
+            }
 
             try
             {
@@ -190,7 +207,10 @@ namespace BioGTK
                 _lastWidth = width;
                 _lastHeight = height;
 
-                await RenderFullQualityAsync(origin, resolution, coordinate, width, height, renderVersion);
+                await RenderFullQualityAsync(origin, resolution, coordinate, width, height, renderVersion, cancellation.Token);
+            }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+            {
             }
             catch (Exception ex)
             {
@@ -199,12 +219,17 @@ namespace BioGTK
             finally
             {
                 IsRendering = false;
+                lock (_renderCancellationLock)
+                {
+                    _renderCancellation = null;
+                    cancellation.Dispose();
+                }
                 _renderSemaphore.Release();
 
                 // If a request was skipped while we were running, reschedule so the
                 // view always ends up showing the latest coordinates.
                 if (!_disposed && LastRenderSkipped)
-                    Gtk.Application.Invoke((s, a) => App.viewer?.RequestDeferredRender());
+                    Gtk.Application.Invoke((s, a) => (_view?.Toplevel as ImageView)?.RequestDeferredRender());
             }
         }
 
@@ -257,40 +282,54 @@ namespace BioGTK
             PointD origin,
             double resolution,
             ZCT coordinate,
-            int width = 600,
-            int height = 400,
-            int renderVersion = 0)
+            int width,
+            int height,
+            int renderVersion,
+            CancellationToken ct)
         {
-            try
-            {
-                // Use stitching pipeline to create full quality composite
-                var stitchedImage = await _stitchingPipeline.StitchViewportAsync(
-                    origin,
-                    resolution,
-                    coordinate,
-                    width,
-                    height
-                );
+            var stitchedImage = await _stitchingPipeline.StitchViewportAsync(
+                origin, resolution, coordinate, width, height,
+                image => PublishViewportAsync(image, renderVersion), ct).ConfigureAwait(false);
+            await PublishViewportAsync(stitchedImage, renderVersion).ConfigureAwait(false);
+        }
 
-                if (renderVersion != _renderStateVersion)
+        private Task PublishViewportAsync(SKImage image, int renderVersion)
+        {
+            if (image == null)
+                return Task.CompletedTask;
+
+            void Publish()
+            {
+                if (_disposed || renderVersion != _renderStateVersion)
                 {
-                    stitchedImage?.Dispose();
+                    image.Dispose();
                     return;
                 }
-
-                if (stitchedImage != null)
-                {
-                    _currentRenderedImage?.Dispose();
-                    _currentRenderedImage = stitchedImage;
-
-                    // Request redraw with new image
-                    //RequestRedraw();
-                }
+                _currentRenderedImage?.Dispose();
+                _currentRenderedImage = image;
+                _view?.QueueDraw();
             }
-            catch (Exception ex)
+
+            if (Environment.CurrentManagedThreadId == _gtkThreadId)
             {
-                Console.WriteLine($"Full quality render error: {ex.Message}");
+                Publish();
+                return Task.CompletedTask;
             }
+
+            var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            Gtk.Application.Invoke((s, a) =>
+            {
+                try
+                {
+                    Publish();
+                    completion.SetResult();
+                }
+                catch (Exception ex)
+                {
+                    completion.SetException(ex);
+                }
+            });
+            return completion.Task;
         }
 
         #endregion
@@ -497,10 +536,7 @@ namespace BioGTK
                 return;
 
             _disposed = true;
-            _currentRenderedImage?.Dispose();       
-            _stitchingPipeline?.Dispose();
-            _currentRenderedImage = null;
-            _stitchingPipeline = null;
+            ClearCurrentSource();
         }
 
         #endregion

@@ -30,6 +30,7 @@ namespace BioGTK
         private ConcurrentDictionary<string, CachedTile> _tileCache;
         private int _maxCacheSize;
         private object _cacheLock = new object();
+        private volatile int _cacheVersion;
 
         // Rendering state
         private SKSurface _compositeSurface;
@@ -38,7 +39,7 @@ namespace BioGTK
         private int _currentSurfaceHeight = 400;
 
         // Async operation management
-        private ConcurrentDictionary<string, Task<SKImage>> _pendingTileFetches;
+        private ConcurrentDictionary<string, Lazy<Task<SKImage>>> _pendingTileFetches;
 
         // Configuration
         public int TileSize { get; set; } = 256;
@@ -182,7 +183,7 @@ namespace BioGTK
         {
             _maxCacheSize = maxCacheSizeMB * 1024 * 1024;
             _tileCache = new ConcurrentDictionary<string, CachedTile>();
-            _pendingTileFetches = new ConcurrentDictionary<string, Task<SKImage>>();
+            _pendingTileFetches = new ConcurrentDictionary<string, Lazy<Task<SKImage>>>();
         }
 
         #endregion
@@ -192,12 +193,22 @@ namespace BioGTK
         /// <summary>
         /// Stitch tiles for a given viewport asynchronously
         /// </summary>
-        public async Task<SKImage> StitchViewportAsync(
+        public Task<SKImage> StitchViewportAsync(
             PointD origin,
             double resolution,
             ZCT coordinate,
             int viewportWidth = 600,
-            int viewportHeight = 400)
+            int viewportHeight = 400) =>
+            StitchViewportAsync(origin, resolution, coordinate, viewportWidth, viewportHeight, null, CancellationToken.None);
+
+        internal async Task<SKImage> StitchViewportAsync(
+            PointD origin,
+            double resolution,
+            ZCT coordinate,
+            int viewportWidth,
+            int viewportHeight,
+            Func<SKImage, Task> publishPartial,
+            CancellationToken ct)
         {
             // Calculate viewport parameters
             int level = CalculateLevelFromResolution(resolution);
@@ -224,7 +235,8 @@ namespace BioGTK
                 canvas.Clear(SKColors.Gray);
 
                 // Fetch and composite all tiles
-                await CompositeTilesAsync(canvas, tileRequests, origin, resolution);
+                await CompositeTilesAsync(surface, tileRequests, origin, resolution, publishPartial, ct)
+                    .ConfigureAwait(false);
 
                 // Create and return snapshot
                 return surface.Snapshot();
@@ -274,17 +286,22 @@ namespace BioGTK
         {
             string key = request.GetCacheKey();
 
-            // 1. Check cache again to be sure
-            if (_tileCache.TryGetValue(key, out var cached)) return cached.Image;
+            int cacheVersion;
+            lock (_cacheLock)
+            {
+                if (_tileCache.TryGetValue(key, out var cached))
+                    return cached.Image;
+                cacheVersion = _cacheVersion;
+            }
+            string pendingKey = $"{cacheVersion}:{key}";
 
-            // 2. Check if already being fetched
-            if (_pendingTileFetches.TryGetValue(key, out var pendingTask)) return await pendingTask;
-
-            // 3. Create the fetch task
-            var fetchTask = Task.Run(async () =>
+            var fetch = _pendingTileFetches.GetOrAdd(pendingKey, keyForFetch => new Lazy<Task<SKImage>>(() => Task.Run(async () =>
             {
                 try
                 {
+                    if (cacheVersion != _cacheVersion)
+                        return null;
+
                     byte[] data;
                     if (_isOpenSlide)
                     {
@@ -301,14 +318,25 @@ namespace BioGTK
                     if (data == null || data.Length == 0) return null;
 
                     // Convert to Skia Image (using the shear-fix logic from before)
-                    var levelResolution = CalculateResolutionFromLevel(request.Index.Level);
                     var image = ConvertTileDataToSKImage(data, request);
 
                     if (image != null)
                     {
-                        var cachedTile = new CachedTile(image, DateTime.Now.ToString());
-                        _tileCache.AddOrUpdate(key, cachedTile, (k, old) => cachedTile);
-                        return image;
+                        lock (_cacheLock)
+                        {
+                            if (cacheVersion != _cacheVersion)
+                            {
+                                image.Dispose();
+                                return null;
+                            }
+                            if (_tileCache.TryGetValue(key, out var existing))
+                            {
+                                image.Dispose();
+                                return existing.Image;
+                            }
+                            AddToCache(key, image);
+                            return image;
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -317,13 +345,12 @@ namespace BioGTK
                 }
                 finally
                 {
-                    _pendingTileFetches.TryRemove(key, out _);
+                    _pendingTileFetches.TryRemove(keyForFetch, out _);
                 }
                 return null;
-            });
+            })));
 
-            _pendingTileFetches[key] = fetchTask;
-            return await fetchTask;
+            return await fetch.Value.ConfigureAwait(false);
         }
 
         private bool ShouldComposeRgbTile()
@@ -551,10 +578,12 @@ namespace BioGTK
         /// Composite all tiles onto the canvas using a unified coordinate system
         /// </summary>
         private async Task CompositeTilesAsync(
-            SKCanvas canvas,
+            SKSurface surface,
             List<TileRequest> tileRequests,
             PointD origin,
-            double resolution)
+            double resolution,
+            Func<SKImage, Task> publishPartial,
+            CancellationToken ct)
         {
             if (tileRequests.Count == 0) return;
 
@@ -565,14 +594,24 @@ namespace BioGTK
                 return new { Request = req, Image = image };
             }).ToArray();
 
-            var results = await Task.WhenAll(tileTasks);
-
             using (var paint = new SKPaint { IsAntialias = false })
             {
-                foreach (var result in results)
+                int remainingTiles = tileTasks.Length;
+                await foreach (var task in Task.WhenEach(tileTasks).WithCancellation(ct).ConfigureAwait(false))
                 {
-                    if (result.Image == null) continue;
-                    DrawTileToCanvas(canvas, result.Request, origin, resolution, result.Image, paint);
+                    var result = await task.ConfigureAwait(false);
+                    ct.ThrowIfCancellationRequested();
+                    remainingTiles--;
+                    lock (_cacheLock)
+                    {
+                        // A cache clear may have disposed this tile while it
+                        // was waiting to be drawn.
+                        if (result.Image == null || result.Image.Handle == IntPtr.Zero)
+                            continue;
+                        DrawTileToCanvas(surface.Canvas, result.Request, origin, resolution, result.Image, paint);
+                    }
+                    if (publishPartial != null && remainingTiles > 0)
+                        await publishPartial(surface.Snapshot()).ConfigureAwait(false);
                 }
             }
         }
@@ -736,6 +775,7 @@ namespace BioGTK
         {
             lock (_cacheLock)
             {
+                _cacheVersion++;
                 foreach (var tile in _tileCache.Values)
                 {
                     tile.Image?.Dispose();

@@ -437,14 +437,19 @@ void main()
             }
 
             bool incomplete = PreservePreviousFrameWhileIncomplete ||
-                TilesToRender.Any(tile => !_textureCache.ContainsKey(tile.Index));
+                TilesToRender.Any(tile => !HasTileTexture(tile.Index));
             if (incomplete)
             {
-                RenderCompleteFrameFallback(width, height);
-                // A coordinate or display change needs a complete replacement.
-                // A pan can immediately draw resident tiles from the same plane.
-                if (_completeFrameTexture == 0 || _completeFrameVersion != TileFrameVersion)
-                    return;
+                if (_completeFrameVersion == TileFrameVersion || !TilesToRender.Any(tile => HasTileTexture(tile.Index)))
+                {
+                    RenderCompleteFrameFallback(width, height);
+                }
+                else
+                {
+                    // An older plane can serve as a placeholder only until the
+                    // first tile of the new plane is ready to draw.
+                    DiscardCompleteFrame();
+                }
             }
 
             LogDiag($"[RenderTiles] tiles={TilesToRender.Count} viewport={width}x{height} imageScreen=({ImageScreenX},{ImageScreenY},{ImageScreenW},{ImageScreenH})");

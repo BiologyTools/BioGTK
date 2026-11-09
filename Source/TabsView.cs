@@ -558,7 +558,7 @@ namespace BioGTK
             InitializeOpenRecentMenu();
             filteredMenu.Active = true;
             SetupHandlers();
-            progress = Progress.Create(title, "", "");
+            progress = Progress.Create("Progress", "", "");
             Function.InitializeMainMenu();
             filechooser =
         new Gtk.FileChooserDialog("Choose file to open",
@@ -1140,20 +1140,28 @@ namespace BioGTK
                 return;
             filechooser.Hide();
             StartProgress("Saving Zarr", "Saving " + ImageView.SelectedImage.ID + " as Zarr file.");
-            BioImage.Progress = 0;
-            await Task.Yield();
-            if (ImageView.SelectedImage == null)
-                ImageView.SelectedImage = await BioImage.OpenFile(filechooser.Filename);
-
-            await Task.Run(() =>
+            try
             {
-                Zarr.SaveZarr(ImageView.SelectedImage, filechooser.Filename);
-                Zarr.SaveV2Compatibility(ImageView.SelectedImage, filechooser.Filename);
-                MergeZarrLabelOverlaysIntoAnnotations(ImageView.SelectedImage);
-                TrySaveZarrROIs(ImageView.SelectedImage, filechooser.Filename);
-                TrySaveZarrLabelOverlays(ImageView.SelectedImage, filechooser.Filename);
-            });
-            StopProgress();
+                string outputPath = filechooser.Filename;
+                BioImage image = ImageView.SelectedImage;
+                await Task.Run(() =>
+                {
+                    Zarr.SaveZarr(image, outputPath, percent =>
+                    {
+                        if (BioImage.Progress == 0)
+                            BioImage.Status = "Writing Zarr tiles";
+                        Volatile.Write(ref BioImage.Progress, (float)percent);
+                    });
+                    Zarr.SaveV2Compatibility(image, outputPath);
+                    MergeZarrLabelOverlaysIntoAnnotations(image);
+                    TrySaveZarrROIs(image, outputPath);
+                    TrySaveZarrLabelOverlays(image, outputPath);
+                });
+            }
+            finally
+            {
+                StopProgress();
+            }
         }
 
         private async void OpenZarr_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -1169,7 +1177,7 @@ namespace BioGTK
             filechooser.Hide();
             await Task.Yield();
             string[] sts = filechooser.Filenames;
-            StartProgressHidden("Open Zarr", "Opening");
+            StartProgress("Open Zarr", "Opening");
             try
             {
                 await Task.Yield();
@@ -2060,7 +2068,14 @@ namespace BioGTK
             foreach (string item in filechooser.Filenames)
             {
                 StartProgress("Open OME", "Opening");
-                await OpenPyramidRootsAsTabsAsync(item);
+                try
+                {
+                    await OpenPyramidRootsAsTabsAsync(item);
+                }
+                finally
+                {
+                    StopProgress();
+                }
             }
             tabsView.ShowAll();
             BioLib.Recorder.Record("BioImage.OpenAsync(" + StrArray(sts) + ", true, true, true);");
@@ -2190,101 +2205,75 @@ namespace BioGTK
             this.Show();
             BioLib.Recorder.Record("BioImage.OpenAsync(" + StrArray(sts) + ", true, false, true);");
         }
-        private static bool done = false;
-        private static bool progressShown = false;
-        private static int progressShowThreshold = 0;
-        private static int progressDisplayOffset = 0;
-        private static int progressRunId = 0;
-        private static readonly Stopwatch progressStopwatch = new Stopwatch();
+        private static int progressRunId;
         private static Progress progress;
-        private static string title;
-        private static string FormatProgressTiming(double progressPercent)
+
+        private static string FormatProgressTiming(TimeSpan elapsed, double percent, TimeSpan? eta, bool isPhaseEstimate)
         {
-            TimeSpan elapsed = progressStopwatch.Elapsed;
-            string elapsedText = FormatDuration(elapsed);
-            string etaText = "--:--";
-
-            if (progressPercent > 0.01 && progressPercent < 100)
-            {
-                double remainingSeconds = elapsed.TotalSeconds * ((100.0 - progressPercent) / progressPercent);
-                if (double.IsFinite(remainingSeconds) && remainingSeconds >= 0)
-                    etaText = FormatDuration(TimeSpan.FromSeconds(remainingSeconds));
-            }
-            else if (progressPercent >= 100)
-            {
-                etaText = "00:00";
-            }
-
-            return $"Elapsed: {elapsedText}   ETA: {etaText}";
+            string elapsedText = $"Elapsed: {FormatDuration(elapsed)}";
+            if (percent >= 100)
+                return $"{elapsedText}   Finishing…";
+            if (!eta.HasValue)
+                return $"{elapsedText}   Estimating…";
+            string label = isPhaseEstimate ? "Phase ETA" : "Approx. ETA";
+            return $"{elapsedText}   {label}: {FormatDuration(eta.Value)}";
         }
         private static string FormatDuration(TimeSpan span)
         {
             if (span.TotalHours >= 1)
-                return span.ToString(@"hh\:mm\:ss");
+                return $"{(long)span.TotalHours:00}:{span.Minutes:00}:{span.Seconds:00}";
             return span.ToString(@"mm\:ss");
         }
-        private static void ProgressUpdate(int runId)
+
+        private static string GetMeasuredProgressPhase(string status)
         {
-            do
+            // These statuses accompany counted work, so the ETA can use
+            // the current phase's rate once it has enough observations.
+            if (status is "Reading image planes." or "Reading tiles." or "Saving OME Image Metadata." or "Writing Zarr tiles")
+                return status;
+
+            if (status.StartsWith("Extracting ", StringComparison.Ordinal))
             {
-                float displayProgress = BioImage.Progress;
-                if (progressDisplayOffset > 0)
-                {
-                    float normalized = (BioImage.Progress - progressDisplayOffset) * 100f / Math.Max(1, 100 - progressDisplayOffset);
-                    displayProgress = Math.Max(0, Math.Min(100, normalized));
-                }
-                progress.Title = title;
-                if (!string.IsNullOrEmpty(BioImage.Status))
-                    progress.Status = BioImage.Status;
-                if (!progressShown && BioImage.Progress >= progressShowThreshold)
-                {
-                    progressShown = true;
-                    Gtk.Application.Invoke(delegate
-                    {
-                        if (done || runId != progressRunId)
-                            return;
-                        progress.ShowAll();
-                    });
-                }
-                progress.ProgressPercentValue = displayProgress;
-                progress.Text = FormatProgressTiming(displayProgress);
-                Thread.Sleep(250);
-            } while (!done && runId == progressRunId);
+                int planeIndex = status.LastIndexOf(" plane T", StringComparison.Ordinal);
+                if (planeIndex >= 0)
+                    return status[..planeIndex];
+            }
+
+            return null;
         }
         private static void StartProgress(string titl, string status)
         {
-            StartProgressInternal(titl, status, true, 0, 0);
-        }
-        private static void StartProgressHidden(string titl, string status)
-        {
-            StartProgressInternal(titl, status, false, 85, 85);
-        }
-        private static void StartProgressInternal(string titl, string status, bool showImmediately, int showThreshold, int displayOffset)
-        {
-            done = false;
-            progressRunId++;
-            int runId = progressRunId;
-            progressShown = showImmediately;
-            progressShowThreshold = showThreshold;
-            progressDisplayOffset = displayOffset;
-            title = titl;
+            int runId = Interlocked.Increment(ref progressRunId);
             BioImage.Progress = 0;
-            progress.Status = status;
-            progress.Title = title;
-            if (BioImage.Status == "" || BioImage.Status == null)
-                progress.Status = status;
-            else
-                progress.Status = BioImage.Status;
-            progress.ProgressPercentValue = BioImage.Progress;
-            progressStopwatch.Restart();
-            progress.Text = FormatProgressTiming(BioImage.Progress);
-            if (showImmediately)
+            BioImage.Status = status;
+            var stopwatch = Stopwatch.StartNew();
+            var timing = new ProgressEta();
+            Gtk.Application.Invoke(delegate
+            {
+                if (runId != Volatile.Read(ref progressRunId))
+                    return;
+
+                progress.Title = titl;
+                progress.UpdateSnapshot(0, status, FormatProgressTiming(TimeSpan.Zero, 0, null, false));
                 progress.ShowAll();
-            else
-                progress.Hide();
-            Thread th = new Thread(() => ProgressUpdate(runId));
-            th.IsBackground = true;
-            th.Start();
+
+                GLib.Timeout.Add(250, () =>
+                {
+                    if (runId != Volatile.Read(ref progressRunId))
+                        return false;
+
+                    double percent = Volatile.Read(ref BioImage.Progress);
+                    string currentStatus = BioImage.Status;
+                    if (string.IsNullOrEmpty(currentStatus))
+                        currentStatus = status;
+                    if (!double.IsFinite(percent))
+                        percent = 0;
+                    TimeSpan elapsed = stopwatch.Elapsed;
+                    var (eta, isPhaseEstimate) = timing.Update(elapsed.TotalSeconds, percent, GetMeasuredProgressPhase(currentStatus));
+                    progress.UpdateSnapshot(percent, currentStatus, FormatProgressTiming(elapsed, percent, eta, isPhaseEstimate));
+                    return true;
+                });
+            });
         }
 
         private static async Task FlushGtkEventsAsync()
@@ -2299,12 +2288,10 @@ namespace BioGTK
 
         private static void StopProgress()
         {
-            done = true;
-            progressStopwatch.Stop();
-            int runId = ++progressRunId;
+            int runId = Interlocked.Increment(ref progressRunId);
             Gtk.Application.Invoke(delegate
             {
-                if (runId != progressRunId)
+                if (runId != Volatile.Read(ref progressRunId))
                     return;
                 progress.Hide();
             });

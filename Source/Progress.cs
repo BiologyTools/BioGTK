@@ -77,6 +77,14 @@ namespace BioGTK
                 });
             }
         }
+
+        // Called by the GTK progress timer so the bar, status and timing update together.
+        internal void UpdateSnapshot(double percent, string status, string timing)
+        {
+            progressBar.Fraction = Math.Clamp(percent, 0, 100) / 100;
+            statusLabel.Text = status;
+            progLabel.Text = timing;
+        }
 #pragma warning disable 649
 
         [Builder.Object]
@@ -113,5 +121,57 @@ namespace BioGTK
 
         #endregion
 
+    }
+
+    internal sealed class ProgressEta
+    {
+        private const int SampleLimit = 6;
+        private readonly Queue<(double Seconds, double Percent)> _samples = new();
+        private string _phase;
+        private (double Seconds, double Percent) _lastSample;
+        private (double Seconds, double Percent) _runStart;
+
+        internal (TimeSpan? Remaining, bool IsPhaseEstimate) Update(double seconds, double percent, string phase)
+        {
+            if (!double.IsFinite(percent))
+                return (null, false);
+
+            bool restarted = percent < _lastSample.Percent;
+            if (restarted)
+                _runStart = (seconds, percent);
+
+            if (phase != _phase || restarted)
+            {
+                _samples.Clear();
+                _phase = phase;
+            }
+
+            if (_samples.Count == 0 || percent > _lastSample.Percent)
+            {
+                _lastSample = (seconds, percent);
+                _samples.Enqueue(_lastSample);
+                if (_samples.Count > SampleLimit)
+                    _samples.Dequeue();
+            }
+
+            if (percent <= 0 || percent >= 100)
+                return (null, false);
+
+            // Use the recent rate for counted work once there are two samples.
+            // Sparse milestones can still give a rough estimate from the full run.
+            bool isPhaseEstimate = phase != null && _samples.Count >= 2;
+            var first = isPhaseEstimate ? _samples.Peek() : _runStart;
+            double workDone = percent - first.Percent;
+            if (workDone <= 0 || seconds <= first.Seconds)
+                return (null, false);
+
+            // Include time spent waiting at the current percentage. A slow step
+            // reduces the observed rate instead of running the countdown to zero.
+            double remaining = (100 - percent) * (seconds - first.Seconds) / workDone;
+            if (!double.IsFinite(remaining) || remaining <= 0 || remaining >= TimeSpan.MaxValue.TotalSeconds)
+                return (null, false);
+
+            return (TimeSpan.FromSeconds(Math.Ceiling(remaining)), isPhaseEstimate);
+        }
     }
 }

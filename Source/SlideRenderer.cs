@@ -23,18 +23,10 @@ namespace BioGTK
         private BioLib.TileCache _tileCache;
         private OpenSlideGTK.TileCache _openTileCache;
         private HashSet<TileIndex> _uploadedTiles = new();
-        // Stores the TileInfo (including world-space Extent) for every tile in the GPU cache
-        // so the render list can be rebuilt from all cached tiles, not just those fetched this frame.
-        private Dictionary<TileIndex, TileInfo> _uploadedTileInfos = new();
         private readonly object _uploadedTileLock = new object();
         private int _currentLevel = -1;
-        private readonly object _pendingLevelSwitchLock = new object();
-        private List<TileRenderInfo> _pendingLevelRenderInfos;
-        private int _pendingLevel = -1;
-        private int _pendingPreviousLevel = -1;
         private readonly SemaphoreSlim _renderSemaphore = new SemaphoreSlim(1, 1);
         private readonly SemaphoreSlim _fetchSemaphore = new SemaphoreSlim(6, 6);
-        private readonly SemaphoreSlim _sharedZarrRegionSemaphore = new SemaphoreSlim(1, 1);
         private static readonly TimeSpan RemoteTileFetchTimeout = TimeSpan.FromSeconds(120);
         private const int MaxMissingTileRetries = 8;
         // Bumped whenever image state changes in a way that invalidates the
@@ -53,9 +45,6 @@ namespace BioGTK
         private readonly object _pendingTileFetchLock = new object();
         private readonly object _activeTileFetchLock = new object();
         private CancellationTokenSource _activeTileFetchCts;
-        private CancellationTokenSource _sharedZarrRegionCts;
-        private sealed record CachedZarrPlane(int Version, int Level, byte[] Pixels, int Width, int Height);
-        private volatile CachedZarrPlane _cachedZarrPlane;
         private int _displayRangeProbeStarted = 0;
         private int _displayRangeSeedLevel = -1;
         private readonly SemaphoreSlim _directZarrInitSemaphore = new SemaphoreSlim(1, 1);
@@ -140,23 +129,6 @@ namespace BioGTK
             catch (ObjectDisposedException)
             {
             }
-            active.Dispose();
-        }
-
-        private void CancelSharedZarrRegionReads()
-        {
-            CancellationTokenSource active;
-            lock (_activeTileFetchLock)
-            {
-                active = _sharedZarrRegionCts;
-                _sharedZarrRegionCts = null;
-                _cachedZarrPlane = null;
-            }
-
-            if (active == null)
-                return;
-
-            active.Cancel();
             active.Dispose();
         }
 
@@ -335,16 +307,12 @@ namespace BioGTK
             // fetches. Otherwise an old Z/C/T request can finish after the
             // coordinate changes and repopulate the GPU cache with stale tiles.
             Interlocked.Increment(ref _renderStateVersion);
-            CancelSharedZarrRegionReads();
             if (cancelActiveFetches)
                 CancelActiveTileFetches();
 
             _glArea.ClearTextureCache();
             lock (_uploadedTileLock)
-            {
                 _uploadedTiles.Clear();
-                _uploadedTileInfos.Clear();
-            }
             if (resetLevel)
                 _currentLevel = -1;
             _tileCache?.Clear();
@@ -354,18 +322,20 @@ namespace BioGTK
             _openSlideBase?.cache?.cache.cacheMap.Clear();
             _displayRangeSeedLevel = -1;
 
-            lock (_pendingLevelSwitchLock)
-            {
-                _pendingLevelRenderInfos = null;
-                _pendingLevel = -1;
-                _pendingPreviousLevel = -1;
-            }
-
             lock (_pendingTileFetchLock)
             {
                 _pendingTileFetches.Clear();
                 _tileRetryCounts.Clear();
             }
+        }
+
+        internal void InvalidateCoordinate(bool channelChanged)
+        {
+            int seedLevel = _displayRangeSeedLevel;
+            ClearCache(resetLevel: false);
+            // A channel keeps its display window while navigating Z or T.
+            if (!channelChanged)
+                _displayRangeSeedLevel = seedLevel;
         }
 
         /// <summary>
@@ -375,7 +345,6 @@ namespace BioGTK
         public void InvalidateRenderState(bool cancelActiveFetches = true)
         {
             Interlocked.Increment(ref _renderStateVersion);
-            CancelSharedZarrRegionReads();
             if (cancelActiveFetches)
                 CancelActiveTileFetches();
             lock (_pendingTileFetchLock)
@@ -393,12 +362,6 @@ namespace BioGTK
         public void InvalidateViewport()
         {
             Interlocked.Increment(ref _viewportVersion);
-            lock (_pendingLevelSwitchLock)
-            {
-                _pendingLevelRenderInfos = null;
-                _pendingLevel = -1;
-                _pendingPreviousLevel = -1;
-            }
         }
 
         public async Task UpdateViewAsync(
@@ -429,7 +392,6 @@ namespace BioGTK
                 int renderVersion = _renderStateVersion;
                 int viewportVersion = _viewportVersion;
                 CancellationToken tileFetchToken;
-                CancellationToken sharedZarrRegionToken;
                 lock (_activeTileFetchLock)
                 {
                     // This token represents render invalidation only. A timeout on a
@@ -439,10 +401,6 @@ namespace BioGTK
                     if (_activeTileFetchCts == null || _activeTileFetchCts.IsCancellationRequested)
                         _activeTileFetchCts = new CancellationTokenSource();
                     tileFetchToken = _activeTileFetchCts.Token;
-                    // The direct shard read owns its transport token and can be
-                    // interrupted without detaching an uncancellable BioLib read.
-                    _sharedZarrRegionCts ??= new CancellationTokenSource();
-                    sharedZarrRegionToken = _sharedZarrRegionCts.Token;
                 }
 
             var schema = _useOpenSlide ? _openSlideBase.Schema : _slideBase.Schema;
@@ -450,13 +408,6 @@ namespace BioGTK
             int level = TileUtil.GetLevel(schema.Resolutions, resolution);
             var levelRes = schema.Resolutions[level];
             double levelUnitsPerPixel = levelRes.UnitsPerPixel;
-
-            await EnsureGlobalDisplayRangeAsync(coordinate, renderVersion).ConfigureAwait(false);
-
-            // Keep tile geometry for uploaded textures across viewport changes.
-            // It lets pan/zoom immediately reproject the current pyramid level
-            // while sharper tiles for a new level are still downloading. Entries
-            // whose GPU textures were evicted are filtered by HasTileTexture.
 
             double originX = pyramidalOrigin.X;
             double originY = pyramidalOrigin.Y;
@@ -559,40 +510,15 @@ namespace BioGTK
                 _glArea.TileFrameVersion = renderVersion;
                 _glArea.SetProtectedTileIndices(renderInfos.Select(info => info.Index));
 
-                bool levelChanged = level != _currentLevel;
-                if (levelChanged && renderInfos.Any(tile => !_glArea.HasTileTexture(tile.Index)))
-                {
-                    _glArea.PreservePreviousFrameWhileIncomplete = true;
-                    lock (_pendingLevelSwitchLock)
-                    {
-                        _pendingLevelRenderInfos = renderInfos;
-                        _pendingLevel = level;
-                        _pendingPreviousLevel = _currentLevel;
-                    }
-                    var fallback = GetCachedLevelRenderInfos(
-                        _currentLevel, pyramidalOrigin, resolution, viewportWidth, viewportHeight, schema);
-                    _glArea.SetTilesToRender(fallback);
-                }
-                else
-                {
-                    _glArea.PreservePreviousFrameWhileIncomplete = false;
-                    if (levelChanged)
-                    {
-                        _glArea.ReleaseLevelTextures(_currentLevel);
-                        _currentLevel = level;
-                    }
-                    lock (_pendingLevelSwitchLock)
-                    {
-                        _pendingLevelRenderInfos = null;
-                        _pendingLevel = -1;
-                        _pendingPreviousLevel = -1;
-                    }
-                    _glArea.SetTilesToRender(renderInfos);
-                }
+                _currentLevel = level;
+                _glArea.SetTilesToRender(renderInfos);
                 _glArea.RequestRedraw();
 
+                // Metadata is available immediately. Sampling runs separately
+                // so it cannot hold up requests for the visible tiles.
+                _ = EnsureGlobalDisplayRangeAsync(coordinate, renderVersion);
+
                 // Offscreen prefetch must never hold up the visible frame.
-                var tilesToFetch = new List<TileInfo>();
                 foreach (var tile in visibleTiles.Concat(prefetchTiles))
                 {
                     if (_glArea.HasTileTexture(tile.Index))
@@ -600,14 +526,11 @@ namespace BioGTK
 
                     lock (_pendingTileFetchLock)
                     {
-                        if (_pendingTileFetches.Add(tile.Index))
-                            tilesToFetch.Add(tile);
+                        if (!_pendingTileFetches.Add(tile.Index))
+                            continue;
                     }
+                    _ = ProcessPendingFetchAsync(tile, coordinate, tileFetchToken, renderVersion, level, schema);
                 }
-
-                var sharedRegion = TryFetchSharedZarrRegionAsync(tilesToFetch, level, coordinate, renderVersion, sharedZarrRegionToken);
-                foreach (var tile in tilesToFetch)
-                    _ = ProcessPendingFetchAsync(tile, coordinate, tileFetchToken, renderVersion, level, schema, sharedRegion);
             }).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -695,33 +618,6 @@ namespace BioGTK
             return tiles;
         }
 
-        private List<TileRenderInfo> GetCachedLevelRenderInfos(
-            int level,
-            PointD pyramidalOrigin,
-            double resolution,
-            int viewportWidth,
-            int viewportHeight,
-            ITileSchema schema)
-        {
-            if (level < 0)
-                return new List<TileRenderInfo>();
-
-            List<KeyValuePair<TileIndex, TileInfo>> uploadedTileSnapshot;
-            lock (_uploadedTileLock)
-                uploadedTileSnapshot = _uploadedTileInfos.ToList();
-
-            return uploadedTileSnapshot
-                .Where(pair => pair.Key.Level == level && _glArea.HasTileTexture(pair.Key))
-                .Select(pair => CalculateScreenPosition(
-                    pair.Value,
-                    pyramidalOrigin,
-                    resolution,
-                    level,
-                    schema))
-                .Where(tile => IsVisible(tile, viewportWidth, viewportHeight))
-                .ToList();
-        }
-
         private static bool IsVisible(TileRenderInfo tile, int viewportWidth, int viewportHeight) =>
             tile.ScreenWidth > 0 && tile.ScreenHeight > 0 &&
             tile.ScreenX < viewportWidth && tile.ScreenY < viewportHeight &&
@@ -733,23 +629,18 @@ namespace BioGTK
             CancellationToken ct,
             int renderVersion,
             int level,
-            ITileSchema schema,
-            Task<(byte[] Pixels, int FirstCol, int FirstRow, int Width)> sharedRegion)
+            ITileSchema schema)
         {
             bool tileUploaded = false;
             bool retryMissingTile = false;
             try
             {
-                var region = await sharedRegion.ConfigureAwait(false);
                 if (ct.IsCancellationRequested || renderVersion != _renderStateVersion)
                     return;
 
                 int tW = schema.Resolutions[level].TileWidth;
                 int tH = schema.Resolutions[level].TileHeight;
-                byte[] tileData = region.Pixels == null
-                    ? await FetchTileAsync(tile, level, coordinate, renderVersion, ct).ConfigureAwait(false)
-                    : CropBgraTile(region.Pixels, region.Width,
-                        (tile.Index.Col - region.FirstCol) * tW, (tile.Index.Row - region.FirstRow) * tH, tW, tH);
+                byte[] tileData = await FetchTileAsync(tile, level, coordinate, renderVersion, ct).ConfigureAwait(false);
                 if (ct.IsCancellationRequested || renderVersion != _renderStateVersion)
                     return;
 
@@ -782,27 +673,9 @@ namespace BioGTK
                         return;
                     }
                     lock (_uploadedTileLock)
-                    {
                         _uploadedTiles.Add(tile.Index);
-                        _uploadedTileInfos[tile.Index] = tile;
-                    }
                     tileUploaded = true;
 
-                    lock (_pendingLevelSwitchLock)
-                    {
-                        if (_pendingLevel == level && _pendingLevelRenderInfos != null &&
-                            _pendingLevelRenderInfos.All(info => _glArea.HasTileTexture(info.Index)))
-                        {
-                            if (_pendingPreviousLevel >= 0 && _pendingPreviousLevel != level)
-                                _glArea.ReleaseLevelTextures(_pendingPreviousLevel);
-                            _glArea.PreservePreviousFrameWhileIncomplete = false;
-                            _glArea.SetTilesToRender(_pendingLevelRenderInfos);
-                            _pendingLevelRenderInfos = null;
-                            _pendingLevel = -1;
-                            _pendingPreviousLevel = -1;
-                            _currentLevel = level;
-                        }
-                    }
                     _glArea.RequestRedraw();
                 }).ConfigureAwait(false);
             }
@@ -858,141 +731,6 @@ namespace BioGTK
             }
         }
 
-        private async Task<(byte[] Pixels, int FirstCol, int FirstRow, int Width)> TryFetchSharedZarrRegionAsync(
-            List<TileInfo> tiles, int level, ZCT coordinate, int renderVersion, CancellationToken ct)
-        {
-            var slide = _slideBase;
-            var image = slide?.Image?.BioImage;
-            if (tiles.Count == 0 || image?.zarrReader == null || image.multiscale?.Path != string.Empty ||
-                image.levels == null || level >= image.levels.Count || level >= image.Resolutions.Count ||
-                image.Resolutions[level].PixelFormat != PixelFormat.Format16bppGrayScale ||
-                ShouldComposeRgbTile() || !Uri.TryCreate(image.SourceFile, UriKind.Absolute, out var source) ||
-                source.Scheme is not ("https" or "http" or "s3"))
-                return default;
-
-            var resolution = slide.Schema.Resolutions[level];
-            int tileWidth = resolution.TileWidth;
-            int tileHeight = resolution.TileHeight;
-            int firstCol = tiles.Min(tile => tile.Index.Col);
-            int firstRow = tiles.Min(tile => tile.Index.Row);
-            long left = (long)firstCol * tileWidth;
-            long top = (long)firstRow * tileHeight;
-            long right = ((long)tiles.Max(tile => tile.Index.Col) + 1) * tileWidth;
-            long bottom = ((long)tiles.Max(tile => tile.Index.Row) + 1) * tileHeight;
-            long width = right - left;
-            long height = bottom - top;
-            const int maxBatchSide = 2048;
-            if (left < 0 || top < 0 || width > maxBatchSide || height > maxBatchSide)
-                return default;
-
-            var cached = _cachedZarrPlane;
-            if (cached?.Version == renderVersion && cached.Level == level && right <= cached.Width && bottom <= cached.Height)
-                return (cached.Pixels, 0, 0, cached.Width);
-
-            var node = image.levels[level];
-            var axes = node.EffectiveAxes.Select(axis => axis.Name.ToLowerInvariant()).ToArray();
-            int xAxis = Array.IndexOf(axes, "x");
-            int yAxis = Array.IndexOf(axes, "y");
-            if (yAxis < 0 || xAxis <= yAxis || axes.Any(axis => axis is not ("x" or "y" or "z" or "c" or "t")))
-                return default;
-
-            var array = await image.zarrReader.RootGroup.OpenArrayAsync(node.Dataset.Path, ct).ConfigureAwait(false);
-            if (array.Metadata.Sharding == null)
-                return default;
-
-            var shard = array.Metadata.ChunkShape;
-            var shape = node.Shape;
-            long paddedPlaneWidth = ((shape[xAxis] + tileWidth - 1) / tileWidth) * tileWidth;
-            long paddedPlaneHeight = ((shape[yAxis] + tileHeight - 1) / tileHeight) * tileHeight;
-            bool cacheWholePlane = shape[xAxis] <= shard[xAxis] && shape[yAxis] <= shard[yAxis] &&
-                paddedPlaneWidth <= maxBatchSide && paddedPlaneHeight <= maxBatchSide &&
-                right <= paddedPlaneWidth && bottom <= paddedPlaneHeight;
-            if (cacheWholePlane)
-            {
-                // Panning this small plane would fetch the same shard again.
-                // Decode it once and keep at most one plane for the current display state.
-                firstCol = firstRow = 0;
-                left = top = 0;
-                right = shape[xAxis];
-                bottom = shape[yAxis];
-                width = paddedPlaneWidth;
-                height = paddedPlaneHeight;
-            }
-            else if (tiles.Count < 2)
-                return default;
-
-            right = Math.Min(right, shape[xAxis]);
-            bottom = Math.Min(bottom, shape[yAxis]);
-            if (right <= left || bottom <= top || left / shard[xAxis] != (right - 1) / shard[xAxis] ||
-                top / shard[yAxis] != (bottom - 1) / shard[yAxis])
-                return default;
-
-            var start = new long[axes.Length];
-            var end = new long[axes.Length];
-            for (int axis = 0; axis < axes.Length; axis++)
-            {
-                start[axis] = axes[axis] switch
-                {
-                    "x" => left,
-                    "y" => top,
-                    "z" => Math.Clamp(coordinate.Z, 0L, shape[axis] - 1),
-                    "c" => Math.Clamp(coordinate.C, 0L, shape[axis] - 1),
-                    _ => Math.Clamp(coordinate.T, 0L, shape[axis] - 1)
-                };
-                end[axis] = axes[axis] switch { "x" => right, "y" => bottom, _ => start[axis] + 1 };
-            }
-
-            await _sharedZarrRegionSemaphore.WaitAsync(ct).ConfigureAwait(false);
-            try
-            {
-                if (renderVersion != _renderStateVersion)
-                    return default;
-
-                cached = _cachedZarrPlane;
-                if (cacheWholePlane && cached?.Version == renderVersion && cached.Level == level)
-                    return (cached.Pixels, 0, 0, cached.Width);
-
-                // All requested tiles share one shard. Read the rectangle once
-                // so ZarrNET can reuse that shard across its inner chunks.
-                byte[] raw = await array.ReadRegionAsync(start, end, maxParallelChunks: 1, ct: ct).ConfigureAwait(false);
-                if (renderVersion != _renderStateVersion)
-                    return default;
-
-                int min = image.ZarrDisplayMin;
-                int max = image.ZarrDisplayMax;
-                if (max <= min)
-                {
-                    min = 0;
-                    max = ushort.MaxValue;
-                }
-                var pixels = Gray16TileConverter.ToBgra(raw, (int)(right - left), (int)(bottom - top),
-                    (int)width, (int)height, min, max);
-                if (cacheWholePlane)
-                {
-                    lock (_activeTileFetchLock)
-                    {
-                        if (renderVersion == _renderStateVersion)
-                            _cachedZarrPlane = new CachedZarrPlane(renderVersion, level, pixels, (int)width, (int)height);
-                    }
-                }
-                return (pixels, firstCol, firstRow, (int)width);
-            }
-            finally
-            {
-                _sharedZarrRegionSemaphore.Release();
-            }
-        }
-
-        private static byte[] CropBgraTile(byte[] src, int srcW, int srcX, int srcY, int dstW, int dstH)
-        {
-            int srcRowBytes = srcW * 4;
-            int dstRowBytes = dstW * 4;
-            byte[] cropped = new byte[dstRowBytes * dstH];
-            for (int y = 0; y < dstH; y++)
-                Buffer.BlockCopy(src, (srcY + y) * srcRowBytes + srcX * 4, cropped, y * dstRowBytes, dstRowBytes);
-            return cropped;
-        }
-
         private async Task EnsureGlobalDisplayRangeAsync(ZCT coordinate, int renderVersion)
         {
             if (_useOpenSlide || _slideBase?.Image?.BioImage == null)
@@ -1023,19 +761,43 @@ namespace BioGTK
             if (width <= 0 || height <= 0 || Interlocked.Exchange(ref _displayRangeProbeStarted, 1) != 0)
                 return;
 
+            var viewer = App.viewer;
+            ushort displayMax = 0;
             try
             {
-                await ProbeDisplayRangeAsync(bioImage, coordinate, renderVersion, seedLevel, width, height)
+                displayMax = await Task.Run(() =>
+                    ProbeDisplayRangeAsync(bioImage, coordinate, renderVersion, seedLevel, width, height))
                     .ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 AppLog.Append($"Display range sampling failed: {ex.Message}");
             }
-            finally
+
+            await RunOnGtkThreadAsync(() =>
             {
                 Interlocked.Exchange(ref _displayRangeProbeStarted, 0);
-            }
+                if (renderVersion != _renderStateVersion)
+                {
+                    // The latest plane may have skipped sampling while this one
+                    // was still reading. Let it retry with the gate released.
+                    viewer?.RequestDeferredRender();
+                    return;
+                }
+                if (displayMax == 0)
+                    return;
+
+                bool rangeChanged = bioImage.ZarrDisplayMin != 0 || bioImage.ZarrDisplayMax != displayMax;
+                bioImage.ZarrDisplayMin = 0;
+                bioImage.ZarrDisplayMax = displayMax;
+                if (rangeChanged)
+                {
+                    ClearCache(resetLevel: false, cancelActiveFetches: false);
+                    viewer?.RequestDeferredRender();
+                }
+                _displayRangeSeedLevel = seedLevel;
+                _glArea.RequestRedraw();
+            }).ConfigureAwait(false);
         }
 
         private static bool TryGetZarrDisplayWindow(BioImage image, int channel, out ushort min, out int max)
@@ -1072,7 +834,7 @@ namespace BioGTK
             return max > min;
         }
 
-        private async Task ProbeDisplayRangeAsync(
+        private async Task<ushort> ProbeDisplayRangeAsync(
             BioImage bioImage, ZCT coordinate, int renderVersion, int seedLevel, int width, int height)
         {
             int frameIndex = bioImage.GetFrameIndex(coordinate.Z, coordinate.C, coordinate.T);
@@ -1095,54 +857,21 @@ namespace BioGTK
             };
 
             ushort bestMax = 0;
-            bool gotRange = false;
             foreach (int sampleY in ys)
             {
                 foreach (int sampleX in xs)
                 {
                     if (renderVersion != _renderStateVersion)
-                        return;
+                        return 0;
 
                     using var seedBitmap = await bioImage.GetTile(frameIndex, seedLevel, sampleX, sampleY, sampleW, sampleH, coordinate, true)
                         .ConfigureAwait(false);
                     if (TryComputeDisplayRangeFromUsedBits(seedBitmap, out _, out ushort displayMax))
-                    {
-                        if (displayMax > bestMax)
-                            bestMax = displayMax;
-                        gotRange = true;
-                    }
+                        bestMax = Math.Max(bestMax, displayMax);
                 }
             }
 
-            if (gotRange && bestMax > 0)
-            {
-                if (renderVersion != _renderStateVersion)
-                    return;
-
-                bool rangeChanged = bioImage.ZarrDisplayMin != 0 ||
-                                    bioImage.ZarrDisplayMax != bestMax;
-                bioImage.ZarrDisplayMin = 0;
-                bioImage.ZarrDisplayMax = bestMax;
-                _displayRangeSeedLevel = seedLevel;
-
-                if (rangeChanged)
-                {
-                    await RunOnGtkThreadAsync(() =>
-                    {
-                        // The range probe runs during an active render and slider
-                        // changes may leave older HTTP reads draining. Mark their
-                        // results stale without aborting their network streams.
-                        ClearCache(resetLevel: false, cancelActiveFetches: false);
-                        _displayRangeSeedLevel = seedLevel;
-                        _glArea.RequestRedraw();
-                        App.viewer?.RequestDeferredRender();
-                    });
-                }
-                else if (renderVersion == _renderStateVersion)
-                {
-                    await RunOnGtkThreadAsync(() => _glArea.RequestRedraw());
-                }
-            }
+            return bestMax;
         }
 
         private static ushort SnapUsedBitCeiling(ushort value)
@@ -1236,12 +965,12 @@ namespace BioGTK
             }
         }
 
-        private bool ShouldComposeRgbTile()
-        {
-            if (_useOpenSlide || App.viewer?.Mode != ImageView.ViewMode.RGBImage)
-                return false;
+        private bool ShouldComposeRgbTile() =>
+            !_useOpenSlide && App.viewer?.Mode == ImageView.ViewMode.RGBImage &&
+            CanComposeRgbTile(_slideBase?.Image?.BioImage);
 
-            var bioImage = _slideBase?.Image?.BioImage;
+        internal static bool CanComposeRgbTile(BioImage bioImage)
+        {
             if (bioImage == null || bioImage.Channels == null)
                 return false;
             if (bioImage.Resolutions == null || bioImage.Resolutions.Count == 0)
@@ -1342,8 +1071,8 @@ namespace BioGTK
             // SlideImage BGRA conversion guesses a square from the pixel count,
             // which truncates narrow right-edge tiles (e.g. 16x256 becomes 64x64).
             byte[] raw;
-            bool planarRgb16 = image.Resolutions[level].PixelFormat == PixelFormat.Format48bppRgb;
-            if (planarRgb16)
+            ResolutionLevelNode levelNode = null;
+            if (image.Resolutions[level].PixelFormat == PixelFormat.Format48bppRgb)
             {
                 // Read the channel plane directly. BioLib 4.3's compatibility
                 // APIs either truncate these uint16 samples to one byte or read
@@ -1352,7 +1081,15 @@ namespace BioGTK
                 if (levels == null || levels.Count == 0)
                     return null;
 
-                ResolutionLevelNode levelNode = levels[Math.Clamp(level, 0, levels.Count - 1)];
+                levelNode = levels[Math.Clamp(level, 0, levels.Count - 1)];
+            }
+            else if (image.Type != BioImage.ImageType.well && image.levels?.Count > level)
+            {
+                levelNode = image.levels[level];
+            }
+
+            if (levelNode != null)
+            {
                 var plane = await levelNode.ReadTileAsync(
                     x, y, width, height,
                     z: coordinate.Z,
@@ -1381,7 +1118,7 @@ namespace BioGTK
             return Gray16TileConverter.ToBgra(raw, width, height, tileWidth, tileHeight, min, max);
         }
 
-        private static byte[] ComposeBgraTiles(byte[] redTile, byte[] greenTile, byte[] blueTile)
+        internal static byte[] ComposeBgraTiles(byte[] redTile, byte[] greenTile, byte[] blueTile)
         {
             byte[] fallback = redTile ?? greenTile ?? blueTile;
             if (fallback == null)

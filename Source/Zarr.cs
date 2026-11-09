@@ -105,7 +105,9 @@ namespace BioLib
         /// OME-Zarr v3 dataset at <paramref name="outputDir"/>.
         /// All pyramid resolution levels in <c>b.Resolutions</c> are written.
         /// </summary>
-        public static void SaveZarr(BioImage b, string outputDir)
+        public static void SaveZarr(BioImage b, string outputDir) => SaveZarr(b, outputDir, null);
+
+        internal static void SaveZarr(BioImage b, string outputDir, Action<double> reportProgress)
         {
             // ------------------------------------------------------------------
             // 1. Resolve dimensions and data type from the BioImage
@@ -157,6 +159,17 @@ namespace BioLib
                     GetRootPhysicalSizeX(b),
                     GetRootPhysicalSizeY(b),
                     GetRootPhysicalSizeZ(b)));
+            }
+
+            Action onTileWritten = null;
+            if (reportProgress != null)
+            {
+                long tilesPerStack = exportLevels.Sum(level =>
+                    ((level.Descriptor.SizeX + tileW - 1L) / tileW) *
+                    ((level.Descriptor.SizeY + tileH - 1L) / tileH));
+                long totalTiles = tilesPerStack * b.SizeT * b.SizeZ * exportChannelCount;
+                long writtenTiles = 0;
+                onTileWritten = () => reportProgress(++writtenTiles * 100.0 / totalTiles);
             }
 
             // ------------------------------------------------------------------
@@ -211,7 +224,8 @@ namespace BioLib
                                         rgbChannelIndex: c,
                                         srcChannelCount: sourceChannelCount,
                                         isBGRA: sourceIsBGRA,
-                                        logicalC: 0).GetAwaiter().GetResult();
+                                        logicalC: 0,
+                                        onTileWritten: onTileWritten).GetAwaiter().GetResult();
                                 }
                                 else
                                 {
@@ -222,7 +236,8 @@ namespace BioLib
                                         sourceLevelIndex: exportLevel.SourceIndex,
                                         scaleX: exportLevel.ScaleX,
                                         scaleY: exportLevel.ScaleY,
-                                        levelIndex: exportLevelIndex).GetAwaiter().GetResult();
+                                        levelIndex: exportLevelIndex,
+                                        onTileWritten: onTileWritten).GetAwaiter().GetResult();
                                 }
                             }
                         }
@@ -286,7 +301,8 @@ namespace BioLib
             int rgbChannelIndex = -1,
             int srcChannelCount = 1,
             bool isBGRA         = false,
-            int logicalC        = -1)
+            int logicalC        = -1,
+            Action onTileWritten = null)
         {
             bool needsDeinterleave = rgbChannelIndex >= 0;
             int  srcC              = needsDeinterleave ? logicalC : c;
@@ -411,7 +427,7 @@ namespace BioLib
                         actualH, actualW,
                         pixelBytes,
                         levelIndex: levelIndex).ConfigureAwait(false);
-
+                    onTileWritten?.Invoke();
                 }
             }
         }

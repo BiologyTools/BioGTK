@@ -21,7 +21,13 @@
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <PackageReleaseNotes></PackageReleaseNotes>
+    <PackageReleaseNotes>
+- Smoother pan and zoom. The viewer prioritizes visible tiles over offscreen prefetching and keeps the previous frame aligned while new tiles load. Tile results from an earlier plane or contrast setting are discarded.
+- Fewer downloads for sharded OME-Zarr. Eligible remote 16-bit grayscale datasets can load several tiles with a single shard read and reuse a cached plane while panning.
+- Metadata-driven contrast. The viewer uses the channel’s declared OME-Zarr display range when available and falls back to pixel sampling.
+- More reliable window and dialog loading. BioGTK resolves the window icon from the application directory on macOS, even when launched from a different working directory. GTK layouts now load with read-only access and release their file handles after loading.
+- Updated the BioLib dependency to 4.3.1.
+    </PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
 

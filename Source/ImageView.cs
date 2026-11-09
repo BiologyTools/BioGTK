@@ -70,7 +70,7 @@ namespace BioGTK
                 App.channelsTool?.RefreshStatisticsForCoordinate(SelectedImage, SelectedImage.Coordinate);
             if (SelectedImage.isPyramidal && coordinateChanged)
             {
-                PreparePyramidalCoordinateRender();
+                PreparePyramidalCoordinateRender(SelectedImage.Coordinate.C != previousCoordinate.C);
                 ForceNavigationRefresh();
                 BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, z, c, t);
                 return;
@@ -84,19 +84,17 @@ namespace BioGTK
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, z, c, t);
         }
 
-        private void PreparePyramidalCoordinateRender()
+        private void PreparePyramidalCoordinateRender(bool channelChanged)
         {
             if (SelectedImage?.isPyramidal != true)
                 return;
 
-            // Supersede earlier planes while allowing BioLib reads without
-            // transport cancellation to finish in the background.
-            slideRenderer?.InvalidateRenderState(cancelActiveFetches: false);
+            slideRenderer?.InvalidateCoordinate(channelChanged);
             sKSlideRenderer?.InvalidateRenderState();
             SelectedImage.InvalidateTileCache();
-            slideRenderer?.ClearCache(resetLevel: false, cancelActiveFetches: false);
             sKSlideRenderer?.ClearCache();
-            SelectedImage.ZarrDisplayMax = 0;
+            if (channelChanged)
+                SelectedImage.ZarrDisplayMax = 0;
         }
 
         private void RequestViewportRefresh(bool scheduleIdleRetry = true)
@@ -220,7 +218,6 @@ namespace BioGTK
             }
 
             Initialize();
-            InitPreview();
             UpdateImages(true);
             UpdateGUI();
             App.roiManager?.UpdateAnnotationList();
@@ -617,7 +614,7 @@ namespace BioGTK
                 MacOS = true;
                 // Create the renderer bridge
                 View = new SKDrawingArea();
-                sKSlideRenderer = new SKSlideRenderer(sk);
+                sKSlideRenderer = new SKSlideRenderer((SKDrawingArea)View);
             }
             else if (OperatingSystem.IsLinux())
             {
@@ -857,33 +854,8 @@ namespace BioGTK
                     canvas.Restore();
                 }
                 canvas.Restore();
-                // Draw overview if enabled
-                EnsureOverviewCurrent();
-                if (overviewImage != null && ShowOverview)
-                {
-                    paint = new SKPaint
-                    {
-                        Color = SKColors.Gray,
-                        BlendMode = SKBlendMode.SrcOver,
-                        IsAntialias = true,
-                        Style = SKPaintStyle.Fill
-                    };
-                    // Draw the overview image at the top-left corner
-                    canvas.DrawImage(overviewImage, 0, 0, paint);
-                    paint.Style = SKPaintStyle.Stroke;
-                    canvas.DrawRect(0, 0, overview.Width, overview.Height, paint);
-                }
-                else if (overviewImage == null && ShowOverview)
-                {
-                    paint.Style = SKPaintStyle.Stroke;
-                    paint.Color = SKColors.Gray;
-                    paint.StrokeWidth = 2;
-                    canvas.DrawRect(0, 0, overview.Width, overview.Height, paint);
-                }
+                DrawOverview(canvas);
                 SKImageInfo inf = new SKImageInfo(width, height);
-                if(SelectedImage!=null)
-                if (SelectedImage.isPyramidal)
-                    DrawViewportRectangle(canvas, paint);
 
                 // Plugin rendering hook
                 Plugins.Render(this, new SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs(canvas.Surface, inf));
@@ -1271,9 +1243,7 @@ namespace BioGTK
                 _pendingTileFetches.Clear();
             }
 
-            overviewImage?.Dispose();
-            overviewImage = null;
-            _overviewRequestId++;
+            InvalidateOverview();
 
             slideRenderer?.ClearCache();
             slideRenderer = null;
@@ -1440,23 +1410,13 @@ namespace BioGTK
                     s = new AForge.Size(View.AllocatedWidth, View.AllocatedHeight);
 
                 var brutileOrigin = new PointD(PyramidalOrigin.X, -PyramidalOrigin.Y);
-                int myGeneration = System.Threading.Interlocked.Increment(ref _renderGeneration);
-
-                var renderTask = sKSlideRenderer?.UpdateViewAsync(
+                _ = sKSlideRenderer?.UpdateViewAsync(
                     brutileOrigin,
                     Resolution,
                     GetCoordinate(),
                     s.Width,
                     s.Height
                 );
-                if (renderTask != null)
-                {
-                    _ = renderTask.ContinueWith(t =>
-                    {
-                        if (!t.IsFaulted && !_viewerCleanupDone && _renderGeneration == myGeneration)
-                            Gtk.Application.Invoke((s2, a2) => View?.QueueDraw());
-                    });
-                }
             }
             else
             {
@@ -1471,9 +1431,24 @@ namespace BioGTK
                     );
                 }
             }
+            EnsureOverviewCurrent();
         }
         bool initrend = false;
         #endregion
+        private void DrawOverview(SKCanvas canvas)
+        {
+            if (SelectedImage?.isPyramidal != true || !ShowOverview)
+                return;
+
+            EnsureOverviewCurrent();
+            using var paint = new SKPaint { Color = SKColors.Gray, IsAntialias = true };
+            if (overviewImage != null)
+                canvas.DrawImage(overviewImage, 0, 0, paint);
+            paint.Style = SKPaintStyle.Stroke;
+            canvas.DrawRect(0, 0, overview.Width, overview.Height, paint);
+            DrawViewportRectangle(canvas, paint);
+        }
+
         private void DrawViewportRectangle(SKCanvas canvas, SKPaint paint)
         {
             if (SelectedImage == null || !SelectedImage.isPyramidal || !ShowOverview)
@@ -1600,9 +1575,6 @@ namespace BioGTK
         // Captured at construction time on the GTK main thread so ExecuteDeferredRender
         // can detect whether it's already on the right thread without GLib internals.
         private readonly Thread _gtkMainThread = Thread.CurrentThread;
-        // Incremented each time a new macOS pyramidal render is requested.
-        // ContinueWith callbacks check this to discard stale results.
-        private volatile int _renderGeneration = 0;
         private int _deferredRenderQueued = 0;
         // Set to true while GoToImage is applying a batch of origin/resolution changes
         // so that intermediate setter calls don't each fire a separate UpdateView.
@@ -1795,7 +1767,7 @@ namespace BioGTK
             slideRenderer?.ClearCache(resetLevel: false, cancelActiveFetches: false);
             sKSlideRenderer?.ClearCache();
             SelectedImage.ZarrDisplayMax = 0;
-            _overviewSource = null;
+            InvalidateOverview();
             BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, SelectedImage?.file ?? string.Empty);
         }
 
@@ -1809,10 +1781,36 @@ namespace BioGTK
         }
         Rectangle overview;
         SKImage overviewImage;
-        private BioImage _overviewSource;
-        private ZCT _overviewCoordinate;
-        private int _overviewDisplayMin, _overviewDisplayMax, _overviewWellIndex;
-        private int _overviewRequestId;
+        private readonly record struct OverviewState(
+            BioImage Image, ZCT Coordinate, ushort DisplayMin, int DisplayMax, int WellIndex,
+            int Size, (int R, int G, int B)? RgbChannels);
+        private OverviewState? _overviewState;
+        private CancellationTokenSource _overviewCancellation;
+
+        private OverviewState GetOverviewState(BioImage image)
+        {
+            (int R, int G, int B)? rgbChannels = null;
+            if (Mode == ViewMode.RGBImage && SlideRenderer.CanComposeRgbTile(image))
+            {
+                int lastChannel = image.IsZarrSource && image.Resolutions[0].PixelFormat == AForge.PixelFormat.Format48bppRgb
+                    ? 2 : image.Channels.Count - 1;
+                rgbChannels = (Math.Clamp(image.rgbChannels[0], 0, lastChannel),
+                    Math.Clamp(image.rgbChannels[1], 0, lastChannel),
+                    Math.Clamp(image.rgbChannels[2], 0, lastChannel));
+            }
+            return new OverviewState(image, image.Coordinate, image.ZarrDisplayMin, image.ZarrDisplayMax,
+                image.WellIndex, Math.Max(1, View.ScaleFactor) * 160, rgbChannels);
+        }
+
+        private void InvalidateOverview()
+        {
+            _overviewCancellation?.Cancel();
+            _overviewCancellation?.Dispose();
+            _overviewCancellation = null;
+            _overviewState = null;
+            overviewImage?.Dispose();
+            overviewImage = null;
+        }
 
         private void EnsureOverviewCurrent()
         {
@@ -1820,12 +1818,9 @@ namespace BioGTK
             if (_viewerCleanupDone || image?.isPyramidal != true || !ShowOverview)
                 return;
 
-            if (!ReferenceEquals(_overviewSource, image) ||
-                _overviewCoordinate != image.Coordinate ||
-                _overviewDisplayMin != image.ZarrDisplayMin ||
-                _overviewDisplayMax != image.ZarrDisplayMax ||
-                _overviewWellIndex != image.WellIndex)
-                InitPreview();
+            var state = GetOverviewState(image);
+            if (_overviewState != state)
+                LoadOverview(state);
         }
         public int? MacroResolution { get { return SelectedImage.MacroResolution; } }
         public int? LabelResolution { get { return SelectedImage.LabelResolution; } }
@@ -1836,78 +1831,67 @@ namespace BioGTK
         /// fetches it, and scales it to fit within OVERVIEW_SIZE while maintaining
         /// aspect ratio.
         /// </summary>
-        private async void InitPreview()
+        private async void LoadOverview(OverviewState state)
         {
-            var image = SelectedImage;
-            if (_viewerCleanupDone || image == null || !image.isPyramidal)
-                return;
-
-            int requestId = ++_overviewRequestId;
-            _overviewSource = image;
-            _overviewCoordinate = image.Coordinate;
-            _overviewDisplayMin = image.ZarrDisplayMin;
-            _overviewDisplayMax = image.ZarrDisplayMax;
-            _overviewWellIndex = image.WellIndex;
-            ZCT coordinate = image.Coordinate;
+            InvalidateOverview();
+            _overviewState = state;
+            _overviewCancellation = new CancellationTokenSource();
+            var ct = _overviewCancellation.Token;
+            var (placeholderWidth, placeholderHeight) = CalcOverviewSize(state.Image.SizeX, state.Image.SizeY, state.Size);
+            overview = new Rectangle(0, 0, placeholderWidth, placeholderHeight);
             try
             {
                 refresh = false;
-                int OVERVIEW_SIZE = View.ScaleFactor * 160;
-
-                var (sourceBitmap, srcW, srcH) = await FetchPreviewBitmap(image, coordinate, OVERVIEW_SIZE);
+                var (sourceBitmap, srcW, srcH) = await Task.Run(() => FetchPreviewBitmap(state, ct), ct)
+                    .ConfigureAwait(false);
                 Gtk.Application.Invoke((s, e) =>
                 {
                     using (sourceBitmap)
                     {
-                        if (_viewerCleanupDone || requestId != _overviewRequestId || !ReferenceEquals(image, SelectedImage))
+                        if (ct.IsCancellationRequested || _viewerCleanupDone || !ShowOverview ||
+                            !ReferenceEquals(state.Image, SelectedImage))
+                            return;
+                        if (GetOverviewState(state.Image) != state)
+                        {
+                            EnsureOverviewCurrent();
+                            return;
+                        }
+                        if (sourceBitmap == null)
                             return;
                         try
                         {
-                            var (ow, oh) = CalcOverviewSize(srcW, srcH, OVERVIEW_SIZE);
-                            var preview = ScaleToOverview(sourceBitmap, srcW, srcH, ow, oh);
+                            var (ow, oh) = CalcOverviewSize(srcW, srcH, state.Size);
+                            var preview = ScaleToOverview(sourceBitmap, state.DisplayMin, state.DisplayMax, ow, oh);
                             overview = new Rectangle(0, 0, ow, oh);
-                            overviewImage?.Dispose();
                             overviewImage = preview;
-                            ShowOverview = overviewImage != null;
                         }
                         catch (Exception ex)
                         {
                             Console.WriteLine($"Overview rendering failed: {ex.Message}");
-                            ShowOverview = false;
-                            overviewImage?.Dispose();
-                            overviewImage = null;
                         }
-                        // SlideGLArea uses AutoRender=false, so QueueDraw alone does
-                        // not invoke its GL render callback. Request a GL render as
-                        // soon as the asynchronously prepared overview is installed;
-                        // otherwise it only appears after the next pan/zoom event.
-                        if (View is SlideGLArea slideGlArea)
-                            slideGlArea.RequestRedraw();
-                        else
-                            View?.QueueDraw();
+                        RequestViewportRefresh(scheduleIdleRetry: false);
                     }
                 });
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+            }
             catch (Exception ex)
             {
-                Gtk.Application.Invoke((s, e) =>
-                {
-                    if (_viewerCleanupDone || requestId != _overviewRequestId)
-                        return;
+                if (!ct.IsCancellationRequested)
                     Console.WriteLine($"Overview loading failed: {ex.Message}");
-                    ShowOverview = false;
-                    overviewImage?.Dispose();
-                    overviewImage = null;
-                });
             }
         }
 
         // Returns (bitmap, srcW, srcH), or (null, 0, 0) on failure.
-        private async Task<(Bitmap bitmap, int w, int h)> FetchPreviewBitmap(BioImage image, ZCT coordinate, int overviewSize)
+        private async Task<(Bitmap bitmap, int w, int h)> FetchPreviewBitmap(OverviewState state, CancellationToken ct)
         {
+            BioImage image = state.Image;
+            ZCT coordinate = state.Coordinate;
             if (image.Type == BioImage.ImageType.well)
             {
-                var bmp = await image.GetWellFieldBitmap(image.WellIndex, coordinate.Z, coordinate.C, coordinate.T);
+                var bmp = await image.GetWellFieldBitmap(state.WellIndex, coordinate.Z, coordinate.C, coordinate.T)
+                    .ConfigureAwait(false);
                 if (bmp == null)
                 {
                     return (null, 0, 0);
@@ -1915,36 +1899,37 @@ namespace BioGTK
                 return (bmp, bmp.Width, bmp.Height);
             }
 
-            // The initial pyramidal view is already fit to the complete image.
-            // Reuse that rendered frame instead of independently downloading and
-            // decoding another multi-megapixel pyramid level for the minimap.
-            if (View is SlideGLArea slideGlArea)
-            {
-                var renderedPreview = await CaptureRenderedPreviewAsync(slideGlArea).ConfigureAwait(false);
-                if (renderedPreview.bitmap != null)
-                    return renderedPreview;
-            }
-
             if (image.OpenSlideBase?.SlideImage != null)
-                return await Task.Run(() => FetchOpenSlidePreview(image, overviewSize)).ConfigureAwait(false);
+                return FetchOpenSlidePreview(image, state.Size, ct);
 
-            int level = FindOverviewLevel(image, overviewSize);
+            int level = FindOverviewLevel(image, state.Size);
             if (level < 0)
                 return (null, 0, 0);
 
             for (int lev = level; lev >= 0; lev--)
             {
+                ct.ThrowIfCancellationRequested();
                 var res = image.Resolutions[lev];
                 int srcW = res.SizeX, srcH = res.SizeY;
 
                 try
                 {
+                    if (image.IsZarrSource && image.levels?.Count > lev &&
+                        res.PixelFormat is AForge.PixelFormat.Format16bppGrayScale or AForge.PixelFormat.Format48bppRgb)
+                    {
+                        var preview = await FetchZarrOverviewAsync(state, image.levels[lev], srcW, srcH, ct)
+                            .ConfigureAwait(false);
+                        if (preview != null)
+                            return (preview, srcW, srcH);
+                        ct.ThrowIfCancellationRequested();
+                    }
+
                     var tileBitmap = await image.GetTile(
                         image.GetFrameIndex(coordinate.Z, coordinate.C, coordinate.T),
                         lev,
                         0, 0,
-                        srcW, srcH, coordinate);
-                    if (tileBitmap != null && !LooksBlank(tileBitmap))
+                        srcW, srcH, coordinate).ConfigureAwait(false);
+                    if (tileBitmap != null && (image.IsZarrSource || !LooksBlank(tileBitmap)))
                         return (tileBitmap, srcW, srcH);
                     tileBitmap?.Dispose();
                 }
@@ -1952,6 +1937,7 @@ namespace BioGTK
                 {
                 }
 
+                ct.ThrowIfCancellationRequested();
                 if (image.SlideBase == null)
                     return (null, 0, 0);
 
@@ -1966,7 +1952,7 @@ namespace BioGTK
                     byte[] bt = await image.SlideBase.GetSlice(
                         sliceInfo,
                         new PointD(0, 0),
-                        new AForge.Size(srcW, srcH));
+                        new AForge.Size(srcW, srcH)).ConfigureAwait(false);
 
                     var bmp = CreatePreviewBitmap(srcW, srcH, bt);
                     if (!LooksBlank(bmp))
@@ -1981,42 +1967,43 @@ namespace BioGTK
             return (null, 0, 0);
         }
 
-        private static async Task<(Bitmap bitmap, int w, int h)> CaptureRenderedPreviewAsync(SlideGLArea slideGlArea)
+        private static async Task<Bitmap> FetchZarrOverviewAsync(
+            OverviewState state, ResolutionLevelNode level, int width, int height, CancellationToken ct)
         {
-            var completion = new TaskCompletionSource<(Bitmap bitmap, int w, int h)>(
-                TaskCreationOptions.RunContinuationsAsynchronously);
-            Action<byte[], int, int> captureCallback = null;
-
-            captureCallback = (bytes, width, height) =>
+            int min = state.DisplayMin;
+            int max = state.DisplayMax;
+            if (max <= min)
             {
-                try
-                {
-                    completion.TrySetResult((
-                        CreatePreviewBitmap(width, height, bytes), width, height));
-                }
-                catch (Exception ex)
-                {
-                    completion.TrySetException(ex);
-                }
-            };
-            Gtk.Application.Invoke((s, e) =>
+                min = 0;
+                max = ushort.MaxValue;
+            }
+
+            async Task<byte[]> ReadChannelAsync(int channel)
             {
-                slideGlArea.CaptureNextWholeImageFrame(captureCallback);
-            });
+                var tile = await level.ReadTileAsync(0, 0, width, height,
+                    z: state.Coordinate.Z, c: channel, t: state.Coordinate.T, ct: ct).ConfigureAwait(false);
+                byte[] raw = tile?.Data;
+                return raw?.Length == (long)width * height * 2
+                    ? Gray16TileConverter.ToBgra(raw, width, height, width, height, min, max)
+                    : null;
+            }
 
-            // A user can zoom before the initial fit frame completes. In that case
-            // retain the source-reader fallback rather than waiting indefinitely.
-            Task finished = await Task.WhenAny(completion.Task, Task.Delay(TimeSpan.FromSeconds(15)))
-                .ConfigureAwait(false);
-            if (finished == completion.Task)
-                return await completion.Task.ConfigureAwait(false);
+            byte[] pixels;
+            if (state.RgbChannels is { } rgb)
+            {
+                var channels = await Task.WhenAll(ReadChannelAsync(rgb.R), ReadChannelAsync(rgb.G), ReadChannelAsync(rgb.B))
+                    .ConfigureAwait(false);
+                pixels = SlideRenderer.ComposeBgraTiles(channels[0], channels[1], channels[2]);
+            }
+            else
+            {
+                pixels = await ReadChannelAsync(state.Coordinate.C).ConfigureAwait(false);
+            }
 
-            Gtk.Application.Invoke((s, e) =>
-                slideGlArea.CancelWholeImageFrameCapture(captureCallback));
-            return (null, 0, 0);
+            return CreatePreviewBitmap(width, height, pixels);
         }
 
-        private static (Bitmap bitmap, int w, int h) FetchOpenSlidePreview(BioImage image, int overviewSize)
+        private static (Bitmap bitmap, int w, int h) FetchOpenSlidePreview(BioImage image, int overviewSize, CancellationToken ct)
         {
             var slide = image?.OpenSlideBase?.SlideImage;
             if (slide == null || slide.LevelCount <= 0)
@@ -2037,6 +2024,7 @@ namespace BioGTK
 
             foreach (var item in levels)
             {
+                ct.ThrowIfCancellationRequested();
                 try
                 {
                     byte[] bytes = slide.ReadRegion(item.Level, 0, 0, item.Width, item.Height);
@@ -2148,13 +2136,12 @@ namespace BioGTK
                  rejectBlack && dark * 100 / samples > 98);
         }
 
-        private SKImage ScaleToOverview(Bitmap src, int srcW, int srcH, int destW, int destH)
+        private static SKImage ScaleToOverview(Bitmap src, ushort displayMin, int displayMax, int destW, int destH)
         {
             if (src == null)
                 return null;
 
-            Bitmap previewBitmap = NormalizeOverviewBitmap(src,
-                SelectedImage?.ZarrDisplayMin ?? 0, SelectedImage?.ZarrDisplayMax ?? 0);
+            Bitmap previewBitmap = NormalizeOverviewBitmap(src, displayMin, displayMax);
 
             try
             {
@@ -2437,6 +2424,7 @@ namespace BioGTK
             if(ShowOverview)
             {
                 ShowOverview = false;
+                InvalidateOverview();
                 overView.Label = "Show Overview";
             }
             else
@@ -2445,6 +2433,7 @@ namespace BioGTK
                 overView.Label = "Hide Overview";
             }
             UpdateView();
+            RequestViewportRefresh(scheduleIdleRetry: false);
         }
 
         private void RoiShow_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -2488,6 +2477,7 @@ namespace BioGTK
                         canvas.Clear(SKColors.Black);
                     sKSlideRenderer.DrawToCanvas(canvas, width, height);
                     RenderSkiaAnnotations(canvas, width, height, SelectedImage);
+                    DrawOverview(canvas);
                 }
                 else
                 {
@@ -5125,7 +5115,6 @@ namespace BioGTK
                 {
                     selectedIndex = i;
                     Initialize();
-                    InitPreview();
                     UpdateGUI();
                 }
 
