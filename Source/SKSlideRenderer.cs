@@ -27,6 +27,7 @@ namespace BioGTK
 
         // Current rendering state
         private SKImage _currentRenderedImage;
+        private int _publishedRenderVersion = -1;
         private PointD _lastOrigin;
         private double _lastResolution;
         private ZCT _lastCoordinate;
@@ -48,6 +49,7 @@ namespace BioGTK
         // State tracking
         public bool IsRendering { get; private set; }
         public bool HasValidImage => _currentRenderedImage != null;
+        internal bool HasCurrentViewport => HasValidImage && _publishedRenderVersion == _renderStateVersion;
 
         #endregion
 
@@ -193,6 +195,8 @@ namespace BioGTK
             lock (_renderCancellationLock)
             {
                 _renderCancellation = cancellation;
+                if (NeedsUpdate(origin, width, height, resolution, coordinate))
+                    _renderStateVersion++;
                 renderVersion = _renderStateVersion;
             }
 
@@ -307,6 +311,7 @@ namespace BioGTK
                 }
                 _currentRenderedImage?.Dispose();
                 _currentRenderedImage = image;
+                _publishedRenderVersion = renderVersion;
                 _view?.QueueDraw();
             }
 

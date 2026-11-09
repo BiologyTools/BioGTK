@@ -28,6 +28,8 @@ namespace BioGTK
         private int _vao;
         private int _vbo;
         private int _shaderProgram;
+        private int _pyramidPreviewTexture;
+        private SKImage _uploadedPyramidPreview;
         private int _completeFrameTexture;
         private int _completeFrameWidth;
         private int _completeFrameHeight;
@@ -71,6 +73,7 @@ namespace BioGTK
         public bool NeedsRedraw { get; set; } = true;
         public bool PreservePreviousFrameWhileIncomplete { get; set; } = false;
         public int TileFrameVersion { get; set; }
+        internal Func<SKImage> GetPyramidPreview { get; set; }
         private Action<byte[], int, int> _pendingWholeImageCapture;
 
         // Screen-space boundary of the image (in pixels from top-left).
@@ -175,6 +178,8 @@ void main()
             InitializeGL();
             InitializeSkia();
 
+            _pyramidPreviewTexture = 0;
+            _uploadedPyramidPreview = null;
             _glInitialized = true;
             Gtk.Application.Invoke((s, a) => App.viewer?.RequestDeferredRender());
         }
@@ -296,6 +301,7 @@ void main()
 
             ClearTextureCache();
             DiscardCompleteFrame();
+            DiscardPyramidPreview();
         }
 
         // ============================================================================
@@ -440,14 +446,16 @@ void main()
                 TilesToRender.Any(tile => !HasTileTexture(tile.Index));
             if (incomplete)
             {
-                if (_completeFrameVersion == TileFrameVersion || !TilesToRender.Any(tile => HasTileTexture(tile.Index)))
+                bool hasPreview = RenderPyramidPreview(width, height);
+                if (_completeFrameVersion == TileFrameVersion ||
+                    (!hasPreview && !TilesToRender.Any(tile => HasTileTexture(tile.Index))))
                 {
                     RenderCompleteFrameFallback(width, height);
                 }
                 else
                 {
-                    // An older plane can serve as a placeholder only until the
-                    // first tile of the new plane is ready to draw.
+                    // Replace the older plane as soon as pixels for the new plane
+                    // are available, whether from its preview or its first tile.
                     DiscardCompleteFrame();
                 }
             }
@@ -508,38 +516,75 @@ void main()
             _tileFrameComplete = !incomplete;
         }
 
+        private bool RenderPyramidPreview(int width, int height)
+        {
+            var preview = GetPyramidPreview?.Invoke();
+            if (preview == null || ImageScreenW <= 0 || ImageScreenH <= 0)
+                return false;
+
+            if (!ReferenceEquals(preview, _uploadedPyramidPreview))
+            {
+                DiscardPyramidPreview();
+                using var pixels = new SKBitmap(preview.Width, preview.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+                if (!preview.ReadPixels(pixels.PeekPixels(), 0, 0))
+                    return false;
+                _pyramidPreviewTexture = UploadBgraTexture(pixels.GetPixels(), pixels.Width, pixels.Height);
+                if (_pyramidPreviewTexture == 0)
+                    return false;
+                _uploadedPyramidPreview = preview;
+            }
+
+            DrawFrameTexture(_pyramidPreviewTexture, width, height,
+                SKRect.Create(ImageScreenX, ImageScreenY, ImageScreenW, ImageScreenH), flipVertically: false);
+            return true;
+        }
+
+        internal void DiscardPyramidPreview()
+        {
+            if (_pyramidPreviewTexture != 0 && _glInitialized)
+            {
+                MakeCurrent();
+                GL.DeleteTexture(_pyramidPreviewTexture);
+            }
+            _pyramidPreviewTexture = 0;
+            _uploadedPyramidPreview = null;
+        }
+
         private void RenderCompleteFrameFallback(int width, int height)
         {
             if (_completeFrameTexture == 0 || _completeFrameWidth <= 0 || _completeFrameHeight <= 0)
                 return;
 
-            GL.Disable(EnableCap.ScissorTest);
-            GL.Disable(EnableCap.Blend);
-            GL.UseProgram(_shaderProgram);
-            GL.BindVertexArray(_vao);
-            GL.Uniform2(_locViewportSize, (float)width, (float)height);
-            GL.Uniform1(_locTex, 0);
+            var bounds = SKRect.Create(width, height);
             var previousBounds = _completeFrameImageBounds;
             if (_completeFrameVersion == TileFrameVersion && previousBounds.Width > 0 &&
                 previousBounds.Height > 0 && ImageScreenW > 0 && ImageScreenH > 0)
             {
                 float scaleX = ImageScreenW / previousBounds.Width;
                 float scaleY = ImageScreenH / previousBounds.Height;
-                GL.Uniform2(_locPos, ImageScreenX - previousBounds.X * scaleX,
-                    ImageScreenY - previousBounds.Y * scaleY);
-                GL.Uniform2(_locSize, _completeFrameViewport.Width * scaleX, _completeFrameViewport.Height * scaleY);
-            }
-            else
-            {
-                GL.Uniform2(_locPos, 0f, 0f);
-                GL.Uniform2(_locSize, (float)width, (float)height);
+                bounds = SKRect.Create(ImageScreenX - previousBounds.X * scaleX,
+                    ImageScreenY - previousBounds.Y * scaleY,
+                    _completeFrameViewport.Width * scaleX, _completeFrameViewport.Height * scaleY);
             }
             // Framebuffer copies use bottom-left texture origin, unlike uploaded
             // top-down tile bytes, so reverse V while drawing the snapshot.
-            GL.Uniform2(_locUvMin, 0f, 1f);
-            GL.Uniform2(_locUvMax, 1f, 0f);
+            DrawFrameTexture(_completeFrameTexture, width, height, bounds, flipVertically: true);
+        }
+
+        private void DrawFrameTexture(int texture, int width, int height, SKRect bounds, bool flipVertically)
+        {
+            GL.Disable(EnableCap.ScissorTest);
+            GL.Disable(EnableCap.Blend);
+            GL.UseProgram(_shaderProgram);
+            GL.BindVertexArray(_vao);
+            GL.Uniform2(_locViewportSize, (float)width, (float)height);
+            GL.Uniform1(_locTex, 0);
+            GL.Uniform2(_locPos, bounds.Left, bounds.Top);
+            GL.Uniform2(_locSize, bounds.Width, bounds.Height);
+            GL.Uniform2(_locUvMin, 0f, flipVertically ? 1f : 0f);
+            GL.Uniform2(_locUvMax, 1f, flipVertically ? 0f : 1f);
             GL.ActiveTexture(TextureUnit.Texture0);
-            GL.BindTexture(TextureTarget.Texture2D, _completeFrameTexture);
+            GL.BindTexture(TextureTarget.Texture2D, texture);
             GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
             GL.BindTexture(TextureTarget.Texture2D, 0);
             GL.BindVertexArray(0);
@@ -721,43 +766,47 @@ void main()
                 EvictOldestTextures(1);
             }
 
-            // Create and upload texture.
             // Pin the managed array explicitly so the GC cannot relocate it while the
-            // driver is reading from the pointer (avoids ExecutionEngineException).
-            // PixelFormat.Bgra matches the byte order produced by ReadRegionAsync.
-            int tex = GL.GenTexture();
-            if (tex == 0)
-            {
-                Console.WriteLine($"OpenGL failed to allocate texture for tile {index}.");
-                return;
-            }
-            GL.BindTexture(TextureTarget.Texture2D, tex);
-            GL.PixelStore(PixelStoreParameter.UnpackAlignment, 4);
-
+            // driver is reading from the pointer.
+            int tex;
             var handle = System.Runtime.InteropServices.GCHandle.Alloc(pixelData, System.Runtime.InteropServices.GCHandleType.Pinned);
             try
             {
-                GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba,
-                              tileWidth, tileHeight, 0,
-                              PixelFormat.Bgra, PixelType.UnsignedByte,
-                              handle.AddrOfPinnedObject());
+                tex = UploadBgraTexture(handle.AddrOfPinnedObject(), tileWidth, tileHeight);
             }
             finally
             {
                 handle.Free();
             }
+            if (tex == 0)
+            {
+                Console.WriteLine($"OpenGL failed to allocate texture for tile {index}.");
+                return;
+            }
 
+            _textureCache[index] = tex;
+            _textureSizes[index] = (tileWidth, tileHeight);
+            _textureBytes += newTextureBytes;
+            LogDiag($"[UploadTileTexture] uploaded tile={index} tex={tex} size={tileWidth}x{tileHeight} bytes={pixelData.Length}");
+        }
+
+        private static int UploadBgraTexture(IntPtr pixels, int width, int height)
+        {
+            int texture = GL.GenTexture();
+            if (texture == 0)
+                return 0;
+
+            GL.BindTexture(TextureTarget.Texture2D, texture);
+            GL.PixelStore(PixelStoreParameter.UnpackAlignment, 4);
+            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba,
+                width, height, 0, PixelFormat.Bgra, PixelType.UnsignedByte, pixels);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
 
             GL.BindTexture(TextureTarget.Texture2D, 0);
-
-            _textureCache[index] = tex;
-            _textureSizes[index] = (tileWidth, tileHeight);
-            _textureBytes += newTextureBytes;
-            LogDiag($"[UploadTileTexture] uploaded tile={index} tex={tex} size={tileWidth}x{tileHeight} bytes={pixelData.Length}");
+            return texture;
         }
 
         /// <summary>

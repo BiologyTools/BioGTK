@@ -699,6 +699,9 @@ namespace BioGTK
             }
             else
             {
+                if (View is SlideGLArea slideGlArea)
+                    slideGlArea.GetPyramidPreview = GetPyramidPreview;
+
                 // Set the source based on image type
                 if (slideRenderer != null && im.OpenSlideBase != null)
                 {
@@ -1401,6 +1404,7 @@ namespace BioGTK
                 return;
             if (SelectedImage?.isPyramidal != true) return;
 
+            EnsureOverviewCurrent();
             if (MacOS)
             {
                 AForge.Size s;
@@ -1409,9 +1413,8 @@ namespace BioGTK
                 else
                     s = new AForge.Size(View.AllocatedWidth, View.AllocatedHeight);
 
-                var brutileOrigin = new PointD(PyramidalOrigin.X, -PyramidalOrigin.Y);
                 _ = sKSlideRenderer?.UpdateViewAsync(
-                    brutileOrigin,
+                    PyramidalOrigin,
                     Resolution,
                     GetCoordinate(),
                     s.Width,
@@ -1431,7 +1434,6 @@ namespace BioGTK
                     );
                 }
             }
-            EnsureOverviewCurrent();
         }
         bool initrend = false;
         #endregion
@@ -1440,10 +1442,10 @@ namespace BioGTK
             if (SelectedImage?.isPyramidal != true || !ShowOverview)
                 return;
 
-            EnsureOverviewCurrent();
+            var preview = GetPyramidPreview();
             using var paint = new SKPaint { Color = SKColors.Gray, IsAntialias = true };
-            if (overviewImage != null)
-                canvas.DrawImage(overviewImage, 0, 0, paint);
+            if (preview != null)
+                canvas.DrawImage(preview, SKRect.Create(overview.Width, overview.Height), SKSamplingOptions.Default);
             paint.Style = SKPaintStyle.Stroke;
             canvas.DrawRect(0, 0, overview.Width, overview.Height, paint);
             DrawViewportRectangle(canvas, paint);
@@ -1808,6 +1810,7 @@ namespace BioGTK
             _overviewCancellation?.Dispose();
             _overviewCancellation = null;
             _overviewState = null;
+            (View as SlideGLArea)?.DiscardPyramidPreview();
             overviewImage?.Dispose();
             overviewImage = null;
         }
@@ -1815,21 +1818,27 @@ namespace BioGTK
         private void EnsureOverviewCurrent()
         {
             var image = SelectedImage;
-            if (_viewerCleanupDone || image?.isPyramidal != true || !ShowOverview)
+            if (_viewerCleanupDone || image?.isPyramidal != true)
                 return;
 
             var state = GetOverviewState(image);
             if (_overviewState != state)
                 LoadOverview(state);
         }
+
+        private SKImage GetPyramidPreview()
+        {
+            if (_viewerCleanupDone || SelectedImage?.isPyramidal != true)
+                return null;
+
+            EnsureOverviewCurrent();
+            return overviewImage;
+        }
         public int? MacroResolution { get { return SelectedImage.MacroResolution; } }
         public int? LabelResolution { get { return SelectedImage.LabelResolution; } }
 
         /// <summary>
-        /// Initializes the overview/minimap preview for pyramidal images.
-        /// Finds a pyramid level that is large enough to show slide structure,
-        /// fetches it, and scales it to fit within OVERVIEW_SIZE while maintaining
-        /// aspect ratio.
+        /// Loads a low-resolution image for both the viewport and the overview.
         /// </summary>
         private async void LoadOverview(OverviewState state)
         {
@@ -1848,7 +1857,7 @@ namespace BioGTK
                 {
                     using (sourceBitmap)
                     {
-                        if (ct.IsCancellationRequested || _viewerCleanupDone || !ShowOverview ||
+                        if (ct.IsCancellationRequested || _viewerCleanupDone ||
                             !ReferenceEquals(state.Image, SelectedImage))
                             return;
                         if (GetOverviewState(state.Image) != state)
@@ -1861,7 +1870,8 @@ namespace BioGTK
                         try
                         {
                             var (ow, oh) = CalcOverviewSize(srcW, srcH, state.Size);
-                            var preview = ScaleToOverview(sourceBitmap, state.DisplayMin, state.DisplayMax, ow, oh);
+                            int previewSize = Math.Max(512, state.Size * 2);
+                            var preview = CreatePyramidPreview(sourceBitmap, state.DisplayMin, state.DisplayMax, previewSize);
                             overview = new Rectangle(0, 0, ow, oh);
                             overviewImage = preview;
                         }
@@ -2136,7 +2146,7 @@ namespace BioGTK
                  rejectBlack && dark * 100 / samples > 98);
         }
 
-        private static SKImage ScaleToOverview(Bitmap src, ushort displayMin, int displayMax, int destW, int destH)
+        private static SKImage CreatePyramidPreview(Bitmap src, ushort displayMin, int displayMax, int maxSize)
         {
             if (src == null)
                 return null;
@@ -2150,7 +2160,10 @@ namespace BioGTK
                 using var rgbaBitmap = previewBitmap.GetImageRGBA(previewBitmap.LittleEndian);
                 using (var fullSK = BioImage.BitmapToSKImage(rgbaBitmap))
                 {
-                    using var scaled = new SKBitmap(destW, destH, SKColorType.Bgra8888, SKAlphaType.Premul);
+                    double scale = Math.Min(1.0, (double)maxSize / Math.Max(fullSK.Width, fullSK.Height));
+                    int width = Math.Max(1, (int)Math.Round(fullSK.Width * scale));
+                    int height = Math.Max(1, (int)Math.Round(fullSK.Height * scale));
+                    using var scaled = new SKBitmap(width, height, SKColorType.Bgra8888, SKAlphaType.Premul);
                     fullSK.ScalePixels(scaled.PeekPixels(), SKSamplingOptions.Default);
                     return SKImage.FromBitmap(scaled);
                 }
@@ -2424,7 +2437,6 @@ namespace BioGTK
             if(ShowOverview)
             {
                 ShowOverview = false;
-                InvalidateOverview();
                 overView.Label = "Show Overview";
             }
             else
@@ -2473,9 +2485,21 @@ namespace BioGTK
                 var height = e.Info.Height;
                 if (SelectedImage?.isPyramidal == true && sKSlideRenderer != null)
                 {
-                    if (sKSlideRenderer.HasValidImage)
-                        canvas.Clear(SKColors.Black);
-                    sKSlideRenderer.DrawToCanvas(canvas, width, height);
+                    canvas.Clear(SKColors.Black);
+                    var preview = GetPyramidPreview();
+                    if (preview != null)
+                    {
+                        TryGetPyramidalViewerBounds(SelectedImage, out double minX, out double minY, out double maxX, out double maxY);
+                        double scaleX = width / (Math.Max(1, View.AllocatedWidth) * Resolution);
+                        double scaleY = height / (Math.Max(1, View.AllocatedHeight) * Resolution);
+                        PointD origin = PyramidalOrigin;
+                        var bounds = new SKRect(
+                            (float)((minX - origin.X) * scaleX), (float)((minY - origin.Y) * scaleY),
+                            (float)((maxX - origin.X) * scaleX), (float)((maxY - origin.Y) * scaleY));
+                        canvas.DrawImage(preview, bounds, new SKSamplingOptions(SKFilterMode.Linear));
+                    }
+                    if (preview == null || sKSlideRenderer.HasCurrentViewport)
+                        sKSlideRenderer.DrawToCanvas(canvas, width, height);
                     RenderSkiaAnnotations(canvas, width, height, SelectedImage);
                     DrawOverview(canvas);
                 }

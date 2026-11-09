@@ -232,7 +232,7 @@ namespace BioGTK
                 }
 
                 var canvas = surface.Canvas;
-                canvas.Clear(SKColors.Gray);
+                canvas.Clear(publishPartial == null ? SKColors.Gray : SKColors.Transparent);
 
                 // Fetch and composite all tiles
                 await CompositeTilesAsync(surface, tileRequests, origin, resolution, publishPartial, ct)

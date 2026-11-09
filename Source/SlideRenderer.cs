@@ -85,6 +85,7 @@ namespace BioGTK
         {
             ResetDirectZarrReader();
             _glArea.DiscardCompleteFrame();
+            _glArea.TilesToRender.Clear();
             _openSlideBase = source;
             _slideBase = null;
             _useOpenSlide = true;
@@ -96,6 +97,7 @@ namespace BioGTK
         {
             ResetDirectZarrReader();
             _glArea.DiscardCompleteFrame();
+            _glArea.TilesToRender.Clear();
             _slideBase = source;
             _openSlideBase = null;
             _useOpenSlide = false;
@@ -306,7 +308,7 @@ namespace BioGTK
             // Clearing the visible tile cache must also invalidate any in-flight
             // fetches. Otherwise an old Z/C/T request can finish after the
             // coordinate changes and repopulate the GPU cache with stale tiles.
-            Interlocked.Increment(ref _renderStateVersion);
+            _glArea.TileFrameVersion = Interlocked.Increment(ref _renderStateVersion);
             if (cancelActiveFetches)
                 CancelActiveTileFetches();
 
