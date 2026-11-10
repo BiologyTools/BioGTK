@@ -829,52 +829,58 @@ namespace BioGTK
         {
             try
             {
-                canvas.Save();
-                // SlideGLArea renders to a physical-pixel framebuffer, while
-                // SKDrawingArea (used on macOS) creates a logical-size surface.
-                // Scale only the GL canvas; scaling SKDrawingArea on a Retina
-                // display makes annotations move and resize twice as fast as the
-                // image beneath them.
-                if (View is SlideGLArea)
-                    canvas.Scale(Math.Max(1, View.ScaleFactor));
+                using (new SKAutoCanvasRestore(canvas, true))
+                {
+                    // SlideGLArea renders to a physical-pixel framebuffer, while
+                    // SKDrawingArea creates a logical-size surface.
+                    if (View is SlideGLArea)
+                        canvas.Scale(Math.Max(1, View.ScaleFactor));
 
-                var paint = new SKPaint
-                {
-                    Color = SKColors.Gray,
-                    BlendMode = SKBlendMode.SrcOver,
-                    IsAntialias = true,
-                    Style = SKPaintStyle.Fill
-                };
-                // Draw annotations (ROIs) - keep existing annotation drawing code
-                int i = 0;
-                foreach (BioImage im in Images)
-                {
-                    canvas.Save();
-                List<ROI> rois = BuildRenderableRois(im);
-                    int ri = 0;
-                    ZCT co = GetCoordinate();
-                    RectangleD rp = ToScreenSpace(new RectangleD(im.StageSizeX * im.PhysicalSizeX, im.StageSizeX * im.PhysicalSizeY, im.SizeX * im.PhysicalSizeX, im.SizeY * im.PhysicalSizeY));
-                    if (!im.isPyramidal)
-                        canvas.DrawImage(SKImages[i], ToRectangle((float)rp.X, (float)rp.Y, (float)rp.W, (float)rp.H), paint);
-                    if (rois.Count > 0)
+                    using var paint = new SKPaint
                     {
-                        RenderSkiaAnnotations(canvas, width, height, im);
+                        Color = SKColors.Gray,
+                        BlendMode = SKBlendMode.SrcOver,
+                        IsAntialias = true,
+                        Style = SKPaintStyle.Fill
+                    };
+                    int i = 0;
+                    foreach (BioImage im in Images)
+                    {
+                        using (new SKAutoCanvasRestore(canvas, true))
+                        {
+                            List<ROI> rois = BuildRenderableRois(im);
+                            RectangleD rp = ToScreenSpace(new RectangleD(im.StageSizeX * im.PhysicalSizeX, im.StageSizeX * im.PhysicalSizeY, im.SizeX * im.PhysicalSizeX, im.SizeY * im.PhysicalSizeY));
+                            if (!im.isPyramidal)
+                                canvas.DrawImage(SKImages[i], ToRectangle((float)rp.X, (float)rp.Y, (float)rp.W, (float)rp.H), paint);
+                            if (rois.Count > 0)
+                                RenderSkiaAnnotations(canvas, width, height, im);
+                        }
+                        i++;
                     }
-                    i++;
-                    canvas.Restore();
                 }
-                canvas.Restore();
-                DrawOverview(canvas);
-                SKImageInfo inf = new SKImageInfo(width, height);
 
-                // Plugin rendering hook
+                SKImageInfo inf = new SKImageInfo(width, height);
                 Plugins.Render(this, new SkiaSharp.Views.Desktop.SKPaintSurfaceEventArgs(canvas.Surface, inf));
-                paint.Dispose();
-                canvas.Restore();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Annotation render error: {ex.Message}");
+            }
+
+            // Keep the overview independent of annotation/plugin failures and
+            // always draw it last. Its bounds are expressed in logical pixels.
+            try
+            {
+                using (new SKAutoCanvasRestore(canvas, true))
+                {
+                    if (View is SlideGLArea)
+                        canvas.Scale(Math.Max(1, View.ScaleFactor));
+                    DrawOverview(canvas);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Overview render error: {ex.Message}");
             }
         }
         private PointD ToScreenSpaceForImage(BioImage image, PointD p)
@@ -1807,7 +1813,7 @@ namespace BioGTK
                     Math.Clamp(image.rgbChannels[2], 0, lastChannel));
             }
             return new OverviewState(image, image.Coordinate, image.ZarrDisplayMin, image.ZarrDisplayMax,
-                image.WellIndex, Math.Max(1, View.ScaleFactor) * 160, rgbChannels);
+                image.WellIndex, 160, rgbChannels);
         }
 
         private void InvalidateOverview()
@@ -4422,9 +4428,8 @@ namespace BioGTK
             if (SelectedImage?.isPyramidal != true || !ShowOverview || overview.Width <= 0 || overview.Height <= 0)
                 return false;
 
-            double overviewScale = Math.Max(1, View?.ScaleFactor ?? 1);
-            double overviewX = eventX * overviewScale;
-            double overviewY = eventY * overviewScale;
+            double overviewX = eventX;
+            double overviewY = eventY;
             if (!overview.IntersectsWith(overviewX, overviewY))
                 return false;
 

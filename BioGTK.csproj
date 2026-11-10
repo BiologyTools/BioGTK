@@ -3,30 +3,29 @@
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RuntimeIdentifiers>osx-x64;linux-x64;win-x64;win-arm64;linux-arm64;osx-arm64;</RuntimeIdentifiers>
-    <AssemblyVersion>6.7.1</AssemblyVersion>
-    <FileVersion>6.7.1</FileVersion>
+    <AssemblyVersion>6.7.2</AssemblyVersion>
+    <FileVersion>6.7.2</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>BioGTK</PackageId>
     <Title>BioGTK</Title>
     <PackageProjectUrl>https://github.com/BiologyTools/BioGTK</PackageProjectUrl>
     <PackageIcon>banner.jpg</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageVersion>6.7.1</PackageVersion>
+    <PackageVersion>6.7.2</PackageVersion>
     <RepositoryUrl>https://github.com/BiologyTools/BioGTK</RepositoryUrl>
     <PackageTags>Biology; GTK; ImageJ; Bio-Formats; Image-Stacks; Microscopy; Whole-Slide-Image; Segment-Anything; SAM; QuPath;</PackageTags>
     <PackageLicenseExpression> GPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Description>A .NET application &amp; library for editing &amp; annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters &amp; macro functions. Supports Windows, Linux and Mac.</Description>
-    <Version>6.7.1</Version>
+    <Version>6.7.2</Version>
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <PackageReleaseNotes>
-- Smoother pan and zoom. The viewer prioritizes visible tiles over offscreen prefetching and keeps the previous frame aligned while new tiles load. Tile results from an earlier plane or contrast setting are discarded.
-- Fewer downloads for sharded OME-Zarr. Eligible remote 16-bit grayscale datasets can load several tiles with a single shard read and reuse a cached plane while panning.
-- Metadata-driven contrast. The viewer uses the channel’s declared OME-Zarr display range when available and falls back to pixel sampling.
-- More reliable window and dialog loading. BioGTK resolves the window icon from the application directory on macOS, even when launched from a different working directory. GTK layouts now load with read-only access and release their file handles after loading.
-- Updated the BioLib dependency to 4.3.1.
+- Corrected mask and ROI alignment while panning and zooming on Retina macOS displays.
+- Restored the whole-slide overview on Linux, including consistent HiDPI sizing and navigation, and isolated it from annotation or plugin rendering failures.
+- Fixed whole-slide image startup on Wayland by avoiding unsupported hidden-window positioning and installing GLFW error handling before OpenGL context creation.
+- Reduced recorder and console noise by no longer recording read-only coordinate checks or internal view refreshes.
     </PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
@@ -511,12 +510,12 @@
     <CFBundleName>BioGTK</CFBundleName>
     <CFBundleDisplayName>BioGTK</CFBundleDisplayName>
     <CFBundleIdentifier>com.BioGTK</CFBundleIdentifier>
-    <CFBundleVersion>6.7.1</CFBundleVersion>
+    <CFBundleVersion>6.7.2</CFBundleVersion>
     <CFBundlePackageType>APPL</CFBundlePackageType>
     <CFBundleSignature>????</CFBundleSignature>
     <CFBundleExecutable>BioGTKApp</CFBundleExecutable>
     <CFBundleIconFile>bio.icns</CFBundleIconFile>
-    <CFBundleShortVersionString>6.7.1</CFBundleShortVersionString>
+    <CFBundleShortVersionString>6.7.2</CFBundleShortVersionString>
     <NSPrincipalClass>NSApplication</NSPrincipalClass>
     <NSHighResolutionCapable>true</NSHighResolutionCapable>
     <ImplicitUsings>enable</ImplicitUsings>
