@@ -134,7 +134,6 @@ namespace BioGTK
         {
             if (SelectedImage == null)
                 return new ZCT();
-            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, SelectedImage.Coordinate.Z, SelectedImage.Coordinate.C, SelectedImage.Coordinate.T);
             return SelectedImage.Coordinate;
         }
 
@@ -829,7 +828,13 @@ namespace BioGTK
             try
             {
                 canvas.Save();
-                canvas.Scale(ScaleFactor); // Scale coordinates to match High-DPI screen
+                // SlideGLArea renders to a physical-pixel framebuffer, while
+                // SKDrawingArea (used on macOS) creates a logical-size surface.
+                // Scale only the GL canvas; scaling SKDrawingArea on a Retina
+                // display makes annotations move and resize twice as fast as the
+                // image beneath them.
+                if (View is SlideGLArea)
+                    canvas.Scale(Math.Max(1, View.ScaleFactor));
 
                 var paint = new SKPaint
                 {
@@ -911,7 +916,6 @@ namespace BioGTK
             try
             {
                 canvas.Save();
-                canvas.Scale(ScaleFactor); // Scale coordinates to match High-DPI screen
 
                 var paint = new SKPaint
                 {
@@ -4108,7 +4112,6 @@ namespace BioGTK
                 UpdateImages(true);
                 RequestViewportRefresh();
             }
-            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, updateImages);
         }
         private string mousePoint = "";
         private string mouseColor = "";
