@@ -617,10 +617,15 @@ namespace BioGTK
             }
             else if (OperatingSystem.IsLinux())
             {
+                // Install the application callback before GLFW creates its hidden
+                // context. Otherwise Wayland platform messages are handled by
+                // OpenTK's default callback, which throws GLFWException.
+                GLFWProvider.SetErrorCallback((error, description) =>
+                {
+                });
                 nativeSettings = new NativeWindowSettings()
                 {
                     ClientSize = new Vector2i(600, 400),
-                    Location = new Vector2i(0, 0),
                     Title = "OpenGL Context",
                     StartVisible = false,  // Window starts hidden
                     API = ContextAPI.OpenGL,
@@ -642,9 +647,6 @@ namespace BioGTK
                     View = new SlideArea();
                     ((SlideArea)View).OnSkiaRender += RenderSkia;
                 }
-                GLFWProvider.SetErrorCallback((error, description) =>
-                {
-                });
 
             }
             else if (OperatingSystem.IsWindows())
