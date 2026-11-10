@@ -68,7 +68,8 @@ A .NET application & library for editing & annotating various microscopy image f
 - Install Mac package manager [homebrew.](https://brew.sh/)
 - From brew install [GTK3.](https://formulae.brew.sh/formula/gtk+3#default)
 - Download the BioGTK application for either OSX-x64 or OSX-Arm from releases.
-- Make the .app bundle executable by opening terminal in the Contents/MacOS folder then run "chmod 755 BioGTKApp" then drag it into the applications folder.
+- Make the .app bundle executable by opening terminal in the Contents/MacOS folder then run "chmod 755 BioGTKApp".
+- Drag BioGTK into the applications folder.
 - Then run ```xattr -dr com.apple.quarantine /Applications/BioGTK.app``` to remove Apple quarantine.
 - Optionally install [OpenSlide](https://formulae.brew.sh/formula/openslide) for better navigation of whole-slide-images.
 - Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance and functions with whole-slide-images.
@@ -85,7 +86,6 @@ A .NET application & library for editing & annotating various microscopy image f
 ## Linux Installation 
 - See [this video](https://www.youtube.com/watch?v=SzFWyXQnfDU) or follow the instructions below.
 - Download the latest tarball(tar.gz) from Releases as linux already includes GTK3 package.
-- Extract the tarball and go to the "Glade" folder and select all the glade files and change permissions to read-write.
 - Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance and functions with whole-slide-images.
 - Optionally install [OpenSlide](http://openslide.org/) for better navigation of whole-slide-images. By running each line below as sudo.
 	 ```sudo apt install software-properties-common```
