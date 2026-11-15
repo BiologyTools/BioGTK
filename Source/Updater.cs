@@ -125,6 +125,8 @@ namespace BioGTK
             }
             BioLib.Settings.AddSettings("UpdateSites", ups);
             BioLib.Settings.Save();
+            args.RetVal = true;
+            Hide();
         }
         public static async Task DownloadFileAsync(string fileUrl, string savePath)
         {

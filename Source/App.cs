@@ -210,6 +210,10 @@ namespace BioGTK
             }
             else
             {
+                // Populate the Commands menu from the bundled metadata without
+                // starting the unsupported in-process ImageJ UI on macOS.
+                Fiji.InitializeCommandMetadata();
+                Console.WriteLine($"Loaded {Fiji.Macro.Commands.Count} ImageJ commands.");
                 // BioImage.Initialize always initializes Bio-Formats/OME, then
                 // deliberately skips only ImageJ/Fiji on macOS.  Omitting this
                 // call left OpenOME waiting forever for an initialization flag
@@ -281,7 +285,13 @@ namespace BioGTK
                         Console.Error.WriteLine($"Unable to load window icon '{iconPath}': {e.Message}");
                     }
                 }
-                window.DeleteEvent += Window_DeleteEvent;
+                // Dialogs must be destroyed so Dialog.Run() can leave its nested
+                // event loop. Ordinary application windows are reusable tools and
+                // are hidden by Window_DeleteEvent instead.
+                if (window is Dialog dialog)
+                    dialog.DeleteEvent += Dialog_DeleteEvent;
+                else
+                    window.DeleteEvent += Window_DeleteEvent;
                 window.DestroyEvent += Window_DestroyEvent;
                 window.FocusInEvent += Window_FocusInEvent;
             }
@@ -297,6 +307,9 @@ namespace BioGTK
 
         private static void Dialog_DeleteEvent(object o, DeleteEventArgs args)
         {
+            if (args.RetVal is bool handled && handled)
+                return;
+
             Dialog w = (Dialog)o;
             w.Hide();
             w.Destroy();
@@ -307,14 +320,13 @@ namespace BioGTK
         }
         private static void Window_DeleteEvent(object o, DeleteEventArgs args)
         {
-            Gtk.Window w = (Gtk.Window)o;
-            // ImageView handles its own close lifecycle in ImageView_DeleteEvent.
-            // If we also Hide+Destroy here, it races with that handler and can
-            // cause double-destroy or ghost windows.
-            if (w is ImageView)
+            if (args.RetVal is bool handled && handled)
                 return;
+
+            Gtk.Window w = (Gtk.Window)o;
+            // Tool windows are created once during startup and shown repeatedly.
+            // Hiding them keeps their native GTK handles valid for the next use.
             w.Hide();
-            w.Destroy();
             args.RetVal = true;
         }
 

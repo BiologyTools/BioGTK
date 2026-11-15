@@ -31,12 +31,33 @@ namespace BioGTK
         public List<BioImage> Images = new List<BioImage>();
         private bool _updatingCoordinate = false;
         //public List<SKImage> SKImages = new List<SKImage>();
+
+        /// <summary>
+        /// Applies a user/script-visible coordinate action. Public actions are
+        /// written to the recorder and can be replayed.
+        /// </summary>
         public void SetCoordinate(int z, int c, int t)
         {
+            if (SetCoordinateCore(z, c, t))
+                RecordCoordinateAction(z, c, t, isInternal: false);
+        }
+
+        /// <summary>
+        /// Applies an application-generated coordinate update, such as stack
+        /// playback. Internal actions are hidden unless internal recording is enabled.
+        /// </summary>
+        internal void SetCoordinateInternal(int z, int c, int t)
+        {
+            if (SetCoordinateCore(z, c, t))
+                RecordCoordinateAction(z, c, t, isInternal: true);
+        }
+
+        private bool SetCoordinateCore(int z, int c, int t)
+        {
             if (SelectedImage == null)
-                return;
+                return false;
             if (_updatingCoordinate)
-                return;
+                return false;
 
             ZCT previousCoordinate = SelectedImage.Coordinate;
             _updatingCoordinate = true;
@@ -72,8 +93,7 @@ namespace BioGTK
             {
                 PreparePyramidalCoordinateRender(SelectedImage.Coordinate.C != previousCoordinate.C);
                 ForceNavigationRefresh();
-                BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, z, c, t);
-                return;
+                return true;
             }
 
             UpdateImages();
@@ -81,7 +101,16 @@ namespace BioGTK
             {
                 RequestViewportRefresh();
             }
-            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, z, c, t);
+            return coordinateChanged;
+        }
+
+        private static void RecordCoordinateAction(int z, int c, int t, bool isInternal)
+        {
+            var publicMethod = typeof(ImageView).GetMethod(
+                nameof(SetCoordinate),
+                new[] { typeof(int), typeof(int), typeof(int) });
+            if (publicMethod != null)
+                BioLib.Recorder.Record(publicMethod, isInternal, z, c, t);
         }
 
         private void PreparePyramidalCoordinateRender(bool channelChanged)
@@ -1008,7 +1037,11 @@ namespace BioGTK
                             if (an.type == ROI.Type.Ellipse)
                             {
                                 RectangleD rect = ToScreenRectForImage(im, an.BoundingBox.X, an.BoundingBox.Y, an.BoundingBox.W, an.BoundingBox.H);
-                                canvas.DrawOval((float)rect.X, (float)rect.Y, (float)rect.W / 2, (float)rect.H / 2, paint);
+                                // RectangleD stores the ellipse's outer bounds. The
+                                // float overload takes a center and radii, not a
+                                // top-left corner and size, which displaced the oval
+                                // by half its width and height on the Skia/macOS path.
+                                canvas.DrawOval(ToRectangle((float)rect.X, (float)rect.Y, (float)rect.W, (float)rect.H), paint);
                             }
                             else
                             if ((an.type == ROI.Type.Polygon && an.closed))
@@ -2344,6 +2377,7 @@ namespace BioGTK
                 View.AddEvents((int)(EventMask.ButtonPressMask
                 | EventMask.ButtonReleaseMask
                 | EventMask.KeyPressMask
+                | EventMask.KeyReleaseMask
                 | EventMask.PointerMotionMask
                 | EventMask.ScrollMask));
             }
@@ -2360,12 +2394,15 @@ namespace BioGTK
                 View.AddEvents((int)(EventMask.ButtonPressMask
                 | EventMask.ButtonReleaseMask
                 | EventMask.KeyPressMask
+                | EventMask.KeyReleaseMask
                 | EventMask.PointerMotionMask
                 | EventMask.ScrollMask));
             }
             vScroll.ValueChanged += VScroll_ValueChanged;
-            hScroll.ValueChanged += HScroll_ValueChanged;   
+            hScroll.ValueChanged += HScroll_ValueChanged;
+            View.CanFocus = true;
             this.KeyPressEvent += ImageView_KeyPressEvent;
+            this.KeyReleaseEvent += ImageView_KeyUpEvent;
             this.DestroyEvent += ImageView_DestroyEvent;
             this.DeleteEvent += ImageView_DeleteEvent;
             this.FocusInEvent += ImageView_FocusInEvent;
@@ -2442,6 +2479,7 @@ namespace BioGTK
         private void ImageView_Shown(object sender, EventArgs e)
         {
             EnsureInitialPyramidalRender();
+            View?.GrabFocus();
         }
 
         private void OverView_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -2592,7 +2630,7 @@ namespace BioGTK
                 //Update view on main UI thread
                 Application.Invoke(delegate
                 {
-                    App.viewer.SetCoordinate(coord.Z + 1, coord.C, coord.T);
+                    App.viewer.SetCoordinateInternal(coord.Z + 1, coord.C, coord.T);
                 });
                 if (coord.Z == endz)
                 {
@@ -2601,7 +2639,7 @@ namespace BioGTK
                         //Update view on main UI thread
                         Application.Invoke(delegate
                         {
-                            App.viewer.SetCoordinate(startz, coord.C, coord.T);
+                            App.viewer.SetCoordinateInternal(startz, coord.C, coord.T);
                         });
                     }
                     else
@@ -2621,7 +2659,7 @@ namespace BioGTK
                 ZCT coord = App.viewer.GetCoordinate();
                 Application.Invoke(delegate
                 {
-                    App.viewer.SetCoordinate(coord.Z, coord.C + 1, coord.T);
+                    App.viewer.SetCoordinateInternal(coord.Z, coord.C + 1, coord.T);
                 });
                 if (coord.C == endc)
                 {
@@ -2630,7 +2668,7 @@ namespace BioGTK
                         //Update view on main UI thread
                         Application.Invoke(delegate
                         {
-                            App.viewer.SetCoordinate(coord.Z, startc, coord.T);
+                            App.viewer.SetCoordinateInternal(coord.Z, startc, coord.T);
                         });
                     }
                     else
@@ -2650,7 +2688,7 @@ namespace BioGTK
                 ZCT coord = App.viewer.GetCoordinate();
                 Application.Invoke(delegate
                 {
-                    App.viewer.SetCoordinate(coord.Z, coord.C, coord.T + 1);
+                    App.viewer.SetCoordinateInternal(coord.Z, coord.C, coord.T + 1);
                 });
                 if (coord.T == endt)
                 {
@@ -2659,7 +2697,7 @@ namespace BioGTK
                         //Update view on main UI thread
                         Application.Invoke(delegate
                         {
-                            App.viewer.SetCoordinate(coord.Z, coord.C, startt);
+                            App.viewer.SetCoordinateInternal(coord.Z, coord.C, startt);
                         });
                     }
                     else
@@ -3350,8 +3388,17 @@ namespace BioGTK
         {
             Plugins.KeyDownEvent(o, e);
             keyDown = e.Event.Key;
-            double moveAmount = 5 * Scale.Width;
-            double movepyr = 50 * (Level + 1);
+
+            // Shift/Caps Lock only change the key's case. Other modifiers are
+            // reserved for application/OS shortcuts and must not pan or zoom.
+            ModifierType nonNavigationModifiers = e.Event.State &
+                ~(ModifierType.ShiftMask | ModifierType.LockMask | ModifierType.Mod2Mask);
+            if (nonNavigationModifiers == 0 && HandleNavigationKey(e.Event.Key))
+            {
+                e.RetVal = true;
+                return;
+            }
+
             if (e.Event.Key == Gdk.Key.c && e.Event.State == ModifierType.ControlMask)
             {
                 CopySelection();
@@ -3359,60 +3406,6 @@ namespace BioGTK
             if (e.Event.Key == Gdk.Key.v && e.Event.State == ModifierType.ControlMask)
             {
                 PasteSelection();
-            }
-            if (e.Event.Key == Gdk.Key.e)
-            {
-                if (SelectedImage.isPyramidal)
-                {
-                    SetResolution(Resolution * 1.25, new PointD(View.AllocatedWidth / 2.0, View.AllocatedHeight / 2.0));
-                }
-                else
-                    ZoomStackAtPoint(new PointD(View.AllocatedWidth / 2.0, View.AllocatedHeight / 2.0), 0.9);
-            }
-            if (e.Event.Key == Gdk.Key.q)
-            {
-                if (SelectedImage.isPyramidal)
-                {
-                    SetResolution(Resolution * 0.8, new PointD(View.AllocatedWidth / 2.0, View.AllocatedHeight / 2.0));
-                }
-                else
-                    ZoomStackAtPoint(new PointD(View.AllocatedWidth / 2.0, View.AllocatedHeight / 2.0), 1.1);
-            }
-            if (e.Event.Key == Gdk.Key.s || e.Event.Key == Gdk.Key.S)
-            {
-                if (SelectedImage.isPyramidal)
-                {
-                    PyramidalOrigin = new PointD(PyramidalOrigin.X, PyramidalOrigin.Y + movepyr);
-                }
-                else
-                    Origin = new PointD(Origin.X, Origin.Y + moveAmount);
-            }
-            if (e.Event.Key == Gdk.Key.w || e.Event.Key == Gdk.Key.W)
-            {
-                if (SelectedImage.isPyramidal)
-                {
-                    PyramidalOrigin = new PointD(PyramidalOrigin.X, PyramidalOrigin.Y - movepyr);
-                }
-                else
-                    Origin = new PointD(Origin.X, Origin.Y - moveAmount);
-            }
-            if (e.Event.Key == Gdk.Key.a || e.Event.Key == Gdk.Key.A)
-            {
-                if (SelectedImage.isPyramidal)
-                {
-                    PyramidalOrigin = new PointD(PyramidalOrigin.X - movepyr, PyramidalOrigin.Y);
-                }
-                else
-                    Origin = new PointD(Origin.X + moveAmount, Origin.Y);
-            }
-            if (e.Event.Key == Gdk.Key.d || e.Event.Key == Gdk.Key.D)
-            {
-                if (SelectedImage.isPyramidal)
-                {
-                    PyramidalOrigin = new PointD(PyramidalOrigin.X + movepyr, PyramidalOrigin.Y);
-                }
-                else
-                    Origin = new PointD(Origin.X - moveAmount, Origin.Y);
             }
             foreach (Function item in Function.Functions.Values)
             {
@@ -3431,6 +3424,52 @@ namespace BioGTK
             Scripting.UpdateState(st);
             UpdateView(true);
         }
+
+        private bool HandleNavigationKey(Gdk.Key key)
+        {
+            if (SelectedImage == null || View == null)
+                return false;
+
+            bool zoomOut = key == Gdk.Key.q || key == Gdk.Key.Q;
+            bool zoomIn = key == Gdk.Key.e || key == Gdk.Key.E;
+            if (zoomOut || zoomIn)
+            {
+                PointD center = new PointD(View.AllocatedWidth / 2.0, View.AllocatedHeight / 2.0);
+                if (SelectedImage.isPyramidal)
+                    SetResolution(Resolution * (zoomIn ? 0.8 : 1.25), center);
+                else
+                    ZoomStackAtPoint(center, zoomIn ? 1.1 : 0.9);
+                return true;
+            }
+
+            bool up = key == Gdk.Key.w || key == Gdk.Key.W;
+            bool down = key == Gdk.Key.s || key == Gdk.Key.S;
+            bool left = key == Gdk.Key.a || key == Gdk.Key.A;
+            bool right = key == Gdk.Key.d || key == Gdk.Key.D;
+            if (!up && !down && !left && !right)
+                return false;
+
+            const double screenPanStep = 50.0;
+            if (SelectedImage.isPyramidal)
+            {
+                double worldStep = screenPanStep * Resolution;
+                PyramidalOrigin = new PointD(
+                    PyramidalOrigin.X + (right ? worldStep : left ? -worldStep : 0),
+                    PyramidalOrigin.Y + (down ? worldStep : up ? -worldStep : 0));
+            }
+            else
+            {
+                double stepX = screenPanStep / Math.Max(double.Epsilon, PxWmicron * Scale.Width);
+                double stepY = screenPanStep / Math.Max(double.Epsilon, PxHmicron * Scale.Height);
+                Origin = new PointD(
+                    Origin.X + (left ? stepX : right ? -stepX : 0),
+                    Origin.Y + (down ? stepY : up ? -stepY : 0));
+            }
+
+            ForceNavigationRefresh();
+            return true;
+        }
+
         /// The function is called when the user presses a key on the keyboard
         /// 
         /// @param o The object that the event is being called from.
@@ -4366,16 +4405,17 @@ namespace BioGTK
             double newScaleX = Math.Clamp(oldScaleX * factor, 1e-6, 4096.0);
             double newScaleY = Math.Clamp(oldScaleY * factor, 1e-6, 4096.0);
 
-            double viewCenterX = View?.AllocatedWidth > 0 ? View.AllocatedWidth / 2.0 : 0;
-            double viewCenterY = View?.AllocatedHeight > 0 ? View.AllocatedHeight / 2.0 : 0;
-
-            double worldX = ((mouseScreenPos.X - viewCenterX) / (PxWmicron * oldScaleX)) - Origin.X;
-            double worldY = ((mouseScreenPos.Y - viewCenterY) / (PxHmicron * oldScaleY)) - Origin.Y;
+            // Non-pyramidal rendering uses:
+            // screen = pixelsPerMicron * scale * (world + Origin).
+            // Origin already contains any padding needed to center the image, so
+            // subtracting half the viewport here applies the centering twice.
+            double worldX = (mouseScreenPos.X / (PxWmicron * oldScaleX)) - Origin.X;
+            double worldY = (mouseScreenPos.Y / (PxHmicron * oldScaleY)) - Origin.Y;
 
             Scale = new SizeF((float)newScaleX, (float)newScaleY);
 
-            double newOriginX = ((mouseScreenPos.X - viewCenterX) / (PxWmicron * newScaleX)) - worldX;
-            double newOriginY = ((mouseScreenPos.Y - viewCenterY) / (PxHmicron * newScaleY)) - worldY;
+            double newOriginX = (mouseScreenPos.X / (PxWmicron * newScaleX)) - worldX;
+            double newOriginY = (mouseScreenPos.Y / (PxHmicron * newScaleY)) - worldY;
 
             Origin = new PointD(newOriginX, newOriginY);
             UpdateView(true);
@@ -4481,6 +4521,7 @@ namespace BioGTK
         private void ImageView_ButtonPressEvent(object o, ButtonPressEventArgs e)
         {
             Modifiers = e.Event.State;
+            View?.GrabFocus();
 
             if (e.Event.Button == 1)
                 mouseLeftState = true;
@@ -4699,8 +4740,8 @@ namespace BioGTK
         {
             if (SelectedImage == null)
             {
-                double dx = (ToViewSizeW(x - (View.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
-                double dy = (ToViewSizeH(y - (View.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
+                double dx = (ToViewSizeW(x) / Scale.Width) - Origin.X;
+                double dy = (ToViewSizeH(y) / Scale.Height) - Origin.Y;
                 return new PointD(dx, dy);
             }
             if (SelectedImage.isPyramidal)
@@ -4712,8 +4753,10 @@ namespace BioGTK
             }
             else
             {
-                double dx = (ToViewSizeW(x - (View.AllocatedWidth / 2)) / Scale.Width) - Origin.X;
-                double dy = (ToViewSizeH(y - (View.AllocatedHeight / 2)) / Scale.Height) - Origin.Y;
+                // This is the exact inverse of ToScreenRect's non-pyramidal
+                // branch. Origin already includes image-centering padding.
+                double dx = (ToViewSizeW(x) / Scale.Width) - Origin.X;
+                double dy = (ToViewSizeH(y) / Scale.Height) - Origin.Y;
                 return new PointD(dx, dy);
             }
         }

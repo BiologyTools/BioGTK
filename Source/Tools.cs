@@ -146,7 +146,7 @@ namespace BioGTK
             this.ButtonPressEvent += Tools_ButtonPressEvent;
             ti = TextInput.Create();
             view.Drawn += View_Drawn;
-            view.DeleteEvent += View_DeleteEvent;
+            this.DeleteEvent += View_DeleteEvent;
         }
         private void View_DeleteEvent(object o, DeleteEventArgs args)
         {

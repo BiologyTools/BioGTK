@@ -116,7 +116,14 @@ namespace BioGTK
             this.Title = title;
             this.statusLabel.Text = status;
             this.progLabel.Text = state;
+            DeleteEvent += Progress_DeleteEvent;
             App.ApplyStyles(this);
+        }
+
+        private void Progress_DeleteEvent(object o, DeleteEventArgs args)
+        {
+            args.RetVal = true;
+            Hide();
         }
 
         #endregion

@@ -60,7 +60,12 @@ namespace BioGTK
 
         private void About_DeleteEvent(object o, DeleteEventArgs args)
         {
-            this.Hide();
+            // The macOS GTK backend requires delete-event to be handled when a
+            // reusable utility window is hidden instead of destroyed.  Without
+            // this, the native title-bar close request can be ignored or race
+            // with GTK's default destroy behavior.
+            args.RetVal = true;
+            Hide();
         }
 
         /// The function resizes an image and draws it onto a Cairo context.

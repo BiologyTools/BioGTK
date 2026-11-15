@@ -69,6 +69,7 @@ namespace BioGTK
             copyBut.Clicked += CopyBut_Clicked;
             internalBox.Activated += InternalBox_Activated;
             this.FocusInEvent += Recorder_FocusActivated;
+            this.DeleteEvent += Recorder_DeleteEvent;
         }
 
         private void InternalBox_Activated(object sender, EventArgs e)

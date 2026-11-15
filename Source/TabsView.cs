@@ -591,26 +591,7 @@ namespace BioGTK
             }
             rotateFlipMenu.Submenu = m;
             rotateFlipMenu.ShowAll();
-            string a = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            Menu me = new Menu();
-            foreach (char c in a)
-            {
-                MenuItem mi = new MenuItem(c.ToString());
-                Menu men = new Menu();
-                foreach (Fiji.Macro.Command command in Fiji.Macro.Commands.Values)
-                {
-                    if (command.Name.StartsWith(c))
-                    {
-                        MenuItem menuItem = new MenuItem(command.Name.ToString());
-                        menuItem.ButtonPressEvent += CommandMenuItem_ButtonPressEvent;
-                        men.Append(menuItem);
-                    }
-                }
-                mi.Submenu = men;
-                me.Append(mi);
-            }
-            commandsMenu.Submenu = me;
-            commandsMenu.ShowAll();
+            InitializeCommandsMenu();
             recentMenu.Submenu = recent;
 
             App.ApplyStyles(this);
@@ -626,6 +607,38 @@ namespace BioGTK
             ML.ML.Initialize();
             AIMenu.ShowAll();
             App.MoveToMain(this);
+        }
+
+        private void InitializeCommandsMenu()
+        {
+            Menu commandMenu = new Menu();
+            var commandGroups = Fiji.Macro.Commands.Values
+                .Where(command => !string.IsNullOrWhiteSpace(command.Name))
+                .OrderBy(command => command.Name, StringComparer.OrdinalIgnoreCase)
+                .GroupBy(command =>
+                {
+                    char first = char.ToUpperInvariant(command.Name[0]);
+                    return first >= 'A' && first <= 'Z' ? first.ToString() : "#";
+                })
+                .OrderBy(group => group.Key == "#" ? "0" : group.Key);
+
+            foreach (var group in commandGroups)
+            {
+                Menu categoryMenu = new Menu();
+                foreach (Fiji.Macro.Command command in group)
+                {
+                    MenuItem commandItem = new MenuItem(command.Name);
+                    commandItem.Activated += CommandMenuItem_Activated;
+                    categoryMenu.Append(commandItem);
+                }
+
+                MenuItem categoryItem = new MenuItem(group.Key);
+                categoryItem.Submenu = categoryMenu;
+                commandMenu.Append(categoryItem);
+            }
+
+            commandsMenu.Submenu = commandMenu;
+            commandsMenu.ShowAll();
         }
         /*
         public PointD GetTextSize(string s, string font, int size)
@@ -694,10 +707,31 @@ namespace BioGTK
             recentMenu.ShowAll();
         }
 
-        private async void CommandMenuItem_ButtonPressEvent(object o, ButtonPressEventArgs args)
+        private async void CommandMenuItem_Activated(object o, EventArgs args)
         {
-            if (ImageView.SelectedImage == null) return;
-            MenuItem m = (MenuItem)o;
+            if (ImageView.SelectedImage == null || o is not MenuItem m)
+                return;
+
+            try
+            {
+                await RunCommandMenuItemAsync(m);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("[TabsView.CommandMenuItem] " + ex);
+                Gtk.Application.Invoke(delegate
+                {
+                    using var dialog = new MessageDialog(this, DialogFlags.Modal,
+                        MessageType.Error, ButtonsType.Ok, "{0}", ex.Message);
+                    dialog.Title = "ImageJ Command Failed";
+                    dialog.Run();
+                    dialog.Destroy();
+                });
+            }
+        }
+
+        private async Task RunCommandMenuItemAsync(MenuItem m)
+        {
             BioImage sourceImage = ImageView.SelectedImage;
             BioImage bm;
             string command = "run(\"" + m.Label + "\");";
@@ -750,15 +784,36 @@ namespace BioGTK
                     }
                 }
                 Console.WriteLine($"[TabsView.CommandMenuItem] pyramidal result={(bm == null ? "null" : bm.ID)}");
-                PreserveSourceAnnotations(sourceImage, bm);
-                AddTab(bm);
+                await PresentCommandResultAsync(sourceImage, bm);
                 return;
             }
             bm = await Fiji.RunOnImage(ImageView.SelectedImage, "run(\"" + m.Label + "\");", BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
             Console.WriteLine($"[TabsView.CommandMenuItem] stack result={(bm == null ? "null" : bm.ID)}");
             AddToRecent(m.Label);
-            PreserveSourceAnnotations(sourceImage, bm);
-            AddTab(bm);
+            await PresentCommandResultAsync(sourceImage, bm);
+        }
+
+        private Task PresentCommandResultAsync(BioImage sourceImage, BioImage resultImage)
+        {
+            if (resultImage == null)
+                throw new InvalidOperationException("ImageJ completed without producing an image result.");
+
+            var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Gtk.Application.Invoke(delegate
+            {
+                try
+                {
+                    PreserveSourceAnnotations(sourceImage, resultImage);
+                    AddTab(resultImage);
+                    Present();
+                    completion.TrySetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    completion.TrySetException(ex);
+                }
+            });
+            return completion.Task;
         }
 
         private static void PreserveSourceAnnotations(BioImage source, BioImage target)
@@ -1019,8 +1074,10 @@ namespace BioGTK
             }
             MenuItem mi = new MenuItem(name);
             if (!con)
+            {
+                mi.Activated += CommandMenuItem_Activated;
                 recent.Append(mi);
-            mi.ButtonPressEvent += CommandMenuItem_ButtonPressEvent;
+            }
             recentMenu.ShowAll();
         }
 
@@ -1443,6 +1500,8 @@ namespace BioGTK
                 }
                 v.Close();
             }
+            args.RetVal = true;
+            Hide();
         }
 
         private async void ExtractRegionMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)

@@ -487,11 +487,11 @@
     <PackageReference Include="OpenTK.Windowing.Common" Version="4.9.4" />
     <PackageReference Include="OpenTK.Windowing.Desktop" Version="4.9.4" />
     <PackageReference Include="ScottPlot" Version="5.1.59" />
-    <PackageReference Include="SkiaSharp" Version="4.156.0" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="4.156.0" />
-    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="4.156.0" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="4.156.0" />
-    <PackageReference Include="SkiaSharp.Views.Gtk3" Version="4.156.0" />
+    <PackageReference Include="SkiaSharp" Version="4.156.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="4.156.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="4.156.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="4.156.1" />
+    <PackageReference Include="SkiaSharp.Views.Gtk3" Version="4.156.1" />
     <PackageReference Include="TorchSharp-cpu" Version="0.107.0" />
     <PackageReference Include="YamlDotNet" Version="18.1.0" />  
   </ItemGroup>

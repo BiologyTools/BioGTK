@@ -810,10 +810,11 @@ namespace BioGTK
                 int height = _isOpenSlide ? _openSlideSource.Schema.GetTileHeight(request.Index.Level)
                                           : _slideSource.Schema.GetTileHeight(request.Index.Level);
 
-                var info = new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Premul);
-                // If decode fails, create from raw RGBA data
+                // OpenSlide and SlideBase return packed BGRA pixels. The Windows
+                // renderer uploads the same buffers with PixelFormat.Bgra; declaring
+                // them as RGBA here swapped red and blue on the macOS Skia path.
                 // CRITICAL: Don't dispose SKData until image is disposed
-                var imageInfo = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+                var imageInfo = new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Premul);
                 var rawData = SKData.CreateCopy(tileData);
                 var pixmap = new SKPixmap(imageInfo, rawData.Data, imageInfo.RowBytes);
 

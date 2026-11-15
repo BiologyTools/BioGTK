@@ -54,7 +54,6 @@ namespace BioGTK
             builder.Autoconnect(this);
             App.ApplyStyles(this);
             this.FocusInEvent += Login_FocusInEvent;
-            this.DeleteEvent += Login_DeleteEvent;
             cancelBut.ButtonPressEvent += CancelBut_ButtonPressEvent;
             loginBut.ButtonPressEvent += LoginButton_ButtonPressEvent;
             portBox.Adjustment = new Adjustment(4064,0,9999,1,1,1);
@@ -74,11 +73,6 @@ namespace BioGTK
         private void Login_FocusInEvent(object o, FocusInEventArgs args)
         {
             GrabFocus();
-        }
-
-        private void Login_DeleteEvent(object o, DeleteEventArgs args)
-        {
-            this.Hide();
         }
 
         private void CancelBut_ButtonPressEvent(object o, ButtonPressEventArgs args)

@@ -70,7 +70,8 @@ A .NET application & library for editing & annotating various microscopy image f
 - Download the BioGTK application for either OSX-x64 or OSX-Arm from releases.
 - Make the .app bundle executable by opening terminal in the Contents/MacOS folder then run "chmod 755 BioGTKApp".
 - Drag BioGTK into the applications folder.
-- Then run ```xattr -dr com.apple.quarantine /Applications/BioGTK.app``` to remove Apple quarantine.
+- Then run ```xattr -dr com.apple.quarantine /Applications/BioGTK.app``` to remove Apple quarantine from BioGTK.
+- Then run ```xattr -dr com.apple.quarantine /Applications/Fiji.app``` to remove Apple quarantine from your Fiji installation.
 - Optionally install [OpenSlide](https://formulae.brew.sh/formula/openslide) for better navigation of whole-slide-images.
 - Optionally install [LibVips](https://www.libvips.org/install.html) for increased performance and functions with whole-slide-images.
 - Optionally for SAM install ONNX Runtime by running "brew install onnxruntime".

@@ -1,0 +1,1065 @@
+using AForge;
+using Gdk;
+using loci.formats.@in;
+using ome.api;
+using ome.formats;
+using ome.formats.importer;
+using ome.formats.importer.cli;
+using ome.util;
+using ome.xml.model.enums;
+using omero;
+using omero.api;
+using omero.constants;
+using omero.gateway;
+using omero.gateway.facility;
+using omero.gateway.model;
+using omero.grid;
+using omero.log;
+using omero.model;
+using omero.model.enums;
+using omero.romio;
+using omero.sys;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Rectangle = omero.model.Rectangle;
+namespace BioLib
+{
+    public class OMERO
+    {
+        public static string host, username;
+        public static string password = "";
+        public static int port;
+        public static client client;
+        public static ServiceFactoryPrx session;
+        public static Gateway gateway;
+        public static ExperimenterData experimenter;
+        public static ExperimenterData experimenterSudo;
+        public static IMetadataPrx meta;
+        public static BrowseFacility browsefacil;
+        public static MetadataFacility metafacil;
+        public static DataManagerFacility datafacil;
+        public static RawDataFacility rawdatafacil;
+        public static EventContext adminContext;
+        public static IAdminPrx adminPrx;
+        public static SecurityContext sc;
+        public static omero.api.RawPixelsStorePrx store;
+        public static java.util.Collection datasets;
+        public static java.util.Collection folders;
+        public static java.util.Collection images;
+        private static java.lang.Class brFacility = java.lang.Class.forName("omero.gateway.facility.BrowseFacility");
+        private static java.lang.Class metaFacility = java.lang.Class.forName("omero.gateway.facility.MetadataFacility");
+        private static java.lang.Class dataFacility = java.lang.Class.forName("omero.gateway.facility.DataManagerFacility");
+        private static java.lang.Class rawFacility = java.lang.Class.forName("omero.gateway.facility.RawDataFacility");
+        private static Random rng = new Random();
+        public static double progress = 0;
+        public static void Connect(string host, int port, string username, string password)
+        {
+            OMERO.host = host;
+            OMERO.port = port;
+            OMERO.username = username;
+            OMERO.password = password;
+            client = new client(host, port);
+            session = client.createSession(username, password);
+            // Initialize OMERO client and gateway
+            gateway = new Gateway(new SimpleLogger());
+            LoginCredentials credentials = new LoginCredentials();
+            credentials.getServer().setHostname(host);
+            credentials.getServer().setPort(port);
+            credentials.getUser().setUsername(username);
+            credentials.getUser().setPassword(password);
+            experimenter = gateway.connect(credentials);
+            Init();
+        }
+        public static void Connect()
+        {
+            client = new client(host, port);
+            session = client.createSession(username, password);
+            // Initialize OMERO client and gateway
+            gateway = new Gateway(new SimpleLogger());
+            LoginCredentials credentials = new LoginCredentials();
+            credentials.getServer().setHostname(host);
+            credentials.getServer().setPort(port);
+            credentials.getUser().setUsername(username);
+            credentials.getUser().setPassword(password);
+            experimenter = gateway.connect(credentials);
+            Init();
+        }
+        public static long GetID()
+        {
+            return rng.Next(0, 99999);
+        }
+        private static void Init()
+        {
+            meta = session.getMetadataService();
+            ExperimenterGroupI sec = (ExperimenterGroupI)session.getSecurityContexts().get(0);
+            RLong id = sec.getId();
+            sc = new SecurityContext(id.getValue());
+            browsefacil = (BrowseFacility)gateway.getFacility(brFacility);
+            metafacil = (MetadataFacility)gateway.getFacility(metaFacility);
+            datafacil = (DataManagerFacility)gateway.getFacility(dataFacility);
+            rawdatafacil = (RawDataFacility)gateway.getFacility(rawFacility);
+            folders = browsefacil.getFolders(sc);
+            datasets = browsefacil.getDatasets(sc);
+            images = browsefacil.getUserImages(sc);
+            store = gateway.getPixelsStore(sc);
+            adminPrx = session.getAdminService();
+
+        }
+        public static void ReConnect()
+        {
+            if (!gateway.isConnected())
+            {
+                client = new client(host, port);
+                session = client.createSession(username, password);
+                // Initialize OMERO client and gateway
+                gateway = new Gateway(new SimpleLogger());
+                LoginCredentials credentials = new LoginCredentials();
+                credentials.getServer().setHostname(host);
+                credentials.getServer().setPort(port);
+                credentials.getUser().setUsername(username);
+                credentials.getUser().setPassword(password);
+                experimenter = gateway.connect(credentials);
+            }
+        }
+        public static List<(double X, double Y)> GetPoints(Image image, Shape shape, double physX, double physY)
+        {
+            var qs = session.getQueryService();
+            var polygons = new List<(double X, double Y)>();
+            if (shape is Polygon polygon)
+            {
+                var pointList = new List<(double X, double Y)>();
+                string pointsStr = polygon.getPoints().getValue();
+                if (!string.IsNullOrEmpty(pointsStr))
+                {
+                    // Points are like "10.0,20.0 30.0,40.0 50.0,60.0"
+                    var pointPairs = pointsStr.Split(' ');
+                    foreach (var pair in pointPairs)
+                    {
+                        var coords = pair.Split(',');
+                        if (coords.Length == 2 &&
+                            double.TryParse(coords[0], CultureInfo.InvariantCulture, out double x) &&
+                            double.TryParse(coords[1], CultureInfo.InvariantCulture, out double y))
+                        {
+                            pointList.Add((x * physX, y * physY));
+                        }
+                    }
+                }
+                polygons.AddRange(pointList);
+            }
+            else if (shape is Polyline poly)
+            {
+                var pointList = new List<(double X, double Y)>();
+
+                string pointsStr = poly.getPoints().getValue();
+                if (!string.IsNullOrEmpty(pointsStr))
+                {
+                    // Points are like "10.0,20.0 30.0,40.0 50.0,60.0"
+                    var pointPairs = pointsStr.Split(' ');
+                    foreach (var pair in pointPairs)
+                    {
+                        var coords = pair.Split(',');
+                        if (coords.Length == 2 &&
+                            double.TryParse(coords[0], CultureInfo.InvariantCulture, out double x) &&
+                            double.TryParse(coords[1], CultureInfo.InvariantCulture, out double y))
+                        {
+                            pointList.Add((x * physX, y * physY));
+                        }
+                    }
+                }
+                polygons.AddRange(pointList);
+            }
+            else if (shape is Line li)
+            {
+                var pointList = new List<(double X, double Y)>();
+                pointList.Add((li.getX1().getValue() * physX, li.getY1().getValue() * physY));
+                pointList.Add((li.getX2().getValue() * physX, li.getY2().getValue() * physY));
+                polygons.AddRange(pointList);
+            }
+            return polygons;
+        }
+        public static ROI[] GetROIs(double physX, double physY, long imageId)
+        {
+            List<ROI> rois = new List<ROI>();
+            // Assume you already have a live session as 'serviceFactory'
+            var queryService = session.getQueryService();
+
+            // Create query parameters
+            var param = new ParametersI();
+            param.addId(imageId);
+
+            // Query for all ROIs related to a particular image
+            string query = "from Shape s where s.roi.image.id = :id";
+            var roiList = queryService.findAllByQuery(query, param);
+            int c = roiList.size();
+            for (int i = 0; i < c; i++)
+            {
+                var shape = (Shape)roiList.get(i);
+                // Using the ServiceFactory to reload a single ROI by ID
+                var roiId = shape.getRoi().getId().getValue();
+                ROI ro = new ROI();
+                if (shape is Rectangle)
+                {
+                    Rectangle rec = (Rectangle)shape;
+                    int zo = 0, co = 0, to = 0;
+                    if (rec.getTheZ() != null)
+                        zo = shape.getTheZ().getValue();
+                    if (rec.getTheC() != null)
+                        co = shape.getTheC().getValue();
+                    if (rec.getTheT() != null)
+                        to = shape.getTheT().getValue();
+                    double x, y, w, h;
+                    x = rec.getX().getValue();
+                    y = rec.getY().getValue();
+                    w = rec.getWidth().getValue();
+                    h = rec.getHeight().getValue();
+
+                    double[] ss = GetImageSize(imageId);
+                    ro = ROI.CreateRectangle(new ZCT(zo, co, to), x * physX, y * physY, w * physX, h * physY);
+                    try
+                    {
+                        ro.Text = rec.getTextValue().getValue();
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+                    rois.Add(ro);
+                }
+                else if (shape is Polygon)
+                {
+                    Polygon pl = (Polygon)shape;
+                    int zo = 0, co = 0, to = 0;
+                    if (pl.getTheZ() != null)
+                        zo = shape.getTheZ().getValue();
+                    if (pl.getTheC() != null)
+                        co = shape.getTheC().getValue();
+                    if (pl.getTheT() != null)
+                        to = shape.getTheT().getValue();
+                    var ps = GetPoints(GetOMEROImage(imageId), pl, physX, physY);
+                    PointD[] pds = new PointD[ps.Count];
+                    for (int p = 0; p < pds.Length; p++)
+                    {
+                        pds[p] = new PointD(ps[p].X, ps[p].Y);
+                    }
+                    ro = ROI.CreatePolygon(new ZCT(zo, co, to), pds);
+                    try
+                    {
+                        ro.Text = pl.getTextValue().getValue();
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+                    rois.Add(ro);
+                }
+                else if (shape is Polyline)
+                {
+                    Polyline pl = (Polyline)shape;
+                    int zo = 0, co = 0, to = 0;
+                    if (pl.getTheZ() != null)
+                        zo = shape.getTheZ().getValue();
+                    if (pl.getTheC() != null)
+                        co = shape.getTheC().getValue();
+                    if (pl.getTheT() != null)
+                        to = shape.getTheT().getValue();
+                    var ps = GetPoints(GetOMEROImage(imageId), pl, physX, physY);
+                    PointD[] pds = new PointD[ps.Count];
+                    for (int p = 0; p < pds.Length; p++)
+                    {
+                        pds[p] = new PointD(ps[p].X, ps[p].Y);
+                    }
+                    ro = ROI.CreatePolygon(new ZCT(zo, co, to), pds);
+                    try
+                    {
+                        ro.Text = pl.getTextValue().getValue();
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+                    ro.type = ROI.Type.Polyline;
+                    ro.closed = false;
+                    rois.Add(ro);
+                }
+                else if (shape is Line)
+                {
+                    Line pl = (Line)shape;
+                    int zo = 0, co = 0, to = 0;
+                    if (pl.getTheZ() != null)
+                        zo = shape.getTheZ().getValue();
+                    if (pl.getTheC() != null)
+                        co = shape.getTheC().getValue();
+                    if (pl.getTheT() != null)
+                        to = shape.getTheT().getValue();
+                    var ps = GetPoints(GetOMEROImage(imageId), pl, physX, physY);
+                    PointD[] pds = new PointD[ps.Count];
+                    for (int p = 0; p < pds.Length; p++)
+                    {
+                        pds[p] = new PointD(ps[p].X, ps[p].Y);
+                    }
+                    ro = ROI.CreateLine(new ZCT(zo, co, to), new PointD(pds[0].X, pds[0].Y), new PointD(pds[1].X, pds[1].Y));
+                    try
+                    {
+                        ro.Text = pl.getTextValue().getValue();
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+                    rois.Add(ro);
+                }
+                else if (shape is Ellipse)
+                {
+                    Ellipse pl = (Ellipse)shape;
+                    int zo = 0, co = 0, to = 0;
+                    if (pl.getTheZ() != null)
+                        zo = shape.getTheZ().getValue();
+                    if (pl.getTheC() != null)
+                        co = shape.getTheC().getValue();
+                    if (pl.getTheT() != null)
+                        to = shape.getTheT().getValue();
+                    double rx = pl.getRadiusX().getValue() * physX;
+                    double ry = pl.getRadiusY().getValue() * physY;
+                    double x = pl.getX().getValue() * physX;
+                    double y = pl.getY().getValue() * physY;
+                    ro = ROI.CreateEllipse(new ZCT(zo, co, to), x, y, rx * 2, ry * 2);
+                    try
+                    {
+                        ro.Text = pl.getTextValue().getValue();
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+                    rois.Add(ro);
+
+                }
+                else if (shape is Label)
+                {
+                    Label pl = (Label)shape;
+                    int zo = 0, co = 0, to = 0;
+                    if (pl.getTheZ() != null)
+                        zo = shape.getTheZ().getValue();
+                    if (pl.getTheC() != null)
+                        co = shape.getTheC().getValue();
+                    if (pl.getTheT() != null)
+                        to = shape.getTheT().getValue();
+                    double x = pl.getX().getValue() * physX;
+                    double y = pl.getY().getValue() * physY;
+                    ro = ROI.CreateRectangle(new ZCT(zo, co, to), x, y, physX * 5, physY * 5);
+                    ro.type = ROI.Type.Label;
+                    try
+                    {
+                        ro.Text = pl.getTextValue().getValue();
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+                    rois.Add(ro);
+                }
+                else if (shape is omero.model.Point)
+                {
+                    omero.model.Point po = (omero.model.Point)shape;
+                    int zo = 0, co = 0, to = 0;
+                    if (po.getTheZ() != null)
+                        zo = shape.getTheZ().getValue();
+                    if (po.getTheC() != null)
+                        co = shape.getTheC().getValue();
+                    if (po.getTheT() != null)
+                        to = shape.getTheT().getValue();
+                    double x, y, w, h;
+                    x = po.getX().getValue();
+                    y = po.getY().getValue();
+                    ro = ROI.CreatePoint(new ZCT(zo, co, to), x * physX, y * physY);
+                    try
+                    {
+                        ro.Text = po.getTextValue().getValue();
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+                    rois.Add(ro);
+                }
+                ro.UpdateBoundingBox();
+            }
+            return rois.ToArray();
+        }
+        public static Image GetOMEROImage(long imageId)
+        {
+            var qs = session.getQueryService();
+            var obj = qs.get("Image", imageId);
+            return obj as Image;
+        }
+        /// <summary>
+        /// Gets the physical pixel sizes (SizeX, SizeY, SizeZ) for a given image.
+        /// Returns a double array {SizeX, SizeY, SizeZ}, with 0.0 for missing values.
+        /// </summary>
+        public static double[] GetImageSize(long imageId)
+        {
+            var queryService = session.getQueryService();
+
+            // Query the Pixels object associated with the image
+            string hql = "select pix from Pixels as pix where pix.image.id = :id";
+            var param = new ParametersI();
+            param.addId(imageId);
+
+            var result = queryService.findByQuery(hql, param);
+            if (result == null)
+            {
+                Console.WriteLine($"No pixels found for image {imageId}");
+                return new double[] { 0.0, 0.0, 0.0 };
+            }
+
+            var pixels = (Pixels)result;
+
+            // Handle null sizes safely
+            double sizeX = pixels.getSizeY()?.getValue() ?? 0.0;
+            double sizeY = pixels.getSizeY()?.getValue() ?? 0.0;
+            double sizeZ = pixels.getSizeZ()?.getValue() ?? 0.0;
+
+            return new double[] { sizeX, sizeY, sizeZ };
+        }
+        public static void Upload(BioImage b, long id)
+        {
+            //See above how to load an image.
+            int sizeZ = b.SizeZ;
+            int sizeT = b.SizeT;
+            int sizeC = b.SizeC;
+            int sizeX = b.SizeX;
+            int sizeY = b.SizeY;
+
+            //Read the pixels from the source image.
+            RawPixelsStorePrx store = gateway.getPixelsStore(sc);
+            List<byte[]> planes = new List<byte[]>();
+            for (int z = 0; z < sizeZ; z++)
+            {
+                for (int c = 0; c < sizeC; c++)
+                {
+                    for (int t = 0; t < sizeT; t++)
+                    {
+                        planes.Add(b.GetBitmap(z,c,t).GetSaveBytes(BitConverter.IsLittleEndian));
+                    }
+                }
+            }
+
+            //Now we are going to create the new image.
+            IPixelsPrx proxy = gateway.getPixelsService(sc);
+
+            //Create new image.
+            String name = b.Filename;
+            PixelsType pixelsType = new PixelsTypeI();
+            if (b.Buffers[0].PixelFormat == PixelFormat.Format16bppGrayScale)
+                pixelsType.setValue(omero.rtypes.rstring("uint16"));
+            else
+                pixelsType.setValue(omero.rtypes.rstring("uint8"));
+            RLong idNew = proxy.createImage(sizeX, sizeY, sizeZ, sizeT, java.util.Arrays.asList(new java.lang.Integer(0)), pixelsType, name, "");
+            IContainerPrx proxyCS = session.getContainerService();
+            java.util.List results = proxyCS.getImages("omero.model.Image", java.util.Arrays.asList(new java.lang.Long(idNew.getValue())), new ParametersI());
+            ImageData newImage = new ImageData((Image)results.get(0));
+            var user = gateway.getLoggedInUser();
+            long userId = user.getId();
+            try
+            {
+                // Set physical sizes
+                var pixels = newImage.getDefaultPixels();
+                pixels.setPixelSizeX(new LengthI(b.PhysicalSizeX, omero.model.enums.UnitsLength.MICROMETER));
+                pixels.setPixelSizeY(new LengthI(b.PhysicalSizeY, omero.model.enums.UnitsLength.MICROMETER));
+                pixels.setPixelSizeZ(new LengthI(b.PhysicalSizeZ, omero.model.enums.UnitsLength.MICROMETER));
+                // Write pixel planes with correct endianness
+                store.setPixelsId(newImage.getDefaultPixels().getId(), false);
+                int index = 0;
+                if (sizeC == 3)
+                    sizeC = 1;
+                for (int z = 0; z < sizeZ; z++)
+                {
+                    for (int c = 0; c < sizeC; c++)
+                    {
+                        for (int t = 0; t < sizeT; t++)
+                        {
+                            byte[] planeBytes = planes[index++];
+                            if (b.Buffers[0].PixelFormat == PixelFormat.Format16bppGrayScale)
+                            {
+                                for (int i = 0; i < planeBytes.Length; i += 2)
+                                {
+                                    byte tmp = planeBytes[i];
+                                    planeBytes[i] = planeBytes[i + 1];
+                                    planeBytes[i + 1] = tmp;
+                                }
+                            }
+                            store.setPlane(planeBytes, z, c, t);
+                        }
+                    }
+                }
+                store.save();
+                // Save ROI data
+                int roiCount = ROI.AddROIsToOMERO(newImage.getId(), userId, b);
+                Console.WriteLine($"Uploaded {roiCount} ROIs.");
+
+            }
+            finally
+            {
+                store.close();
+            }
+        }
+        public static omero.model.StageLabel? GetStageLabel(long imageId)
+        {
+            var queryService = session.getQueryService();
+            // Load the image
+            var image = (omero.model.Image)queryService.get("omero.model.Image", imageId);
+            if (image == null || image.getStageLabel() == null)
+                return null;
+            var stageLabelId = image.getStageLabel().getId().getValue();
+            var stageLabel = (omero.model.StageLabel)queryService.get("omero.model.StageLabel", stageLabelId);
+            return stageLabel;
+        }
+        public static BioImage GetImage(string filename, long dataset)
+        {
+            ReConnect();
+            BioImage b = new BioImage(filename);
+            try
+            {
+                java.util.Collection col = new java.util.ArrayList();
+                col.add(java.lang.Long.valueOf(dataset));
+                var uims = browsefacil.getImagesForDatasets(sc, col);
+                var itr = uims.iterator();
+                java.util.List li = new java.util.ArrayList();
+                java.util.ArrayList imgs = new java.util.ArrayList();
+                Images.AddImage(b);
+                
+                do
+                {
+                    java.util.ArrayList list = new java.util.ArrayList();
+                    ImageData o = (ImageData)itr.next();
+                    string name = o.getName();
+                    string[] sts = name.Split(' ');
+                    if (filename != name)
+                        continue;
+
+                    PixelsData pd = o.getDefaultPixels();
+                    int xs = pd.getSizeX();
+                    int ys = pd.getSizeY();
+                    int zs = pd.getSizeZ();
+                    int cs = pd.getSizeC();
+                    int ts = pd.getSizeT();
+                    long pid = o.getId();
+                    b.Filename = sts[0];
+                    b.ID = name.Replace(" ","_");
+                    b.Filename = name.Split(' ')[0];
+                    b.ID = b.Filename;
+                    RawPixelsStorePrx store = gateway.getPixelsStore(sc);
+                    long ind = o.getId();
+                    long ll = pd.getId();
+                    list.add(java.lang.Long.valueOf(ind));
+                    try
+                    {
+                        var acq = metafacil.getChannelData(sc, ind);
+                        int s = acq.size();
+                        for (int i = 0; i < s; i++)
+                        {
+                            var ch = (ChannelData)acq.get(i);
+                            var ac = metafacil.getImageAcquisitionData(sc, ind);
+                            var chan = ch.asChannel();
+                            AForge.Color color = new AForge.Color();
+                            try
+                            {
+                                int re = chan.getRed().getValue();
+                                int gr = chan.getGreen().getValue();
+                                int bl = chan.getBlue().getValue();
+                                color = AForge.Color.FromArgb(re,gr,bl);
+                            }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine(e.Message);
+                            }
+                            var px = pd.asPixels().getPixelsType();
+                            int bits = px.getBitSize().getValue();
+                            AForge.PixelFormat pxx = GetPixelFormat(bits);
+                            AForge.Channel cch = null;
+                            if (pxx == AForge.PixelFormat.Format8bppIndexed || pxx == AForge.PixelFormat.Format16bppGrayScale)
+                                cch = new AForge.Channel(i, bits, 1);
+                            else if (pxx == AForge.PixelFormat.Format8bppIndexed || pxx == AForge.PixelFormat.Format48bppRgb)
+                                cch = new AForge.Channel(i, bits, 3);
+                            else if (pxx == AForge.PixelFormat.Format32bppArgb)
+                                cch = new AForge.Channel(i, bits, 4);
+                            cch.Fluor = ch.getFluor();
+                            var em = ch.getEmissionWavelength(omero.model.enums.UnitsLength.NANOMETER);
+                            if (em != null)
+                                cch.Emission = (int)em.getValue();
+                            cch.Color = color;
+                            cch.Name = ch.getName();
+                            if (cch.Name == null)
+                                cch.Name = i.ToString();
+                            b.Channels.Add(cch);
+                        }
+                    }
+                    catch (Exception exx)
+                    {
+                        Console.WriteLine(exx.Message);
+                    }
+                    var stage = o.asImage().getStageLabel();
+                    bool pyramidal = false;
+                    int ls = 0;
+                    try
+                    {
+                        ls = store.getResolutionLevels();
+                        pyramidal = true;
+                    }
+                    catch (Exception e)
+                    {
+                        ls = 1;
+                    }
+                    
+                    try
+                    {
+                        int i = 0;
+                        while(true)
+                        {
+                            if (i >= ls)
+                                break;
+                            omero.RInt rint = rtypes.rint(i);
+                            Image im = o.asImage();
+                            im.setSeries(rint);
+                            RInt rin = im.getSeries();
+                            AForge.PixelFormat px = AForge.PixelFormat.Format8bppIndexed;
+                            Pixels pxs = im.getPixels(0);
+                            store.setPixelsId(pxs.getId().getValue(),true);
+                            
+                            var pxto = pxs.getPixelsType();
+                            int bitso = pxto.getBitSize().getValue();
+                            int wo = pxs.getSizeX().getValue();
+                            int ho = pxs.getSizeY().getValue();
+                            px = PixelFormat.Format32bppArgb; //GetPixelFormat(bitso);
+                            double pxxo = pxs.getPhysicalSizeX().getValue();
+                            double pyyo = pxs.getPhysicalSizeY().getValue();
+                            double pzzo = 0;
+                            var pzo = pxs.getPhysicalSizeZ();
+                            if (pzo != null)
+                                pzzo = pzo.getValue();
+                            if (stage != null)
+                            {
+                                var sta = GetStageLabel(im.getId().getValue());
+                                Length? sxxo = sta.getPositionX();
+                                Length? syyo = sta.getPositionY();
+                                Length? szzo = sta.getPositionZ();
+                                b.Resolutions.Add(new Resolution(wo, ho, px, pxxo, pyyo, pzzo, sxxo.getValue(), syyo.getValue(), szzo.getValue()));
+                            }
+                            else
+                            {
+                                b.Resolutions.Add(new Resolution(wo, ho, px, pxxo, pyyo, pzzo, 0, 0, 0));
+                            }
+
+                            if (store.requiresPixelsPyramid())
+                            {
+                                b.Type = BioImage.ImageType.pyramidal;
+                            }
+
+                            i++;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        int t = 0;
+                    }
+
+                    for (int z = 0; z < zs; z++)
+                    {
+                        for (int c = 0; c < cs / 3; c++)
+                        {
+                            for (int t = 0; t < ts; t++)
+                            {
+                                if (b.isPyramidal)
+                                {
+                                    Pixels ps = pd.asPixels();                                
+                                    int chc = ps.sizeOfChannels();
+                                    store.setPixelsId(ps.getId().getValue(), true);
+                                    store.setResolutionLevel(b.Level+1);
+                                    Bitmap bt = GetTile(b, new AForge.ZCT(z, c, t), 0, 0, 600, 400, b.Level + 1).Result;
+                                    b.Buffers.Add(new Bitmap("", 600, 400, PixelFormat.Format32bppArgb, bt.Bytes, new AForge.ZCT(z, c, t), 0, null, false));
+                                    store.setResolutionLevel(b.Level + 1);
+                                    PixelsType pxt = ps.getPixelsType();
+                                    AForge.PixelFormat px = AForge.PixelFormat.Format32bppArgb;
+                                    int bits = pxt.getBitSize().getValue();
+                                    px = GetPixelFormat(bits);
+                                    Bitmap bmr = GetTile(b, new ZCT(0, 0, 0), (int)b.PyramidalOrigin.X, (int)b.PyramidalOrigin.Y, 256, 256, b.Level);
+                                    Bitmap bmg = GetTile(b, new ZCT(0, 1, 0), (int)b.PyramidalOrigin.X, (int)b.PyramidalOrigin.Y, 256, 256, b.Level);
+                                    Bitmap bmb = GetTile(b, new ZCT(0, 2, 0), (int)b.PyramidalOrigin.X, (int)b.PyramidalOrigin.Y, 256, 256, b.Level);
+                                    byte[] bt = CombineToArgb32(bmr.Bytes, bmg.Bytes, bmb.Bytes, 256, 256);
+                                    b.Buffers.Add(new Bitmap(256,256,PixelFormat.Format32bppArgb,bt,b.Coordinate,""));
+                                }
+                                else
+                                {
+                                    Pixels ps = pd.asPixels();
+                                    int chc = ps.sizeOfChannels();
+                                    store.setPixelsId(ps.getId().getValue(), true);
+                                    byte[] bts = store.getPlane(z, c, t);
+                                    PixelsType pxt = ps.getPixelsType();
+                                    AForge.PixelFormat px = AForge.PixelFormat.Format8bppIndexed;
+                                    int bits = pxt.getBitSize().getValue();
+                                    px = GetPixelFormat(bits);
+                                    b.Buffers.Add(new AForge.Bitmap("", xs, ys, px, bts, new AForge.ZCT(z, c, t), 0, null, false));
+                                }
+                            }
+                        }
+                    }
+                    if(b.isPyramidal)
+                    {
+                        b.SlideBase = new SlideBase(b, SlideImage.Open(b));
+                    }
+                    b.Volume = new VolumeD(new Point3D(b.Resolutions[0].StageSizeX, b.Resolutions[0].StageSizeY, b.Resolutions[0].StageSizeZ),
+                        new Point3D(b.SizeX * b.PhysicalSizeX, b.SizeY * b.PhysicalSizeY, zs * b.PhysicalSizeZ));
+                    b.Annotations.AddRange(OMERO.GetROIs(b.PhysicalSizeX,b.PhysicalSizeY,pid));
+                    b.UpdateCoords(zs, cs, ts);
+                    b.bitsPerPixel = 32;
+                    b.series = o.getSeries();
+                    b.imagesPerSeries = b.Buffers.Count;
+                    b.rgbChannels = new int[b.Channels.Count];
+                    b.ID = o.getId().ToString();
+                    BioImage.AutoThreshold(b, true);
+                    if (b.bitsPerPixel > 8)
+                        b.StackThreshold(true);
+                    else
+                        b.StackThreshold(false);
+                    b.Tag = "OMERO";
+                    if(b.isPyramidal)
+                    {
+                        b.SlideBase = new SlideBase(b, SlideImage.Open(b));
+                    }
+                    return b;
+                }
+                while (itr.hasNext());
+                
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Combines three 8-bit channel buffers into one 32-bit ARGB buffer.
+        /// Assumes all input buffers are the same size.
+        /// </summary>
+        public static byte[] CombineToArgb32(byte[] redBuf, byte[] greenBuf, byte[] blueBuf, int width, int height)
+        {
+            // 32-bit image uses 4 bytes per pixel (B, G, R, A)
+            int pixelCount = width * height;
+            byte[] argbBuffer = new byte[pixelCount * 4];
+
+            for (int i = 0; i < pixelCount; i++)
+            {
+                int argbIndex = i * 4;
+
+                // Standard Windows/GDI+ byte order is BGRA
+                argbBuffer[argbIndex] = blueBuf[i];  // Blue
+                argbBuffer[argbIndex + 1] = greenBuf[i]; // Green
+                argbBuffer[argbIndex + 2] = redBuf[i];   // Red
+                argbBuffer[argbIndex + 3] = 255;         // Alpha (Full opacity)
+            }
+
+            return argbBuffer;
+        }
+        public static BioImage GetImage(long id)
+        {
+            string n = browsefacil.getImage(sc, id).getName();
+            return GetImage(n,id);
+        }
+
+        public static byte[] CombineToBGRA(byte[] r, byte[] g, byte[] b)
+        {
+            int length = r.Length;
+            byte[] result = new byte[length * 4];
+
+            System.Threading.Tasks.Parallel.For(0, length, i =>
+            {
+                int idx = i * 4;
+                result[idx + 3] = b[i];
+                result[idx + 2] = g[i];
+                result[idx + 1] = r[i];
+                result[idx] = 255;
+            });
+
+            return result;
+        }
+        public static bool ShowRGB = false;
+       
+        public static Bitmap GetTile(BioImage b, ZCT coord, int x, int y, int width, int height, int level)
+        {
+            ReConnect();
+            //if (width >= b.SizeX || height >= b.SizeY)
+            //    return GetFullPlane(b, coord, level);
+            var itr = images.iterator();
+            java.util.List li = new java.util.ArrayList();
+            java.util.ArrayList imgs = new java.util.ArrayList();
+            Bitmap[] bms = new Bitmap[3];
+            do
+            {
+                java.util.ArrayList list = new java.util.ArrayList();
+                ImageData o = (ImageData)itr.next();
+                string name = o.getName();
+                var st = name.Split(' ');
+                if (b.Filename.Contains(st[0]) && st.Count() == 2)
+                {
+                    //store.setResolutionLevel(level + 1);
+                    PixelsData pd = o.getDefaultPixels();
+                    int zs = pd.getSizeZ();
+                    int cs = pd.getSizeC();
+                    int ts = pd.getSizeT();
+                    long ind = o.getId();
+                    long pid = o.getId();
+                    b.Filename = name;
+                    b.ID = name;
+                    long ind = o.getId();
+                    long ll = pd.getId();
+                    list.add(java.lang.Long.valueOf(ind));
+                    Pixels ps = pd.asPixels();
+                    int chc = ps.sizeOfChannels();
+                    store.setPixelsId(ps.getId().getValue(), true);
+                    byte[] btb = store.getTile(coord.Z, 2, coord.T, x, y, width, height);
+                    byte[] btg = store.getTile(coord.Z, 1, coord.T, x, y, width, height);
+                    byte[] btr = store.getTile(coord.Z, 0, coord.T, x, y, width, height);
+                    byte[] bt = CombineToBGRA(btb, btg, btr);
+                    return new Bitmap("", width, height, PixelFormat.Format32bppArgb, bt, coord, 0, null, false);
+                } while (itr.hasNext());
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+                    byte[] btr = store.getTile(coord.Z, 0, coord.T, x, y, 256, 256);
+                    byte[] btg = store.getTile(coord.Z, 1, coord.T, x, y, 256, 256);
+                    byte[] btb = store.getTile(coord.Z, 2, coord.T, x, y, 256, 256);
+                    PixelsType pxt = ps.getPixelsType();
+                    AForge.PixelFormat px = AForge.PixelFormat.Format8bppIndexed;
+                    int bits = pxt.getBitSize().getValue();
+                    px = GetPixelFormat(bits);;
+                    return new Bitmap(256,256,PixelFormat.Format32bppArgb,CombineToArgb32(btr, btg, btb, width, height),coord,"");
+                }
+            } while (itr.hasNext());
+            return null;
+        }
+        public static Dictionary<long,Pixbuf> GetThumbnails(string[] filenames, int width, int height)
+        {
+            ReConnect();
+            Dictionary<long, Pixbuf> dict = new Dictionary<long, Pixbuf>();
+            try
+            {
+                var meta = session.getMetadataService();
+                ExperimenterGroupI sec = (ExperimenterGroupI)session.getSecurityContexts().get(0);
+                RLong id = sec.getId();
+                SecurityContext sc = new SecurityContext(id.getValue());
+                // Get the thumbnail service
+                ThumbnailStorePrx store = gateway.getThumbnailService(sc);
+                // Access BrowseFacility
+                BrowseFacility facility = (BrowseFacility)gateway.getFacility(brFacility);
+                var uims = facility.getUserImages(sc);
+                var itr = uims.iterator();
+                List<Pixbuf> images = new List<Pixbuf>();   
+                while (itr.hasNext())
+                {
+                    var img = (ImageData)itr.next();
+                    string name = img.getName();
+                    for (int i = 0; i < filenames.Length; i++)
+                    {
+                        if(name == filenames[i])
+                        {
+                            // Set the pixels ID for the image
+                            long pixelId = img.getDefaultPixels().getId();
+                            store.setPixelsId(pixelId);
+                            byte[] thumbnailBytes = store.getThumbnail(omero.rtypes.rint(width), omero.rtypes.rint(height));
+                            Pixbuf pf = new Pixbuf(thumbnailBytes);
+                            dict.Add(img.getId(), pf);
+                        }
+                    }
+                }
+                return dict;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                return null;
+            }
+        }
+        public static string GetNameFromID(long id)
+        {
+            ReConnect();
+            return browsefacil.getImage(sc, id).getName();
+        }
+        private static PixelFormat GetPixelFormat(int bits)
+        {
+            PixelFormat px = PixelFormat.Format8bppIndexed;
+            
+            if (bits == 8)
+                px = AForge.PixelFormat.Format8bppIndexed;
+            else if (bits < 16 || bits == 16)
+                px = AForge.PixelFormat.Format16bppGrayScale;
+            else if (bits > 16 && bits <= 24)
+                px = AForge.PixelFormat.Format8bppIndexed;
+            else if (bits == 32)
+                px = PixelFormat.Format32bppArgb;
+            else if (bits > 32)
+                px = AForge.PixelFormat.Format48bppRgb;
+            
+            return px;
+        }
+        public static List<string> GetAllFiles()
+        {
+            ReConnect();
+            var meta = session.getMetadataService();
+            var uims = browsefacil.getUserImages(sc);
+            List<string> files = new List<string>();
+            var itr = uims.iterator();
+            while (itr.hasNext())
+            {
+                ImageData da = (ImageData)itr.next();
+                files.Add(da.getName());
+            }
+            return files;
+        }
+        public static List<string> GetDatasets()
+        {
+            ReConnect();
+            var d = browsefacil.getDatasets(sc);
+            var itr = d.iterator();
+            List<string> dbs = new List<string>();
+            while (itr.hasNext())
+            {
+                DatasetData dd = (DatasetData)itr.next();
+                dbs.Add(dd.getName());
+            }
+            return dbs;
+        }
+        public static List<DatasetData> GetDatasetsData()
+        {
+            ReConnect();
+            var d = browsefacil.getDatasets(sc);
+            var itr = d.iterator();
+            List<DatasetData> dbs = new List<DatasetData>();
+            while (itr.hasNext())
+            {
+                DatasetData dd = (DatasetData)itr.next();
+                dbs.Add(dd);
+            }
+            return dbs;
+        }
+        public static DatasetData GetDataset(string name)
+        {
+            ReConnect();
+            var d = browsefacil.getDatasets(sc);
+            var itr = d.iterator();
+            while (itr.hasNext())
+            {
+                DatasetData dd = (DatasetData)itr.next();
+                if (dd.getName() == name)
+                    return dd;
+            }
+            return null;
+        }
+        public static DatasetData GetDataset(string name, long id)
+        {
+            ReConnect();
+            var d = browsefacil.getDatasets(sc);
+            var itr = d.iterator();
+            while (itr.hasNext())
+            {
+                DatasetData dd = (DatasetData)itr.next();
+                if (dd.getName() == name && id == dd.getId())
+                    return dd;
+            }
+            return null;
+        }
+        public static List<string> GetFolders()
+        {
+            ReConnect();
+            var d = browsefacil.getFolders(sc);
+            var itr = d.iterator();
+            List<string> dbs = new List<string>();
+            while (itr.hasNext())
+            {
+                dbs.Add((string)itr.next());
+            }
+            return dbs;
+        }
+        public static List<string> GetDatasetFiles(string db)
+        {
+            ReConnect();
+            var d = browsefacil.getDatasets(sc);
+            var itr = d.iterator();
+            while (itr.hasNext())
+            {
+                DatasetData idr = (DatasetData)itr.next();
+                if(idr.getName() == db)
+                {
+                    java.util.ArrayList ar = new java.util.ArrayList();
+                    ar.add(java.lang.Long.valueOf(idr.getId()));
+                    var ims = browsefacil.getImagesForDatasets(sc,ar);
+                    var itr2 = ims.iterator();
+                    List<string> fs = new List<string>();
+                    while (itr2.hasNext())
+                    {
+                        var im = (ImageData)itr2.next();
+                        fs.Add(im.getName());
+                    }
+                    return fs;
+                }
+            }
+            return null;
+        }
+        public static List<string> GetDatasetFiles(long dbid)
+        {
+            ReConnect();
+            var d = browsefacil.getDatasets(sc);
+            var itr = d.iterator();
+            while (itr.hasNext())
+            {
+                DatasetData idr = (DatasetData)itr.next();
+                if (dbid == idr.getId())
+                {
+                    java.util.ArrayList ar = new java.util.ArrayList();
+                    ar.add(java.lang.Long.valueOf(idr.getId()));
+                    var imgs = browsefacil.getImagesForDatasets(sc,ar);
+                    var itr2 = imgs.iterator();
+                    List<string> str = new List<string>();
+                    while (itr2.hasNext())
+                    {
+                        ImageData imageData = (ImageData)itr2.next();
+                        str.Add(imageData.getName());
+                    }
+                    return str;
+                }
+            }
+            return null;
+        }
+        public static List<long> GetDatasetIds(long dbid)
+        {
+            ReConnect();
+            var d = browsefacil.getDatasets(sc);
+            var itr = d.iterator();
+            while (itr.hasNext())
+            {
+                DatasetData idr = (DatasetData)itr.next();
+                if (dbid == idr.getId())
+                {
+                    java.util.ArrayList ar = new java.util.ArrayList();
+                    ar.add(java.lang.Long.valueOf(idr.getId()));
+                    var imgs = browsefacil.getImagesForDatasets(sc, ar);
+                    var itr2 = imgs.iterator();
+                    List<long> str = new List<long>();
+                    while (itr2.hasNext())
+                    {
+                        ImageData imageData = (ImageData)itr2.next();
+                        str.Add(imageData.getId());
+                    }
+                    return str;
+                }
+            }
+            return null;
+        }
+    }
+}
