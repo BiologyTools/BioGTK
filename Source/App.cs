@@ -208,6 +208,14 @@ namespace BioGTK
                 ImageJ.Initialize(ImageJ.ImageJPath);
                 BioImage.Initialize(ImageJ.ImageJPath);
             }
+            else
+            {
+                // BioImage.Initialize always initializes Bio-Formats/OME, then
+                // deliberately skips only ImageJ/Fiji on macOS.  Omitting this
+                // call left OpenOME waiting forever for an initialization flag
+                // that could never be set when opening CZI and other formats.
+                BioImage.Initialize(UseFiji ? Fiji.ImageJPath : ImageJ.ImageJPath);
+            }
             Console.WriteLine("Loading settings.");
             BioLib.Settings.Load();
             updater = Updater.Create();

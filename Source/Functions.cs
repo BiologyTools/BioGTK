@@ -478,24 +478,24 @@ namespace BioGTK
             }
         }
 
-        private string file;
+        private string file = string.Empty;
         public string File
         {
             get { return file; }
-            set { file = value; }
+            set { file = value ?? string.Empty; }
         }
 
-        private string script;
+        private string script = string.Empty;
         public string Script
         {
             get { return script; }
             set
             {
-                script = value;
+                script = value ?? string.Empty;
             }
         }
 
-        private string name;
+        private string name = string.Empty;
         public string Name
         {
             get
@@ -504,10 +504,10 @@ namespace BioGTK
             }
             set
             {
-                name = value;
+                name = value ?? string.Empty;
             }
         }
-        private string menuPath;
+        private string menuPath = string.Empty;
         public string MenuPath
         {
             get
@@ -516,10 +516,10 @@ namespace BioGTK
             }
             set
             {
-                menuPath = value;
+                menuPath = value ?? string.Empty;
             }
         }
-        private string contextPath;
+        private string contextPath = string.Empty;
         public string ContextPath
         {
             get
@@ -528,7 +528,7 @@ namespace BioGTK
             }
             set
             {
-                contextPath = value;
+                contextPath = value ?? string.Empty;
             }
         }
 
@@ -544,7 +544,7 @@ namespace BioGTK
                 val = value;
             }
         }
-        private string microscope;
+        private string microscope = string.Empty;
         public string Microscope
         {
             get
@@ -553,7 +553,7 @@ namespace BioGTK
             }
             set
             {
-                microscope = value;
+                microscope = value ?? string.Empty;
             }
         }
         public override string ToString()

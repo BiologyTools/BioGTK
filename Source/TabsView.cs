@@ -254,7 +254,7 @@ namespace BioGTK
             return im;
         }
 
-        private async Task<List<BioImage>> CollectPyramidRootsAsync(string file)
+        private async Task<List<BioImage>> CollectPyramidRootsAsync(string file, bool openAllSeries)
         {
             if (IsZarrLikeSource(file))
             {
@@ -267,6 +267,21 @@ namespace BioGTK
                     singleRoot.Add(zarrImage);
                 }
                 return singleRoot;
+            }
+
+            // The normal Open commands should display the selected image as soon as its
+            // first (root) series is ready.  Bio-Formats exposes a pyramid's native
+            // resolutions through that root series, so probing and decoding every series
+            // first is both redundant and extremely expensive for whole-slide images.
+            // It also forced ordinary TIFF stacks through Bio-Formats merely to ask for a
+            // series count.  Keep the old multi-series behavior only for the explicit
+            // Open Series commands.
+            if (!openAllSeries)
+            {
+                BioImage? image = await BioImage.OpenFile(file, 0, false, false, false, 0, 0, 0, 0);
+                return image == null
+                    ? new List<BioImage>()
+                    : new List<BioImage> { image };
             }
 
             int seriesCount = 1;
@@ -341,9 +356,9 @@ namespace BioGTK
             RememberRecentImage(file);
         }
 
-        private async Task OpenPyramidRootsAsViewsAsync(string file, bool addToRegistry = false)
+        private async Task OpenPyramidRootsAsViewsAsync(string file, bool addToRegistry = false, bool openAllSeries = false)
         {
-            List<BioImage> roots = await CollectPyramidRootsInBackgroundAsync(file);
+            List<BioImage> roots = await CollectPyramidRootsInBackgroundAsync(file, openAllSeries);
             for (int series = 0; series < roots.Count; series++)
             {
                 if (addToRegistry)
@@ -352,9 +367,9 @@ namespace BioGTK
             }
         }
 
-        private async Task OpenPyramidRootsAsTabsAsync(string file)
+        private async Task OpenPyramidRootsAsTabsAsync(string file, bool openAllSeries = false)
         {
-            List<BioImage> roots = await CollectPyramidRootsInBackgroundAsync(file);
+            List<BioImage> roots = await CollectPyramidRootsInBackgroundAsync(file, openAllSeries);
             for (int series = 0; series < roots.Count; series++)
             {
                 BioImage im = roots[series];
@@ -365,9 +380,9 @@ namespace BioGTK
             }
         }
 
-        private Task<List<BioImage>> CollectPyramidRootsInBackgroundAsync(string file)
+        private Task<List<BioImage>> CollectPyramidRootsInBackgroundAsync(string file, bool openAllSeries)
         {
-            return Task.Run(async () => await CollectPyramidRootsAsync(file));
+            return Task.Run(async () => await CollectPyramidRootsAsync(file, openAllSeries));
         }
 
 #pragma warning disable 649
@@ -2070,7 +2085,7 @@ namespace BioGTK
                 StartProgress("Open OME", "Opening");
                 try
                 {
-                    await OpenPyramidRootsAsTabsAsync(item);
+                    await OpenPyramidRootsAsTabsAsync(item, openAllSeries: true);
                 }
                 finally
                 {
@@ -2099,7 +2114,7 @@ namespace BioGTK
             foreach (string item in filechooser.Filenames)
             {
                 StartProgress("Open OME Series", "Opening");
-                await OpenPyramidRootsAsTabsAsync(item);
+                await OpenPyramidRootsAsTabsAsync(item, openAllSeries: true);
                 StopProgress();
             }
             tabsView.Show();

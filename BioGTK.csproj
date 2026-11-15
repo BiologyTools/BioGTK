@@ -20,6 +20,7 @@
     <Version>6.7.2</Version>
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+	  
     <PlatformTarget>AnyCPU</PlatformTarget>
     <PackageReleaseNotes>
 - Corrected mask and ROI alignment while panning and zooming on Retina macOS displays.
@@ -466,17 +467,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="BioFormats.NET6" Version="9.0.0-pr">
-      <Aliases>BioFormats6</Aliases>
-    </PackageReference>
-    <PackageReference Include="BioLib" Version="4.3.1" />
-    <PackageReference Include="Fiji.NET" Version="0.1.0" Aliases="FijiNet" />
+	  <PackageReference Include="BioFormats.NET6" Version="9.0.0-rc4">
+		  <Aliases>BioFormats</Aliases>
+	  </PackageReference>
+    <PackageReference Include="Fiji.NET" Version="0.1.2" Aliases="FijiNet" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="ManagedCuda.NETStandard" Version="9.1.300" />
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.31.1" />
-    <PackageReference Include="Microsoft.ML.TorchSharp" Version="0.23.1" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.32.0" />
+    <PackageReference Include="Microsoft.ML.TorchSharp" Version="0.24.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="NuGet.Build.Tasks.Pack" Version="6.14.0">
       <PrivateAssets>all</PrivateAssets>
@@ -487,13 +487,17 @@
     <PackageReference Include="OpenTK.Windowing.Common" Version="4.9.4" />
     <PackageReference Include="OpenTK.Windowing.Desktop" Version="4.9.4" />
     <PackageReference Include="ScottPlot" Version="5.1.59" />
-    <PackageReference Include="SkiaSharp" Version="4.154.0" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="4.154.0" />
-    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="4.154.0" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="4.154.0" />
-    <PackageReference Include="SkiaSharp.Views.Gtk3" Version="4.154.0" />
+    <PackageReference Include="SkiaSharp" Version="4.156.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="4.156.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="4.156.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="4.156.0" />
+    <PackageReference Include="SkiaSharp.Views.Gtk3" Version="4.156.0" />
     <PackageReference Include="TorchSharp-cpu" Version="0.107.0" />
     <PackageReference Include="YamlDotNet" Version="18.1.0" />  
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BioLib\BioLib.csproj" />
   </ItemGroup>
 
   <ItemGroup>

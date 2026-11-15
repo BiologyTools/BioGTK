@@ -1,4 +1,4 @@
-extern alias BioFormats6;
+extern alias BioFormats;
 using Gdk;
 using Gtk;
 using System;
@@ -45,7 +45,14 @@ namespace BioGTK
             builder.Autoconnect(this);
             string s = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/";
             pixbuf = new Pixbuf(s + "Images/banner.jpg");
-            label.Text = "Bio-Formats version:" + loci.formats.FormatTools.VERSION + " , BioGTK " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString() + " by Erik Repo, Github.com/BiologyTools/BioGTK.";
+            // Reading FormatTools.VERSION runs Bio-Formats' Java static initializers. Keep the
+            // About window independent of IKVM initialization so an optional version label can
+            // never prevent the application from starting.
+            string bioFormatsVersion = typeof(BioFormats::loci.formats.FormatTools)
+                .Assembly.GetName().Version?.ToString() ?? "unknown";
+            string bioGtkVersion = System.Reflection.Assembly.GetExecutingAssembly()
+                .GetName().Version?.ToString() ?? "unknown";
+            label.Text = $"Bio-Formats version: {bioFormatsVersion}, BioGTK {bioGtkVersion} by Erik Repo, Github.com/BiologyTools/BioGTK.";
             image.Drawn += Image_Drawn;
             this.DeleteEvent += About_DeleteEvent;
             App.ApplyStyles(this);
