@@ -140,11 +140,8 @@ namespace BioGTK
             {
                 BioLib.Fiji.ImageJPath = st;
                 BioLib.ImageJ.ImageJPath = st;
-                if (!OperatingSystem.IsMacOS())
-                {
-                    Fiji.Initialize(st);
-                    ImageJ.Initialize(st);
-                }
+                Fiji.Initialize(st);
+                ImageJ.Initialize(st);
                 return true;
             }
             string title = "Select ImageJ Executable Location";
@@ -160,11 +157,8 @@ namespace BioGTK
                 return false;
             Fiji.ImageJPath = filechooser.Filename;
             ImageJ.ImageJPath = filechooser.Filename;
-            if (!OperatingSystem.IsMacOS())
-            {
-                Fiji.Initialize(filechooser.Filename);
-                ImageJ.Initialize(filechooser.Filename);
-            }
+            Fiji.Initialize(filechooser.Filename);
+            ImageJ.Initialize(filechooser.Filename);
             BioLib.Settings.AddSettings("ImageJPath", filechooser.Filename);
             filechooser.Destroy();
             BioLib.Settings.Save();
@@ -198,27 +192,15 @@ namespace BioGTK
             AppLog.Clear();
             Console.WriteLine("Initializing components.");
             SetFijiOrImageJPath();
-            if (!OperatingSystem.IsMacOS() && UseFiji)
+            if (UseFiji)
             {
                 Fiji.Initialize(Fiji.ImageJPath);
                 BioImage.Initialize(Fiji.ImageJPath);
             }
-            else if (!OperatingSystem.IsMacOS())
+            else
             {
                 ImageJ.Initialize(ImageJ.ImageJPath);
                 BioImage.Initialize(ImageJ.ImageJPath);
-            }
-            else
-            {
-                // Populate the Commands menu from the bundled metadata without
-                // starting the unsupported in-process ImageJ UI on macOS.
-                Fiji.InitializeCommandMetadata();
-                Console.WriteLine($"Loaded {Fiji.Macro.Commands.Count} ImageJ commands.");
-                // BioImage.Initialize always initializes Bio-Formats/OME, then
-                // deliberately skips only ImageJ/Fiji on macOS.  Omitting this
-                // call left OpenOME waiting forever for an initialization flag
-                // that could never be set when opening CZI and other formats.
-                BioImage.Initialize(UseFiji ? Fiji.ImageJPath : ImageJ.ImageJPath);
             }
             Console.WriteLine("Loading settings.");
             BioLib.Settings.Load();
