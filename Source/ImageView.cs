@@ -2594,10 +2594,12 @@ namespace BioGTK
 
             App.tabsView.RemoveViewer(this);
             CleanupViewerResources();
-            foreach (var item in this.Images)
+            foreach (var item in this.Images.ToArray())
             {
                 BioLib.Images.RemoveImage(item);
+                item.Dispose();
             }
+            this.Images.Clear();
         }
 
         int bar = 0;
@@ -3010,7 +3012,9 @@ namespace BioGTK
                 App.tabsView.RemoveTab(item.Filename);
                 item.Dispose();
             }
+            this.Images.Clear();
             Hide();
+            Destroy();
         }
 
         /// When the user clicks on the "ID" button, a text input dialog is created and displayed. If
@@ -5249,7 +5253,7 @@ namespace BioGTK
             }
 
             ForceNavigationRefresh();
-            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), false, i);
+            BioLib.Recorder.Record(BioLib.Recorder.GetCurrentMethodInfo(), true, i);
 
             if (_pendingGoToImageIndex.HasValue)
             {

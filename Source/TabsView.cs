@@ -66,6 +66,8 @@ namespace BioGTK
         public void RemoveViewer(ImageView v)
         {
             viewers.Remove(v);
+            if (ReferenceEquals(App.viewer, v))
+                App.viewer = viewers.Count > 0 ? viewers[viewers.Count - 1] : null;
         }
         public void AddViewer(ImageView v)
         {
@@ -718,14 +720,24 @@ namespace BioGTK
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine("[TabsView.CommandMenuItem] " + ex);
+                Console.Error.WriteLine($"[TabsView.CommandMenuItem] command=\"{m.Label}\" {ex}");
+                Exception detail = ex;
+                while (detail.InnerException != null)
+                    detail = detail.InnerException;
+                string errorMessage = $"Command \"{m.Label}\" failed.\n\n{detail.Message}";
                 Gtk.Application.Invoke(delegate
                 {
-                    using var dialog = new MessageDialog(this, DialogFlags.Modal,
-                        MessageType.Error, ButtonsType.Ok, "{0}", ex.Message);
-                    dialog.Title = "ImageJ Command Failed";
-                    dialog.Run();
-                    dialog.Destroy();
+                    var dialog = new MessageDialog(this, DialogFlags.Modal,
+                        MessageType.Error, ButtonsType.Ok, "{0}", errorMessage);
+                    try
+                    {
+                        dialog.Title = "ImageJ Command Failed";
+                        dialog.Run();
+                    }
+                    finally
+                    {
+                        dialog.Destroy();
+                    }
                 });
             }
         }
@@ -1491,7 +1503,7 @@ namespace BioGTK
 
         private void TabsView_DeleteEvent(object o, DeleteEventArgs args)
         {
-            foreach (var v in viewers)
+            foreach (var v in viewers.ToArray())
             {
                 foreach (var b in v.Images) 
                 {
@@ -1891,6 +1903,7 @@ namespace BioGTK
                 }
                 TryLoadZarrROIs(im);
                 ImageView v = ImageView.Create(im);
+                Images.AddImage(im);
                 v.RefreshZarrLabelOverlays(sourcePath ?? im.file);
                 viewers.Add(v);
                 Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file.Replace("\\", "/")) + "/" + im.Filename);
@@ -1940,6 +1953,7 @@ namespace BioGTK
                     }
                 }
                 ImageView v = ImageView.Create(im);
+                Images.AddImage(im);
                 viewers.Add(v);
                 v.RefreshZarrLabelOverlays(sourcePath ?? im.file);
                     Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file.Replace("\\", "/")) + "/" + im.Filename);
