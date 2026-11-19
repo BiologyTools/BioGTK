@@ -5,7 +5,8 @@ namespace BioGTK
 {
     public static class AppLog
     {
-        public static string FilePath => Path.Combine(AppContext.BaseDirectory, "biolog.txt");
+        public static string FilePath =>
+            Path.Combine(AppStorage.IsPackagedMacApp ? AppStorage.DirectoryPath : AppContext.BaseDirectory, "biolog.txt");
 
         public static void Clear()
         {

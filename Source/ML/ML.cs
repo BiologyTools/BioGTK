@@ -21,13 +21,13 @@ namespace BioGTK.ML
         {
             public Model(string file)
             {
-                File = file;
                 Name = Path.GetFileNameWithoutExtension(file);
-                string dir = System.IO.Path.GetDirectoryName(Environment.ProcessPath);
-                File = dir.Replace("\\","/") + "/Models/" + file;
+                File = System.IO.File.Exists(file)
+                    ? Path.GetFullPath(file)
+                    : Path.Combine(AppStorage.DirectoryPath, "Models", file);
                 if (file.EndsWith(".onnx"))
                 {
-                    InferenceSession = new InferenceSession(file);
+                    InferenceSession = new InferenceSession(File);
                     foreach (var m in InferenceSession.InputMetadata)
                     {
                         InputValueTypes.Add(m.Value);
@@ -59,7 +59,7 @@ namespace BioGTK.ML
                         Console.WriteLine("Failed to run pytorch model. Ensure that PyTorch is properly installed.");
                         Console.WriteLine(e.Message.ToString());
                     }
-                    string f = System.IO.Path.GetDirectoryName(System.Environment.ProcessPath) + "/Models/" + Path.GetFileNameWithoutExtension(file) + ".yaml";
+                    string f = Path.ChangeExtension(File, ".yaml");
                     if (!System.IO.File.Exists(f))
                     {
                         Gtk.MessageDialog md = new Gtk.MessageDialog(App.tabsView, Gtk.DialogFlags.Modal, Gtk.MessageType.Error, Gtk.ButtonsType.Ok,"No corresponding model Yaml metadata file for:" + Name);
@@ -517,7 +517,7 @@ namespace BioGTK.ML
             }
             if (!loaded)
                 Load(modelsName);
-            string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/Models/" + modelsName;
+            string st = Path.Combine(AppStorage.DirectoryPath, "Models", modelsName);
             foreach (var m in Models)
             {
                 if (m.Name == Path.GetFileNameWithoutExtension(modelsName))
@@ -546,8 +546,8 @@ namespace BioGTK.ML
        
         public static void Initialize()
         {
-            string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath);
-            foreach (string f in Directory.GetFiles(st + "/Models"))
+            string models = Path.Combine(AppStorage.DirectoryPath, "Models");
+            foreach (string f in Directory.GetFiles(models))
             {
                 if (f.EndsWith(".onnx") || f.EndsWith(".pt"))
                 {

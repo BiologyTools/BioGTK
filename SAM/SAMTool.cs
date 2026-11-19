@@ -7,7 +7,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Gdk;
-using System.Threading;
 using System.IO;
 
 namespace BioGTK
@@ -18,6 +17,7 @@ namespace BioGTK
         static Random rng = new Random();
         #region Properties
         ImageView view;
+        private readonly SAM model;
         public static SAM sam;
         public static MicroSAM microsam;
         public List<Promotion> Promotions = new List<Promotion>();
@@ -41,17 +41,7 @@ namespace BioGTK
                 List<ROI> roi = view.GetSelectedROIs();
                 if (roi.Count > 0)
                     return roi.Last();
-                else
-                    return view.Images[0].Annotations[0];
-                return null;
-            }
-            set
-            {
-                for (int i = 0; i < ImageView.SelectedImage.Annotations.Count; i++)
-                {
-                    if (ImageView.SelectedImage.Annotations[i].Selected)
-                        ImageView.SelectedImage.Annotations[i] = value;
-                }
+                return ImageView.SelectedImage?.Annotations.FirstOrDefault();
             }
         }
         private AForge.Point _startPoint;
@@ -108,50 +98,41 @@ namespace BioGTK
         /// @return A new instance of the SAMTool class.
         public static SAMTool Create(bool micro_SAM)
         {
-            Builder builder = new Builder(new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/SAM.glade", FileMode.Open));
-            if (micro_SAM)
+            SAM model = micro_SAM ? MicroSAM.Instance() : SAM.Instance();
+            SAMTool previous = App.samTool;
+
+            using var stream = File.OpenRead(System.IO.Path.Combine(
+                AppContext.BaseDirectory, "Glade", "SAM.glade"));
+            var builder = new Builder(stream);
+            var tool = new SAMTool(builder, builder.GetObject("SAMTool").Handle, model);
+            if (tool.init)
             {
-                sam = MicroSAM.Instance();
-                microsam = MicroSAM.Instance();
+                App.samTool = tool;
+                sam = model;
+                microsam = model as MicroSAM;
+                previous?.Destroy();
             }
-            else
-                sam = SAM.Instance();
-            return new SAMTool(builder, builder.GetObject("SAMTool").Handle);
+            return tool;
         }
 
-        /* Setting up the UI. */
-        protected SAMTool(Builder builder, IntPtr handle) : base(handle)
+        protected SAMTool(Builder builder, IntPtr handle) : this(builder, handle, sam ?? SAM.Instance())
         {
-            //First lets make sure the model files are installed.
-            string app = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            if (microSAM)
+        }
+
+        private SAMTool(Builder builder, IntPtr handle, SAM model) : base(handle)
+        {
+            this.model = model;
+            if (ImageView.SelectedImage?.SelectedBuffer == null)
             {
-                if (!File.Exists(app + "/micro-sam-decoder.onnx") || !File.Exists(app + "/micro-sam-encoder.onnx"))
-                {
-                    MessageDialog dialog = new MessageDialog(
-                 this,
-                 DialogFlags.Modal,
-                 MessageType.Info,
-                 ButtonsType.Ok,
-                 "Place Model files \"micro-sam-decoder.onnx\" and \"micro-sam-encoder.onnx\" in the application folder to use SAM Tool.");
-                    dialog.Run();
-                    return;
-                }
+                ShowError("Open a microscopy image before running SAM.");
+                return;
             }
-            else
-            {
-                if (!File.Exists(app + "/decoder-quant.onnx") || !File.Exists(app + "/encoder-quant.onnx"))
-                {
-                    MessageDialog dialog = new MessageDialog(
-                 this,
-                 DialogFlags.Modal,
-                 MessageType.Info,
-                 ButtonsType.Ok,
-                 "Place Model files \"decoder-quant.onnx\" and \"encoder-quant.onnx\" in the application folder to use SAM Tool.");
-                    dialog.Run();
-                    return;
-                }
-            }
+
+            if (model is MicroSAM)
+                Title = "Micro-SAM2";
+            if (!TryRun(model.LoadONNXModel))
+                return;
+
             view = App.viewer;
             _builder = builder;
             builder.Autoconnect(this);
@@ -191,7 +172,6 @@ namespace BioGTK
             "Cancel", ResponseType.Cancel,
             "OK", ResponseType.Accept);
             SetupHandlers();
-            Init();
             App.ApplyStyles(this);
             init = true;
         }
@@ -206,7 +186,7 @@ namespace BioGTK
             saveSelected.ButtonPressEvent += saveSelectedTiffClick;
             view.ButtonReleaseEvent += PictureBox_ButtonReleaseEvent;
             setAutoSave.ButtonPressEvent += SetAutoSave_ButtonPressEvent;
-            this.DeleteEvent += SAMTool_DeleteEvent;
+            Destroyed += SAMTool_Destroyed;
             textBox.Changed += TextBox_Changed;
             toROIMenu.ButtonPressEvent += ToROIMenu_ButtonPressEvent;
             runButton.ButtonPressEvent += AutoSAMMenu_ButtonPressEvent;
@@ -227,10 +207,7 @@ namespace BioGTK
 
         private void SAMEncodeBut_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            if(MicroSAM.theSingleton== null)
-                sam.Encode(ImageView.SelectedImage);
-            else
-                microsam.Encode(ImageView.SelectedImage);
+            TryRun(() => model.Encode(ImageView.SelectedImage));
         }
 
         private void DeleteDuplicatesBut_ButtonPressEvent(object sender, ButtonPressEventArgs args)
@@ -262,7 +239,9 @@ namespace BioGTK
 
         private void AutoSAMMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
-            SAM.Run((float)minAreaBar.Value, (float)maxAreaBar.Value, (float)stabilityBar.Value, (float)predictionBar.Value, (int)layersBar.Value, (int)pointsBar.Value);
+            if (TryRun(() => SAM.Run((float)minAreaBar.Value, (float)maxAreaBar.Value, (float)stabilityBar.Value,
+                (float)predictionBar.Value, (int)layersBar.Value, (int)pointsBar.Value, model)))
+                view.UpdateView();
         }
 
         private void ToROIMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
@@ -332,13 +311,40 @@ namespace BioGTK
 
             return orderedPolygon;
         }
-        private void SAMTool_DeleteEvent(object o, DeleteEventArgs args)
+        private void SAMTool_Destroyed(object o, EventArgs args)
         {
-            if (MicroSAM.theSingleton == null)
-                sam.Dispose();
-            else
-                microsam.Dispose();
-            BioLib.Recorder.AddLine("App.CloseWindow(\"SAM Tool\");",false);
+            view.ButtonReleaseEvent -= PictureBox_ButtonReleaseEvent;
+            filechooser?.Destroy();
+            if (ReferenceEquals(App.samTool, this))
+            {
+                App.samTool = null;
+                sam = null;
+                microsam = null;
+                BioLib.Recorder.AddLine("App.CloseWindow(\"SAM Tool\");", false);
+            }
+            if (!ReferenceEquals(App.samTool?.model, model))
+                model.Dispose();
+        }
+
+        private bool TryRun(System.Action action)
+        {
+            try
+            {
+                action();
+                return true;
+            }
+            catch (Exception error) when (error is IOException or InvalidDataException or Microsoft.ML.OnnxRuntime.OnnxRuntimeException)
+            {
+                ShowError(error.Message);
+                return false;
+            }
+        }
+
+        private void ShowError(string message)
+        {
+            using var dialog = new MessageDialog(this, DialogFlags.Modal, MessageType.Error, ButtonsType.Ok, message);
+            dialog.Run();
+            dialog.Destroy();
         }
 
         /// The SetAutoSave_ButtonPressEvent function allows the user to select a folder for auto-saving
@@ -377,34 +383,10 @@ namespace BioGTK
         {
             if (ImageView.SelectedImage == null)
                 return;
-            if (MicroSAM.theSingleton == null)
-            {
-                sam.LoadONNXModel();
-                Thread th2 = new Thread(sam.Encode);
-                th2.Start();
-            }
-            else
-            {
-                microsam.LoadONNXModel();
-                Thread th2 = new Thread(microsam.Encode);
-                th2.Start();
-            }
-            do
-            {
-                Thread.Sleep(250);
-                if (microsam.Initialized)
-                    break;
-            } while (wait);
-            BioLib.Recorder.AddLine("App.samTool.Init(true);",false);
+            model.LoadONNXModel();
+            BioLib.Recorder.AddLine("App.samTool.Init(true);", false);
         }
 
-        internal static void Encode()
-        {
-            if(MicroSAM.theSingleton == null)
-                sam.Encode(ImageView.SelectedImage);
-            else
-                microsam.Encode(ImageView.SelectedImage);
-        }
 
         /// The function handles the button release event for a picture box and performs various
         /// operations based on the selected tool and annotations.
@@ -419,61 +401,48 @@ namespace BioGTK
         /// @return The method does not have a return type, so it does not return anything.
         private void PictureBox_ButtonReleaseEvent(object o, ButtonReleaseEventArgs e)
         {
-            if (view.Images.Count < 1)
+            var image = ImageView.SelectedImage;
+            var buffer = ImageView.SelectedBuffer;
+            if (image == null || buffer == null || image.Annotations.Count == 0 ||
+                !e.Event.State.HasFlag(ModifierType.Button1Mask))
                 return;
-            if (view.Images[0].Annotations.Count == 0)
+
+            ROI roi = SelectedROI;
+            if (roi == null)
                 return;
-            if (SelectedROI == null)
-                SelectedROI = view.Images[0].Annotations[0];
-            List<ROI> rois = new List<ROI>();
-            rois.AddRange(ImageView.SelectedImage.Annotations);
-            PointD[] pls = SelectedROI.ImagePoints(ImageView.SelectedImage.Resolutions[0]);
-            if (Tools.currentTool.type == Tools.Tool.Type.point && rois.Count > 0 && e.Event.State.HasFlag(ModifierType.Button1Mask))
+            PointD[] points = roi.ImagePoints(image.Resolutions[0]);
+            var transform = new Transforms(1024);
+            bool useMicroSam = model is MicroSAM;
+
+            if (roi.type == ROI.Type.Point && Tools.currentTool.type == Tools.Tool.Type.point && points.Length > 0)
             {
-                ForeGround type = this.foregroundBut.Active == true ? ForeGround.foreground : ForeGround.background;
-                Promotion promtt = new PointPromotion(type);
-                (promtt as PointPromotion).X = (int)pls[0].X;
-                (promtt as PointPromotion).Y = (int)pls[0].Y;
-                Transforms trs = new Transforms(1024);
-                PointPromotion ptn = trs.ApplyCoords((promtt as PointPromotion), ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
-                this.Promotions.Add(ptn);
-                float[] maskk;
-                if(MicroSAM.theSingleton != null)
-                    maskk = microsam.Decode(ImageView.SelectedImage, this.Promotions, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
-                else
-                    maskk = sam.Decode(ImageView.SelectedImage, this.Promotions, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
-                this.ShowMask(maskk, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
-                this.Promotions.Clear();
+                var point = new PointPromotion(foregroundBut.Active ? ForeGround.foreground : ForeGround.background)
+                {
+                    X = (int)points[0].X,
+                    Y = (int)points[0].Y
+                };
+                Promotions.Add(useMicroSam ? point : transform.ApplyCoords(point, buffer.Width, buffer.Height));
             }
-
-            if (Tools.currentTool.type == Tools.Tool.Type.rect && e.Event.State.HasFlag(ModifierType.Button1Mask))
+            else if (roi.type == ROI.Type.Rectangle && Tools.currentTool.type == Tools.Tool.Type.rect && points.Length > 0)
             {
-                SelectedROI.Selected = true;
-                BoxPromotion promt = new BoxPromotion();
-                if (pls[0].X < (int)pls[3].X || pls[0].Y < (int)pls[3].Y)
-                {
-                    (promt as BoxPromotion).mLeftUp.X = (int)pls[0].X;
-                    (promt as BoxPromotion).mLeftUp.Y = (int)pls[0].Y;
-                    (promt as BoxPromotion).mRightBottom.X = (int)pls[3].X;
-                    (promt as BoxPromotion).mRightBottom.Y = (int)pls[3].Y;
-                }
-                else
-                {
-                    (promt as BoxPromotion).mLeftUp.X = (int)pls[3].X;
-                    (promt as BoxPromotion).mLeftUp.Y = (int)pls[3].Y;
-                    (promt as BoxPromotion).mRightBottom.X = (int)pls[0].X;
-                    (promt as BoxPromotion).mRightBottom.Y = (int)pls[0].Y;
-                }
-                Transforms ts = new Transforms(1024);
-                var pb = ts.ApplyBox(promt, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
-                this.Promotions.Add(pb);
+                roi.Selected = true;
+                var box = new BoxPromotion();
+                box.mLeftUp.X = (int)points.Min(point => point.X);
+                box.mLeftUp.Y = (int)points.Min(point => point.Y);
+                box.mRightBottom.X = (int)points.Max(point => point.X);
+                box.mRightBottom.Y = (int)points.Max(point => point.Y);
+                Promotions.Add(useMicroSam ? box : transform.ApplyBox(box, buffer.Width, buffer.Height));
+            }
+            else
+                return;
 
-                float[] mask;
-                if (MicroSAM.theSingleton != null)
-                    mask = microsam.Decode(ImageView.SelectedImage, this.Promotions, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
-                else
-                    mask = sam.Decode(ImageView.SelectedImage, this.Promotions, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
-                ShowMask(mask, ImageView.SelectedBuffer.Width, ImageView.SelectedBuffer.Height);
+            try
+            {
+                if (TryRun(() => ShowMask(roi, model.Decode(image, Promotions, buffer.Width, buffer.Height), buffer.Width, buffer.Height)))
+                    view.UpdateView();
+            }
+            finally
+            {
                 Promotions.Clear();
             }
         }
@@ -519,10 +488,8 @@ namespace BioGTK
         /// @param width The width of the mask image in pixels.
         /// @param height The height parameter represents the height of the mask, which is the number of
         /// rows in the mask array.
-        void ShowMask(float[] mask, int width, int height)
+        void ShowMask(ROI prompt, float[] mask, int width, int height)
         {
-            if (SelectedROI.type != ROI.Type.Point && SelectedROI.type != ROI.Type.Rectangle)
-                return;
             ROI an = ROI.CreateMask(App.viewer.GetCoordinate(),mask,width,height,
                 new PointD(ImageView.SelectedImage.StageSizeX,ImageView.SelectedImage.StageSizeY),ImageView.SelectedImage.PhysicalSizeX,ImageView.SelectedImage.PhysicalSizeY);
             byte r = (byte)rng.Next(0, 255);
@@ -543,7 +510,13 @@ namespace BioGTK
                 }
                 id++;
             }
-            SelectedROI = an;
+            an.Selected = prompt.Selected;
+            var annotations = ImageView.SelectedImage.Annotations;
+            int index = annotations.IndexOf(prompt);
+            if (index >= 0)
+                annotations[index] = an;
+            else
+                annotations.Add(an);
         }
     }
 }

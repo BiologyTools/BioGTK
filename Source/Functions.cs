@@ -611,7 +611,7 @@ namespace BioGTK
         /// them to the Functions dictionary
         public static void InitializeMainMenu()
         {
-            string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/Functions";
+            string st = Path.Combine(AppStorage.DirectoryPath, "Functions");
             if (!Directory.Exists(st))
                 Directory.CreateDirectory(st);
             string[] sts = Directory.GetFiles(st);
@@ -628,7 +628,7 @@ namespace BioGTK
         /// them to the Functions dictionary
         public static void InitializeContextMenu()
         {
-            string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/Functions";
+            string st = Path.Combine(AppStorage.DirectoryPath, "Functions");
             if (!Directory.Exists(st))
                 Directory.CreateDirectory(st);
             string[] sts = Directory.GetFiles(st);
@@ -644,26 +644,19 @@ namespace BioGTK
         /// It saves all the functions in the Functions dictionary to a file
         public static void SaveAll()
         {
-            string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath);
-
-            if (!Directory.Exists(st + "/Functions"))
-            {
-                Directory.CreateDirectory(st + "/Functions");
-            }
+            string st = Path.Combine(AppStorage.DirectoryPath, "Functions");
+            Directory.CreateDirectory(st);
             foreach (Function f in Functions.Values)
             {
-                System.IO.File.WriteAllText(st + "/Functions/" + f.Name + ".func", f.Serialize());
+                System.IO.File.WriteAllText(Path.Join(st, f.Name + ".func"), f.Serialize());
             }
         }
         /// It saves the function to a file
         public void Save()
         {
-            string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath);
-            if (!Directory.Exists(st + "/Functions"))
-            {
-                Directory.CreateDirectory(st + "/Functions");
-            }
-            System.IO.File.WriteAllText(st + "/Functions/" + Name + ".func", Serialize());
+            string st = Path.Combine(AppStorage.DirectoryPath, "Functions");
+            Directory.CreateDirectory(st);
+            System.IO.File.WriteAllText(Path.Join(st, Name + ".func"), Serialize());
         }
     }
 

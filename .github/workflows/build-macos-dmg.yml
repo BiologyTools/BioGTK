@@ -1,0 +1,77 @@
+name: Build macOS DMG
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build macOS DMG (${{ matrix.arch }})
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, x64]
+    steps:
+      - name: Check out BioGTK
+        uses: actions/checkout@v7
+        with:
+          path: BioGTK/BioGTK
+          persist-credentials: false
+
+      - name: Check out BioLib
+        uses: actions/checkout@v7
+        with:
+          repository: BiologyTools/BioLib
+          ref: main
+          path: BioLib
+          persist-credentials: false
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Apple Silicon GTK 3
+        if: matrix.arch == 'arm64'
+        run: brew install gtk+3
+
+      - name: Install Intel GTK 3
+        if: matrix.arch == 'x64'
+        env:
+          MAMBA_ROOT_PREFIX: ${{ runner.temp }}/micromamba
+        run: |
+          if ! /usr/bin/arch -x86_64 /usr/bin/true; then
+            sudo /usr/sbin/softwareupdate --install-rosetta --agree-to-license
+          fi
+          brew install micromamba
+          # GTK 3.24.52 introduced Quartz dialog focus regressions.
+          micromamba create --yes --platform osx-64 --prefix "$RUNNER_TEMP/gtk-x64" \
+            --override-channels --channel conda-forge "gtk3=3.24.51" adwaita-icon-theme
+
+      - name: Build macOS DMG
+        working-directory: BioGTK/BioGTK
+        env:
+          BIOGTK_ARCH: ${{ matrix.arch }}
+        run: |
+          BIOGTK_VERSION="$(dotnet msbuild BioGTK.csproj -nologo -getProperty:Version)"
+          export BIOGTK_VERSION
+          gtk_args=()
+          if [[ "$BIOGTK_ARCH" == x64 ]]; then
+            gtk_args=(--gtk-prefix "$RUNNER_TEMP/gtk-x64")
+          fi
+          python3 Source/packaging/build-macos-dmg.py \
+            --app-project .github/macos/BioGTKApp.csproj \
+            --arch "$BIOGTK_ARCH" "${gtk_args[@]}" \
+            --output "$RUNNER_TEMP/BioGTK-macos-$BIOGTK_ARCH.dmg"
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ runner.temp }}/BioGTK-macos-${{ matrix.arch }}.dmg
+          archive: false
+          if-no-files-found: error

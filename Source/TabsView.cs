@@ -869,6 +869,21 @@ namespace BioGTK
             if (roi == null || source == null || target == null)
                 return;
 
+            // A full-image command preserves pixel geometry. In that common case
+            // the ROI already uses the correct stage coordinates and must not be
+            // rescaled merely because the rebuilt pyramid's metadata rounded a
+            // physical size differently.
+            int sourceWidth = source.Resolutions != null && source.Resolutions.Count > 0
+                ? source.Resolutions[0].SizeX : source.SizeX;
+            int sourceHeight = source.Resolutions != null && source.Resolutions.Count > 0
+                ? source.Resolutions[0].SizeY : source.SizeY;
+            int targetWidth = target.Resolutions != null && target.Resolutions.Count > 0
+                ? target.Resolutions[0].SizeX : target.SizeX;
+            int targetHeight = target.Resolutions != null && target.Resolutions.Count > 0
+                ? target.Resolutions[0].SizeY : target.SizeY;
+            if (sourceWidth == targetWidth && sourceHeight == targetHeight)
+                return;
+
             double sourceW = GetStageWidth(source);
             double sourceH = GetStageHeight(source);
             double targetW = GetStageWidth(target);
@@ -1463,9 +1478,12 @@ namespace BioGTK
         private void RunMicroSAMMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             SAMTool sam = SAMTool.Create(true);
-            if (sam.init)
-                sam.Show();
-            App.samTool = sam;
+            if (!sam.init)
+            {
+                sam.Destroy();
+                return;
+            }
+            sam.Show();
             BioLib.Recorder.Record("SAMTool.Create(true);");
         }
 
@@ -1649,9 +1667,12 @@ namespace BioGTK
         private void RunSAMMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             SAMTool sam = SAMTool.Create(false);
-            if(sam.init)
+            if (!sam.init)
+            {
+                sam.Destroy();
+                return;
+            }
             sam.Show();
-            App.samTool = sam;
         }
 
         private async void SavePyramidalMenu_ButtonPressEvent(object o, ButtonPressEventArgs args)

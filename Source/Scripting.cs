@@ -81,10 +81,8 @@ namespace BioGTK
             stopBut.ButtonPressEvent += stopBut_Click;
             tabsView.SwitchPage += TabsView_SwitchPage;
             window = this;
-            if (!Directory.Exists(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "//" + "Scripts"))
-                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "//" + "Scripts");
-            if (!Directory.Exists(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "//" + "Tools"))
-                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "//" + "Tools");
+            Directory.CreateDirectory(System.IO.Path.Combine(AppStorage.DirectoryPath, "Scripts"));
+            Directory.CreateDirectory(System.IO.Path.Combine(AppStorage.DirectoryPath, "Tools"));
             InitItems();
             scriptLabel.Text = "NewScript.cs";
             App.ApplyStyles(this);
@@ -493,7 +491,7 @@ namespace BioGTK
             Gtk.TreeStore store = new Gtk.TreeStore(typeof(string), typeof(string));
             scriptView.Model = store;
             scripts.Clear();
-            string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath);
+            string st = AppStorage.DirectoryPath;
             foreach (string file in Directory.GetFiles(st + "/Scripts"))
             {
                 if (!scripts.ContainsKey(System.IO.Path.GetFileName(file)))
@@ -652,8 +650,8 @@ namespace BioGTK
         /// @param EventArgs The event arguments.
         private void openScriptFolderToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            string path = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "\\Scripts";
-            System.Diagnostics.Process.Start("explorer.exe", path);
+            string path = System.IO.Path.Combine(AppStorage.DirectoryPath, "Scripts");
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
         }
         /// It refreshes the items in the list view.
         /// 
@@ -705,7 +703,7 @@ namespace BioGTK
         FileChooserAction.Open,
         "Cancel", ResponseType.Cancel,
         "Save", ResponseType.Accept);
-            filechooser.SetCurrentFolder(System.IO.Path.GetDirectoryName(Environment.ProcessPath));
+            filechooser.SetCurrentFolder(AppStorage.DirectoryPath);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
 
@@ -731,7 +729,7 @@ namespace BioGTK
         FileChooserAction.Save,
         "Cancel", ResponseType.Cancel,
         "Save", ResponseType.Accept);
-            filechooser.SetCurrentFolder(System.IO.Path.GetDirectoryName(Environment.ProcessPath));
+            filechooser.SetCurrentFolder(AppStorage.DirectoryPath);
             if (filechooser.Run() != (int)ResponseType.Accept)
                 return;
             scriptLabel.Text = System.IO.Path.GetFileName(filechooser.Filename);

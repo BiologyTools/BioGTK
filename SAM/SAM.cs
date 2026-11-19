@@ -40,21 +40,24 @@ namespace BioGTK
         }
 
         /// The function `LoadONNXModel` loads ONNX models for encoding and decoding.
-        public void LoadONNXModel()
+        public virtual void LoadONNXModel()
         {
-            if (this.mEncoder != null)
-                this.mEncoder.Dispose();
-
-            if (this.mDecoder != null)
-                this.mDecoder.Dispose();
-
-            string exePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            string encode_model_path = exePath + "/encoder-quant.onnx";
-            this.mEncoder = new InferenceSession(encode_model_path);
-
-            string decode_model_path = exePath + "/decoder-quant.onnx";
-            this.mDecoder = new InferenceSession(decode_model_path);
-            SAMTool.Encode();
+            if (mEncoder == null)
+            {
+                string modelDirectory = Path.GetDirectoryName(typeof(SAM).Assembly.Location);
+                var encoder = new InferenceSession(Path.Combine(modelDirectory, "encoder-quant.onnx"));
+                try
+                {
+                    mDecoder = new InferenceSession(Path.Combine(modelDirectory, "decoder-quant.onnx"));
+                    mEncoder = encoder;
+                }
+                catch
+                {
+                    encoder.Dispose();
+                    throw;
+                }
+            }
+            Encode();
         }
         public void Encode()
         {
@@ -66,7 +69,7 @@ namespace BioGTK
         /// @param BioImage The BioImage parameter is an object that represents an image. It likely
         /// contains information such as the image data, size, and other properties related to the
         /// image.
-        public void Encode(BioImage b)
+        public virtual void Encode(BioImage b)
         {
             if (b.Buffers.Count * 3 * 1024 * 1024 > 4e8)
             {
@@ -90,6 +93,7 @@ namespace BioGTK
                 pr.Show();
                 pr.Present();
             });
+            var embeddings = new List<float[]>(b.Buffers.Count);
             int i = 0;
             foreach (Bitmap bu in b.Buffers)
             {
@@ -118,16 +122,7 @@ namespace BioGTK
                     };
                     results = this.mEncoder.Run(inputs);
                 }
-                if (b.Tag == null)
-                {
-                    b.Tag = new List<float[]>();
-                }
-                List<float[]> l = (List<float[]>)b.Tag;
-                if(!SAM2)
-                    l.Add(results.First().AsTensor<float>().ToArray());
-                else
-                    l.Add(results.Last().AsTensor<float>().ToArray());
-                b.Tag = l;
+                embeddings.Add((SAM2 ? results.Last() : results.First()).AsTensor<float>().ToArray());
                 results.Dispose();
                 pr.ProgressValue = (double)i/b.Buffers.Count;
                 i++;
@@ -137,6 +132,7 @@ namespace BioGTK
             {
                 pr.Hide();
             });
+            b.Tag = embeddings;
             this.mReady = true;
             BioLib.Recorder.AddLine("SAM.Encode(Images.GetImage(\"" + b.Filename + "\"));", false);
         }
@@ -150,7 +146,7 @@ namespace BioGTK
         /// @param orgHei The parameter `orgHei` represents the original height of the image.
         /// 
         /// @return The method is returning an array of floats, which represents the output mask.
-        public float[] Decode(BioImage b, List<Promotion> promotions, int orgWid, int orgHei)
+        public virtual float[] Decode(BioImage b, List<Promotion> promotions, int orgWid, int orgHei)
         {
             ZCT c = App.viewer.GetCoordinate();
             List<float[]> lts = (List<float[]>)b.Tag;
@@ -245,7 +241,7 @@ namespace BioGTK
            
         }
 
-        public MaskData Decode(List<Promotion> promotions, float[] embedding, int orgWid, int orgHei)
+        public virtual MaskData Decode(List<Promotion> promotions, float[] embedding, int orgWid, int orgHei)
         {
             var embedding_tensor = new DenseTensor<float>(embedding, new[] { 1, 256, 64, 64 });
 
@@ -431,7 +427,14 @@ namespace BioGTK
         static Random rng = new Random();
         public static void Run(float minArea, float maxArea,float stability,float prediction, int layers, int points)
         {
-            AutoSAM asm = new AutoSAM(points, 64, prediction, stability, 1, 0.7f, layers, 0.7f, 0.3413333f, 1, null, 0, "binary_mask");
+            Run(minArea, maxArea, stability, prediction, layers, points, SAMTool.sam ?? Instance());
+        }
+
+        internal static void Run(float minArea, float maxArea, float stability, float prediction, int layers, int points, SAM model)
+        {
+            if (points <= 0)
+                return;
+            AutoSAM asm = new AutoSAM(points, 64, prediction, stability, 1, 0.7f, layers, 0.7f, 0.3413333f, 1, null, 0, "binary_mask", model);
             for (int z = 0; z < ImageView.SelectedImage.SizeZ; z++)
             {
                 for (int c = 0; c < ImageView.SelectedImage.SizeC; c++)
@@ -441,12 +444,8 @@ namespace BioGTK
                         MaskData md = asm.Generate(ImageView.SelectedImage, ImageView.SelectedImage.Coords[z, c, t]);
                         for (int i = 0; i < md.mfinalMask.Count; i++)
                         {
-                            if (md.mfinalMask[i].Count < ImageView.SelectedImage.SizeX * ImageView.SelectedImage.SizeY)
-                            {
-                                md.mfinalMask[i] = null;
-                                md.mfinalMask.RemoveAt(i);
+                            if (md.mfinalMask[i].Count != ImageView.SelectedImage.SizeX * ImageView.SelectedImage.SizeY)
                                 continue;
-                            }
                             PointD loc = new PointD(ImageView.SelectedImage.StageSizeX, ImageView.SelectedImage.StageSizeY);
                             ROI an = ROI.CreateMask(new ZCT(z, c, t), md.mfinalMask[i].ToArray(), ImageView.SelectedImage.SizeX, ImageView.SelectedImage.SizeY, loc, ImageView.SelectedImage.PhysicalSizeX, ImageView.SelectedImage.PhysicalSizeY);
                             if (an.W * an.H < minArea)
@@ -464,15 +463,17 @@ namespace BioGTK
                     }
                 }
             }
-            BioLib.Recorder.AddLine("SAM.Run(SAM.Promotions," + minArea + "," + maxArea + "," + stability + "," + prediction + "," + layers + "," + points + ");",false);
+            BioLib.Recorder.Record(FormattableString.Invariant($"SAM.Run({minArea}, {maxArea}, {stability}, {prediction}, {layers}, {points});"));
         }
 
         /// The Dispose function disposes of resources and sets variables to null.
-        public void Dispose()
+        public virtual void Dispose()
         {
-            mEncoder.Dispose();
-            mDecoder.Dispose();
-            GC.Collect();
+            mEncoder?.Dispose();
+            mDecoder?.Dispose();
+            mEncoder = null;
+            mDecoder = null;
+            mReady = false;
         }
     }
 }

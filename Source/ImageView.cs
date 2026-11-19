@@ -30,6 +30,7 @@ namespace BioGTK
         private Builder _builder;
         public List<BioImage> Images = new List<BioImage>();
         private bool _updatingCoordinate = false;
+        private bool _maximizeOnFirstShow;
         //public List<SKImage> SKImages = new List<SKImage>();
 
         /// <summary>
@@ -229,20 +230,38 @@ namespace BioGTK
         /// @param BioImage a class that contains the image data and metadata
         public void AddImage(BioImage im)
         {
+            bool isFirstImage = Images.Count == 0;
             Images.Add(im);
             selectedIndex = Images.Count - 1;
-            if (im.Resolutions[0].SizeX < 1920 && im.Resolutions[0].SizeY < 1080)
+            if (isFirstImage && View != null && im.Resolutions.Count > 0)
             {
-                if (View != null)
+                int requestedWidth = Math.Max(1, im.Resolutions[0].SizeX);
+                int requestedHeight = Math.Max(1, im.Resolutions[0].SizeY);
+                int maximumViewWidth = requestedWidth;
+                int maximumViewHeight = requestedHeight;
+
+                Display display = Display.Default;
+                Gdk.Monitor monitor = display?.PrimaryMonitor;
+                if (monitor == null && display?.NMonitors > 0)
+                    monitor = display.GetMonitor(0);
+
+                if (monitor != null)
                 {
-                    View.WidthRequest = im.Resolutions[0].SizeX;
-                    View.HeightRequest = im.Resolutions[0].SizeY;
+                    Gdk.Rectangle workarea = monitor.Workarea;
+
+                    // Leave room for the title bar, menus, status/coordinate rows,
+                    // scrollbars, and window borders. The maximized state below is
+                    // the final guard supplied by the window manager, while these
+                    // limits keep the child widget from imposing an oversized
+                    // minimum allocation on that window.
+                    maximumViewWidth = Math.Max(1, workarea.Width - 64);
+                    maximumViewHeight = Math.Max(1, workarea.Height - 144);
+                    _maximizeOnFirstShow = requestedWidth > maximumViewWidth ||
+                                           requestedHeight > maximumViewHeight;
                 }
-                else
-                {
-                    View.WidthRequest = im.Resolutions[0].SizeX;
-                    View.HeightRequest = im.Resolutions[0].SizeY;
-                }
+
+                View.WidthRequest = Math.Min(requestedWidth, maximumViewWidth);
+                View.HeightRequest = Math.Min(requestedHeight, maximumViewHeight);
             }
 
             Initialize();
@@ -799,6 +818,11 @@ namespace BioGTK
 
             Gtk.Application.Invoke((s, e) =>
             {
+                if (_maximizeOnFirstShow)
+                {
+                    Maximize();
+                    _maximizeOnFirstShow = false;
+                }
                 if (SelectedImage != null)
                     GoToImage(SelectedIndex);
             });

@@ -1,0 +1,12 @@
+<Project>
+  <Choose>
+    <When Condition="'$(MSBuildProjectName)' == 'BioGTKApp' And ('$(RuntimeIdentifier)' == 'osx-arm64' Or '$(RuntimeIdentifier)' == 'osx-x64')">
+      <PropertyGroup>
+        <DefineConstants>$(DefineConstants);BIOGTK_MAC_BUNDLE</DefineConstants>
+      </PropertyGroup>
+      <ItemGroup>
+        <Compile Include="$(MSBuildThisFileDirectory)GtkBundleStartup.cs" />
+      </ItemGroup>
+    </When>
+  </Choose>
+</Project>

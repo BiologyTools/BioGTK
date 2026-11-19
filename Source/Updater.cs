@@ -106,7 +106,7 @@ namespace BioGTK
                     if(item.Name.EndsWith(".dll"))
                     {
                         string url = s.Replace("github.com", "raw.githubusercontent.com") + "/main/" + item.Name;
-                        DownloadFileAsync(url, System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/Plugins/" + item.Name).Wait();
+                        DownloadFileAsync(url, System.IO.Path.Join(AppStorage.DirectoryPath, "Plugins", item.Name)).Wait();
                     }
                 }
             }

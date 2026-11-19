@@ -353,7 +353,7 @@ namespace BioGTK
                 App.scripting.Close();
             else
             if (name == "SAM Tool")
-                App.samTool.Close();
+                App.samTool?.Close();
             else
             if (name == "Recorder")
                 App.recorder.Close();

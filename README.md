@@ -29,7 +29,7 @@ A .NET application & library for editing & annotating various microscopy image f
 
 - Exporting ROI's from each OME image in a folder of images to CSV.
 
-- Easy segmentation with [Segment Anything 2](https://github.com/facebookresearch/sam2) (SAM-2) or [Micro-SAM](https://github.com/computational-cell-analytics/micro-sam). Download required model files from [here for SAM-2.](https://github.com/ibaiGorordo/ONNX-SAM2-Segment-Anything/releases/tag/0.2.0) and [here for Micro-SAM](https://zenodo.org/records/14343909) placing them in the "StartUpPath" folder of the program.
+- Interactive and automatic segmentation with [Segment Anything 2](https://github.com/facebookresearch/sam2) or [Micro-SAM2](https://github.com/computational-cell-analytics/micro-sam/releases/tag/v2.0.1) for microscopy. See [model setup](BUILDING.md#setting-up-segmentation-models) for the ONNX files.
 
 ## Dependencies
 - [BioFormats.NET8](https://github.com/BiologyTools/BioFormatsNET8) [GPL3](https://www.gnu.org/licenses/gpl-3.0.en.html)

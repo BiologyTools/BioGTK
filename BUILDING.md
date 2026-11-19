@@ -46,150 +46,26 @@ namespace BioGTKApp
 	- dotnet msbuild BioGTKApp.csproj /t:CreateTarball /p:RuntimeIdentifier=linux-x64 /p:Configuration=Release
 	- dotnet publish -c Release -r win-x64 --self-contained false /p:Platform="Any CPU" -o ./publish 	
 
-# Building Micro-SAM ONNX models.
-- Recommended to just download the pre-built models from [Zenodo releases](https://zenodo.org/records/14343909). Due to the large amount of dependencies etc. required to install & run Micro-SAM repository.
-- Setup Micro-SAM by cloning the [Micro-SAM](https://github.com/computational-cell-analytics/micro-sam) repository.
-	- In the base directory of Micro-SAM create python files "export_encoder.py" and "export_decoder.py" and add the code provided below. 
+## Setting up segmentation models
 
--For exporting Micro-SAM ONNX encoder.
+### Segment Anything 2
+
+Download the `encoder-quant.onnx` and `decoder-quant.onnx` pair from the [SAM2 ONNX release](https://github.com/ibaiGorordo/ONNX-SAM2-Segment-Anything/releases/tag/0.2.0) and place the files alongside `BioGTK.dll`. Open an image and choose **Run SAM**.
+
+### Micro-SAM2
+
+BioGTK uses the SAM2.1-based microscopy checkpoints from [micro-sam 2](https://github.com/computational-cell-analytics/micro-sam/releases/tag/v2.0.1). Export the checkpoint once in a Python environment with `micro_sam` 2, PyTorch, ONNX, and ONNX Runtime installed. Python is only needed for export.
+
+```sh
+conda create -n biogtk-microsam2 -c conda-forge "micro_sam>=2,<3" python=3.12 onnx onnxruntime
+conda activate biogtk-microsam2
+python Source/ML/export_micro_sam2.py ./microsam2-models
 ```
-import os
-import warnings
-from typing import Optional, Union
 
-import torch
-from segment_anything.utils.onnx import SamOnnxModel
-from ..util import get_sam_model
-def export_onnx_image_encoder(
-    model_type,
-    output_root,
-    opset: int,
-    export_name: Optional[str] = None,
-    checkpoint_path: Optional[Union[str, os.PathLike]] = None,
-) -> None:
-    """Export SAM image encoder (image -> image embeddings) to ONNX with fixed input size."""
+For pip-based setup in an activated Python 3.12 environment, install with `python -m pip install micro-sam==2.0.1 onnx onnxruntime` and run the same export command.
 
-    if export_name is None:
-        export_name = model_type
-    name = f"sam-{export_name}-image-encoder"
+The exporter downloads the upstream `hvit_t_cells` microscopy model by default and checks the exported encoder and decoder against PyTorch. Use `--model` to select another supported Micro-SAM2 checkpoint. Keep both files from the same export.
 
-    output_folder = os.path.join(output_root, name)
-    weight_output_folder = os.path.join(output_folder, "1")
-    os.makedirs(weight_output_folder, exist_ok=True)
+Copy `micro-sam2-encoder.onnx` and `micro-sam2-decoder.onnx` to the application directory alongside `BioGTK.dll`. For the packaged macOS application, put them directly in `~/Library/Application Support/BioGTK`. The older `micro-sam-encoder.onnx` and `micro-sam-decoder.onnx` models must be replaced with the new pair.
 
-    # Ensure the model and tensors are on the same device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Load SAM model
-    _, sam = get_sam_model(model_type=model_type, checkpoint_path=checkpoint_path, return_sam=True)
-    sam.to(device)
-
-    # Create a wrapper model for the image encoder
-    class ImageEncoderModel(torch.nn.Module):
-        def __init__(self, sam_model):
-            super().__init__()
-            self.image_encoder = sam_model.image_encoder
-
-        def forward(self, image):
-            # Pass the image through the image encoder
-            image_embeddings = self.image_encoder(image)
-            return image_embeddings
-
-    image_encoder_model = ImageEncoderModel(sam).to(device)
-
-    # Example inputs with fixed size
-    dummy_inputs = {
-        "image": torch.randn(1, 3, 1024, 1024, dtype=torch.float).to(device),  # Fixed input size
-    }
-
-    # Export model to ONNX
-    weight_path = os.path.join(weight_output_folder, "model.onnx")
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=torch.jit.TracerWarning)
-        warnings.filterwarnings("ignore", category=UserWarning)
-        with open(weight_path, "wb") as f:
-            print(f"Exporting ONNX model to {weight_path}...")
-            torch.onnx.export(
-                image_encoder_model,
-                tuple(dummy_inputs.values()),
-                f,
-                export_params=True,
-                verbose=False,
-                opset_version=opset,
-                do_constant_folding=True,
-                input_names=list(dummy_inputs.keys()),
-                output_names=["image_embeddings"],
-                dynamic_axes=None,  # No dynamic axes
-            )
-
-    print("ONNX export completed successfully!")
-
-    if onnxruntime_exists:
-        ort_inputs = {k: _to_numpy(v) for k, v in dummy_inputs.items()}
-        providers = ["CPUExecutionProvider"]
-        ort_session = onnxruntime.InferenceSession(weight_path, providers=providers)
-        result = ort_session.run(None, ort_inputs)
-        print("Model has successfully been run with ONNXRuntime.")
-        print(f"Output embeddings shape: {result[0].shape}")
-
-```
-- For exporting Micro-SAM mask decoder.
-```
-import os
-import warnings
-from typing import Optional, Union
-
-import torch
-from segment_anything.utils.onnx import SamOnnxModel
-from ..util import get_sam_model
-def export_decoder_onnx(
-    sam_model, output_path: str, opset: int = 13,
-    return_single_mask: bool = True,
-    use_stability_score: bool = False,
-    return_extra_metrics: bool = False
-):
-    device = torch.device("cpu")
-    sam_model.to(device)
-    
-    mask_decoder = SamOnnxModel(
-        model=sam_model,
-        return_single_mask=return_single_mask,
-        use_stability_score=use_stability_score,
-        return_extra_metrics=return_extra_metrics,
-    ).to(device)
-    
-    embed_dim = sam_model.prompt_encoder.embed_dim
-    embed_size = sam_model.prompt_encoder.image_embedding_size
-    mask_input_size = [4 * x for x in embed_size]
-    
-    dummy_inputs = {
-        "image_embeddings": torch.randn(1, embed_dim, *embed_size, dtype=torch.float).to(device),
-        "point_coords": torch.randint(low=0, high=1024, size=(1, 5, 2), dtype=torch.float).to(device),
-        "point_labels": torch.randint(low=0, high=4, size=(1, 5), dtype=torch.float).to(device),
-        "mask_input": torch.randn(1, 1, *mask_input_size, dtype=torch.float).to(device),
-        "has_mask_input": torch.tensor([1], dtype=torch.float).to(device),
-        "orig_im_size": torch.tensor([1024, 1024], dtype=torch.float).to(device),
-    }
-    
-    onnx_path = os.path.join(output_path, "sam_decoder.onnx")
-    with open(onnx_path, "wb") as f:
-        print(f"Exporting decoder to {onnx_path}...")
-        torch.onnx.export(
-            mask_decoder,
-            tuple(dummy_inputs.values()),
-            f,
-            export_params=True,
-            opset_version=opset,
-            do_constant_folding=True,
-            input_names=list(dummy_inputs.keys()),
-            output_names=["masks", "iou_predictions", "low_res_masks"],
-            dynamic_axes={
-                "image_embeddings": {0: "batch_size"},
-                "point_coords": {1: "num_points"},
-                "point_labels": {1: "num_points"},
-                "masks": {0: "batch_size", 1: "num_masks", 2: "height", 3: "width"},
-            },
-        )
-    print("Decoder ONNX export complete!")
-
-```
+Open a microscopy image and choose **Run Micro-SAM2**. Use the point or rectangle tool to prompt a mask on the current plane, or use automatic segmentation to sample a grid of points across the stack. **Run SAM Encode** refreshes the currently selected plane after editing it.

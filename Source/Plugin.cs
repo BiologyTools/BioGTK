@@ -34,16 +34,14 @@ namespace BioGTK
     {
         public static void Initialize()
         {
-            foreach (string s in Directory.GetFiles(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/Plugins"))
+            foreach (string s in Directory.GetFiles(Path.Combine(AppStorage.DirectoryPath, "Plugins")))
             {
                 try
                 {
                     if (!s.EndsWith(".dll") || Plugin.Plugins.ContainsKey(Path.GetFileName(s)))
                         continue;
-                    string dir = System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/Plugins/" + Path.GetFileName(s);
-                    dir.Replace("\\", "/");
                     // Load the plugin assembly
-                    Assembly pluginAssembly = Assembly.LoadFile(dir);
+                    Assembly pluginAssembly = Assembly.LoadFile(s);
                     // Find the type which implements the IPlugin interface
                     var pluginType = pluginAssembly.GetTypes().FirstOrDefault(t => typeof(IPlugin).IsAssignableFrom(t) && !t.IsInterface);
                     if (pluginType != null)

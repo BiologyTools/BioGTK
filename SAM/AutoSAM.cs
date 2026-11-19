@@ -29,11 +29,9 @@ namespace BioGTK
         List<double[,]> point_grids = null;
         int min_mask_region_area = 0;
         string output_mode = "binary_mask";
-        BioImage mImage;
         public SAM mSAM;
-        public MicroSAM microSAM;
-        public float[] mImgEmbedding;
-        public bool isMicro = false;
+        private Bitmap frame;
+        private float[] mImgEmbedding;
 
         public AutoSAM(int points_per_side = 4,
                             int points_per_batch = 64,
@@ -47,7 +45,8 @@ namespace BioGTK
                             int crop_n_points_downscale_factor = 1,
                             List<double[,]> point_grids = null,
                             int min_mask_region_area = 0,
-                            string output_mode = "binary_mask")
+                            string output_mode = "binary_mask",
+                            SAM model = null)
         {
             this.points_per_side = points_per_side;
             this.points_per_batch = points_per_batch;
@@ -63,13 +62,7 @@ namespace BioGTK
             this.min_mask_region_area = min_mask_region_area;
             this.output_mode = output_mode;
 
-            if (SAM.theSingleton == null)
-            {
-                mSAM = MicroSAM.Instance();
-                this.isMicro = true;
-            }
-            else
-                mSAM = SAM.Instance();
+            mSAM = model ?? SAM.Instance();
             if (points_per_side != 0)
             {
                 this.point_grids = build_all_layer_point_grids(
@@ -98,9 +91,8 @@ namespace BioGTK
 
         double[,] BuildPointGrid(int n_per_side)
         {
-            double offset = 1.0 / (2 * n_per_side);
             double[] points_one_side = Enumerable.Range(0, n_per_side)
-                .Select(i => offset + i * (1.0 - 2 * offset) / (n_per_side - 1))
+                .Select(i => (i + 0.5) / n_per_side)
                 .ToArray();
 
             double[,] points = new double[n_per_side * n_per_side, 2];
@@ -137,7 +129,7 @@ namespace BioGTK
             for (int i_layer = 0; i_layer < n_layers; i_layer++)
             {
                 int n_crops_per_side = (int)Math.Pow(2, i_layer + 1);
-                int overlap = (int)(overlap_ratio * short_side * (2 / n_crops_per_side));
+                int overlap = (int)(overlap_ratio * short_side * (2f / n_crops_per_side));
 
                 int crop_w = crop_len(im_w, n_crops_per_side, overlap);
                 int crop_h = crop_len(im_h, n_crops_per_side, overlap);
@@ -163,8 +155,11 @@ namespace BioGTK
                             Math.Min(y0 + crop_h, im_h)
                         };
 
-                        crop_boxes.Add(box);
-                        layer_idxs.Add(i_layer + 1);
+                        if (box[0] < box[2] && box[1] < box[3])
+                        {
+                            crop_boxes.Add(box);
+                            layer_idxs.Add(i_layer + 1);
+                        }
                     }
                 }
 
@@ -199,8 +194,9 @@ namespace BioGTK
         }
         public MaskData Generate(BioImage im, int buffer)
         {
-            this.mImage = im;
-            mImgEmbedding = ((List<float[]>)im.Tag)[buffer];
+            frame = im.Buffers[buffer];
+            if (mSAM is not MicroSAM)
+                mImgEmbedding = ((List<float[]>)im.Tag)[buffer];
             if (points_per_side != 0)
             {
                 this.point_grids = build_all_layer_point_grids(
@@ -208,16 +204,16 @@ namespace BioGTK
                 crop_n_layers,
                 crop_n_points_downscale_factor);
             }
-            MaskData masks = this._generate_masks(this.mImage);
+            MaskData masks = this._generate_masks();
             return masks;
         }
-        MaskData _generate_masks(BioImage img)
+        MaskData _generate_masks()
         {
             MaskData masks = new MaskData();
             List<List<int>> crop_boxes = new List<List<int>>();
             List<int> layer_idxs = new List<int>();
 
-            this.generateCropBoxes(img.SizeX, img.SizeY, this.crop_n_layers, this.crop_overlap_ratio, ref crop_boxes, ref layer_idxs);
+            this.generateCropBoxes(frame.Width, frame.Height, this.crop_n_layers, this.crop_overlap_ratio, ref crop_boxes, ref layer_idxs);
 
             for (int i = 0; i < crop_boxes.Count; i++)
             {
@@ -232,22 +228,27 @@ namespace BioGTK
         {
             MaskData masks = new MaskData();
             int x0 = crop_box[0], y0 = crop_box[1], x1 = crop_box[2], y1 = crop_box[3];
-            Rectangle r = new Rectangle(x0, y0, x1, y1);
+            var micro = mSAM as MicroSAM;
+            int width = micro == null ? x1 : x1 - x0;
+            int height = micro == null ? y1 : y1 - y0;
+            if (micro != null)
+                mImgEmbedding = crop_layer_idx == 0 ? micro.EncodePlane(frame) : micro.EncodeCrop(frame, x0, y0, width, height);
             double[,] gps = this.point_grids[crop_layer_idx];
             PointPromotion[] points_for_image = new PointPromotion[gps.GetLength(0)];
             Transforms ts = new Transforms(1024);
             for (int i = 0; i < gps.GetLength(0); i++)
             {
-                Promotion promt = new PointPromotion(ForeGround.foreground);
-                (promt as PointPromotion).X = (int)(gps[i, 0] * r.Width);
-                (promt as PointPromotion).Y = (int)(gps[i, 1] * r.Height);
-                PointPromotion ptn = ts.ApplyCoords((promt as PointPromotion), r.Width, r.Height);
-                points_for_image[i] = ptn;
+                var point = new PointPromotion(ForeGround.foreground)
+                {
+                    X = (int)(gps[i, 0] * width),
+                    Y = (int)(gps[i, 1] * height)
+                };
+                points_for_image[i] = micro == null ? ts.ApplyCoords(point, width, height) : point;
             }
             object[] args = { points_for_image };
             foreach (var v in BatchIterator(this.points_per_batch, args))
             {
-                MaskData mask = this._process_batch(v.ToList(), r.Width, r.Height, crop_box, this.mImage.SizeX, this.mImage.SizeY);
+                MaskData mask = this._process_batch(v.ToList(), width, height, crop_box, frame.Width, frame.Height);
                 masks.Cat(mask);
             }
             return masks;
@@ -263,16 +264,23 @@ namespace BioGTK
                 PointPromotion[] pts = v as PointPromotion[];
                 for (int i=0;i<pts.Length;i++)
                 {
-                    MaskData md = null;
-                    if (MicroSAM.theSingleton == null)
-                        md = this.mSAM.Decode(new List<Promotion>() { pts[i] }, this.mImgEmbedding, cropimgwid, cropimghei);
-                    else
-                    {
-                        this.microSAM = (MicroSAM)this.mSAM;
-                        md = this.microSAM.Decode(new List<Promotion>() { pts[i] }, this.mImgEmbedding, cropimgwid, cropimghei);
-                    }
+                    using MaskData md = mSAM.Decode(new List<Promotion> { pts[i] }, mImgEmbedding, cropimgwid, cropimghei);
                     md.mStability = md.CalculateStabilityScore(this.mSAM.mask_threshold, this.stability_score_offset).ToList();
                     md.Filter(this.pred_iou_thresh, this.stability_score_thresh);
+                    if (mSAM is MicroSAM && (cropimgwid != orgimgwid || cropimghei != orgimghei))
+                    {
+                        // Put each crop mask back into its full-plane coordinate system.
+                        for (int index = 0; index < md.mfinalMask.Count; index++)
+                        {
+                            var uncropped = new float[checked(orgimgwid * orgimghei)];
+                            for (int y = 0; y < cropimghei; y++)
+                                md.mfinalMask[index].CopyTo(y * cropimgwid, uncropped,
+                                    (cropbox[1] + y) * orgimgwid + cropbox[0], cropimgwid);
+                            md.mfinalMask[index] = uncropped.ToList();
+                        }
+                        md.mShape[2] = orgimghei;
+                        md.mShape[3] = orgimgwid;
+                    }
                     batch.Cat(md);
                 }
                           

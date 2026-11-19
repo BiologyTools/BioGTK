@@ -1,300 +1,186 @@
 ﻿using AForge;
-using BioGTK;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Diagnostics;
-using Gtk;
-using System.Runtime.InteropServices;
 
 namespace BioGTK
 {
-    public class MicroSAM : SAM, IDisposable
+    // Retain the public MicroSAM name for callers and recorded scripts.
+    public class MicroSAM : SAM
     {
-        public static MicroSAM theSingleton = null;
-        InferenceSession decoder;
-        InferenceSession encoder;
-        public float mask_threshold = 0.0f;
+        internal const string EncoderFile = "micro-sam2-encoder.onnx";
+        internal const string DecoderFile = "micro-sam2-decoder.onnx";
+        internal static string ModelDirectory => AppStorage.IsPackagedMacApp ? AppStorage.DirectoryPath : AppContext.BaseDirectory;
+
+        private const int Resolution = MicroSAMImage.Resolution;
+        private const int MaskResolution = MicroSAMImage.MaskResolution;
+        private static readonly string[] FeatureNames = { "image_embed", "high_res_feats_0", "high_res_feats_1" };
+        private static readonly int[][] FeatureShapes =
+        {
+            new[] { 1, 256, 64, 64 },
+            new[] { 1, 32, 256, 256 },
+            new[] { 1, 64, 128, 128 }
+        };
+        private static readonly int[] FeatureLengths = FeatureShapes.Select(shape => shape.Aggregate(1, (a, b) => a * b)).ToArray();
+        private static readonly int FeatureLength = FeatureLengths.Sum();
+
+        private readonly object inferenceLock = new object();
+        private InferenceSession encoder;
+        private InferenceSession decoder;
+        private Bitmap cachedPlane;
+        private float[] cachedFeatures;
+        public new static MicroSAM theSingleton = null;
+
+        protected MicroSAM() { }
+
+        public new static MicroSAM Instance() => theSingleton ??= new MicroSAM();
+
         public bool Initialized
         {
-            get { if (encoder != null) return true; else return false; }
+            get { lock (inferenceLock) return encoder != null; }
         }
-        protected MicroSAM()
-        {
 
-        }
-        /// The function returns an instance of the SAM class, creating it if it doesn't already exist.
-        /// 
-        /// @return The method is returning an instance of the SAM class.
-        public new static MicroSAM Instance()
+        public override void LoadONNXModel()
         {
-            if (null == theSingleton)
+            lock (inferenceLock)
             {
-                theSingleton = new MicroSAM();
-            }
-            return theSingleton;
-        }
-
-        /// The function `LoadONNXModel` loads ONNX models for encoding and decoding.
-        public new void LoadONNXModel()
-        {
-            if (this.decoder != null)
-                this.decoder.Dispose();
-            if (this.encoder != null)
-                this.encoder.Dispose();
-            string exePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            string decoder_model_path = exePath + "/micro-sam-decoder.onnx";
-            this.decoder = new InferenceSession(decoder_model_path);
-            string encoder_model_path = exePath + "/micro-sam-encoder.onnx";
-            this.encoder = new InferenceSession(encoder_model_path);
-
-        }
-        public new void Encode()
-        {
-            Encode(ImageView.SelectedImage);
-        }
-        /// The Encode function takes a BioImage object, applies a transformation to it, converts it to
-        /// a tensor, runs it through an encoder model, and stores the resulting embedding.
-        /// 
-        /// @param BioImage The BioImage parameter is an object that represents an image. It likely
-        /// contains information such as the image data, size, and other properties related to the
-        /// image.
-        public new void Encode(BioImage b)
-        {
-            if (b.Buffers.Count * 3 * 1024 * 1024 > 4e8)
-            {
-                // Create the message dialog
-                MessageDialog msgBox = new MessageDialog(
-                    null,
-                    DialogFlags.Modal,
-                    MessageType.Info,
-                    ButtonsType.Ok | ButtonsType.Cancel,
-                    "Memory required is more than 4GB are you sure you want to continue?"
-                );
-
-                // Show the message dialog
-                if (msgBox.Run() != (int)ResponseType.Ok)
+                if (encoder != null)
                     return;
-            }
-            Progress pr = Progress.Create("Encoding Image", "Transforming", "");
-            // update ui on main UI thread
-            Application.Invoke(delegate
-            {
-                pr.Show();
-                pr.Present();
-            });
-            int i = 0;
-            foreach (Bitmap bu in b.Buffers)
-            {
-                Transforms tranform = new Transforms(1024);
-                float[] img = tranform.ApplyImage(bu);
-                var tensor = new DenseTensor<float>(img, new[] { 1, 3, 1024, 1024 });
-                IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results = null;
-                List<NamedOnnxValue> inputs = new List<NamedOnnxValue>
-                {
-                    NamedOnnxValue.CreateFromTensor("image", tensor)
-                };
+
+                string encoderPath = Path.Combine(ModelDirectory, EncoderFile);
+                string decoderPath = Path.Combine(ModelDirectory, DecoderFile);
+                if (!File.Exists(encoderPath) || !File.Exists(decoderPath))
+                    throw new FileNotFoundException(
+                        $"Export and place {EncoderFile} and {DecoderFile} in {ModelDirectory}. See BUILDING.md.");
+
+                InferenceSession nextEncoder = null;
+                InferenceSession nextDecoder = null;
                 try
                 {
-                    results = this.encoder.Run(inputs);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine("Tried running SAM-2 next trying SAM-1");
-                    SAM2 = false;
-                }
-                if (!SAM2)
-                {
-                    inputs = new List<NamedOnnxValue>
+                    nextEncoder = new InferenceSession(encoderPath);
+                    nextDecoder = new InferenceSession(decoderPath);
+
+                    RequireTensor(nextEncoder.InputMetadata, "image", 1, 3, Resolution, Resolution);
+                    for (int i = 0; i < FeatureNames.Length; i++)
                     {
-                        NamedOnnxValue.CreateFromTensor("x", tensor)
-                    };
-                    results = this.encoder.Run(inputs);
+                        RequireTensor(nextEncoder.OutputMetadata, FeatureNames[i], FeatureShapes[i]);
+                        RequireTensor(nextDecoder.InputMetadata, FeatureNames[i], FeatureShapes[i]);
+                    }
+                    RequireTensor(nextDecoder.InputMetadata, "point_coords", 1, -1, 2);
+                    RequireTensor(nextDecoder.InputMetadata, "point_labels", 1, -1);
+                    RequireTensor(nextDecoder.OutputMetadata, "mask_logits", 1, 1, MaskResolution, MaskResolution);
+                    RequireTensor(nextDecoder.OutputMetadata, "iou_predictions", 1, 1);
+                    encoder = nextEncoder;
+                    decoder = nextDecoder;
                 }
-                if (b.Tag == null)
+                catch
                 {
-                    b.Tag = new List<float[]>();
+                    nextEncoder?.Dispose();
+                    nextDecoder?.Dispose();
+                    throw;
                 }
-                List<float[]> l = (List<float[]>)b.Tag;
-                if (!SAM2)
-                    l.Add(results.First().AsTensor<float>().ToArray());
-                else
-                    l.Add(results.Last().AsTensor<float>().ToArray());
-                b.Tag = l;
-                results.Dispose();
-                pr.ProgressValue = (double)i / b.Buffers.Count;
-                i++;
             }
-            // update ui on main UI thread
-            Application.Invoke(delegate
-            {
-                pr.Hide();
-            });
-            BioLib.Recorder.AddLine("MicroSAM.Encode(Images.GetImage(\"" + b.Filename + "\"));", false);
         }
 
-        /// The function takes a list of promotions, original width, and original height as input, and
-        /// returns an array of decoded output masks.
-        /// 
-        /// @param promotions A list of Promotion objects. Each Promotion object has properties like
-        /// mType, mInput, and mLable.
-        /// @param orgWid The parameter `orgWid` represents the original width of the image.
-        /// @param orgHei The parameter `orgHei` represents the original height of the image.
-        /// 
-        /// @return The method is returning an array of floats, which represents the output mask.
-        public new float[] Decode(BioImage b, List<Promotion> promotions, int orgWid, int orgHei)
+        private static void RequireTensor(IReadOnlyDictionary<string, NodeMetadata> metadata, string name, params int[] dims)
         {
-            ZCT c = App.viewer.GetCoordinate();
-            List<float[]> lts = (List<float[]>)b.Tag;
-            int fr = b.GetFrameIndex(c.Z, c.C, c.T);
-            var embedding_tensor = new DenseTensor<float>(lts[fr], new[] { 1, 256, 64, 64 });
-            var bpmos = promotions.FindAll(e => e.mType == PromotionType.Box);
-            var pproms = promotions.FindAll(e => e.mType == PromotionType.Point);
-            int boxCount = promotions.FindAll(e => e.mType == PromotionType.Box).Count();
-            int pointCount = promotions.FindAll(e => e.mType == PromotionType.Point).Count();
-            float[] promotion = new float[2 * (boxCount * 2 + pointCount)];
-            float[] label = new float[boxCount * 2 + pointCount];
-            for (int i = 0; i < boxCount; i++)
-            {
-                var input = bpmos[i].GetInput();
-                for (int j = 0; j < input.Count(); j++)
-                {
-                    promotion[4 * i + j] = input[j];
-                }
-                var la = bpmos[i].GetLable();
-                for (int j = 0; j < la.Count(); j++)
-                {
-                    label[2 * i + j] = la[j];
-                }
-            }
-            for (int i = 0; i < pointCount; i++)
-            {
-                var p = pproms[i].GetInput();
-                for (int j = 0; j < p.Count(); j++)
-                {
-                    promotion[boxCount * 4 + 2 * i + j] = p[j];
-                }
-                var la = pproms[i].GetLable();
-                for (int j = 0; j < la.Count(); j++)
-                {
-                    label[boxCount * 2 + i + j] = la[j];
-                }
-            }
-
-            var point_coords_tensor = new DenseTensor<float>(promotion, new[] { 1, boxCount * 2 + pointCount, 2 });
-
-            var point_label_tensor = new DenseTensor<float>(label, new[] { 1, boxCount * 2 + pointCount });
-
-            float[] mask = new float[256 * 256];
-            for (int i = 0; i < mask.Count(); i++)
-            {
-                mask[i] = 0;
-            }
-            var mask_tensor = new DenseTensor<float>(mask, new[] { 1, 1, 256, 256 });
-
-            float[] hasMaskValues = new float[1] { 0 };
-            var hasMaskValues_tensor = new DenseTensor<float>(hasMaskValues, new[] { 1 });
-
-            var decode_inputs = new List<NamedOnnxValue>();
-            
-            float[] orig_im_size_values = { (float)orgHei, (float)orgWid };
-            var orig_im_size_values_tensor = new DenseTensor<float>(orig_im_size_values, new[] { 2 });
-            decode_inputs = new List<NamedOnnxValue>
-            {
-            NamedOnnxValue.CreateFromTensor("image_embeddings", embedding_tensor),
-            NamedOnnxValue.CreateFromTensor("point_coords", point_coords_tensor),
-            NamedOnnxValue.CreateFromTensor("point_labels", point_label_tensor),
-            NamedOnnxValue.CreateFromTensor("mask_input", mask_tensor),
-            NamedOnnxValue.CreateFromTensor("has_mask_input", hasMaskValues_tensor),
-            NamedOnnxValue.CreateFromTensor("orig_im_size", orig_im_size_values_tensor)
-            };
-           
-            var segmask = this.decoder.Run(decode_inputs);
-            var outputmask = segmask.First().AsTensor<float>().ToArray();
-            BioLib.Recorder.AddLine("App.samTool.microsam.Decode(Images.GetImage(\"" + b.Filename + "\"),App.samTool.Promotions," + orgWid + "," + orgHei + ");", false);
-            return outputmask;
+            if (!metadata.TryGetValue(name, out var tensor) || tensor.ElementType != typeof(float) ||
+                !tensor.Dimensions.SequenceEqual(dims))
+                throw new InvalidDataException(
+                    $"The Micro-SAM2 ONNX tensor '{name}' is incompatible. Export both models together using the BioGTK exporter.");
         }
 
-        public new MaskData Decode(List<Promotion> promotions, float[] embedding, int orgWid, int orgHei)
+        public override void Encode(BioImage image)
         {
-            var embedding_tensor = new DenseTensor<float>(embedding, new[] { 1, 256, 64, 64 });
-
-            var bpmos = promotions.FindAll(e => e.mType == PromotionType.Box);
-            var pproms = promotions.FindAll(e => e.mType == PromotionType.Point);
-            int boxCount = promotions.FindAll(e => e.mType == PromotionType.Box).Count();
-            int pointCount = promotions.FindAll(e => e.mType == PromotionType.Point).Count();
-            float[] promotion = new float[2 * (boxCount * 2 + pointCount)];
-            float[] label = new float[boxCount * 2 + pointCount];
-            for (int i = 0; i < boxCount; i++)
+            lock (inferenceLock)
             {
-                var input = bpmos[i].GetInput();
-                for (int j = 0; j < input.Count(); j++)
-                {
-                    promotion[4 * i + j] = input[j];
-                }
-                var la = bpmos[i].GetLable();
-                for (int j = 0; j < la.Count(); j++)
-                {
-                    label[2 * i + j] = la[j];
-                }
+                // The explicit Encode button also refreshes an image edited in place.
+                cachedPlane = null;
+                cachedFeatures = null;
+                EncodePlane(image.SelectedBuffer);
             }
-            for (int i = 0; i < pointCount; i++)
-            {
-                var p = pproms[i].GetInput();
-                for (int j = 0; j < p.Count(); j++)
-                {
-                    promotion[boxCount * 4 + 2 * i + j] = p[j];
-                }
-                var la = pproms[i].GetLable();
-                for (int j = 0; j < la.Count(); j++)
-                {
-                    label[boxCount * 2 + i + j] = la[j];
-                }
-            }
-
-            var point_coords_tensor = new DenseTensor<float>(promotion, new[] { 1, boxCount * 2 + pointCount, 2 });
-
-            var point_label_tensor = new DenseTensor<float>(label, new[] { 1, boxCount * 2 + pointCount });
-
-            float[] mask = new float[256 * 256];
-            for (int i = 0; i < mask.Count(); i++)
-            {
-                mask[i] = 0;
-            }
-            var mask_tensor = new DenseTensor<float>(mask, new[] { 1, 1, 256, 256 });
-
-            float[] hasMaskValues = new float[1] { 0 };
-            var hasMaskValues_tensor = new DenseTensor<float>(hasMaskValues, new[] { 1 });
-            List<NamedOnnxValue> decode_inputs;
-            
-            float[] orig_im_size_values = { (float)orgHei, (float)orgWid };
-            var orig_im_size_values_tensor = new DenseTensor<float>(orig_im_size_values, new[] { 2 });
-            decode_inputs = new List<NamedOnnxValue>
-            {
-                NamedOnnxValue.CreateFromTensor("image_embeddings", embedding_tensor),
-                NamedOnnxValue.CreateFromTensor("point_coords", point_coords_tensor),
-                NamedOnnxValue.CreateFromTensor("point_labels", point_label_tensor),
-                NamedOnnxValue.CreateFromTensor("mask_input", mask_tensor),
-                NamedOnnxValue.CreateFromTensor("has_mask_input", hasMaskValues_tensor),
-                NamedOnnxValue.CreateFromTensor("orig_im_size", orig_im_size_values_tensor)
-            };
-           
-            MaskData md = new MaskData();
-            var segmask = this.decoder.Run(decode_inputs).ToList();
-            md.mMask = segmask[0].AsTensor<float>().ToArray().ToList();
-            md.mShape = segmask[0].AsTensor<float>().Dimensions.ToArray();
-            md.mIoU = segmask[1].AsTensor<float>().ToList();
-            BioLib.Recorder.AddLine("MaskData md = App.samTool.microsam.Decode(App.samTool.Promotions,(float[])ImageView.SelectedImage.Tag," + orgWid + "," + orgHei + ");", false);
-            return md;
-
+            BioLib.Recorder.AddLine("SAMTool.microsam.Encode(ImageView.SelectedImage);", false);
         }
+
+        internal float[] EncodePlane(Bitmap image)
+        {
+            lock (inferenceLock)
+            {
+                if (!ReferenceEquals(cachedPlane, image) || cachedFeatures == null)
+                {
+                    cachedFeatures = EncodeCrop(image, 0, 0, image.Width, image.Height);
+                    cachedPlane = image;
+                }
+                return cachedFeatures;
+            }
+        }
+
+        internal float[] EncodeCrop(Bitmap image, int left, int top, int width, int height)
+        {
+            lock (inferenceLock)
+            {
+                LoadONNXModel();
+                var input = NamedOnnxValue.CreateFromTensor("image", MicroSAMImage.Prepare(image, left, top, width, height));
+                using var results = encoder.Run(new[] { input }, FeatureNames);
+                var features = new float[FeatureLength];
+                int offset = 0;
+                for (int i = 0; i < FeatureNames.Length; i++)
+                {
+                    var tensor = results.Single(output => output.Name == FeatureNames[i]).AsTensor<float>();
+                    ((DenseTensor<float>)tensor).Buffer.Span.CopyTo(features.AsSpan(offset));
+                    offset += FeatureLengths[i];
+                }
+                return features;
+            }
+        }
+
+        public override float[] Decode(BioImage image, List<Promotion> promotions, int width, int height)
+        {
+            using MaskData mask = Decode(promotions, EncodePlane(image.SelectedBuffer), width, height);
+            return mask.mMask.ToArray();
+        }
+
+        public override MaskData Decode(List<Promotion> promotions, float[] embedding, int width, int height)
+        {
+            if (embedding == null || embedding.Length != FeatureLength)
+                throw new ArgumentException("A Micro-SAM2 embedding must include the two high-resolution feature maps.", nameof(embedding));
+
+            // SAM2 represents the first and second corners of an XYXY box with labels 2 and 3.
+            var ordered = promotions.OrderBy(p => p.mType == PromotionType.Box ? 0 : 1).ToArray();
+            float[] labels = ordered.SelectMany(p => p.GetLable()).ToArray();
+            if (labels.Length == 0)
+                throw new ArgumentException("At least one point or box is required.", nameof(promotions));
+            float scale = MicroSAMImage.Scale(width, height);
+            float[] coordinates = ordered.SelectMany(p => p.GetInput()).Select(value => value * scale).ToArray();
+
+            var inputs = new List<NamedOnnxValue>(5);
+            int offset = 0;
+            for (int i = 0; i < FeatureNames.Length; i++)
+            {
+                var tensor = new DenseTensor<float>(embedding.AsMemory(offset, FeatureLengths[i]), FeatureShapes[i]);
+                inputs.Add(NamedOnnxValue.CreateFromTensor(FeatureNames[i], tensor));
+                offset += FeatureLengths[i];
+            }
+            inputs.Add(NamedOnnxValue.CreateFromTensor("point_coords", new DenseTensor<float>(coordinates, new[] { 1, labels.Length, 2 })));
+            inputs.Add(NamedOnnxValue.CreateFromTensor("point_labels", new DenseTensor<float>(labels, new[] { 1, labels.Length })));
+
+            lock (inferenceLock)
+            {
+                LoadONNXModel();
+                using var results = decoder.Run(inputs);
+                float[] logits = results.Single(output => output.Name == "mask_logits").AsTensor<float>().ToArray();
+                return new MaskData
+                {
+                    mShape = new[] { 1, 1, height, width },
+                    mMask = MicroSAMImage.RestoreMask(logits, width, height).ToList(),
+                    mIoU = results.Single(output => output.Name == "iou_predictions").AsTensor<float>().ToList()
+                };
+            }
+        }
+
         /// <summary>
         /// Resizes a tensor of shape [1, sizeX, sizeY] using bilinear interpolation.
         /// </summary>
@@ -348,13 +234,17 @@ namespace BioGTK
             return resizedTensor;
         }
 
-
-        /// The Dispose function disposes of resources and sets variables to null.
-        public new void Dispose()
+        public override void Dispose()
         {
-            encoder.Dispose();
-            decoder.Dispose();
-            GC.Collect();
+            lock (inferenceLock)
+            {
+                cachedPlane = null;
+                cachedFeatures = null;
+                encoder?.Dispose();
+                decoder?.Dispose();
+                encoder = null;
+                decoder = null;
+            }
         }
     }
 }
