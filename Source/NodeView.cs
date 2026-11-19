@@ -53,7 +53,7 @@ namespace BioGTK
         {
             _builder = builder;
             builder.Autoconnect(this);
-            string st = System.IO.Path.GetDirectoryName(Environment.ProcessPath);
+            string st = AppStorage.DirectoryPath;
             //Let's make sure the directories we need for startup exist.
             Console.WriteLine("Reading start up folders.");
             System.IO.Directory.CreateDirectory(st + "/Scripts");
