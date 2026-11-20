@@ -141,7 +141,8 @@ class GtkBundle:
         cache = "\n".join(line for line in cache.splitlines() if not line.startswith("#")) + "\n"
         for module in modules:
             alias = self.copy_binary(module, module.name)
-            for path in (module, module.resolve()):
+            # Relocatable GTK builds record paths relative to the install prefix.
+            for path in (module, module.resolve(), module.relative_to(package)):
                 quoted = json.dumps(str(path), ensure_ascii=False)
                 if quoted in cache:
                     cache = cache.replace(quoted, f'"@GTK_LIB_DIR@/{alias}"')
@@ -279,9 +280,21 @@ def sign_app(app, executable, native, identity, work):
     common = ["--force", "--sign", identity or "-"]
     if identity:
         common += ["--timestamp", "--options", "runtime"]
+    else:
+        common += ["--timestamp=none"]
     for binary in native:
         if binary != executable:
-            run("codesign", *common, binary)
+            signed = subprocess.run(["codesign", *common, binary], text=True, stderr=subprocess.PIPE)
+            if signed.returncode and "timestamps differ" in signed.stderr:
+                # A vendor signature can have inconsistent timestamps. Remove it
+                # from the staged copy before signing that same binary afresh.
+                unsigned = work / "unsigned-macho"
+                run("xcrun", "codesign_allocate", "-i", binary, "-r", "-o", unsigned)
+                shutil.copymode(binary, unsigned)
+                unsigned.replace(binary)
+                run("codesign", *common, binary)
+            elif signed.returncode:
+                raise ValueError(f"Could not sign {binary}: {signed.stderr.strip()}")
     run("codesign", *common, "--entitlements", entitlement_file, app)
     run("codesign", "--verify", "--deep", "--strict", app)
 
