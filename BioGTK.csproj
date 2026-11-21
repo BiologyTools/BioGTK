@@ -27,7 +27,6 @@
 - Image Data Resource (IDR) datasets open from s3://idr/ URLs and older EBI links through the current IDR endpoint.
 - Image windows can shrink below their initial size. RGB channel selectors adjust to the available width, and long channel names and status text are shortened to fit.
 - Files passed on the command line load after the interface opens. If one file fails, BioGTK reports the error and continues with the next file.
-- BioGTK now references the BioLib 4.3.2 NuGet package, so building from source no longer requires a separate BioLib checkout.
 - Corrected mask and ROI alignment while panning and zooming on Retina macOS displays.
 - Restored the whole-slide overview on Linux, including consistent HiDPI sizing and navigation, and isolated it from annotation or plugin rendering failures.
 - Fixed whole-slide image startup on Wayland by avoiding unsupported hidden-window positioning and installing GLFW error handling before OpenGL context creation.
