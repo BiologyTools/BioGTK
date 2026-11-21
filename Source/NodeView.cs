@@ -66,17 +66,38 @@ namespace BioGTK
             SetupHandlers();
             Console.WriteLine("Parsing arguments.");
             App.tabsView = TabsView.Create();
-            foreach (string item in args)
-            {
-                BioImage.OpenAsync(item, false, true, true, 0).Wait();
-                BioImage bm = Images.GetImage(item);
-                App.tabsView.AddTab(bm);
-            }
             Console.WriteLine("Initializing nodes.");    
             InitItems();
             App.MoveToMain(this);
             App.ApplyStyles(this);
             Console.WriteLine("NodeView initialized.");
+            OpenStartupImages(args);
+        }
+
+        private async void OpenStartupImages(string[] files)
+        {
+            foreach (string file in files)
+            {
+                try
+                {
+                    if (TabsView.IsZarrLikeSource(file))
+                    {
+                        await App.tabsView.OpenPyramidRootsAsTabsAsync(file);
+                        continue;
+                    }
+
+                    await BioImage.OpenAsync(file, false, true, true, 0);
+                    App.tabsView.AddTab(Images.GetImage(file));
+                }
+                catch (Exception ex)
+                {
+                    using var dialog = new MessageDialog(this, DialogFlags.Modal,
+                        MessageType.Error, ButtonsType.Ok, "{0}", ex.Message);
+                    dialog.Title = "Open Image Failed";
+                    dialog.Run();
+                    dialog.Destroy();
+                }
+            }
         }
 
         /// It takes a list of images, and for each image, it takes a list of bitmaps, and for each

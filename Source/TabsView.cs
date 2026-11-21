@@ -14,6 +14,8 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using ZarrNET.Core.OmeZarr.Metadata;
+using OmeZarrReader = ZarrNET.Core.OmeZarrReader;
 
 namespace BioGTK
 {
@@ -76,6 +78,7 @@ namespace BioGTK
 
         private static string GetSeriesDisplayName(string file, int series, int seriesCount)
         {
+            file = file.TrimEnd('/', '\\');
             if (seriesCount <= 1)
                 return System.IO.Path.GetFileName(file);
 
@@ -97,7 +100,7 @@ namespace BioGTK
                  source.StartsWith("s3://", StringComparison.OrdinalIgnoreCase));
         }
 
-        private static bool IsZarrLikeSource(string file)
+        internal static bool IsZarrLikeSource(string file)
         {
             if (string.IsNullOrWhiteSpace(file))
                 return false;
@@ -165,7 +168,7 @@ namespace BioGTK
 
             try
             {
-                string metadataRoot = source;
+                string metadataRoot = ZarrSource.Resolve(source);
                 if (metadataRoot.StartsWith("s3://", StringComparison.OrdinalIgnoreCase))
                 {
                     metadataRoot = "https://uk1s3.embassy.ebi.ac.uk/" +
@@ -229,6 +232,7 @@ namespace BioGTK
             int tileSizeY,
             bool addToRegistry = true)
         {
+            file = ZarrSource.Resolve(file);
             BioImage im = await BioImage.OpenFile(file, series, tab, false, tile, tileX, tileY, tileSizeX, tileSizeY);
             if (im == null)
                 return null;
@@ -248,6 +252,7 @@ namespace BioGTK
             int series,
             int seriesCount)
         {
+            file = ZarrSource.Resolve(file);
             BioImage im = await BioImage.OpenFile(file, series, false, false, false, 0, 0, 0, 0);
             if (im == null)
                 return null;
@@ -256,20 +261,50 @@ namespace BioGTK
             return im;
         }
 
+        private static async Task<List<BioImage>> OpenZarrImagesAsync(string source)
+        {
+            using var reader = await OmeZarrReader.OpenAsync(source);
+            IEnumerable<string> imageSources = new[] { source };
+            if (reader.RootNodeType == OmeAttributesParser.OmeNodeType.Scene)
+            {
+                var paths = reader.AsScene().ImagePaths;
+                if (paths.Count == 0)
+                    throw new InvalidDataException("The OME-Zarr scene does not reference any images.");
+
+                // Give each image its own source so subsequent tile and metadata reads
+                // go directly to that child, including when the view reopens its reader.
+                string prefix = source.TrimEnd('/', '\\') + "/";
+                imageSources = paths.Select(path => prefix + path);
+            }
+
+            var images = new List<BioImage>();
+            try
+            {
+                foreach (string imageSource in imageSources)
+                {
+                    BioImage image = await BioImage.OpenFile(imageSource, 0, false, false, false, 0, 0, 0, 0);
+                    if (image == null)
+                        throw new InvalidDataException($"Could not open OME-Zarr image '{imageSource}'.");
+
+                    images.Add(image);
+                    EnsureLargeZarrUsesPyramidalViewer(image);
+                    await ApplyRemoteZarrDefaultCoordinateAsync(image, imageSource);
+                }
+                return images;
+            }
+            catch
+            {
+                foreach (BioImage image in images)
+                    image.Dispose();
+                throw;
+            }
+        }
+
         private async Task<List<BioImage>> CollectPyramidRootsAsync(string file, bool openAllSeries)
         {
+            file = ZarrSource.Resolve(file);
             if (IsZarrLikeSource(file))
-            {
-                BioImage? zarrImage = await BioImage.OpenFile(file, 0, false, false, false, 0, 0, 0, 0);
-                List<BioImage> singleRoot = new List<BioImage>();
-                if (zarrImage != null)
-                {
-                    EnsureLargeZarrUsesPyramidalViewer(zarrImage);
-                    await ApplyRemoteZarrDefaultCoordinateAsync(zarrImage, file);
-                    singleRoot.Add(zarrImage);
-                }
-                return singleRoot;
-            }
+                return await OpenZarrImagesAsync(file);
 
             // The normal Open commands should display the selected image as soon as its
             // first (root) series is ready.  Bio-Formats exposes a pyramid's native
@@ -335,14 +370,17 @@ namespace BioGTK
                    pr.PixelFormat == cr.PixelFormat;
         }
 
-        private void ShowImageView(BioImage im, string file, int series, int seriesCount)
+        private void ShowImageView(BioImage im, string file, int series, int seriesCount, bool addToRegistry = false)
         {
+            file = ZarrSource.Resolve(file);
             if (seriesCount > 1)
                 im.Rename(GetSeriesDisplayName(file, series, seriesCount));
 
+            if (addToRegistry)
+                Images.AddImage(im);
             TryLoadZarrROIs(im);
             ImageView view = ImageView.Create(im);
-            view.RefreshZarrLabelOverlays(file);
+            view.RefreshZarrLabelOverlays(im, im.IsZarrSource ? im.SourceFile : file);
             if (!viewers.Contains(view))
                 viewers.Add(view);
 
@@ -360,17 +398,17 @@ namespace BioGTK
 
         private async Task OpenPyramidRootsAsViewsAsync(string file, bool addToRegistry = false, bool openAllSeries = false)
         {
+            file = ZarrSource.Resolve(file);
             List<BioImage> roots = await CollectPyramidRootsInBackgroundAsync(file, openAllSeries);
             for (int series = 0; series < roots.Count; series++)
             {
-                if (addToRegistry)
-                    Images.AddImage(roots[series]);
-                ShowImageView(roots[series], file, series, roots.Count);
+                ShowImageView(roots[series], file, series, roots.Count, addToRegistry);
             }
         }
 
-        private async Task OpenPyramidRootsAsTabsAsync(string file, bool openAllSeries = false)
+        internal async Task OpenPyramidRootsAsTabsAsync(string file, bool openAllSeries = false)
         {
+            file = ZarrSource.Resolve(file);
             List<BioImage> roots = await CollectPyramidRootsInBackgroundAsync(file, openAllSeries);
             for (int series = 0; series < roots.Count; series++)
             {
@@ -1925,7 +1963,7 @@ namespace BioGTK
                 TryLoadZarrROIs(im);
                 ImageView v = ImageView.Create(im);
                 Images.AddImage(im);
-                v.RefreshZarrLabelOverlays(sourcePath ?? im.file);
+                v.RefreshZarrLabelOverlays(im, im.IsZarrSource ? im.SourceFile : sourcePath ?? im.file);
                 viewers.Add(v);
                 Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file.Replace("\\", "/")) + "/" + im.Filename);
                 dummy.Text = im.file.Replace("\\", "/") + "/" + im.Filename;
@@ -1976,7 +2014,7 @@ namespace BioGTK
                 ImageView v = ImageView.Create(im);
                 Images.AddImage(im);
                 viewers.Add(v);
-                v.RefreshZarrLabelOverlays(sourcePath ?? im.file);
+                v.RefreshZarrLabelOverlays(im, im.IsZarrSource ? im.SourceFile : sourcePath ?? im.file);
                     Label dummy = new Gtk.Label(System.IO.Path.GetDirectoryName(im.file.Replace("\\", "/")) + "/" + im.Filename);
                     dummy.Text = im.file.Replace("\\", "/") + "/" + im.Filename;
                     dummy.Visible = false;
@@ -2224,7 +2262,7 @@ namespace BioGTK
             QuPath.Project pr = QuPath.OpenProject(filechooser.Filename);
             foreach (var item in pr.Images)
             {
-                string file = item.ServerBuilder.Uri.Replace("file:/", "");
+                string file = ZarrSource.Resolve(item.ServerBuilder.Uri.Replace("file:/", ""));
                 BioImage bm = await BioImage.OpenFile(file);
                 AddTab(bm, file);
                 string[] rs = Directory.GetFiles(System.IO.Path.GetDirectoryName(file));

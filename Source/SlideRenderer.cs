@@ -136,7 +136,7 @@ namespace BioGTK
 
         private async Task<List<ResolutionLevelNode>> GetDirectZarrLevelsAsync(BioImage image, CancellationToken ct)
         {
-            string source = image?.SourceFile;
+            string source = ZarrSource.Resolve(image?.SourceFile);
             if (string.IsNullOrWhiteSpace(source))
                 return null;
 

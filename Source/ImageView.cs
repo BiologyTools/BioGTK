@@ -230,39 +230,8 @@ namespace BioGTK
         /// @param BioImage a class that contains the image data and metadata
         public void AddImage(BioImage im)
         {
-            bool isFirstImage = Images.Count == 0;
             Images.Add(im);
             selectedIndex = Images.Count - 1;
-            if (isFirstImage && View != null && im.Resolutions.Count > 0)
-            {
-                int requestedWidth = Math.Max(1, im.Resolutions[0].SizeX);
-                int requestedHeight = Math.Max(1, im.Resolutions[0].SizeY);
-                int maximumViewWidth = requestedWidth;
-                int maximumViewHeight = requestedHeight;
-
-                Display display = Display.Default;
-                Gdk.Monitor monitor = display?.PrimaryMonitor;
-                if (monitor == null && display?.NMonitors > 0)
-                    monitor = display.GetMonitor(0);
-
-                if (monitor != null)
-                {
-                    Gdk.Rectangle workarea = monitor.Workarea;
-
-                    // Leave room for the title bar, menus, status/coordinate rows,
-                    // scrollbars, and window borders. The maximized state below is
-                    // the final guard supplied by the window manager, while these
-                    // limits keep the child widget from imposing an oversized
-                    // minimum allocation on that window.
-                    maximumViewWidth = Math.Max(1, workarea.Width - 64);
-                    maximumViewHeight = Math.Max(1, workarea.Height - 144);
-                    _maximizeOnFirstShow = requestedWidth > maximumViewWidth ||
-                                           requestedHeight > maximumViewHeight;
-                }
-
-                View.WidthRequest = Math.Min(requestedWidth, maximumViewWidth);
-                View.HeightRequest = Math.Min(requestedHeight, maximumViewHeight);
-            }
 
             Initialize();
             UpdateImages(true);
@@ -728,11 +697,6 @@ namespace BioGTK
 
             if (MacOS)
             {
-                // View is the sole rendering surface on macOS for both pyramidal and non-pyramidal.
-                // Always attach it to the grid so the widget appears in the window layout.
-                View.Expand = true;
-                grid.Attach(View, 0, 0, 1, 1);
-
                 if (im.isPyramidal)
                 {
                     // Set the source based on image type
@@ -760,37 +724,12 @@ namespace BioGTK
                 {
                     slideRenderer.SetSource(im.SlideBase);
                 }
-                if (im.isPyramidal)
-                {
-                    View.Expand = true;
-                    grid.Attach(View,0,0,1,1);
-                }                
-                else
-                {
+                if (!im.isPyramidal)
                     View.Name = "View";
-                    View.WidthRequest = 600;
-                    View.HeightRequest = 400;
-                    grid.Attach(View, 0, 0, 1, 1);
-                }
             }
-            
-            if (!MacOS)
-            {
-                if (im.isPyramidal)
-                {
-                    View.WidthRequest = 600;
-                    View.HeightRequest = 400;
-                    View.Show();
-                }
-                else
-                    View.ShowAll();
-            }
-            else
-            {
-                View.WidthRequest = 600;
-                View.HeightRequest = 400;
-                View.Show();
-            }
+            View.Expand = true;
+            grid.Attach(View, 0, 0, 1, 1);
+            View.Show();
             roi.Submenu = roiMenu;
             UpdateRoiMenuState();
             roi.ShowAll();
@@ -800,21 +739,20 @@ namespace BioGTK
             pxHmicron = SelectedImage.PhysicalSizeY;
             SetupHandlers();
             EnsureInitialPyramidalRender();
-            //pictureBox.WidthRequest = im.SizeX;
-            //pictureBox.HeightRequest = im.SizeY;
             Function.InitializeContextMenu();
             this.Scale = new SizeF(1, 1);
             // Set the text column to display for comboboxs.
-            var rendererr = new CellRendererText();
+            var rendererr = new CellRendererText { Ellipsize = Pango.EllipsizeMode.End };
             rBox.PackStart(rendererr, false);
             rBox.AddAttribute(rendererr, "text", 0);
-            var rendererg = new CellRendererText();
+            var rendererg = new CellRendererText { Ellipsize = Pango.EllipsizeMode.End };
             gBox.PackStart(rendererg, false);
             gBox.AddAttribute(rendererg, "text", 0);
-            var rendererb = new CellRendererText();
+            var rendererb = new CellRendererText { Ellipsize = Pango.EllipsizeMode.End };
             bBox.PackStart(rendererb, false);
             bBox.AddAttribute(rendererb, "text", 0);
             UpdateScrollBars();
+            SetInitialWindowSize(im);
 
             Gtk.Application.Invoke((s, e) =>
             {
@@ -828,6 +766,33 @@ namespace BioGTK
             });
 
             //App.ApplyStyles(this);
+        }
+
+        private void SetInitialWindowSize(BioImage image)
+        {
+            int width = image.Resolutions.Count > 0 ? Math.Max(1, image.Resolutions[0].SizeX) : 600;
+            int height = image.Resolutions.Count > 0 ? Math.Max(1, image.Resolutions[0].SizeY) : 400;
+            Display display = Display.Default;
+            Gdk.Monitor monitor = display?.PrimaryMonitor;
+            if (monitor == null && display?.NMonitors > 0)
+                monitor = display.GetMonitor(0);
+
+            if (monitor != null)
+            {
+                Gdk.Rectangle workarea = monitor.Workarea;
+                int maxWidth = Math.Max(1, workarea.Width - 64);
+                int maxHeight = Math.Max(1, workarea.Height - 144);
+                _maximizeOnFirstShow = width > maxWidth || height > maxHeight;
+                width = Math.Min(width, maxWidth);
+                height = Math.Min(height, maxHeight);
+            }
+
+            // Include the controls in the opening size while leaving the canvas free to shrink.
+            vScroll.GetPreferredWidth(out _, out int scrollbarWidth);
+            hScroll.GetPreferredHeight(out _, out int scrollbarHeight);
+            statusLabel.GetPreferredHeight(out _, out int statusHeight);
+            controlsBox.GetPreferredHeight(out _, out int controlsHeight);
+            SetDefaultSize(width + scrollbarWidth, height + scrollbarHeight + statusHeight + controlsHeight);
         }
         /*
         GRBackendRenderTarget _renderTarget;
@@ -2397,7 +2362,6 @@ namespace BioGTK
                 // handles zoom-to-cursor via SetResolution. Registering both causes double-zoom jumps.
                 ((SKDrawingArea)View).PaintSurface += Sk_PaintSurface;
                 View.SizeAllocated += PictureBox_SizeAllocated;
-                View.SetSizeRequest(600, 400);
                 View.AddEvents((int)(EventMask.ButtonPressMask
                 | EventMask.ButtonReleaseMask
                 | EventMask.KeyPressMask

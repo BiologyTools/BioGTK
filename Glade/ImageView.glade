@@ -101,6 +101,7 @@
         <property name="orientation">vertical</property>
         <child>
           <object class="GtkLabel" id="statusLabel">
+            <property name="ellipsize">end</property>
             <property name="visible">True</property>
             <property name="can-focus">False</property>
             <property name="halign">start</property>
@@ -192,6 +193,7 @@
             </child>
             <child>
               <object class="GtkStack" id="rgbStack">
+                <property name="hhomogeneous">False</property>
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <child>
@@ -229,12 +231,11 @@
                     </child>
                     <child>
                       <object class="GtkComboBox" id="rBox">
-                        <property name="width-request">120</property>
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                       </object>
                       <packing>
-                        <property name="expand">False</property>
+                        <property name="expand">True</property>
                         <property name="fill">True</property>
                         <property name="position">1</property>
                       </packing>
@@ -254,12 +255,11 @@
                     </child>
                     <child>
                       <object class="GtkComboBox" id="gBox">
-                        <property name="width-request">120</property>
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                       </object>
                       <packing>
-                        <property name="expand">False</property>
+                        <property name="expand">True</property>
                         <property name="fill">True</property>
                         <property name="position">3</property>
                       </packing>
@@ -279,12 +279,11 @@
                     </child>
                     <child>
                       <object class="GtkComboBox" id="bBox">
-                        <property name="width-request">120</property>
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
                       </object>
                       <packing>
-                        <property name="expand">False</property>
+                        <property name="expand">True</property>
                         <property name="fill">True</property>
                         <property name="position">5</property>
                       </packing>
