@@ -57,6 +57,7 @@ jobs:
         working-directory: BioGTK/BioGTK
         env:
           BIOGTK_ARCH: ${{ matrix.arch }}
+          BioGTKUsePublicPackages: 'true'
         run: |
           BIOGTK_VERSION="$(dotnet msbuild BioGTK.csproj -nologo -getProperty:Version)"
           export BIOGTK_VERSION

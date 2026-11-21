@@ -7,10 +7,5 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../BioGTK.csproj" />
-    <!-- IKVM 8.15.1 did not publish its macOS runtime images. -->
-    <PackageReference Include="IKVM.Image.runtime.osx-arm64" Version="8.15.0"
-                      Condition="'$(RuntimeIdentifier)' == 'osx-arm64'" />
-    <PackageReference Include="IKVM.Image.runtime.osx-x64" Version="8.15.0"
-                      Condition="'$(RuntimeIdentifier)' == 'osx-x64'" />
   </ItemGroup>
 </Project>

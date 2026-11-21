@@ -2617,3 +2617,649 @@
 [WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=2560 len=208384
 [WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=2560 len=208384
 [WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=2560 len=70004
+[SaveZarr] level=0 size=2220x2967 downsample=1 fmt=Format24bppRgb
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=215,215,215,215,215,215,215,215,215,215,215,215,215,215,215,215 u8mm=81-215
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=176,176,176,176,176,176,176,176,163,163,163,163,163,163,163,163 u8mm=48-212
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1024 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=124,124,124,124,124,124,124,124,124,124,124,124,124,124,124,124 u8mm=47-211
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1536 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=72,72,72,72,72,72,72,72,72,72,72,72,72,72,72,72 u8mm=46-210
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=2048 y=0 w=172 h=512 rawLen=88064 expSingle=88064 expInterleaved=264192 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=190,190,190,190,190,190,190,190,190,190,190,190,190,190,190,190 u8mm=69-190
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=120,120,120,120,120,120,120,120,120,120,120,120,120,120,120,120 u8mm=50-214
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=81,81,81,81,81,81,81,81,68,68,68,68,68,68,68,68 u8mm=49-213
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1024 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=199,199,199,199,199,199,199,199,199,199,199,199,199,199,199,199 u8mm=52-199
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1536 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147 u8mm=51-215
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=2048 y=512 w=172 h=512 rawLen=88064 expSingle=88064 expInterleaved=264192 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=95,95,95,95,95,95,95,95,95,95,95,95,95,95,95,95 u8mm=50-214
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=1024 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=195,195,195,195,195,195,195,195,195,195,195,195,195,195,195,195 u8mm=61-195
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=1024 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=156,156,156,156,156,156,156,156,143,143,143,143,143,143,143,143 u8mm=47-211
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=2560 len=70004
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=2560 len=70004
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=2560 len=70004
+[SaveZarr] level=0 size=2220x2967 downsample=1 fmt=Format24bppRgb
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=34,0,97,232,159,47,11,0,10,9,10,16,22,20,10,2 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1024 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1536 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-213
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=2048 y=0 w=172 h=512 rawLen=88064 expSingle=88064 expInterleaved=264192 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=4-24
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-159
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1024 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=5,7,17,26,17,4,11,30,0,0,57,51,106,60,96,94 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1536 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=132,107,71,49,49,55,45,28,34,28,18,9,6,8,13,17 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=2048 y=512 w=172 h=512 rawLen=88064 expSingle=88064 expInterleaved=264192 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=1024 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=1024 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=105,119,115,77,30,18,53,93,123,170,180,136,113,140,161,153 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=2560 len=70004
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=2560 len=70004
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=2560 len=70004
+[SaveZarr] level=0 size=2220x2967 downsample=1 fmt=Format24bppRgb
+[SaveZarr] level=1 size=1110x1484 downsample=2 fmt=Format24bppRgb
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=215,215,215,215,215,215,215,215,215,215,215,215,215,215,215,215 u8mm=81-215
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=176,176,176,176,176,176,176,176,163,163,163,163,163,163,163,163 u8mm=48-212
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1024 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=124,124,124,124,124,124,124,124,124,124,124,124,124,124,124,124 u8mm=47-211
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1536 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=72,72,72,72,72,72,72,72,72,72,72,72,72,72,72,72 u8mm=46-210
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=2048 y=0 w=172 h=512 rawLen=88064 expSingle=88064 expInterleaved=264192 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=190,190,190,190,190,190,190,190,190,190,190,190,190,190,190,190 u8mm=69-190
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=120,120,120,120,120,120,120,120,120,120,120,120,120,120,120,120 u8mm=50-214
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=81,81,81,81,81,81,81,81,68,68,68,68,68,68,68,68 u8mm=49-213
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1024 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=199,199,199,199,199,199,199,199,199,199,199,199,199,199,199,199 u8mm=52-199
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1536 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147 u8mm=51-215
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=2048 y=512 w=172 h=512 rawLen=88064 expSingle=88064 expInterleaved=264192 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=95,95,95,95,95,95,95,95,95,95,95,95,95,95,95,95 u8mm=50-214
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=1024 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=195,195,195,195,195,195,195,195,195,195,195,195,195,195,195,195 u8mm=61-195
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=1024 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=156,156,156,156,156,156,156,156,143,143,143,143,143,143,143,143 u8mm=47-211
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=2560 len=70004
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=2560 len=70004
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=2560 len=70004
+[WritePlaneInTiles] wrote lvl=1 t=0 c=0 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=1 t=0 c=0 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=1 t=0 c=0 z=0 x=1024 y=0 len=44032
+[WritePlaneInTiles] wrote lvl=1 t=0 c=0 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=1 t=0 c=0 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=1 t=0 c=0 z=0 x=1024 y=512 len=44032
+[WritePlaneInTiles] wrote lvl=1 t=0 c=0 z=0 x=0 y=1024 len=235520
+[WritePlaneInTiles] wrote lvl=1 t=0 c=0 z=0 x=512 y=1024 len=235520
+[WritePlaneInTiles] wrote lvl=1 t=0 c=0 z=0 x=1024 y=1024 len=39560
+[WritePlaneInTiles] wrote lvl=1 t=0 c=1 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=1 t=0 c=1 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=1 t=0 c=1 z=0 x=1024 y=0 len=44032
+[WritePlaneInTiles] wrote lvl=1 t=0 c=1 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=1 t=0 c=1 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=1 t=0 c=1 z=0 x=1024 y=512 len=44032
+[WritePlaneInTiles] wrote lvl=1 t=0 c=1 z=0 x=0 y=1024 len=235520
+[WritePlaneInTiles] wrote lvl=1 t=0 c=1 z=0 x=512 y=1024 len=235520
+[WritePlaneInTiles] wrote lvl=1 t=0 c=1 z=0 x=1024 y=1024 len=39560
+[WritePlaneInTiles] wrote lvl=1 t=0 c=2 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=1 t=0 c=2 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=1 t=0 c=2 z=0 x=1024 y=0 len=44032
+[WritePlaneInTiles] wrote lvl=1 t=0 c=2 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=1 t=0 c=2 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=1 t=0 c=2 z=0 x=1024 y=512 len=44032
+[WritePlaneInTiles] wrote lvl=1 t=0 c=2 z=0 x=0 y=1024 len=235520
+[WritePlaneInTiles] wrote lvl=1 t=0 c=2 z=0 x=512 y=1024 len=235520
+[WritePlaneInTiles] wrote lvl=1 t=0 c=2 z=0 x=1024 y=1024 len=39560
+[SaveZarr] level=0 size=2220x2967 downsample=1 fmt=Format24bppRgb
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=34,0,97,232,159,47,11,0,10,9,10,16,22,20,10,2 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1024 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1536 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-213
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=2048 y=0 w=172 h=512 rawLen=88064 expSingle=88064 expInterleaved=264192 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=4-24
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-159
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1024 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=5,7,17,26,17,4,11,30,0,0,57,51,106,60,96,94 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1536 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=132,107,71,49,49,55,45,28,34,28,18,9,6,8,13,17 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=2048 y=512 w=172 h=512 rawLen=88064 expSingle=88064 expInterleaved=264192 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=1024 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=1024 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=105,119,115,77,30,18,53,93,123,170,180,136,113,140,161,153 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=2560 len=70004
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=2560 len=70004
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=2560 len=70004
+[SaveZarr] level=0 size=2220x2967 downsample=1 fmt=Format24bppRgb
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=34,0,97,232,159,47,11,0,10,9,10,16,22,20,10,2 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1024 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1536 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-213
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=2048 y=0 w=172 h=512 rawLen=88064 expSingle=88064 expInterleaved=264192 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=4-24
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-159
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1024 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=5,7,17,26,17,4,11,30,0,0,57,51,106,60,96,94 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1536 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=132,107,71,49,49,55,45,28,34,28,18,9,6,8,13,17 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=2048 y=512 w=172 h=512 rawLen=88064 expSingle=88064 expInterleaved=264192 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=1024 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=1024 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=105,119,115,77,30,18,53,93,123,170,180,136,113,140,161,153 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=2560 len=70004
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=2560 len=70004
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=2560 len=70004
+[SaveZarr] level=0 size=2220x2967 downsample=1 fmt=Format24bppRgb
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=34,0,97,232,159,47,11,0,10,9,10,16,22,20,10,2 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1024 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1536 y=0 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-213
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=2048 y=0 w=172 h=512 rawLen=88064 expSingle=88064 expInterleaved=264192 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=4-24
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-159
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1024 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=5,7,17,26,17,4,11,30,0,0,57,51,106,60,96,94 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=1536 y=512 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=132,107,71,49,49,55,45,28,34,28,18,9,6,8,13,17 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=2048 y=512 w=172 h=512 rawLen=88064 expSingle=88064 expInterleaved=264192 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=0 y=1024 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] lvl=0 t=0 c=0 z=0 srcC=0 x=512 y=1024 w=512 h=512 rawLen=262144 expSingle=262144 expInterleaved=786432 needsDeinterleave=True srcBands=3 bytesPerSample=1 sample=105,119,115,77,30,18,53,93,123,170,180,136,113,140,161,153 u8mm=0-255
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=0 z=0 x=2048 y=2560 len=70004
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=1 z=0 x=2048 y=2560 len=70004
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=0 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=0 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=512 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=512 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=1024 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=1024 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=1536 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=1536 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=2048 len=262144
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=2048 len=88064
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=0 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=512 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1024 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=1536 y=2560 len=208384
+[WritePlaneInTiles] wrote lvl=0 t=0 c=2 z=0 x=2048 y=2560 len=70004
