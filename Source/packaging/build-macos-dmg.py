@@ -137,7 +137,8 @@ class GtkBundle:
         package = self.package_root(formula)
         modules = sorted(package.glob(pattern))
         modules = [module for module in modules if module.suffix in (".so", ".dylib")]
-        cache = run(package / "bin" / query_name, *modules, capture=True) if modules else ""
+        cache = run("/usr/bin/arch", f"-{self.architecture}",
+                    package / "bin" / query_name, *modules, capture=True) if modules else ""
         cache = "\n".join(line for line in cache.splitlines() if not line.startswith("#")) + "\n"
         for module in modules:
             alias = self.copy_binary(module, module.name)
@@ -279,6 +280,8 @@ def sign_app(app, executable, native, identity, work):
     common = ["--force", "--sign", identity or "-"]
     if identity:
         common += ["--timestamp", "--options", "runtime"]
+    else:
+        common += ["--timestamp=none"]
     for binary in native:
         if binary != executable:
             run("codesign", *common, binary)

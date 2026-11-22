@@ -2,11 +2,21 @@ name: Build macOS DMG
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build and upload (empty builds main)
+        required: false
+        type: string
+  release:
+    types: [published]
   push:
     branches: [main]
 
 permissions:
   contents: read
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
 
 jobs:
   build:
@@ -17,19 +27,22 @@ jobs:
       matrix:
         arch: [arm64, x64]
     steps:
+      - name: Check out packaging scripts
+        uses: actions/checkout@v7
+        with:
+          path: packaging
+          sparse-checkout: Source/packaging
+          persist-credentials: false
+
       - name: Check out BioGTK
         uses: actions/checkout@v7
         with:
+          ref: ${{ env.RELEASE_TAG || github.sha }}
           path: BioGTK/BioGTK
           persist-credentials: false
 
-      - name: Check out BioLib
-        uses: actions/checkout@v7
-        with:
-          repository: BiologyTools/BioLib
-          ref: main
-          path: BioLib
-          persist-credentials: false
+      - name: Use current packaging scripts with the release source
+        run: cp packaging/Source/packaging/* BioGTK/BioGTK/Source/packaging/
 
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v6
@@ -70,9 +83,51 @@ jobs:
             --arch "$BIOGTK_ARCH" "${gtk_args[@]}" \
             --output "$RUNNER_TEMP/BioGTK-macos-$BIOGTK_ARCH.dmg"
 
+      - name: Verify and launch the packaged app
+        env:
+          BIOGTK_ARCH: ${{ matrix.arch }}
+        run: |
+          mount="$RUNNER_TEMP/verify-$BIOGTK_ARCH"
+          hdiutil attach "$RUNNER_TEMP/BioGTK-macos-$BIOGTK_ARCH.dmg" -mountpoint "$mount" -nobrowse -readonly
+          app="$mount/BioGTK.app"
+          codesign --verify --deep --strict "$app"
+          test -s "$app/Contents/MacOS/IKVM.Java.dll"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist"
+          mkdir -p "$HOME/Library/Application Support/BioGTK"
+          printf 'ImageJPath=/usr/bin/true\n' > "$HOME/Library/Application Support/BioGTK/Settings.txt"
+          log="$RUNNER_TEMP/startup-$BIOGTK_ARCH.log"
+          "$app/Contents/MacOS/BioGTKApp" > "$log" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true; hdiutil detach "$mount" || true' EXIT
+          for ((i=0; i<90; i++)); do
+            kill -0 "$pid" 2>/dev/null || break
+            if grep -Fq 'NodeView initialized.' "$log"; then exit 0; fi
+            sleep 1
+          done
+          cat "$log"
+          exit 1
+
+
       - name: Upload DMG
         uses: actions/upload-artifact@v7
         with:
+          name: dmg-${{ matrix.arch }}
           path: ${{ runner.temp }}/BioGTK-macos-${{ matrix.arch }}.dmg
-          archive: false
+          compression-level: 0
           if-no-files-found: error
+
+  release:
+    if: inputs.tag != '' || github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: dmg-*
+          merge-multiple: true
+      - name: Attach both DMGs to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$RELEASE_TAG" BioGTK-macos-arm64.dmg BioGTK-macos-x64.dmg --repo "$GITHUB_REPOSITORY" --clobber
