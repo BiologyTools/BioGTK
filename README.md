@@ -83,6 +83,8 @@ Workflows that launch the external Fiji application use a separately installed F
 2. Run the installer, then open **BioGTK** from the Start menu. Setup installs GTK 3 and the .NET runtime for your Windows account.
 3. If you use an external Fiji or ImageJ installation, open **File → Choose Fiji or ImageJ Executable…** in the BioGTK NodeView window and select its executable.
 
+For a portable copy, download **BioGTK-win-x64.zip** from the same release, select **Extract All**, and open **Start BioGTK.cmd** in the extracted folder. Keep the folders together. The ZIP includes the same .NET and GTK runtimes as the installer.
+
 To remove BioGTK, open **Settings → Apps → Installed apps**, select **BioGTK**, and choose **Uninstall**.
 
 - Optionally install [OpenSlide](https://openslide.org/docs/windows/) for better navigation of whole-slide-images. Be sure to set the PATH variable correctly.

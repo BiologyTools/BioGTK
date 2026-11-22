@@ -1,4 +1,4 @@
-name: Build Windows installer
+name: Build Windows installer and portable ZIP
 
 on:
   release:
@@ -93,17 +93,27 @@ jobs:
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           & $iscc /Qp "/DAppVersion=$env:BIOGTK_VERSION" "/DBioGTKRoot=$source" "/DPublishDir=$out" "/DCrtDir=$($crt.FullName)" "/DGtkDir=$env:MSYS2_LOCATION\ucrt64" "/O$env:RUNNER_TEMP" "$scripts/BioGTK.iss"
 
+      - name: Build the portable ZIP from the installed payload
+        run: |
+          & ./packaging/.github/windows/build-zip.ps1 -Installer "$env:RUNNER_TEMP/BioGTK-win-x64-Setup.exe" -OutputZip "$env:RUNNER_TEMP/BioGTK-win-x64.zip"
+
       - uses: actions/upload-artifact@v7
         with:
-          name: windows-installer
-          path: ${{ runner.temp }}/BioGTK-win-x64-Setup.exe
+          name: windows-packages
+          path: |
+            ${{ runner.temp }}/BioGTK-win-x64-Setup.exe
+            ${{ runner.temp }}/BioGTK-win-x64.zip
           if-no-files-found: error
           compression-level: 0
 
   test:
-    name: Install, start and uninstall on fresh Windows
+    name: Test ${{ matrix.package }} on fresh Windows
     needs: build
     runs-on: windows-2025
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [installer, zip]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -111,11 +121,21 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v8
         with:
-          name: windows-installer
-      - run: ./.github/windows/test-installer.ps1 -Installer (Resolve-Path BioGTK-win-x64-Setup.exe)
+          name: windows-packages
+      - name: Install, launch and uninstall
+        if: matrix.package == 'installer'
+        run: ./.github/windows/test-installer.ps1 -Installer (Resolve-Path BioGTK-win-x64-Setup.exe)
+      - name: Extract and run the portable copy
+        if: matrix.package == 'zip'
+        run: |
+          $folder = Join-Path $env:RUNNER_TEMP 'Extracted BioGTK'
+          7z x BioGTK-win-x64.zip "-o$folder" -bso0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (Get-ChildItem -LiteralPath $folder -Filter 'unins*') { throw 'Unexpected uninstaller in the portable ZIP.' }
+          ./.github/windows/test-startup.ps1 -Bin (Join-Path $folder 'bin') -PortableLauncher (Join-Path $folder 'Start BioGTK.cmd')
 
   release:
-    name: Publish the tested installer
+    name: Publish the tested Windows downloads
     needs: test
     runs-on: ubuntu-24.04
     permissions:
@@ -123,8 +143,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: windows-installer
-      - name: Attach the installer to the release
+          name: windows-packages
+      - name: Attach the installer and portable ZIP to the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$RELEASE_TAG" BioGTK-win-x64-Setup.exe --repo "$GITHUB_REPOSITORY" --clobber
+        run: gh release upload "$RELEASE_TAG" BioGTK-win-x64-Setup.exe BioGTK-win-x64.zip --repo "$GITHUB_REPOSITORY" --clobber
