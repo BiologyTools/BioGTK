@@ -645,6 +645,7 @@ namespace BioGTK
             //runMenu.ShowAll();
             Plugins.Initialize();
             ML.ML.Initialize();
+            ML.PixelClassifierMenu.AddTo(runMenu, this);
             AIMenu.ShowAll();
             App.MoveToMain(this);
         }
@@ -728,14 +729,7 @@ namespace BioGTK
         private void Mi_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
             MenuItem m = (MenuItem)o;
-            if (m.Label.EndsWith(".ijm") || m.Label.EndsWith(".txt") && !m.Label.EndsWith(".cs"))
-            {
-                string file = Fiji.ImageJPath + m.Label;
-                string ma = File.ReadAllText(file);
-                Fiji.RunOnImage(ImageView.SelectedImage,ma, BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
-            }
-            else
-                Scripting.RunByName(m.Label);
+            Scripting.RunByName(m.Label);
             bool con = false;
             foreach (MenuItem item in recent.Children)
             {
@@ -843,7 +837,7 @@ namespace BioGTK
             await PresentCommandResultAsync(sourceImage, bm);
         }
 
-        private Task PresentCommandResultAsync(BioImage sourceImage, BioImage resultImage)
+        internal Task PresentCommandResultAsync(BioImage sourceImage, BioImage resultImage)
         {
             if (resultImage == null)
                 throw new InvalidOperationException("ImageJ completed without producing an image result.");

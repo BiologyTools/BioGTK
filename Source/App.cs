@@ -201,7 +201,8 @@ namespace BioGTK
         {
             AppLog.Clear();
             Console.WriteLine("Initializing components.");
-            if (!SetFijiOrImageJPath(promptWhenMissing: !OperatingSystem.IsWindows()))
+            bool promptForExecutable = !OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS();
+            if (!SetFijiOrImageJPath(promptWhenMissing: promptForExecutable))
             {
                 Fiji.InitializeCommandMetadata();
                 BioImage.Initialize(string.Empty);

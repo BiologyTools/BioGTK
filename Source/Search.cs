@@ -48,14 +48,14 @@ namespace BioGTK
             treeView.AppendColumn(coordCol);
             coordCol.AddAttribute(coordCell, "text", 0);
 
-            Gtk.TreeStore store = new Gtk.TreeStore(typeof(string));
+            Gtk.TreeStore store = new Gtk.TreeStore(typeof(string), typeof(bool));
             foreach (Fiji.Macro.Command s in Fiji.Macro.Commands.Values)
             {
-                Gtk.TreeIter iter = store.AppendValues(s.Name);
+                store.AppendValues(s.Name, false);
             }
             foreach (Scripting.Script s in Scripting.scripts.Values)
             {
-                Gtk.TreeIter iter = store.AppendValues(s.name);
+                store.AppendValues(s.name, true);
             }
             treeView.Model = store;
             treeView.RowActivated += TreeView_RowActivated;
@@ -68,12 +68,11 @@ namespace BioGTK
             if (treeView.Model.GetIter(out iter, args.Path))
             {
                 string itemName = (string)treeView.Model.GetValue(iter, 0);
-                if(!itemName.EndsWith(".txt") || !itemName.EndsWith(".ijm") && !itemName.EndsWith(".cs"))
-                {
-                    Fiji.RunOnImage(ImageView.SelectedImage,"run(\"" + itemName + "\")",BioConsole.headless,BioConsole.onTab,BioConsole.useBioformats,BioConsole.resultInNewTab);
-                }
-                else
+                if ((bool)treeView.Model.GetValue(iter, 1))
                     Scripting.RunByName(itemName);
+                else if (ImageView.SelectedImage is BioImage image)
+                    Fiji.RunOnImage(image, "run(\"" + itemName + "\");", BioConsole.headless,
+                        BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
             }
         }
         private void SearchBox_Changed(object sender, EventArgs e)

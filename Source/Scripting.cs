@@ -69,6 +69,11 @@ namespace BioGTK
         {
             _builder = builder;
             builder.Autoconnect(this);
+            if (OperatingSystem.IsMacOS())
+            {
+                headlessBox.Active = true;
+                headlessBox.Sensitive = false;
+            }
             scriptView.RowActivated += ScriptView_RowActivated;
             scriptView.ButtonPressEvent += ScriptView_ButtonPressEvent;
             this.KeyPressEvent += Scripting_KeyPressEvent;
@@ -179,6 +184,30 @@ namespace BioGTK
         public static string output;
         public static string error;
         public static string ImageJPath = Fiji.ImageJPath;
+
+        private static bool IsMacroFile(string fileName)
+        {
+            return fileName.EndsWith(".ijm", StringComparison.OrdinalIgnoreCase) ||
+                fileName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static async Task RunMacroAsync(BioImage image, string macro, string argument, bool headless)
+        {
+            if (image == null)
+                throw new InvalidOperationException("Open an image before running an ImageJ macro.");
+
+            if (OperatingSystem.IsMacOS())
+            {
+                BioImage result = await Fiji.RunOnImage(image, macro, true, BioConsole.onTab,
+                    BioConsole.useBioformats, BioConsole.resultInNewTab);
+                if (App.tabsView != null)
+                    await App.tabsView.PresentCommandResultAsync(image, result);
+            }
+            else if (App.UseFiji)
+                await Fiji.RunStringFiji(image, macro, argument, headless);
+            else
+                ImageJ.RunString(image, macro, argument, headless);
+        }
         public static Dictionary<string,Script> scripts = new Dictionary<string,Script>();
         public static void LogLine(string s)
         {
@@ -204,7 +233,7 @@ namespace BioGTK
             {
                 name = System.IO.Path.GetFileName(file);
                 scriptString = scriptStr;
-                if (file.EndsWith(".txt") || file.EndsWith(".ijm"))
+                if (IsMacroFile(file))
                     type = ScriptType.imagej;
             }
             /* Reading the file and storing the file name, file path, and file contents in the
@@ -214,7 +243,7 @@ namespace BioGTK
                 name = System.IO.Path.GetFileName(file);
                 scriptString = File.ReadAllText(file);
                 this.file = file;
-                if (file.EndsWith(".txt") || file.EndsWith(".ijm"))
+                if (IsMacroFile(file))
                     type = ScriptType.imagej;
             }
             /// It creates a new thread and starts it. 
@@ -223,31 +252,25 @@ namespace BioGTK
             /// @param Script The script you want to run.
             public static void Run(Script rn)
             {
-                scriptName = rn.name;
-                Thread t = new Thread(new ThreadStart(RunScript));
+                Thread t = new Thread(() => RunScript(rn));
                 t.Start();
             }
-            private static string scriptName = "";
-            private static string str = "";
             /// It runs a script in a separate thread
-            private static async void RunScript()
+            private static async void RunScript(Script rn)
             {
-                Script rn = scripts[scriptName];
                 rn.ex = null;
                 if (rn.type == ScriptType.imagej)
                 {
                     try
                     {
                         rn.done = false;
-                        if (App.UseFiji)
-                            await Fiji.RunStringFiji(ImageView.SelectedImage,rn.scriptString, "", false);
-                        else
-                            ImageJ.RunString(ImageView.SelectedImage, rn.scriptString, "", false);
+                        await RunMacroAsync(ImageView.SelectedImage, rn.scriptString, "", false);
                         rn.done = true;
                     }
                     catch (Exception e)
                     {
                         rn.ex = e;
+                        error = e.ToString();
                     }
                 }
                 else
@@ -314,8 +337,7 @@ namespace BioGTK
             {
                 if (!scripts.ContainsKey(name))
                     scripts.Add(name, this);
-                scriptName = this.name;
-                thread = new Thread(new ThreadStart(RunScript));
+                thread = new Thread(() => RunScript(this));
                 thread.Start();
             }
             /// It stops the thread
@@ -672,18 +694,32 @@ namespace BioGTK
             scriptLabel.Text = s.name;
         }
         */
-        /// If the script ends with .ijm, then run it in ImageJ, otherwise run it in C#
+        /// Runs the editor contents as an ImageJ macro or a C# script.
         /// 
         /// @param sender The object that raised the event.
         /// @param EventArgs The event arguments.
-        private void runButton_Click(object sender, ButtonPressEventArgs args)
+        private async void runButton_Click(object sender, ButtonPressEventArgs args)
         {
-            if (scriptLabel.Text.EndsWith(".ijm"))
+            if (IsMacroFile(scriptLabel.Text))
             {
-                if (App.UseFiji)
-                    Fiji.RunStringFiji(ImageView.SelectedImage,view.Buffer.Text, ImageView.SelectedImage.ID, headlessBox.Active);
-                else
-                    ImageJ.RunString(ImageView.SelectedImage, view.Buffer.Text, ImageView.SelectedImage.ID, headlessBox.Active);
+                BioImage image = ImageView.SelectedImage;
+                string argument = scriptLabel.Text.EndsWith(".ijm", StringComparison.OrdinalIgnoreCase)
+                    ? image?.ID : string.Empty;
+                error = string.Empty;
+                errorBox.Buffer.Text = error;
+                try
+                {
+                    await RunMacroAsync(image, view.Buffer.Text, argument, headlessBox.Active);
+                }
+                catch (Exception e)
+                {
+                    Gtk.Application.Invoke(delegate
+                    {
+                        error = e.ToString();
+                        errorBox.Buffer.Text = error;
+                        tabsView.CurrentPage = tabsView.PageNum(errorBox.Parent);
+                    });
+                }
             }
             else
                 Run();
