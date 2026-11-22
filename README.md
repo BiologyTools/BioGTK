@@ -61,22 +61,19 @@ A .NET application & library for editing & annotating various microscopy image f
 - Supports ONNX (".onnx") and PyTorch models (".pt"). For PyTorch models include the ".yaml" metadata file with the same name as the model file in the models folder.
 
 ## .NET Runtime Install
-
 The macOS DMG includes the .NET 10 runtime. For installations that use a system runtime, install .NET 10 from Microsoft's download page. [.NET 10 downloads](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 
 ## macOS Installation
 
 The DMG includes .NET 10, GTK 3, and the application's packaged runtime dependencies.
-
 1. Download the DMG for your Mac from the release assets. Choose `BioGTK-macos-arm64.dmg` for Apple Silicon (M-series) or `BioGTK-macos-x64.dmg` for Intel. [BioGTK releases](https://github.com/BiologyTools/BioGTK/releases)
 2. Open the DMG and drag **BioGTK.app** onto the **Applications** shortcut.
 3. Eject the DMG, then open **BioGTK** from your Applications folder.
-
-DMGs built by GitHub Actions are also available in the **Artifacts** section of a successful **Build macOS DMG** run. [DMG workflow](https://github.com/BiologyTools/BioGTK/actions/workflows/build-macos-dmg.yml)
-
-If macOS blocks the first launch because the developer cannot be verified, open **System Settings > Privacy & Security**, select **Open Anyway** for BioGTK, and confirm **Open**. [Apple's first-launch instructions](https://support.apple.com/en-us/102445)
+4. To allow the program to be run: Run the following in terminal '''xattr -dr com.apple.quarantine /Applications/BioGTK.app'''
+If MacOS blocks the first launch because the developer cannot be verified, open **System Settings > Privacy & Security**, select **Open Anyway** for BioGTK, and confirm **Open**. [Apple's first-launch instructions](https://support.apple.com/en-us/102445)
 
 Scripts, functions, tools, plugins, and models are stored under `~/Library/Application Support/BioGTK`. For SAM2 and Micro-SAM2 segmentation, follow the model setup instructions. ONNX Runtime and TorchSharp model execution in the current macOS packages is available on Apple Silicon. [Segmentation model setup](BUILDING.md#setting-up-segmentation-models)
+DMGs built by GitHub Actions are also available in the **Artifacts** section of a successful **Build macOS DMG** run. [DMG workflow](https://github.com/BiologyTools/BioGTK/actions/workflows/build-macos-dmg.yml)
 
 Workflows that launch the external Fiji application use a separately installed Fiji.
 
