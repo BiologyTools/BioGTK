@@ -80,9 +80,7 @@ jobs:
           $scripts = (Resolve-Path packaging/.github/windows).Path
           $out = Join-Path $env:RUNNER_TEMP 'publish'
           $options = @("-p:BioGTKRoot=$source", '-p:RuntimeIdentifiers=win-x64', '-p:GeneratePackageOnBuild=false', '-p:RestoreNoHttpCache=true')
-          if ($env:RELEASE_TAG -eq 'Release-6.7.1') {
-              $options += "-p:CustomAfterMicrosoftCommonTargets=$scripts\Release-6.7.1.targets"
-          }
+          $options += "-p:CustomAfterMicrosoftCommonTargets=$scripts\Runtime.targets"
           dotnet publish "$scripts/BioGTKApp.csproj" -c Release -r win-x64 --self-contained true @options -o $out
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
