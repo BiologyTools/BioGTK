@@ -78,9 +78,13 @@ DMGs built by GitHub Actions are also available in the **Artifacts** section of 
 Workflows that launch the external Fiji application use a separately installed Fiji.
 
 ## Windows Installation
-- See [this video](https://www.youtube.com/watch?v=BKJM6PQizkw) or follow the instructions below.
-- Install package manager [MSYS2.](https://github.com/GtkSharp/GtkSharp/wiki/Installing-Gtk-on-Windows) to install package GTK3. (Required for GTK Apps.)
-- Download the BioGTK Windows installer from releases.
+
+1. Download **BioGTK-win-x64-Setup.exe** from the release assets. [BioGTK releases](https://github.com/BiologyTools/BioGTK/releases)
+2. Run the installer, then open **BioGTK** from the Start menu. Setup installs GTK 3 and the .NET runtime for your Windows account.
+3. If you use an external Fiji or ImageJ installation, open **File → Choose Fiji or ImageJ Executable…** in the BioGTK NodeView window and select its executable.
+
+To remove BioGTK, open **Settings → Apps → Installed apps**, select **BioGTK**, and choose **Uninstall**.
+
 - Optionally install [OpenSlide](https://openslide.org/docs/windows/) for better navigation of whole-slide-images. Be sure to set the PATH variable correctly.
 - Optionally install [CUDA](https://developer.nvidia.com/cuda-downloads) for hardware accelerated stitching as well as tile cache in graphics card memory instead of RAM.
 - Optionally install [PyTorch](https://learn.microsoft.com/en-us/windows/ai/windows-ml/tutorials/pytorch-installation) for running BioImage.io models.

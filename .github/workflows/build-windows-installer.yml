@@ -1,0 +1,130 @@
+name: Build Windows installer
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to package
+        required: true
+        type: string
+        default: Release-6.7.1
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+
+concurrency:
+  group: windows-installer-${{ inputs.tag || github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-2025
+    steps:
+      - name: Check out installer scripts
+        uses: actions/checkout@v7
+        with:
+          path: packaging
+          sparse-checkout: .github/windows
+          persist-credentials: false
+
+      - name: Check out the release
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+          path: BioGTK/BioGTK
+          persist-credentials: false
+
+      - name: Check out the BioLib revision used by 6.7.1
+        if: env.RELEASE_TAG == 'Release-6.7.1'
+        uses: actions/checkout@v7
+        with:
+          repository: BiologyTools/BioLib
+          ref: f983a0d25a5aa6ec5790662ec366d3844e670378
+          path: BioLib
+          persist-credentials: false
+
+      - name: Backport optional ImageJ configuration to the 6.7.1 installer
+        if: env.RELEASE_TAG == 'Release-6.7.1'
+        working-directory: BioGTK/BioGTK
+        run: |
+          git fetch --depth=2 origin cbda9912516554216c50436dd4ce454eb6dd7a43
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git cherry-pick --no-commit cbda9912516554216c50436dd4ce454eb6dd7a43
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install the GTK 3 runtime in a fresh build prefix
+        id: gtk
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          install: >-
+            mingw-w64-ucrt-x86_64-gtk3
+            mingw-w64-ucrt-x86_64-adwaita-icon-theme
+            mingw-w64-ucrt-x86_64-librsvg
+
+      - name: Publish the self-contained app and compile the installer
+        env:
+          MSYS2_LOCATION: ${{ steps.gtk.outputs.msys2-location }}
+        run: |
+          if ($env:RELEASE_TAG -cnotmatch '^Release-(\d+\.\d+\.\d+(?:\.\d+)?)$') { throw 'Expected a numeric Release- version tag.' }
+          $env:BIOGTK_VERSION = $Matches[1]
+          $source = (Resolve-Path BioGTK/BioGTK).Path
+          $scripts = (Resolve-Path packaging/.github/windows).Path
+          $out = Join-Path $env:RUNNER_TEMP 'publish'
+          $options = @("-p:BioGTKRoot=$source", '-p:RuntimeIdentifiers=win-x64', '-p:GeneratePackageOnBuild=false', '-p:RestoreNoHttpCache=true')
+          if ($env:RELEASE_TAG -eq 'Release-6.7.1') {
+              $options += "-p:CustomAfterMicrosoftCommonTargets=$scripts\Release-6.7.1.targets"
+          }
+          dotnet publish "$scripts/BioGTKApp.csproj" -c Release -r win-x64 --self-contained true @options -o $out
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $crt = Get-ChildItem "$vs\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT" -Directory | Sort-Object FullName -Descending | Select-Object -First 1
+          if (!$crt) { throw 'Missing Visual C++ x64 redistributable.' }
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc /Qp "/DAppVersion=$env:BIOGTK_VERSION" "/DBioGTKRoot=$source" "/DPublishDir=$out" "/DCrtDir=$($crt.FullName)" "/DGtkDir=$env:MSYS2_LOCATION\ucrt64" "/O$env:RUNNER_TEMP" "$scripts/BioGTK.iss"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-installer
+          path: ${{ runner.temp }}/BioGTK-win-x64-Setup.exe
+          if-no-files-found: error
+          compression-level: 0
+
+  test:
+    name: Install, start and uninstall on fresh Windows
+    needs: build
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/windows
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: windows-installer
+      - run: ./.github/windows/test-installer.ps1 -Installer (Resolve-Path BioGTK-win-x64-Setup.exe)
+
+  release:
+    name: Publish the tested installer
+    needs: test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: windows-installer
+      - name: Attach the installer to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$RELEASE_TAG" BioGTK-win-x64-Setup.exe --repo "$GITHUB_REPOSITORY" --clobber

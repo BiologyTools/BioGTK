@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ApplicationIcon>$(BioGTKRoot)\Bio.ico</ApplicationIcon>
+    <Version>$(BIOGTK_VERSION)</Version>
+    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(BioGTKRoot)\BioGTK.csproj" />
+    <Compile Include="$(BioGTKRoot)\.github\macos\Program.cs" Link="Program.cs" />
+  </ItemGroup>
+</Project>
