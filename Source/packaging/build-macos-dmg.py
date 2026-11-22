@@ -142,7 +142,7 @@ class GtkBundle:
         cache = "\n".join(line for line in cache.splitlines() if not line.startswith("#")) + "\n"
         for module in modules:
             alias = self.copy_binary(module, module.name)
-            for path in (module, module.resolve()):
+            for path in (module, module.resolve(), module.relative_to(package)):
                 quoted = json.dumps(str(path), ensure_ascii=False)
                 if quoted in cache:
                     cache = cache.replace(quoted, f'"@GTK_LIB_DIR@/{alias}"')
