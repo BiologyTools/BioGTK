@@ -148,7 +148,7 @@ class GtkBundle:
                     cache = cache.replace(quoted, f'"@GTK_LIB_DIR@/{alias}"')
                     break
             else:
-                raise ValueError(f"{query_name} did not register {module}")
+                raise ValueError(f"{query_name} did not register {module}. Cache output: {cache!r}")
         (self.resources / cache_name).write_text(cache, encoding="utf-8")
 
     def stage(self):
@@ -284,6 +284,7 @@ def sign_app(app, executable, native, identity, work):
         common += ["--timestamp=none"]
     for binary in native:
         if binary != executable:
+            run("codesign", "--remove-signature", binary)
             run("codesign", *common, binary)
     run("codesign", *common, "--entitlements", entitlement_file, app)
     run("codesign", "--verify", "--deep", "--strict", app)
