@@ -1,0 +1,153 @@
+name: Build Linux release tarballs
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to rebuild
+        required: true
+        type: string
+        default: Release-6.7.1
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+
+concurrency:
+  group: linux-tarballs-${{ inputs.tag || github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Package ${{ matrix.rid }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            runner: ubuntu-24.04
+          - rid: linux-arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Check out the BioGTK release tag
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+          path: BioGTK/BioGTK
+          persist-credentials: false
+
+      # 6.7.1 uses a sibling BioLib checkout. Later releases use its NuGet package.
+      - name: Check out BioLib 4.3.2 for Release-6.7.1
+        if: env.RELEASE_TAG == 'Release-6.7.1'
+        uses: actions/checkout@v7
+        with:
+          repository: BiologyTools/BioLib
+          ref: f983a0d25a5aa6ec5790662ec366d3844e670378
+          path: BioLib
+          persist-credentials: false
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish and package
+        working-directory: BioGTK/BioGTK
+        shell: bash
+        env:
+          RID: ${{ matrix.rid }}
+        run: |
+          # The launcher in .github/macos is also used for Linux. Its entry point only initializes GTK.
+          version="${RELEASE_TAG#Release-}"
+          export BIOGTK_VERSION="$version"
+          publish="$RUNNER_TEMP/publish-$RID"
+          # Historical project files reference this icon with a lowercase name.
+          if [[ -f Images/Bio.ico && ! -e Images/bio.ico ]]; then
+            ln -s Bio.ico Images/bio.ico
+          fi
+          # Use the same complete Linux IKVM runtime as the existing 6.7.1 x64 release.
+          # Its IKVM11 dependency supplies compile-time APIs but omits IKVM.Java.dll on Linux.
+          cat > "$RUNNER_TEMP/BioGTK.Linux.targets" <<'XML'
+          <Project>
+            <ItemGroup>
+              <PackageReference Include="IKVM11" Version="8.15.2" ExcludeAssets="runtime" />
+              <PackageReference Include="IKVM" Version="8.15.0" IncludeAssets="runtime" />
+            </ItemGroup>
+          </Project>
+          XML
+          dotnet publish .github/macos/BioGTKApp.csproj -c Release -r "$RID" --self-contained true \
+            -p:RuntimeIdentifiers="$RID" -p:GeneratePackageOnBuild=false -p:RestoreNoHttpCache=true \
+            -p:CustomAfterMicrosoftCommonTargets="$RUNNER_TEMP/BioGTK.Linux.targets" -o "$publish"
+
+          test -x "$publish/BioGTKApp"
+          test -s "$publish/BioGTK.dll"
+          test -s "$publish/libcoreclr.so"
+          test -s "$publish/IKVM.Java.dll"
+          test -s "$publish/ikvm/$RID/bin/libjvm.so"
+          test -s "$publish/Glade/NodeView.glade"
+          tar -czf "$RUNNER_TEMP/BioGTKApp.$version.$RID.tar.gz" -C "$publish" .
+
+      - name: Smoke test BioGTK startup on ${{ matrix.rid }}
+        shell: bash
+        env:
+          RID: ${{ matrix.rid }}
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libgtk-3-0t64 libgl1 libxi6 libxtst6 xauth xvfb
+          export XDG_DATA_HOME="$RUNNER_TEMP/smoke-data"
+          mkdir -p "$XDG_DATA_HOME/BioGTK"
+          # Exercise embedded ImageJ and Bio-Formats without opening the first-run file chooser.
+          printf 'ImageJPath=/usr/bin/true\n' > "$XDG_DATA_HOME/BioGTK/Settings.txt"
+
+          xvfb-run -a bash -eu <<'SMOKE'
+          log="$RUNNER_TEMP/startup.log"
+          "$RUNNER_TEMP/publish-$RID/BioGTKApp" > "$log" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for ((i = 0; i < 90; i++)); do
+            kill -0 "$pid" 2>/dev/null || break
+            if grep -Fq 'NodeView initialized.' "$log"; then exit 0; fi
+            sleep 1
+          done
+          cat "$log"
+          exit 1
+          SMOKE
+
+      - name: Save the tarball
+        uses: actions/upload-artifact@v7
+        with:
+          name: tarball-${{ matrix.rid }}
+          path: ${{ runner.temp }}/BioGTKApp.*.${{ matrix.rid }}.tar.gz
+          compression-level: 0
+          if-no-files-found: error
+
+  release:
+    name: Attach both tarballs to the release
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download both tarballs
+        uses: actions/download-artifact@v8
+        with:
+          pattern: tarball-linux-*
+          path: tarballs
+          merge-multiple: true
+
+      - name: Upload or replace the Linux release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${RELEASE_TAG#Release-}"
+          x64="tarballs/BioGTKApp.$version.linux-x64.tar.gz"
+          arm64="tarballs/BioGTKApp.$version.linux-arm64.tar.gz"
+          test -s "$x64"
+          test -s "$arm64"
+          gh release upload "$RELEASE_TAG" "$x64" "$arm64" --repo "$GITHUB_REPOSITORY" --clobber
