@@ -133,7 +133,11 @@ namespace BioGTK
         /// @return A boolean value.
         public static bool SetFijiOrImageJPath()
         {
-            bool ifb;
+            return SetFijiOrImageJPath(promptWhenMissing: true);
+        }
+
+        private static bool SetFijiOrImageJPath(bool promptWhenMissing)
+        {
             BioLib.Settings.Load();
             string st = BioLib.Settings.GetSettings("ImageJPath");
             if (st != "")
@@ -144,23 +148,29 @@ namespace BioGTK
                 ImageJ.Initialize(st);
                 return true;
             }
+            return promptWhenMissing && ChooseImageJExecutable();
+        }
+
+        internal static bool ChooseImageJExecutable()
+        {
             string title = "Select ImageJ Executable Location";
             if (OperatingSystem.IsMacOS())
                 title = "Select ImageJ Executable Location (Fiji.app/Contents/MacOS/ImageJ-macosx)";
-            Gtk.FileChooserDialog filechooser =
-            new Gtk.FileChooserDialog(title, Scripting.window,
-            FileChooserAction.Open,
-            "Cancel", ResponseType.Cancel,
-            "Save", ResponseType.Accept);
+            using var filechooser = new Gtk.FileChooserDialog(title, nodeView,
+                FileChooserAction.Open,
+                "Cancel", ResponseType.Cancel,
+                "Open", ResponseType.Accept);
             filechooser.SetCurrentFolder(System.IO.Path.GetDirectoryName(Environment.ProcessPath));
-            if (filechooser.Run() != (int)ResponseType.Accept)
-                return false;
-            Fiji.ImageJPath = filechooser.Filename;
-            ImageJ.ImageJPath = filechooser.Filename;
-            Fiji.Initialize(filechooser.Filename);
-            ImageJ.Initialize(filechooser.Filename);
-            BioLib.Settings.AddSettings("ImageJPath", filechooser.Filename);
+            bool accepted = filechooser.Run() == (int)ResponseType.Accept;
+            string selected = accepted ? filechooser.Filename : null;
             filechooser.Destroy();
+            if (string.IsNullOrEmpty(selected))
+                return false;
+            Fiji.ImageJPath = selected;
+            ImageJ.ImageJPath = selected;
+            Fiji.Initialize(selected);
+            ImageJ.Initialize(selected);
+            BioLib.Settings.AddSettings("ImageJPath", selected);
             BioLib.Settings.Save();
             return true;
         }
@@ -191,8 +201,12 @@ namespace BioGTK
         {
             AppLog.Clear();
             Console.WriteLine("Initializing components.");
-            SetFijiOrImageJPath();
-            if (UseFiji)
+            if (!SetFijiOrImageJPath(promptWhenMissing: !OperatingSystem.IsWindows()))
+            {
+                Fiji.InitializeCommandMetadata();
+                BioImage.Initialize(string.Empty);
+            }
+            else if (UseFiji)
             {
                 Fiji.Initialize(Fiji.ImageJPath);
                 BioImage.Initialize(Fiji.ImageJPath);

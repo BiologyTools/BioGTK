@@ -23,6 +23,8 @@ namespace BioGTK
         [Builder.Object]
         private MenuItem newTabsViewMenu;
         [Builder.Object]
+        private MenuItem chooseImageJMenu;
+        [Builder.Object]
         private MenuItem aboutMenu;
         [Builder.Object]
         private TreeView tree;
@@ -172,6 +174,7 @@ namespace BioGTK
             DeleteEvent += OnLocalDeleteEvent;
             newTabsViewMenu.ButtonPressEvent += newTabsViewClick;
             aboutMenu.ButtonPressEvent += aboutClick;
+            chooseImageJMenu.Activated += (_, _) => App.ChooseImageJExecutable();
             
         }
 
