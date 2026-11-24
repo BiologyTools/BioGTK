@@ -58,6 +58,28 @@ def require_architecture(binary, architecture):
         raise ValueError(f"Missing {architecture} slice: {binary}")
 
 
+def configure_imagej_dialogs(publish, args, architecture):
+    toolkit = publish / f"ikvm/osx-{args.arch}/bin/libawt_lwawt.dylib"
+    if args.ikvm_awt_library:
+        require_architecture(args.ikvm_awt_library, architecture)
+        if not toolkit.is_file():
+            raise ValueError(f"Publish is missing {toolkit.relative_to(publish)}")
+        shutil.copyfile(args.ikvm_awt_library, toolkit)
+
+    symbols = run("nm", "-arch", architecture, "-gU", toolkit, capture=True) if toolkit.is_file() else ""
+    has_initializer = any(line.endswith(" T _JNI_OnLoad") for line in symbols.splitlines())
+    if args.ikvm_awt_library and not has_initializer:
+        raise ValueError("The supplied IKVM AWT library is missing the macOS JNI_OnLoad initializer")
+    if not has_initializer:
+        return
+
+    runtime_config = publish / f"{APP_NAME}.runtimeconfig.json"
+    config = json.loads(runtime_config.read_text(encoding="utf-8"))
+    properties = config["runtimeOptions"].setdefault("configProperties", {})
+    properties["BioLib.EnableMacOSImageJDialogs"] = True
+    runtime_config.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+
+
 class GtkBundle:
     def __init__(self, prefix, contents, architecture):
         self.prefix = prefix
@@ -297,15 +319,17 @@ def build(args, gtk_prefix):
     with tempfile.TemporaryDirectory(prefix=".biogtk-dmg-", dir=args.output.parent) as temp:
         work = Path(temp)
         publish = work / "publish"
+        source_options = [f"-p:BioGTKMacBioLibProject={args.biolib_project}"] if args.biolib_project else []
         run("dotnet", "publish", args.app_project, "-c", "Release", "-r", rid,
             "--self-contained", "true", "--artifacts-path", work / "artifacts", "-o", publish,
             f"-p:RuntimeIdentifiers={rid}", "-p:PublishSingleFile=false", "-p:PublishTrimmed=false",
             "-p:GeneratePackageOnBuild=false",
-            f"-p:CustomAfterMicrosoftCommonTargets={PACKAGING / 'BioGTK.MacDmg.targets'}")
+            f"-p:CustomAfterMicrosoftCommonTargets={PACKAGING / 'BioGTK.MacDmg.targets'}", *source_options)
         for required in ("libcoreclr.dylib", "libhostfxr.dylib", "Glade/NodeView.glade",
                          "macro-functions.txt", "macro-commands.csv"):
             if not (publish / required).is_file():
                 raise ValueError(f"Publish is missing {required}")
+        configure_imagej_dialogs(publish, args, architecture)
 
         image = work / "image"
         app = image / "BioGTK.app"
@@ -359,6 +383,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--app-project", type=Path, default=APP_PROJECT, metavar="BIOGTKAPP_CSPROJ",
                         help="path to the BioGTKApp executable project (defaults to the sibling checkout)")
+    parser.add_argument("--biolib-project", type=Path, metavar="BIOLIB_CSPROJ",
+                        help="build BioLib from this project for the DMG")
+    parser.add_argument("--ikvm-awt-library", type=Path, metavar="LIBAWT_LWAWT_DYLIB",
+                        help="bundle a corrected IKVM AWT library for the target architecture")
     parser.add_argument("--arch", choices=MACH_O_ARCHITECTURES, help="target architecture (defaults to the host)")
     parser.add_argument("--gtk-prefix", type=Path, help="GTK 3 install prefix for the target architecture")
     parser.add_argument("--output", type=Path, help="DMG path (defaults to BioGTK-macos-<arch>.dmg)")
@@ -376,6 +404,12 @@ def main():
     args.output = (args.output or Path(f"BioGTK-macos-{args.arch}.dmg")).resolve()
     if args.app_project.name != "BioGTKApp.csproj" or not args.app_project.is_file():
         parser.error(f"BioGTKApp.csproj was not found at {args.app_project}. Supply --app-project.")
+    for option in ("biolib_project", "ikvm_awt_library"):
+        path = getattr(args, option)
+        if path is not None:
+            if not path.is_file():
+                parser.error(f"File not found: {path}")
+            setattr(args, option, path.resolve())
     if args.output.suffix != ".dmg":
         parser.error("--output must end in .dmg")
     try:

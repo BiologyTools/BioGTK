@@ -69,7 +69,7 @@ namespace BioGTK
         {
             _builder = builder;
             builder.Autoconnect(this);
-            if (OperatingSystem.IsMacOS())
+            if (useHeadlessMacRuntime)
             {
                 headlessBox.Active = true;
                 headlessBox.Sensitive = false;
@@ -185,6 +185,9 @@ namespace BioGTK
         public static string error;
         public static string ImageJPath = Fiji.ImageJPath;
 
+        private static readonly bool useHeadlessMacRuntime = OperatingSystem.IsMacOS() &&
+            !(AppContext.TryGetSwitch("BioLib.EnableMacOSImageJDialogs", out bool enableDialogs) && enableDialogs);
+
         private static bool IsMacroFile(string fileName)
         {
             return fileName.EndsWith(".ijm", StringComparison.OrdinalIgnoreCase) ||
@@ -198,7 +201,7 @@ namespace BioGTK
 
             if (OperatingSystem.IsMacOS())
             {
-                BioImage result = await Fiji.RunOnImage(image, macro, true, BioConsole.onTab,
+                BioImage result = await Fiji.RunOnImage(image, macro, headless || useHeadlessMacRuntime, BioConsole.onTab,
                     BioConsole.useBioformats, BioConsole.resultInNewTab);
                 if (App.tabsView != null)
                     await App.tabsView.PresentCommandResultAsync(image, result);

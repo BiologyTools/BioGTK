@@ -14,6 +14,8 @@ If the checkouts follow the layout referenced by `BioGTK.sln`, the script finds 
 
 Each DMG contains `BioGTK.app` and an Applications shortcut. The app includes GTK 3 and the .NET runtime. The existing Fiji integration can use a separately installed Fiji. Scripts, functions, tools, plugins, and models for these builds are stored under `~/Library/Application Support/BioGTK`. The current ONNX Runtime and TorchSharp packages supply macOS native libraries for Apple Silicon, so their model execution features are unavailable in the Intel build.
 
+For a build with interactive ImageJ dialogs, use BioLib with macOS dialog support and rebuild IKVM's `libawt_lwawt` target with OpenJDK's `awt.m` included. Match the bundled IKVM version and the target architecture. Pass `--biolib-project` with the path to `BioLib.csproj` and `--ikvm-awt-library` with the path to the rebuilt `libawt_lwawt.dylib`. The packager enables the shared ImageJ dialog path when that library exports `JNI_OnLoad`. Apple Silicon uses the bundled Swing look and feel because that IKVM image omits Aqua.
+
 ## Build in GitHub Actions
 
 [Build macOS DMG](../../.github/workflows/build-macos-dmg.yml) runs on pushes to `main` and can be started manually from the Actions tab. Both jobs run on Apple Silicon. The Intel job installs x64 GTK from conda-forge and runs its cache tools through Rosetta. The workflow uploads separate ad hoc-signed `BioGTK-macos-arm64.dmg` and `BioGTK-macos-x64.dmg` files to the run's Artifacts section.

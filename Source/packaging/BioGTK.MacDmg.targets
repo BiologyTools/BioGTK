@@ -10,6 +10,10 @@
       <Version>0.1.0</Version>
     </PackageReference>
   </ItemGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'BioGTK' And '$(BioGTKMacBioLibProject)' != ''">
+    <PackageReference Remove="BioLib" />
+    <ProjectReference Include="$(BioGTKMacBioLibProject)" />
+  </ItemGroup>
   <Choose>
     <When Condition="'$(MSBuildProjectName)' == 'BioGTKApp' And ('$(RuntimeIdentifier)' == 'osx-arm64' Or '$(RuntimeIdentifier)' == 'osx-x64')">
       <PropertyGroup>
