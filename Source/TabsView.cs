@@ -1013,9 +1013,11 @@ namespace BioGTK
                     if (savedImages != null)
                     {
                         recentImages.AddRange(savedImages
-                            .Where(source => !string.IsNullOrWhiteSpace(source))
+                            .Where(source => !string.IsNullOrWhiteSpace(source) && !TemporaryZarrStorage.IsTemporarySource(source))
                             .Distinct(StringComparer.Ordinal)
                             .Take(MaxRecentImages));
+                        if (savedImages.Any(TemporaryZarrStorage.IsTemporarySource))
+                            SaveRecentImages();
                     }
                 }
             }
@@ -1055,7 +1057,11 @@ namespace BioGTK
             if (!remote && !File.Exists(source) && !Directory.Exists(source))
                 return;
             if (!remote)
+            {
                 source = System.IO.Path.GetFullPath(source);
+                if (TemporaryZarrStorage.IsTemporarySource(source))
+                    return;
+            }
 
             StringComparison comparison = !remote && OperatingSystem.IsWindows()
                 ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
@@ -1064,6 +1070,12 @@ namespace BioGTK
             if (recentImages.Count > MaxRecentImages)
                 recentImages.RemoveRange(MaxRecentImages, recentImages.Count - MaxRecentImages);
 
+            SaveRecentImages();
+            RefreshOpenRecentMenu();
+        }
+
+        private void SaveRecentImages()
+        {
             try
             {
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(RecentImagesPath));
@@ -1073,8 +1085,6 @@ namespace BioGTK
             {
                 Console.WriteLine("Could not save recent images: " + ex.Message);
             }
-
-            RefreshOpenRecentMenu();
         }
 
         private void RefreshOpenRecentMenu()

@@ -475,7 +475,7 @@
 	  <PackageReference Include="BioFormats.NET6" Version="9.0.0-rc2">
 		  <Aliases>BioFormats</Aliases>
 	  </PackageReference>
-	  <PackageReference Include="BioLib" Version="4.3.2" />
+	  <PackageReference Include="BioLib" Version="4.3.3" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="ManagedCuda.NETStandard" Version="9.1.300" />

@@ -2391,7 +2391,7 @@ namespace BioGTK
             View.CanFocus = true;
             this.KeyPressEvent += ImageView_KeyPressEvent;
             this.KeyReleaseEvent += ImageView_KeyUpEvent;
-            this.DestroyEvent += ImageView_DestroyEvent;
+            this.Destroyed += ImageView_Destroyed;
             this.DeleteEvent += ImageView_DeleteEvent;
             this.FocusInEvent += ImageView_FocusInEvent;
             rBox.Changed += RBox_Changed;
@@ -2561,7 +2561,7 @@ namespace BioGTK
             //App.SelectWindow(this.Title);
         }
 
-        private void ImageView_DestroyEvent(object o, DestroyEventArgs args)
+        private void ImageView_Destroyed(object o, EventArgs args)
         {
             _destroyRequested = true;
             // Guard: DeleteEvent already performed full cleanup. Only run if
@@ -2584,7 +2584,8 @@ namespace BioGTK
             CleanupViewerResources();
             foreach (var item in this.Images.ToArray())
             {
-                BioLib.Images.RemoveImage(item);
+                BioLib.Images.images.Remove(item);
+                App.tabsView.RemoveTab(item.Filename);
                 item.Dispose();
             }
             this.Images.Clear();
@@ -2996,7 +2997,7 @@ namespace BioGTK
             for (int i = 0; i < this.Images.Count; i++)
             {
                 var item = this.Images[i];
-                BioLib.Images.RemoveImage(item);
+                BioLib.Images.images.Remove(item);
                 App.tabsView.RemoveTab(item.Filename);
                 item.Dispose();
             }

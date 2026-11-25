@@ -199,6 +199,7 @@ namespace BioGTK
         /// Initialize() is a function that initializes the BioImage Suite Web
         public static void Initialize()
         {
+            TemporaryZarrStorage.Initialize();
             AppLog.Clear();
             Console.WriteLine("Initializing components.");
             bool promptForExecutable = !OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS();
