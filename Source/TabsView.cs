@@ -406,7 +406,7 @@ namespace BioGTK
             }
         }
 
-        internal async Task OpenPyramidRootsAsTabsAsync(string file, bool openAllSeries = false)
+        internal async Task<bool> OpenPyramidRootsAsTabsAsync(string file, bool openAllSeries = false)
         {
             file = ZarrSource.Resolve(file);
             List<BioImage> roots = await CollectPyramidRootsInBackgroundAsync(file, openAllSeries);
@@ -418,6 +418,7 @@ namespace BioGTK
                 Images.AddImage(im);
                 AddTab(im, file);
             }
+            return roots.Count > 0;
         }
 
         private Task<List<BioImage>> CollectPyramidRootsInBackgroundAsync(string file, bool openAllSeries)
@@ -697,34 +698,10 @@ namespace BioGTK
         }
         */
 
-        /// This function creates a file chooser dialog that allows the user to select the location of
-        /// the ImageJ executable
-        /// 
-        /// @return A boolean value.
+        /// <summary>Reloads the optional external Fiji or ImageJ executable from Settings.txt.</summary>
         public static bool SetImageJPath()
         {
-            string st = BioLib.Settings.GetSettings("ImageJPath");
-            if (st != "")
-            {
-                Fiji.ImageJPath = BioLib.Settings.GetSettings("ImageJPath");
-                return true;
-            }
-            string title = "Select ImageJ Executable Location";
-            if (OperatingSystem.IsMacOS())
-                title = "Select ImageJ Executable Location (Fiji.app/Contents/MacOS/ImageJ-macosx)";
-            Gtk.FileChooserDialog filechooser =
-    new Gtk.FileChooserDialog(title, Scripting.window,
-        FileChooserAction.Open,
-        "Cancel", ResponseType.Cancel,
-        "Save", ResponseType.Accept);
-            filechooser.SetCurrentFolder(System.IO.Path.GetDirectoryName(Environment.ProcessPath));
-            if (filechooser.Run() != (int)ResponseType.Accept)
-                return false;
-            Fiji.ImageJPath = filechooser.Filename;
-            BioLib.Settings.AddSettings("ImageJPath", filechooser.Filename);
-            filechooser.Destroy();
-            BioLib.Settings.Save();
-            return true;
+            return App.SetFijiOrImageJPath();
         }
         private void Mi_ButtonPressEvent(object o, ButtonPressEventArgs args)
         {
@@ -831,7 +808,8 @@ namespace BioGTK
                 await PresentCommandResultAsync(sourceImage, bm);
                 return;
             }
-            bm = await Fiji.RunOnImage(ImageView.SelectedImage, "run(\"" + m.Label + "\");", BioConsole.headless, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
+            bm = await ImageJCommands.RunAsync(sourceImage, command, BioConsole.headless, BioConsole.onTab,
+                BioConsole.useBioformats, BioConsole.resultInNewTab);
             Console.WriteLine($"[TabsView.CommandMenuItem] stack result={(bm == null ? "null" : bm.ID)}");
             AddToRecent(m.Label);
             await PresentCommandResultAsync(sourceImage, bm);

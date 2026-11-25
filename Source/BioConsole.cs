@@ -235,7 +235,8 @@ namespace BioGTK
         {
             if (ImageView.SelectedImage == null)
                 return;
-            Fiji.RunOnImage(ImageView.SelectedImage, consoleBox.Buffer.Text, headless, onTab, useBioformats, resultsBox.Active);
+            _ = ImageJCommands.RunFromToolAsync(ImageView.SelectedImage, consoleBox.Buffer.Text,
+                headless, onTab, useBioformats, resultsBox.Active);
             textBox.Buffer.Text += textBox.Buffer.Text + Environment.NewLine;
             consoleBox.Buffer.Text = "";
         }

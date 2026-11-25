@@ -71,7 +71,7 @@ namespace BioGTK
                 if ((bool)treeView.Model.GetValue(iter, 1))
                     Scripting.RunByName(itemName);
                 else if (ImageView.SelectedImage is BioImage image)
-                    Fiji.RunOnImage(image, "run(\"" + itemName + "\");", BioConsole.headless,
+                    _ = ImageJCommands.RunFromToolAsync(image, "run(\"" + itemName + "\");", BioConsole.headless,
                         BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
             }
         }

@@ -33,6 +33,68 @@ DYLIB_LOAD_COMMANDS = {
     "LC_LOAD_UPWARD_DYLIB", "LC_LAZY_LOAD_DYLIB",
 }
 
+# Named suffixes from loci.formats.ImageReader.getSuffixes() in BioFormats.NET6 9.0.0-rc2.
+# Refresh this list when BioGTK updates Bio-Formats.
+BIO_FORMATS_EXTENSIONS = """
+1sc 2fl acff afi afm aiix aim aisf al3d ali am amiramesh ano apl aqproj arf atsf avi bif bin bip
+bmp btf c01 cfg ch5 cif companion.ome cr2 crw csv cxd czi dat db dcimg dcm df3 dib dic dicom dm2
+dm3 dm4 dti dv dv.log env eps epsi ets exp fake fdf fff ffr fits flex fli frm fts gel gif grey
+h5 hdf hdr hed his htd htm html hx i2i ics ids im3 ima img ims inf inr ipl ipm ips ipw j2k j2ki
+j2kr jdce jp2 jpe jpeg jpf jpg jpk jpx klb l2d labels lei lif liff lim lms lof log lsm lut map
+mdb mea mnc mng mod mov mrc mrcs mrw msr mtb mvd2 naf nd nd2 ndpi ndpis nef nhdr nii nii.gz nrrd
+obf oib oif oir ome ome.btf ome.tf2 ome.tf8 ome.tif ome.tiff ome.xml omp2info par pattern pbm
+pcoraw pct pcx pgm pic pict png pnl ppm pr3 ps psd pst pty qptiff r3d r3d.log r3d_d3d raw rcpnl
+rec res scan scn sdt seq set sif sld sldy sldyz sm2 sm3 spc spe spi spl st stk stp svs sxm tf2
+tf8 tfcyto tfr tga thm tif tiff tim tnb top txm txrm txt v vff vms vsi vws wat wav wpi xdce xlef
+xlog xml xqd xqf xv xys zfp zfr zip zpo zvi
+""".split()
+
+
+def document_type_metadata():
+    aperio_svs_type = "com.biogtk.aperio-svs"
+    zarr_type = "com.biogtk.zarr"
+    alternate_viewer = {"CFBundleTypeRole": "Viewer", "LSHandlerRank": "Alternate"}
+    return {
+        "CFBundleDocumentTypes": [
+            {
+                "CFBundleTypeName": "Bio-Formats image data",
+                # Match the suffix even when another app declares its own type identifier.
+                # Launch Services ignores these extensions within an entry that lists UTIs.
+                "CFBundleTypeExtensions": BIO_FORMATS_EXTENSIONS,
+                **alternate_viewer,
+            },
+            {
+                "CFBundleTypeName": "Aperio whole-slide image",
+                "LSItemContentTypes": [aperio_svs_type],
+                **alternate_viewer,
+            },
+            {
+                "CFBundleTypeName": "TIFF image",
+                "LSItemContentTypes": ["public.tiff"],
+                **alternate_viewer,
+            },
+            {
+                "CFBundleTypeName": "Zarr image store",
+                "LSItemContentTypes": [zarr_type],
+                **alternate_viewer,
+            },
+        ],
+        "UTImportedTypeDeclarations": [
+            {
+                "UTTypeIdentifier": aperio_svs_type,
+                "UTTypeDescription": "Aperio whole-slide image",
+                "UTTypeConformsTo": ["public.tiff"],
+                "UTTypeTagSpecification": {"public.filename-extension": ["svs"]},
+            },
+            {
+                "UTTypeIdentifier": zarr_type,
+                "UTTypeDescription": "Zarr image store",
+                "UTTypeConformsTo": ["com.apple.package", "public.content"],
+                "UTTypeTagSpecification": {"public.filename-extension": ["zarr", "ome.zarr"]},
+            },
+        ],
+    }
+
 
 def run(*command, capture=False):
     return subprocess.run(
@@ -56,6 +118,21 @@ def load_commands(binary, architecture):
 def require_architecture(binary, architecture):
     if architecture not in run("lipo", "-archs", binary, capture=True).split():
         raise ValueError(f"Missing {architecture} slice: {binary}")
+
+
+def verify_ikvm_runtime(publish, deps, rid):
+    target = deps["targets"][deps["runtimeTarget"]["name"]]
+    java_assemblies = {"IKVM.Java.dll", "IKVM.Runtime.dll", "IKVM.CoreLib.dll"}
+    for package, assets in target.items():
+        if package.startswith("IKVM11/"):
+            java_assemblies.difference_update(Path(asset).name for asset in assets.get("runtime", {}))
+    if java_assemblies or any(package.startswith("IKVM/") for package in target):
+        raise ValueError("Bio-Formats requires the complete IKVM11 managed runtime in the macOS app")
+
+    for name in ("IKVM.Java.dll", "IKVM.Runtime.dll", "IKVM.CoreLib.dll",
+                 f"ikvm/{rid}/bin/libjvm.dylib", f"ikvm/{rid}/bin/libnio.dylib"):
+        if not (publish / name).is_file():
+            raise ValueError(f"Publish is missing {name}")
 
 
 def configure_imagej_dialogs(publish, args, architecture):
@@ -329,6 +406,8 @@ def build(args, gtk_prefix):
                          "macro-functions.txt", "macro-commands.csv"):
             if not (publish / required).is_file():
                 raise ValueError(f"Publish is missing {required}")
+        deps = json.loads((publish / f"{APP_NAME}.deps.json").read_text(encoding="utf-8"))
+        verify_ikvm_runtime(publish, deps, rid)
         configure_imagej_dialogs(publish, args, architecture)
 
         image = work / "image"
@@ -344,7 +423,6 @@ def build(args, gtk_prefix):
                     if value.startswith("/") and not is_system_library(value):
                         raise ValueError(f"External path in {binary}: {value}")
 
-        deps = json.loads((publish / f"{APP_NAME}.deps.json").read_text(encoding="utf-8"))
         version = next((key.split("/", 1)[1] for key in deps["libraries"]
                         if key.startswith(APP_NAME + "/")), "")
         display_version = re.match(r"\d+(?:\.\d+){0,2}", version)
@@ -356,6 +434,7 @@ def build(args, gtk_prefix):
             "CFBundleIconFile": "bio.icns",
             "CFBundleName": "BioGTK",
             "CFBundleDisplayName": "BioGTK",
+            **document_type_metadata(),
             "CFBundlePackageType": "APPL",
             "CFBundleShortVersionString": display_version[0],
             "CFBundleVersion": display_version[0],

@@ -75,13 +75,10 @@ If MacOS blocks the first launch because the developer cannot be verified, open 
 Scripts, functions, tools, plugins, and models are stored under `~/Library/Application Support/BioGTK`. For SAM2 and Micro-SAM2 segmentation, follow the model setup instructions. ONNX Runtime and TorchSharp model execution in the current macOS packages is available on Apple Silicon. [Segmentation model setup](BUILDING.md#setting-up-segmentation-models)
 DMGs built by GitHub Actions are also available in the **Artifacts** section of a successful **Build macOS DMG** run. [DMG workflow](https://github.com/BiologyTools/BioGTK/actions/workflows/build-macos-dmg.yml)
 
-Workflows that launch the external Fiji application use a separately installed Fiji.
-
 ## Windows Installation
 
 1. Download **BioGTK-win-x64-Setup.exe** from the release assets. [BioGTK releases](https://github.com/BiologyTools/BioGTK/releases)
 2. Run the installer, then open **BioGTK** from the Start menu. Setup installs GTK 3 and the .NET runtime for your Windows account.
-3. If you use an external Fiji or ImageJ installation, open **File → Choose Fiji or ImageJ Executable…** in the BioGTK NodeView window and select its executable.
 
 For a portable copy, download **BioGTK-win-x64.zip** from the same release, select **Extract All**, and open **Start BioGTK.cmd** in the extracted folder. Keep the folders together. The ZIP includes the same .NET and GTK runtimes as the installer.
 
@@ -101,6 +98,20 @@ To remove BioGTK, open **Settings → Apps → Installed apps**, select **BioGTK
 	 ```sudo apt install openslide-tools```
 - Optionally install [CUDA](https://developer.nvidia.com/cuda-downloads) for hardware accelerated stitching as well as tile cache in graphics card memory instead of RAM.
 - Optionally install [PyTorch](https://pytorch.org/) for running BioImage.io models.
+
+## Optional Fiji or ImageJ installation
+
+BioGTK uses bundled ImageJ when `ImageJPath` is empty or missing. To run commands
+on regular images and stacks in a separate Fiji or ImageJ installation, set
+`ImageJPath` in `Settings.txt` and restart BioGTK.
+
+| Platform | Settings file | Value for `ImageJPath` |
+| --- | --- | --- |
+| macOS | `~/Library/Application Support/BioGTK/Settings.txt` | `/Applications/Fiji.app` or the full launcher path |
+| Windows | `%LOCALAPPDATA%\BioGTK\Settings.txt` | The full path to the native Fiji or ImageJ `.exe` |
+| Linux | `~/.local/share/BioGTK/Settings.txt` (or `$XDG_DATA_HOME/BioGTK/Settings.txt`) | The full path to the executable Fiji or ImageJ launcher |
+
+Pyramidal image commands use bundled ImageJ for tile and level processing.
 
 ## Examples
 First you need to setup your project as a GTK project with .NET 8.0 as the target. 

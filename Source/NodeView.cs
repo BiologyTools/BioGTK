@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -18,12 +19,13 @@ namespace BioGTK
 
         /// <summary> Used to load in the glade file resource as a window. </summary>
         private Builder _builder;
+        private readonly Queue<string> pendingImagePaths = new Queue<string>();
+        private bool openingImages;
+        private Application macApplication;
 
 #pragma warning disable 649
         [Builder.Object]
         private MenuItem newTabsViewMenu;
-        [Builder.Object]
-        private MenuItem chooseImageJMenu;
         [Builder.Object]
         private MenuItem aboutMenu;
         [Builder.Object]
@@ -34,19 +36,15 @@ namespace BioGTK
 
         #region Constructors / Destructors
 
-        /// The function creates a NodeView object using a Glade file and returns it.
-        /// 
-        /// @param args The "args" parameter is an array of strings that can be passed to the Create
-        /// method. It is used to provide additional arguments or data that may be needed for the
-        /// creation of the NodeView object. The specific purpose or usage of these arguments would
-        /// depend on the implementation of the NodeView class and
-        /// 
-        /// @return The method is returning a NodeView object.
+        /// <summary>Creates the main window and queues the supplied image paths for opening.</summary>
         public static NodeView Create(string[] args)
         {
             using var gladeStream = new FileStream(System.IO.Path.GetDirectoryName(Environment.ProcessPath) + "/" + "Glade/NodeView.glade", FileMode.Open, FileAccess.Read, FileShare.Read);
             Builder builder = new Builder(gladeStream);
-            return new NodeView(builder, builder.GetObject("nodeView").Handle,args);
+            var node = new NodeView(builder, builder.GetObject("nodeView").Handle, args);
+            if (AppStorage.IsPackagedMacApp)
+                node.RegisterMacDocumentOpen();
+            return node;
         }
         ListStore store;
         GLWindow window;
@@ -73,33 +71,85 @@ namespace BioGTK
             App.MoveToMain(this);
             App.ApplyStyles(this);
             Console.WriteLine("NodeView initialized.");
-            OpenStartupImages(args);
+            Shown += (_, _) => ScheduleImageOpen();
+            QueueImagePaths(args);
         }
 
-        private async void OpenStartupImages(string[] files)
+        private void RegisterMacDocumentOpen()
+        {
+            // Quartz installs the Finder open-document delegate when this app registers.
+            macApplication = new Application("com.BioGTK",
+                GLib.ApplicationFlags.HandlesOpen | GLib.ApplicationFlags.NonUnique)
+            {
+                RegisterSession = true
+            };
+            // GtkSharp's OpenedArgs.Files exposes one IFile instead of the native GFile array.
+            macApplication.AddSignalHandler("open",
+                new EventHandler<GLib.SignalArgs>(OnMacDocumentOpen), typeof(GLib.SignalArgs));
+            macApplication.Register(null);
+        }
+
+        private void OnMacDocumentOpen(object sender, GLib.SignalArgs args)
+        {
+            var files = (IntPtr)args.Args[0];
+            var count = (int)args.Args[1];
+            var paths = new string[count];
+            for (int i = 0; i < count; i++)
+            {
+                IntPtr file = Marshal.ReadIntPtr(files, i * IntPtr.Size);
+                // The URI keeps Unicode filenames intact across the native boundary.
+                paths[i] = GLib.FileAdapter.GetObject(file, false).Uri.AbsoluteUri;
+            }
+            QueueImagePaths(paths);
+        }
+
+        private void QueueImagePaths(IEnumerable<string> files)
         {
             foreach (string file in files)
             {
+                if (!string.IsNullOrWhiteSpace(file))
+                    pendingImagePaths.Enqueue(file);
+            }
+            ScheduleImageOpen();
+        }
+
+        private void ScheduleImageOpen()
+        {
+            if (!Visible || openingImages || pendingImagePaths.Count == 0)
+                return;
+
+            openingImages = true;
+            GLib.Idle.Add(() =>
+            {
+                OpenPendingImages();
+                return false;
+            });
+        }
+
+        private async void OpenPendingImages()
+        {
+            while (pendingImagePaths.TryDequeue(out string file))
+            {
+                if (file.StartsWith("file:", StringComparison.OrdinalIgnoreCase) &&
+                    Uri.TryCreate(file, UriKind.Absolute, out Uri uri) && uri.IsFile)
+                {
+                    file = uri.LocalPath;
+                }
+
                 try
                 {
-                    if (TabsView.IsZarrLikeSource(file))
-                    {
-                        await App.tabsView.OpenPyramidRootsAsTabsAsync(file);
-                        continue;
-                    }
-
-                    await BioImage.OpenAsync(file, false, true, true, 0);
-                    App.tabsView.AddTab(Images.GetImage(file));
+                    if (!await App.tabsView.OpenPyramidRootsAsTabsAsync(file))
+                        throw new IOException("No image was found.");
                 }
                 catch (Exception ex)
                 {
                     using var dialog = new MessageDialog(this, DialogFlags.Modal,
-                        MessageType.Error, ButtonsType.Ok, "{0}", ex.Message);
+                        MessageType.Error, ButtonsType.Ok, "Could not open {0}\n{1}", file, ex.Message);
                     dialog.Title = "Open Image Failed";
                     dialog.Run();
-                    dialog.Destroy();
                 }
             }
+            openingImages = false;
         }
 
         /// It takes a list of images, and for each image, it takes a list of bitmaps, and for each
@@ -174,8 +224,6 @@ namespace BioGTK
             DeleteEvent += OnLocalDeleteEvent;
             newTabsViewMenu.ButtonPressEvent += newTabsViewClick;
             aboutMenu.ButtonPressEvent += aboutClick;
-            chooseImageJMenu.Activated += (_, _) => App.ChooseImageJExecutable();
-            
         }
 
         /// <summary> Handle Close of Form, Quit Application. </summary>

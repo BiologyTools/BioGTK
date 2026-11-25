@@ -38,12 +38,6 @@
                         <property name="use-underline">True</property>
                       </object>
                     </child>
-                    <child>
-                      <object class="GtkMenuItem" id="chooseImageJMenu">
-                        <property name="visible">True</property>
-                        <property name="label" translatable="yes">Choose Fiji or ImageJ Executable…</property>
-                      </object>
-                    </child>
                   </object>
                 </child>
               </object>

@@ -9,11 +9,20 @@ namespace BioGTK
     internal static class TemporaryZarrStorage
     {
         private const string SessionPrefix = "session-";
+        private const string FijiPrefix = "fiji-";
         private const string LeaseName = ".lease";
         private static readonly string root = Path.Combine(Path.GetTempPath(), "BioLib-Zarr");
         private static readonly string legacyRoot = Path.Combine(
             Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory, "Temp");
         private static int initialized;
+
+        internal static DirectoryInfo CreateFijiWorkspace()
+        {
+            Initialize();
+            if (AppContext.GetData("BioLib.TemporaryZarrRoot") is not string session)
+                throw new IOException("Temporary image storage is unavailable.");
+            return Directory.CreateDirectory(Path.Combine(session, FijiPrefix + Guid.NewGuid().ToString("N")));
+        }
 
         internal static void Initialize()
         {
@@ -42,8 +51,7 @@ namespace BioGTK
 
         internal static bool IsTemporarySource(string source)
         {
-            if (string.IsNullOrWhiteSpace(source) || !Path.IsPathFullyQualified(source) ||
-                !IsResultName(Path.GetFileName(source)))
+            if (string.IsNullOrWhiteSpace(source) || !Path.IsPathFullyQualified(source))
                 return false;
 
             string parent;
@@ -56,6 +64,15 @@ namespace BioGTK
                 return false;
             }
 
+            string name = Path.GetFileName(parent);
+            string session = Path.GetDirectoryName(parent);
+            if (name?.StartsWith(FijiPrefix, StringComparison.Ordinal) == true &&
+                Guid.TryParseExact(name[FijiPrefix.Length..], "N", out _) &&
+                IsSessionName(Path.GetFileName(session)) && SamePath(Path.GetDirectoryName(session), root))
+                return true;
+
+            if (!IsResultName(Path.GetFileName(source)))
+                return false;
             if (SamePath(parent, root) || SamePath(parent, legacyRoot))
                 return true;
             if (IsSessionName(Path.GetFileName(parent)) && SamePath(Path.GetDirectoryName(parent), root))

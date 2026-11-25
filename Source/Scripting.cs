@@ -69,7 +69,7 @@ namespace BioGTK
         {
             _builder = builder;
             builder.Autoconnect(this);
-            if (useHeadlessMacRuntime)
+            if (useHeadlessMacRuntime && FijiApp.Executable.Length == 0)
             {
                 headlessBox.Active = true;
                 headlessBox.Sensitive = false;
@@ -199,17 +199,11 @@ namespace BioGTK
             if (image == null)
                 throw new InvalidOperationException("Open an image before running an ImageJ macro.");
 
-            if (OperatingSystem.IsMacOS())
-            {
-                BioImage result = await Fiji.RunOnImage(image, macro, headless || useHeadlessMacRuntime, BioConsole.onTab,
-                    BioConsole.useBioformats, BioConsole.resultInNewTab);
-                if (App.tabsView != null)
-                    await App.tabsView.PresentCommandResultAsync(image, result);
-            }
-            else if (App.UseFiji)
-                await Fiji.RunStringFiji(image, macro, argument, headless);
-            else
-                ImageJ.RunString(image, macro, argument, headless);
+            bool forceHeadless = useHeadlessMacRuntime && !ImageJCommands.UsesExternalImageJ(image);
+            BioImage result = await ImageJCommands.RunAsync(image, macro, headless || forceHeadless, BioConsole.onTab,
+                BioConsole.useBioformats, BioConsole.resultInNewTab, argument);
+            if (App.tabsView != null)
+                await App.tabsView.PresentCommandResultAsync(image, result);
         }
         public static Dictionary<string,Script> scripts = new Dictionary<string,Script>();
         public static void LogLine(string s)

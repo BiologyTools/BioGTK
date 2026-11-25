@@ -109,70 +109,14 @@ namespace BioGTK
                 BioLib.Recorder.outputConsole = value;
             }
         }
-        static bool useFiji = true;
-        public static bool UseFiji
-        {
-            get
-            {
-                if (OperatingSystem.IsMacOS())
-                {
-                    return true;
-                }
-                else
-                {
-                    if(Fiji.ImageJPath.Contains("Fiji"))
-                        return true;
-                    else
-                        return false;
-                }
-            }
-        }
-        /// This function creates a file chooser dialog that allows the user to select the location of
-        /// the ImageJ executable
-        /// 
-        /// @return A boolean value.
+        public static bool UseFiji => FijiApp.Executable.Length == 0 || FijiApp.IsFijiInstallation;
+
+        /// <summary>Reloads the optional external Fiji or ImageJ executable from Settings.txt.</summary>
         public static bool SetFijiOrImageJPath()
         {
-            return SetFijiOrImageJPath(promptWhenMissing: true);
-        }
-
-        private static bool SetFijiOrImageJPath(bool promptWhenMissing)
-        {
+            BioLib.Settings.AddSettings("ImageJPath", string.Empty);
             BioLib.Settings.Load();
-            string st = BioLib.Settings.GetSettings("ImageJPath");
-            if (st != "")
-            {
-                BioLib.Fiji.ImageJPath = st;
-                BioLib.ImageJ.ImageJPath = st;
-                Fiji.Initialize(st);
-                ImageJ.Initialize(st);
-                return true;
-            }
-            return promptWhenMissing && ChooseImageJExecutable();
-        }
-
-        internal static bool ChooseImageJExecutable()
-        {
-            string title = "Select ImageJ Executable Location";
-            if (OperatingSystem.IsMacOS())
-                title = "Select ImageJ Executable Location (Fiji.app/Contents/MacOS/ImageJ-macosx)";
-            using var filechooser = new Gtk.FileChooserDialog(title, nodeView,
-                FileChooserAction.Open,
-                "Cancel", ResponseType.Cancel,
-                "Open", ResponseType.Accept);
-            filechooser.SetCurrentFolder(System.IO.Path.GetDirectoryName(Environment.ProcessPath));
-            bool accepted = filechooser.Run() == (int)ResponseType.Accept;
-            string selected = accepted ? filechooser.Filename : null;
-            filechooser.Destroy();
-            if (string.IsNullOrEmpty(selected))
-                return false;
-            Fiji.ImageJPath = selected;
-            ImageJ.ImageJPath = selected;
-            Fiji.Initialize(selected);
-            ImageJ.Initialize(selected);
-            BioLib.Settings.AddSettings("ImageJPath", selected);
-            BioLib.Settings.Save();
-            return true;
+            return FijiApp.Configure(BioLib.Settings.GetSettings("ImageJPath"));
         }
         public static void MoveToMain(Window window)
         {
@@ -202,24 +146,10 @@ namespace BioGTK
             TemporaryZarrStorage.Initialize();
             AppLog.Clear();
             Console.WriteLine("Initializing components.");
-            bool promptForExecutable = !OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS();
-            if (!SetFijiOrImageJPath(promptWhenMissing: promptForExecutable))
-            {
-                Fiji.InitializeCommandMetadata();
-                BioImage.Initialize(string.Empty);
-            }
-            else if (UseFiji)
-            {
-                Fiji.Initialize(Fiji.ImageJPath);
-                BioImage.Initialize(Fiji.ImageJPath);
-            }
-            else
-            {
-                ImageJ.Initialize(ImageJ.ImageJPath);
-                BioImage.Initialize(ImageJ.ImageJPath);
-            }
+            Fiji.InitializeCommandMetadata();
+            BioImage.Initialize(string.Empty);
             Console.WriteLine("Loading settings.");
-            BioLib.Settings.Load();
+            SetFijiOrImageJPath();
             updater = Updater.Create();
             tools = Tools.Create();
             filters = FiltersView.Create();

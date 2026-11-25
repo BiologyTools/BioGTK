@@ -602,7 +602,8 @@ namespace BioGTK
             }
             if (FuncType == Function.FunctionType.ImageJ)
             {
-                Fiji.RunOnImage(ImageView.SelectedImage,script, false, BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
+                _ = ImageJCommands.RunFromToolAsync(ImageView.SelectedImage, script, false,
+                    BioConsole.onTab, BioConsole.useBioformats, BioConsole.resultInNewTab);
             }
             return null;
         }
