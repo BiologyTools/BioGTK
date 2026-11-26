@@ -25,6 +25,7 @@ GTK_LIBRARIES = (
     "libpangocairo-1.0.0.dylib", "libgdk_pixbuf-2.0.dylib",
     "libgdk-3.0.dylib", "libgtk-3.0.dylib",
 )
+OPENSLIDE_LIBRARY = "libopenslide.1.dylib"
 MACH_O_MAGIC = {
     bytes.fromhex(magic) for magic in
     ("feedface", "cefaedfe", "feedfacf", "cffaedfe", "cafebabe", "bebafeca", "cafebabf", "bfbafeca")
@@ -284,6 +285,7 @@ class GtkBundle:
                 source = source.with_name("libgdk_pixbuf-2.0.0.dylib")
             self.copy_binary(source, name)
 
+        self.copy_binary(self.prefix / "lib" / OPENSLIDE_LIBRARY, OPENSLIDE_LIBRARY)
         self.copy_module_cache("gdk-pixbuf", "lib/gdk-pixbuf-2.0/*/loaders/*",
                                "gdk-pixbuf-query-loaders", "loaders.cache")
         self.copy_module_cache("gtk+3", "lib/gtk-3.0/*/immodules/*",

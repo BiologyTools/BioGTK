@@ -39,6 +39,25 @@ namespace BioGTK
         private static int selectedIndex;
         public static Progress prog = Progress.Create("Loading","", "");
         static bool useGPU = true, useVips = false, useImageSharp = false;
+
+        static App()
+        {
+            if (!OperatingSystem.IsMacOS() || Environment.ProcessPath is not { } executable)
+                return;
+
+            const string library = "libopenslide.1.dylib";
+            string bundled = System.IO.Path.GetFullPath(System.IO.Path.Combine(
+                System.IO.Path.GetDirectoryName(executable)!, "..", "Frameworks", "Gtk", library));
+            if (!System.IO.File.Exists(bundled))
+                return;
+
+            // OpenSlideGTK requests a Homebrew path specific to the architecture.
+            // The DMG has its own copy and must work on a clean Mac.
+            var handle = new Lazy<IntPtr>(() => NativeLibrary.Load(bundled));
+            NativeLibrary.SetDllImportResolver(typeof(OpenSlideImage).Assembly,
+                (name, _, _) => System.IO.Path.GetFileName(name) == library ? handle.Value : IntPtr.Zero);
+        }
+
         public static bool UseGPU
         {
             get

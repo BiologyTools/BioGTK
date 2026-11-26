@@ -51,6 +51,8 @@ internal static class StartupHook
                 var pixels = (byte[])bitmap.GetType().GetProperty("Bytes")!.GetValue(bitmap)!;
                 if (Array.TrueForAll(pixels, value => value == 0))
                     throw new InvalidOperationException("The whole-slide image preview is empty.");
+                if (expected == "svs" && type.GetProperty("OpenSlideBase")!.GetValue(image) is null)
+                    throw new InvalidOperationException("The JPEG Aperio sample did not use bundled OpenSlide.");
                 Console.WriteLine($"Decoded {pixels.Length} slide preview bytes.");
             }
             else

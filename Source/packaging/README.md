@@ -1,11 +1,11 @@
 # Build the macOS BioGTK DMGs
 
-On macOS, install the .NET 10 SDK, Xcode Command Line Tools, Python 3.9 or newer, and GTK 3 for your target architecture. Use the `BioGTKApp.csproj` executable project from the separate BioGTKApp checkout. That project's references should point to the BioGTK and BioLib source checkouts you want to publish.
+On macOS, install the .NET 10 SDK, Xcode Command Line Tools, Python 3.9 or newer, GTK 3, and OpenSlide for your target architecture. Use the `BioGTKApp.csproj` executable project from the separate BioGTKApp checkout. That project's references should point to the BioGTK and BioLib source checkouts you want to publish.
 
-For a native build with Homebrew GTK 3, run these commands from the BioGTK repository root.
+For a native build with Homebrew, run these commands from the BioGTK repository root.
 
 ```sh
-brew install gtk+3
+brew install gtk+3 openslide
 python3 Source/packaging/build-macos-dmg.py \
   --app-project /path/to/BioGTKApp.csproj
 ```

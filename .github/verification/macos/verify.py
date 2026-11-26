@@ -80,7 +80,7 @@ def verify_imagej(contents, architecture, rid, work):
     )
 
 
-def verify(dmg, arch, version):
+def verify(dmg, arch, version, aperio_sample):
     architecture = {"arm64": "arm64", "x64": "x86_64"}[arch]
     if platform.machine() != architecture:
         raise ValueError(f"Expected a native {architecture} runner, got {platform.machine()}.")
@@ -114,10 +114,10 @@ def verify(dmg, arch, version):
             wait_for_startup(executable, work / "startup.log")
             if dialogs_required:
                 verify_imagej(contents, architecture, f"osx-{arch}", work)
-                subprocess.run([sys.executable, Path(__file__).parent / "open-images/verify.py", app], check=True)
+                subprocess.run([sys.executable, Path(__file__).parent / "open-images/verify.py", app, aperio_sample], check=True)
         finally:
             subprocess.run(["hdiutil", "detach", mount], check=True)
 
 
 if __name__ == "__main__":
-    verify(Path(sys.argv[1]).resolve(), sys.argv[2], sys.argv[3])
+    verify(Path(sys.argv[1]).resolve(), sys.argv[2], sys.argv[3], Path(sys.argv[4]).resolve())

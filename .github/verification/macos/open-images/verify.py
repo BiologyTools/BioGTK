@@ -36,7 +36,9 @@ def verify(app, slide=None):
     executable = app / "Contents/MacOS/BioGTKApp"
     with tempfile.TemporaryDirectory(prefix="biogtk-open-images-") as temp:
         work = Path(temp)
-        checks = create_images(work) if slide is None else ((slide, "svs"),)
+        checks = create_images(work)
+        if slide is not None:
+            checks += ((slide, "svs"),)
         probe = work / "probe"
         probe.mkdir()
         shutil.copyfile(Path(__file__).with_name("StartupHook.cs"), probe / "StartupHook.cs")
