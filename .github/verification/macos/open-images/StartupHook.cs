@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -39,10 +40,18 @@ internal static class StartupHook
             var type = image.GetType();
             int depth = (int)type.GetProperty("SizeZ")!.GetValue(image)!;
             bool pyramid = (bool)type.GetProperty("isPyramidal")!.GetValue(image)!;
-            if (expected == "pyramid")
+            if (expected is "pyramid" or "svs")
             {
-                if (!pyramid)
+                if (expected == "pyramid" && !pyramid)
                     throw new InvalidOperationException("The whole-slide image opened without its pyramid.");
+                var buffers = (IList)type.GetField("Buffers")!.GetValue(image)!;
+                if (buffers.Count == 0 || buffers[0] is null)
+                    throw new InvalidOperationException("The whole-slide image contains no decoded preview.");
+                var bitmap = buffers[0]!;
+                var pixels = (byte[])bitmap.GetType().GetProperty("Bytes")!.GetValue(bitmap)!;
+                if (Array.TrueForAll(pixels, value => value == 0))
+                    throw new InvalidOperationException("The whole-slide image preview is empty.");
+                Console.WriteLine($"Decoded {pixels.Length} slide preview bytes.");
             }
             else
             {

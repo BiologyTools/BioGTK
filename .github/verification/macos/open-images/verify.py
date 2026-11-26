@@ -32,11 +32,11 @@ def create_images(folder):
             ("Plain stack.tif", "1000,2000"), ("Åperio slide.svs", "pyramid"))
 
 
-def verify(app):
+def verify(app, slide=None):
     executable = app / "Contents/MacOS/BioGTKApp"
     with tempfile.TemporaryDirectory(prefix="biogtk-open-images-") as temp:
         work = Path(temp)
-        checks = create_images(work)
+        checks = create_images(work) if slide is None else ((slide, "svs"),)
         probe = work / "probe"
         probe.mkdir()
         shutil.copyfile(Path(__file__).with_name("StartupHook.cs"), probe / "StartupHook.cs")
@@ -54,13 +54,13 @@ def verify(app):
             env = {**os.environ, "DOTNET_STARTUP_HOOKS": str(binaries / "OpenProbe.dll"),
                    "BIOGTK_OPEN_PROBE_PATH": str(work / filename), "BIOGTK_OPEN_PROBE_EXPECTED": expected}
             try:
-                subprocess.run([executable], check=True, timeout=95, env=env)
+                subprocess.run([executable], check=True, timeout=75, env=env)
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
                 print(f"Could not open {filename}: {error}", flush=True)
                 failures.append(filename)
         if failures:
-            raise RuntimeError(f"Failed image-opening checks: {', '.join(failures)}")
+            raise RuntimeError(f"Failed image-opening checks: {', '.join(map(str, failures))}")
 
 
 if __name__ == "__main__":
-    verify(Path(sys.argv[1]).resolve())
+    verify(Path(sys.argv[1]).resolve(), Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else None)
