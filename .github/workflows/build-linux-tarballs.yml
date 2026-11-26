@@ -23,6 +23,10 @@ concurrency:
 
 jobs:
   build:
+    if: >-
+      github.event_name != 'release' ||
+      !(contains(join(github.event.release.assets.*.name, ' '), '.linux-x64.tar.gz') &&
+        contains(join(github.event.release.assets.*.name, ' '), '.linux-arm64.tar.gz'))
     name: Package ${{ matrix.rid }}
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -150,4 +154,13 @@ jobs:
           arm64="tarballs/BioGTKApp.$version.linux-arm64.tar.gz"
           test -s "$x64"
           test -s "$arm64"
-          gh release upload "$RELEASE_TAG" "$x64" "$arm64" --repo "$GITHUB_REPOSITORY" --clobber
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            gh release upload "$RELEASE_TAG" "$x64" "$arm64" --repo "$GITHUB_REPOSITORY" --clobber
+            exit
+          fi
+          attached="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+          for file in "$x64" "$arm64"; do
+            if ! grep -Fxq "${file##*/}" <<<"$attached"; then
+              gh release upload "$RELEASE_TAG" "$file" --repo "$GITHUB_REPOSITORY"
+            fi
+          done

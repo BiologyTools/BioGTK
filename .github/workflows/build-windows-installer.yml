@@ -23,6 +23,10 @@ concurrency:
 
 jobs:
   build:
+    if: >-
+      github.event_name != 'release' ||
+      !(contains(github.event.release.assets.*.name, 'BioGTK-win-x64-Setup.exe') &&
+        contains(github.event.release.assets.*.name, 'BioGTK-win-x64.zip'))
     runs-on: windows-2025
     steps:
       - name: Check out installer scripts
@@ -145,4 +149,15 @@ jobs:
       - name: Attach the installer and portable ZIP to the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$RELEASE_TAG" BioGTK-win-x64-Setup.exe BioGTK-win-x64.zip --repo "$GITHUB_REPOSITORY" --clobber
+        run: |
+          files=(BioGTK-win-x64-Setup.exe BioGTK-win-x64.zip)
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            gh release upload "$RELEASE_TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+            exit
+          fi
+          attached="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+          for file in "${files[@]}"; do
+            if ! grep -Fxq "$file" <<<"$attached"; then
+              gh release upload "$RELEASE_TAG" "$file" --repo "$GITHUB_REPOSITORY"
+            fi
+          done
