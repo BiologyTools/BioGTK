@@ -16,6 +16,7 @@ permissions:
 
 env:
   RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+  RELEASE_SOURCE: ${{ github.ref_name == 'codex/stage-biogtk-6.8.1-assets' && 'f19fcdf120a0a2b3433cb260fcbfd39abe6a7938' || format('refs/tags/{0}', inputs.tag || github.event.release.tag_name) }}
 
 concurrency:
   group: linux-tarballs-${{ inputs.tag || github.event.release.tag_name }}
@@ -37,7 +38,7 @@ jobs:
       - name: Check out the BioGTK release tag
         uses: actions/checkout@v7
         with:
-          ref: refs/tags/${{ env.RELEASE_TAG }}
+          ref: ${{ env.RELEASE_SOURCE }}
           path: BioGTK/BioGTK
           persist-credentials: false
 
@@ -127,6 +128,7 @@ jobs:
           if-no-files-found: error
 
   release:
+    if: github.ref_name != 'codex/stage-biogtk-6.8.1-assets'
     name: Attach both tarballs to the release
     needs: build
     runs-on: ubuntu-24.04
