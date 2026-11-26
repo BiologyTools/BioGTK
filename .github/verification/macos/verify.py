@@ -114,6 +114,7 @@ def verify(dmg, arch, version):
             wait_for_startup(executable, work / "startup.log")
             if dialogs_required:
                 verify_imagej(contents, architecture, f"osx-{arch}", work)
+                subprocess.run([sys.executable, Path(__file__).parent / "open-images/verify.py", app], check=True)
         finally:
             subprocess.run(["hdiutil", "detach", mount], check=True)
 

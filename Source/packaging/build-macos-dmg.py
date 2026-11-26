@@ -17,6 +17,7 @@ PACKAGING = Path(__file__).resolve().parent
 REPO = PACKAGING.parent.parent
 APP_PROJECT = REPO.parent.parent / "BioGTKApp/BioGTKApp/BioGTKApp/BioGTKApp.csproj"
 APP_NAME = "BioGTKApp"
+IKVM_MANAGED_ASSEMBLIES = ("IKVM.Java.dll", "IKVM.Runtime.dll", "IKVM.CoreLib.dll")
 MACH_O_ARCHITECTURES = {"arm64": "arm64", "x64": "x86_64"}
 GTK_LIBRARIES = (
     "libglib-2.0.0.dylib", "libgobject-2.0.0.dylib", "libgio-2.0.0.dylib",
@@ -120,17 +121,43 @@ def require_architecture(binary, architecture):
         raise ValueError(f"Missing {architecture} slice: {binary}")
 
 
+def use_compatible_ikvm_runtime(publish, deps_path, assets_path):
+    deps = json.loads(deps_path.read_text(encoding="utf-8"))
+    package = "IKVM11/8.15.5"
+    target = deps["targets"][deps["runtimeTarget"]["name"]]
+    if package not in target:
+        return deps
+
+    # The net8.0 Mac assemblies in 8.15.5 lack Java 11 NIO bridge methods used by
+    # Bio-Formats. The same package's macOS net6.0 runtime implements them and
+    # runs on .NET 10. Keep all three assemblies from that build together.
+    assets = json.loads(assets_path.read_text(encoding="utf-8"))
+    package_path = assets["libraries"][package]["path"]
+    runtime = target[package]["runtime"]
+    for name in IKVM_MANAGED_ASSEMBLIES:
+        old_path = f"runtimes/osx/lib/net8.0/{name}"
+        new_path = f"runtimes/osx/lib/net6.0/{name}"
+        source = next((Path(folder) / package_path / new_path for folder in assets["packageFolders"]
+                       if (Path(folder) / package_path / new_path).is_file()), None)
+        if source is None:
+            raise FileNotFoundError(f"Missing {new_path} in the restored {package} package")
+        shutil.copyfile(source, publish / name)
+        (publish / source.with_suffix(".pdb").name).unlink(missing_ok=True)
+        runtime[new_path] = runtime.pop(old_path)
+    deps_path.write_text(json.dumps(deps, indent=2) + "\n", encoding="utf-8")
+    return deps
+
+
 def verify_ikvm_runtime(publish, deps, rid):
     target = deps["targets"][deps["runtimeTarget"]["name"]]
-    java_assemblies = {"IKVM.Java.dll", "IKVM.Runtime.dll", "IKVM.CoreLib.dll"}
+    java_assemblies = set(IKVM_MANAGED_ASSEMBLIES)
     for package, assets in target.items():
         if package.startswith("IKVM11/"):
             java_assemblies.difference_update(Path(asset).name for asset in assets.get("runtime", {}))
     if java_assemblies or any(package.startswith("IKVM/") for package in target):
         raise ValueError("Bio-Formats requires the complete IKVM11 managed runtime in the macOS app")
 
-    for name in ("IKVM.Java.dll", "IKVM.Runtime.dll", "IKVM.CoreLib.dll",
-                 f"ikvm/{rid}/bin/libjvm.dylib", f"ikvm/{rid}/bin/libnio.dylib"):
+    for name in (*IKVM_MANAGED_ASSEMBLIES, f"ikvm/{rid}/bin/libjvm.dylib", f"ikvm/{rid}/bin/libnio.dylib"):
         if not (publish / name).is_file():
             raise ValueError(f"Publish is missing {name}")
 
@@ -406,7 +433,10 @@ def build(args, gtk_prefix):
                          "macro-functions.txt", "macro-commands.csv"):
             if not (publish / required).is_file():
                 raise ValueError(f"Publish is missing {required}")
-        deps = json.loads((publish / f"{APP_NAME}.deps.json").read_text(encoding="utf-8"))
+        deps = use_compatible_ikvm_runtime(
+            publish, publish / f"{APP_NAME}.deps.json",
+            work / "artifacts" / "obj" / args.app_project.stem / "project.assets.json",
+        )
         verify_ikvm_runtime(publish, deps, rid)
         configure_imagej_dialogs(publish, args, architecture)
 

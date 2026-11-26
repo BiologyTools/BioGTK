@@ -96,7 +96,9 @@ jobs:
           BIOGTK_ARCH: ${{ matrix.arch }}
         run: |
           dmg="$RUNNER_TEMP/BioGTK-macos-$BIOGTK_ARCH.dmg"
-          python3 "$GITHUB_WORKSPACE/packaging/.github/verification/macos/verify.py" "$dmg" "$BIOGTK_ARCH" "$BIOGTK_VERSION"
+          python3 -m venv "$RUNNER_TEMP/verify-python"
+          "$RUNNER_TEMP/verify-python/bin/python" -m pip install numpy tifffile
+          "$RUNNER_TEMP/verify-python/bin/python" "$GITHUB_WORKSPACE/packaging/.github/verification/macos/verify.py" "$dmg" "$BIOGTK_ARCH" "$BIOGTK_VERSION"
           (cd "$RUNNER_TEMP" && shasum -a 256 "$(basename "$dmg")" > "$(basename "$dmg").sha256")
 
       - name: Upload DMG

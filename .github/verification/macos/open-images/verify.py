@@ -44,9 +44,6 @@ def verify(app):
         )
         binaries = work / "binaries"
         subprocess.run(["dotnet", "build", project, "-c", "Release", "-o", binaries], check=True)
-        settings = Path.home() / "Library/Application Support/BioGTK/Settings.txt"
-        settings.parent.mkdir(parents=True, exist_ok=True)
-        settings.write_text("ImageJPath=\n")
         failures = []
         for filename, expected in checks:
             print(f"Testing {filename}", flush=True)
