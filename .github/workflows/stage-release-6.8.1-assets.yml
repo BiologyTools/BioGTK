@@ -1,0 +1,70 @@
+name: Stage BioGTK 6.8.1 release assets
+
+on:
+  push:
+    branches: [codex/stage-biogtk-6.8.1-assets]
+    paths: [.github/workflows/stage-release-6.8.1-assets.yml]
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: stage-biogtk-6.8.1-assets
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/verification
+      - name: Confirm the source and successful platform tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          check_run() {
+            local id="$1" expected_sha="$2" workflow="$3"
+            local data
+            data=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id")
+            jq -e --arg sha "$expected_sha" --arg workflow "$workflow" \
+              '.head_sha == $sha and (.path | startswith($workflow))' <<< "$data" >/dev/null
+            timeout 720 gh run watch "$id" --repo "$GITHUB_REPOSITORY" --exit-status --interval 10
+          }
+          check_run 45847076947 f19fcdf120a0a2b3433cb260fcbfd39abe6a7938 .github/workflows/build-macos-dmg.yml &
+          mac_pid=$!
+          check_run 45848137184 9db5db531894a3f9abd292086ef1d565b6d4cefc .github/workflows/build-windows-installer.yml &
+          windows_pid=$!
+          check_run 45848141285 9db5db531894a3f9abd292086ef1d565b6d4cefc .github/workflows/build-linux-tarballs.yml &
+          linux_pid=$!
+          wait "$mac_pid"
+          wait "$windows_pid"
+          wait "$linux_pid"
+      - uses: actions/download-artifact@v8
+        with:
+          run-id: 45847076947
+          github-token: ${{ github.token }}
+          pattern: dmg-*
+          merge-multiple: true
+          path: bundle
+      - uses: actions/download-artifact@v8
+        with:
+          run-id: 45848137184
+          github-token: ${{ github.token }}
+          name: windows-packages
+          path: bundle
+      - uses: actions/download-artifact@v8
+        with:
+          run-id: 45848141285
+          github-token: ${{ github.token }}
+          pattern: tarball-linux-*
+          merge-multiple: true
+          path: bundle
+      - name: Attach and verify the six installers and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/verification/stage-release-6.8.1.py bundle
