@@ -3,35 +3,30 @@
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RuntimeIdentifiers>osx-x64;linux-x64;win-x64;win-arm64;linux-arm64;osx-arm64;</RuntimeIdentifiers>
-    <AssemblyVersion>6.8.0</AssemblyVersion>
-    <FileVersion>6.8.0</FileVersion>
+    <AssemblyVersion>6.8.1</AssemblyVersion>
+    <FileVersion>6.8.1</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>BioGTK</PackageId>
     <Title>BioGTK</Title>
     <PackageProjectUrl>https://github.com/BiologyTools/BioGTK</PackageProjectUrl>
     <PackageIcon>banner.jpg</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageVersion>6.8.0</PackageVersion>
+    <PackageVersion>6.8.1</PackageVersion>
     <RepositoryUrl>https://github.com/BiologyTools/BioGTK</RepositoryUrl>
     <PackageTags>Biology; GTK; ImageJ; Bio-Formats; Image-Stacks; Microscopy; Whole-Slide-Image; Segment-Anything; SAM; QuPath;</PackageTags>
     <PackageLicenseExpression> GPL-3.0-only</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Description>A .NET application &amp; library for editing &amp; annotating various microscopy image formats. Supports all bioformats supported images. Integrates with ImageJ, running ImageJ filters &amp; macro functions. Supports Windows, Linux and Mac.</Description>
-    <Version>6.8.0</Version>
+    <Version>6.8.1</Version>
     <Platforms>AnyCPU</Platforms>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 	  
     <PlatformTarget>AnyCPU</PlatformTarget>
     <PackageReleaseNotes>
-- Multi-scene OME-Zarr stores now open one ImageView per scene from Open Zarr, Open URL, or the command line. Each view loads its own pyramid levels and label overlays.
-- Image Data Resource (IDR) datasets open from s3://idr/ URLs and older EBI links through the current IDR endpoint.
-- Image windows can shrink below their initial size. RGB channel selectors adjust to the available width, and long channel names and status text are shortened to fit.
-- Files passed on the command line load after the interface opens. If one file fails, BioGTK reports the error and continues with the next file.
-- Corrected mask and ROI alignment while panning and zooming on Retina macOS displays.
-- Restored the whole-slide overview on Linux, including consistent HiDPI sizing and navigation, and isolated it from annotation or plugin rendering failures.
-- Fixed whole-slide image startup on Wayland by avoiding unsupported hidden-window positioning and installing GLFW error handling before OpenGL context creation.
-- Reduced recorder and console noise by no longer recording read-only coordinate checks or internal view refreshes.
-- Improves MacOS support including Fiji.NET macro commands.  
+- Adds a pixel classifier for image segmentation.
+- Adds macOS Finder Open With support and allows an optional external Fiji or ImageJ installation.
+- Updates BioLib to 4.4.0, Fiji.NET to 0.1.3, and IKVM11 to 8.15.5 for embedded ImageJ dialogs on Intel and Apple Silicon Macs.
+- Cleans up temporary files created by Fiji and OME-Zarr workflows.
     </PackageReleaseNotes>
     <Authors>Erik Repo</Authors>
   </PropertyGroup>
@@ -475,7 +470,7 @@
 	  <PackageReference Include="BioFormats.NET6" Version="9.0.0-rc2">
 		  <Aliases>BioFormats</Aliases>
 	  </PackageReference>
-	  <PackageReference Include="BioLib" Version="4.3.3" />
+	  <PackageReference Include="BioLib" Version="4.4.0" />
     <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="Flurl.Http" Version="4.0.2" />
     <PackageReference Include="ManagedCuda.NETStandard" Version="9.1.300" />
@@ -515,12 +510,12 @@
     <CFBundleName>BioGTK</CFBundleName>
     <CFBundleDisplayName>BioGTK</CFBundleDisplayName>
     <CFBundleIdentifier>com.BioGTK</CFBundleIdentifier>
-    <CFBundleVersion>6.8.0</CFBundleVersion>
+    <CFBundleVersion>6.8.1</CFBundleVersion>
     <CFBundlePackageType>APPL</CFBundlePackageType>
     <CFBundleSignature>????</CFBundleSignature>
     <CFBundleExecutable>BioGTKApp</CFBundleExecutable>
     <CFBundleIconFile>bio.icns</CFBundleIconFile>
-    <CFBundleShortVersionString>6.8.0</CFBundleShortVersionString>
+    <CFBundleShortVersionString>6.8.1</CFBundleShortVersionString>
     <NSPrincipalClass>NSApplication</NSPrincipalClass>
     <NSHighResolutionCapable>true</NSHighResolutionCapable>
     <ImplicitUsings>enable</ImplicitUsings>
