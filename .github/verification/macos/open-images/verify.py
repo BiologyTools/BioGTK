@@ -15,8 +15,8 @@ def create_images(folder):
     stack = np.stack([np.full((96, 128), value, dtype=np.uint16) for value in (1000, 2000)])
     metadata = {"axes": "ZYX", "PhysicalSizeX": 0.5, "PhysicalSizeY": 0.5}
     tifffile.imwrite(folder / "Two planes.ome.tif", stack, ome=True, photometric="minisblack", metadata=metadata)
-    imagej_stack = (stack // 10).astype(np.uint8)
-    tifffile.imwrite(folder / "ImageJ stack.tif", imagej_stack, imagej=True, photometric="minisblack", metadata={"axes": "ZYX"})
+    tifffile.imwrite(folder / "ImageJ stack.tif", stack, imagej=True, photometric="minisblack", metadata={"axes": "ZYX"})
+    tifffile.imwrite(folder / "Plain stack.tif", stack, byteorder=">", photometric="minisblack", metadata=None)
     rgb = np.zeros((512, 512, 3), dtype=np.uint8)
     rgb[:, :, 0] = 90
     rgb[192:320, 192:320, 1] = 180
@@ -28,7 +28,8 @@ def create_images(folder):
         # SVS identifies planes with nonzero subfile types or no description
         # as associated images, so use a described IFD for the reduced level.
         writer.write(rgb[::2, ::2], tile=(128, 128), photometric="rgb", description=aperio + "layer", metadata=None)
-    return (("Two planes.ome.tif", "1000,2000"), ("ImageJ stack.tif", "100,200"), ("Åperio slide.svs", "pyramid"))
+    return (("Two planes.ome.tif", "1000,2000"), ("ImageJ stack.tif", "1000,2000"),
+            ("Plain stack.tif", "1000,2000"), ("Åperio slide.svs", "pyramid"))
 
 
 def verify(app):
