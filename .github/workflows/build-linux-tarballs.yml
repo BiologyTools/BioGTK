@@ -75,7 +75,7 @@ jobs:
           cat > "$RUNNER_TEMP/BioGTK.Linux.targets" <<'XML'
           <Project>
             <ItemGroup>
-              <PackageReference Include="IKVM11" Version="8.15.2" ExcludeAssets="runtime" />
+              <PackageReference Include="IKVM11" Version="8.15.5" ExcludeAssets="runtime" />
               <PackageReference Include="IKVM" Version="8.15.0" IncludeAssets="runtime" />
             </ItemGroup>
           </Project>
