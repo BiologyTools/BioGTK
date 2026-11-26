@@ -20,11 +20,13 @@ def create_images(folder):
     rgb[:, :, 0] = 90
     rgb[192:320, 192:320, 1] = 180
     aperio = "Aperio Image Library v12.0.0\n"
-    layout = "512x512 [0,0 512x512] (128x128) RAW/RGB|AppMag = 20|MPP = 0.5"
+    layout = "512x512 [0,0 512x512] (128x128) RGB|AppMag = 20|MPP = 0.5"
     with tifffile.TiffWriter(folder / "Åperio slide.svs") as writer:
         writer.write(rgb, tile=(128, 128), photometric="rgb", description=aperio + layout, metadata=None)
         writer.write(rgb[::8, ::8], photometric="rgb", description=aperio + "thumbnail", metadata=None)
-        writer.write(rgb[::2, ::2], tile=(128, 128), photometric="rgb", subfiletype=1, metadata=None)
+        # SVS identifies planes with nonzero subfile types or no description
+        # as associated images, so use a described IFD for the reduced level.
+        writer.write(rgb[::2, ::2], tile=(128, 128), photometric="rgb", description=aperio + "layer", metadata=None)
     return (("Two planes.ome.tif", "stack"), ("ImageJ stack.tif", "stack"), ("Åperio slide.svs", "pyramid"))
 
 
