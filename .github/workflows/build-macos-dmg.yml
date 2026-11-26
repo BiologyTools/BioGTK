@@ -54,12 +54,25 @@ jobs:
       - name: Use current packaging scripts with the release source
         run: cp packaging/Source/packaging/* BioGTK/BioGTK/Source/packaging/
 
-      - name: Check out BioLib for candidate testing
-        if: inputs.biolib-ref != '' && env.RELEASE_TAG == ''
+      - name: Select the BioLib source revision
+        id: biolib
+        env:
+          CANDIDATE_REF: ${{ inputs.biolib-ref }}
+        run: |
+          ref=
+          if [[ -z "$RELEASE_TAG" && -n "$CANDIDATE_REF" ]]; then
+            ref="$CANDIDATE_REF"
+          elif [[ -f BioGTK/BioGTK/.github/macos/biolib.ref ]]; then
+            ref="$(cat BioGTK/BioGTK/.github/macos/biolib.ref)"
+          fi
+          printf 'ref=%s\n' "$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the pinned BioLib source
+        if: steps.biolib.outputs.ref != ''
         uses: actions/checkout@v7
         with:
           repository: BiologyTools/BioLib
-          ref: ${{ inputs.biolib-ref }}
+          ref: ${{ steps.biolib.outputs.ref }}
           path: BioLib
           persist-credentials: false
 
