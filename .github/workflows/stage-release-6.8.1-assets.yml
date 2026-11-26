@@ -64,7 +64,7 @@ jobs:
           pattern: tarball-linux-*
           merge-multiple: true
           path: bundle
-      - name: Attach and verify the six installers and checksums
+      - name: Attach the six downloads and verify their uploaded hashes
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 .github/verification/stage-release-6.8.1.py bundle

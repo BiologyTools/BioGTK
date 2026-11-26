@@ -106,11 +106,6 @@ def stage(folder):
         if filename != name or f"sha256:{expected}" != hashes[name]:
             raise ValueError(f"DMG does not match the checksum from the macOS verifier: {name}")
 
-    checksum = folder / "SHA256SUMS.txt"
-    checksum.write_text("".join(f"{hashes[name][7:]}  {name}\n" for name in FILENAMES))
-    files.append(checksum)
-    hashes[checksum.name] = digest(checksum)
-
     before = assets()
     for name, expected in hashes.items():
         current = before.get(name)
