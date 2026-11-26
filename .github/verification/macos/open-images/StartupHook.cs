@@ -39,18 +39,21 @@ internal static class StartupHook
             var type = image.GetType();
             int depth = (int)type.GetProperty("SizeZ")!.GetValue(image)!;
             bool pyramid = (bool)type.GetProperty("isPyramidal")!.GetValue(image)!;
-            if (expected == "stack")
+            if (expected == "pyramid")
+            {
+                if (!pyramid)
+                    throw new InvalidOperationException("The whole-slide image opened without its pyramid.");
+            }
+            else
             {
                 if (depth != 2 || pyramid)
                     throw new InvalidOperationException($"Expected a 2-plane stack, got Z={depth}, pyramid={pyramid}.");
                 var pixel = type.GetMethod("GetValue", new[] { typeof(int), typeof(int), typeof(int), typeof(int), typeof(int) })!;
                 int first = Convert.ToInt32(pixel.Invoke(image, new object[] { 0, 0, 0, 4, 4 }));
                 int second = Convert.ToInt32(pixel.Invoke(image, new object[] { 1, 0, 0, 4, 4 }));
-                if (first != 1000 || second != 2000)
-                    throw new InvalidOperationException($"Expected stack pixels 1000 and 2000, got {first} and {second}.");
+                if ($"{first},{second}" != expected)
+                    throw new InvalidOperationException($"Expected stack pixels {expected}, got {first},{second}.");
             }
-            if (expected == "pyramid" && !pyramid)
-                throw new InvalidOperationException("The whole-slide image opened without its pyramid.");
 
             Console.WriteLine($"Opened {Path.GetFileName(path)}: Z={depth}, pyramid={pyramid}.");
             Environment.Exit(0);

@@ -7,6 +7,10 @@ on:
         description: Existing release tag to build and upload (empty builds the selected ref)
         required: false
         type: string
+      biolib-ref:
+        description: BioLib ref to build from source for artifact-only tests
+        required: false
+        type: string
   release:
     types: [published]
   push:
@@ -50,6 +54,15 @@ jobs:
       - name: Use current packaging scripts with the release source
         run: cp packaging/Source/packaging/* BioGTK/BioGTK/Source/packaging/
 
+      - name: Check out BioLib for candidate testing
+        if: inputs.biolib-ref != '' && env.RELEASE_TAG == ''
+        uses: actions/checkout@v7
+        with:
+          repository: BiologyTools/BioLib
+          ref: ${{ inputs.biolib-ref }}
+          path: BioLib
+          persist-credentials: false
+
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v6
         with:
@@ -85,8 +98,12 @@ jobs:
           if [[ "$BIOGTK_ARCH" == x64 ]]; then
             gtk_args=(--gtk-prefix "$RUNNER_TEMP/gtk-x64")
           fi
+          biolib_args=()
+          if [[ -f "$GITHUB_WORKSPACE/BioLib/BioLib.csproj" ]]; then
+            biolib_args=(--biolib-project "$GITHUB_WORKSPACE/BioLib/BioLib.csproj")
+          fi
           python3 Source/packaging/build-macos-dmg.py \
-            --app-project .github/macos/BioGTKApp.csproj \
+            --app-project .github/macos/BioGTKApp.csproj "${biolib_args[@]}" \
             --arch "$BIOGTK_ARCH" "${gtk_args[@]}" \
             --output "$RUNNER_TEMP/BioGTK-macos-$BIOGTK_ARCH.dmg"
 
